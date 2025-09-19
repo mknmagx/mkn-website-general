@@ -1,0 +1,79 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="packageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="#F8FAFC"/>
+  
+  <!-- Main Package -->
+  <rect x="150" y="120" width="100" height="80" fill="url(#packageGradient)" rx="5"/>
+  
+  <!-- Package tape -->
+  <rect x="140" y="150" width="120" height="8" fill="#F59E0B"/>
+  <rect x="190" y="110" width="8" height="100" fill="#F59E0B"/>
+  
+  <!-- Shipping label -->
+  <rect x="160" y="130" width="60" height="30" fill="#FFFFFF" rx="3"/>
+  <rect x="165" y="135" width="50" height="4" fill="#D1D5DB" rx="1"/>
+  <rect x="165" y="142" width="35" height="4" fill="#D1D5DB" rx="1"/>
+  <rect x="165" y="149" width="40" height="4" fill="#D1D5DB" rx="1"/>
+  
+  <!-- Barcode -->
+  <rect x="170" y="170" width="2" height="15" fill="#000000"/>
+  <rect x="173" y="170" width="1" height="15" fill="#000000"/>
+  <rect x="175" y="170" width="2" height="15" fill="#000000"/>
+  <rect x="178" y="170" width="1" height="15" fill="#000000"/>
+  <rect x="180" y="170" width="3" height="15" fill="#000000"/>
+  <rect x="184" y="170" width="1" height="15" fill="#000000"/>
+  <rect x="186" y="170" width="2" height="15" fill="#000000"/>
+  <rect x="189" y="170" width="1" height="15" fill="#000000"/>
+  <rect x="191" y="170" width="2" height="15" fill="#000000"/>
+  <rect x="194" y="170" width="3" height="15" fill="#000000"/>
+  <rect x="198" y="170" width="1" height="15" fill="#000000"/>
+  <rect x="200" y="170" width="2" height="15" fill="#000000"/>
+  
+  <!-- Smaller packages around -->
+  <rect x="80" y="180" width="60" height="50" fill="#10B981" rx="4"/>
+  <rect x="85" y="185" width="50" height="4" fill="#FFFFFF"/>
+  <rect x="110" y="175" width="4" height="60" fill="#FFFFFF"/>
+  
+  <rect x="270" y="160" width="50" height="40" fill="#EF4444" rx="3"/>
+  <rect x="275" y="165" width="40" height="3" fill="#FFFFFF"/>
+  <rect x="290" y="155" width="3" height="50" fill="#FFFFFF"/>
+  
+  <rect x="100" y="280" width="70" height="60" fill="#8B5CF6" rx="5"/>
+  <rect x="105" y="285" width="60" height="5" fill="#FFFFFF"/>
+  <rect x="130" y="275" width="5" height="70" fill="#FFFFFF"/>
+  
+  <!-- Packing materials -->
+  <circle cx="320" cy="100" r="20" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2"/>
+  <circle cx="320" cy="100" r="15" fill="#FCD34D"/>
+  <text x="320" y="107" text-anchor="middle" fill="#92400E" font-size="12" font-weight="bold">!</text>
+  
+  <!-- Bubble wrap -->
+  <rect x="50" y="80" width="60" height="40" fill="#E5E7EB" rx="5"/>
+  <circle cx="60" cy="90" r="3" fill="#FFFFFF"/>
+  <circle cx="70" cy="90" r="3" fill="#FFFFFF"/>
+  <circle cx="80" cy="90" r="3" fill="#FFFFFF"/>
+  <circle cx="90" cy="90" r="3" fill="#FFFFFF"/>
+  <circle cx="100" cy="90" r="3" fill="#FFFFFF"/>
+  <circle cx="60" cy="100" r="3" fill="#FFFFFF"/>
+  <circle cx="70" cy="100" r="3" fill="#FFFFFF"/>
+  <circle cx="80" cy="100" r="3" fill="#FFFFFF"/>
+  <circle cx="90" cy="100" r="3" fill="#FFFFFF"/>
+  <circle cx="100" cy="100" r="3" fill="#FFFFFF"/>
+  <circle cx="60" cy="110" r="3" fill="#FFFFFF"/>
+  <circle cx="70" cy="110" r="3" fill="#FFFFFF"/>
+  <circle cx="80" cy="110" r="3" fill="#FFFFFF"/>
+  <circle cx="90" cy="110" r="3" fill="#FFFFFF"/>
+  <circle cx="100" cy="110" r="3" fill="#FFFFFF"/>
+  
+  <!-- Packing tools -->
+  <rect x="300" y="280" width="80" height="8" fill="#6B7280" rx="4"/>
+  <rect x="310" y="275" width="60" height="18" fill="#374151" rx="2"/>
+  <rect x="320" y="270" width="40" height="8" fill="#9CA3AF" rx="1"/>
+</svg>

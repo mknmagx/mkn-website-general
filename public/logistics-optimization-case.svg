@@ -1,0 +1,176 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="logisticsBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0f9ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#e0f2fe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f0fdf4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="trackingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="successGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#34d399;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="truckGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#logisticsBg)"/>
+  
+  <!-- Main Dashboard -->
+  <rect x="40" y="30" width="320" height="200" rx="12" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  
+  <!-- Header -->
+  <rect x="50" y="40" width="300" height="25" rx="6" fill="url(#trackingGradient)"/>
+  <text x="200" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">Lojistik Optimizasyon Sistemi</text>
+  
+  <!-- Key Performance Indicators -->
+  <rect x="60" y="75" width="280" height="60" rx="6" fill="#f8fafc"/>
+  
+  <!-- Cost Reduction -->
+  <rect x="70" y="85" width="65" height="40" rx="4" fill="rgba(16,185,129,0.1)" stroke="#10b981"/>
+  <text x="102.5" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">MALİYET TASARRUFU</text>
+  <text x="102.5" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#10b981">45%</text>
+  <text x="102.5" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#10b981">↘ Azalma</text>
+  
+  <!-- Delivery Speed -->
+  <rect x="145" y="85" width="65" height="40" rx="4" fill="rgba(59,130,246,0.1)" stroke="#3b82f6"/>
+  <text x="177.5" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">TESLİMAT HIZI</text>
+  <text x="177.5" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#3b82f6">2.5x</text>
+  <text x="177.5" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#3b82f6">↗ Artış</text>
+  
+  <!-- Route Efficiency -->
+  <rect x="220" y="85" width="65" height="40" rx="4" fill="rgba(245,158,11,0.1)" stroke="#f59e0b"/>
+  <text x="252.5" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">ROTA VERİMLİLİĞİ</text>
+  <text x="252.5" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#f59e0b">85%</text>
+  <text x="252.5" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#f59e0b">↗ Artış</text>
+  
+  <!-- Customer Satisfaction -->
+  <rect x="295" y="85" width="55" height="40" rx="4" fill="rgba(139,92,246,0.1)" stroke="#8b5cf6"/>
+  <text x="322.5" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">MÜŞTERİ MEMNUN.</text>
+  <text x="322.5" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#8b5cf6">98%</text>
+  <text x="322.5" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#8b5cf6">↗ Artış</text>
+  
+  <!-- Route Map Section -->
+  <rect x="60" y="145" width="160" height="75" rx="6" fill="#f1f5f9"/>
+  <text x="140" y="157" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">OPTİMİZE EDİLMİŞ ROTA HARİTASI</text>
+  
+  <!-- Map Background -->
+  <rect x="70" y="165" width="140" height="50" rx="4" fill="#e2e8f0"/>
+  
+  <!-- Route Lines -->
+  <path d="M 80 185 Q 120 175 140 185 Q 160 195 190 185" stroke="#0ea5e9" stroke-width="3" fill="none" opacity="0.8"/>
+  <path d="M 80 185 Q 100 200 140 200 Q 180 200 200 185" stroke="#ef4444" stroke-width="2" fill="none" opacity="0.5"/>
+  
+  <!-- Delivery Points -->
+  <circle cx="80" cy="185" r="4" fill="#dc2626"/>
+  <circle cx="140" cy="185" r="3" fill="#10b981"/>
+  <circle cx="190" cy="185" r="3" fill="#10b981"/>
+  <circle cx="120" cy="195" r="2" fill="#3b82f6"/>
+  <circle cx="160" cy="200" r="2" fill="#3b82f6"/>
+  
+  <!-- Warehouse -->
+  <rect x="76" y="181" width="8" height="8" rx="2" fill="#dc2626"/>
+  <rect x="78" y="175" width="4" height="6" rx="1" fill="#991b1b"/>
+  
+  <!-- Delivery Status -->
+  <rect x="230" y="145" width="110" height="75" rx="6" fill="#f8fafc"/>
+  <text x="285" y="157" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">TESLİMAT DURUMU</text>
+  
+  <!-- Status Items -->
+  <circle cx="245" cy="170" r="3" fill="#10b981"/>
+  <text x="255" y="173" font-family="Arial, sans-serif" font-size="7" fill="#1f2937">Teslim Edildi: 1,247</text>
+  
+  <circle cx="245" cy="183" r="3" fill="#3b82f6"/>
+  <text x="255" y="186" font-family="Arial, sans-serif" font-size="7" fill="#1f2937">Yolda: 89</text>
+  
+  <circle cx="245" cy="196" r="3" fill="#f59e0b"/>
+  <text x="255" y="199" font-family="Arial, sans-serif" font-size="7" fill="#1f2937">Hazırlanıyor: 34</text>
+  
+  <circle cx="245" cy="209" r="3" fill="#dc2626"/>
+  <text x="255" y="212" font-family="Arial, sans-serif" font-size="7" fill="#1f2937">Gecikmiş: 2</text>
+  
+  <!-- Trucks and Vehicles -->
+  <rect x="50" y="250" width="80" height="40" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  
+  <!-- Truck 1 -->
+  <rect x="60" y="260" width="25" height="12" rx="2" fill="url(#truckGradient)"/>
+  <rect x="85" y="263" width="8" height="6" rx="1" fill="#991b1b"/>
+  <circle cx="65" cy="275" r="3" fill="#374151"/>
+  <circle cx="80" cy="275" r="3" fill="#374151"/>
+  <circle cx="88" cy="275" r="2" fill="#374151"/>
+  <text x="72.5" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1f2937">Kamyon #1</text>
+  
+  <!-- Truck 2 -->
+  <rect x="100" y="260" width="20" height="10" rx="2" fill="#3b82f6"/>
+  <rect x="120" y="262" width="6" height="6" rx="1" fill="#1e40af"/>
+  <circle cx="104" cy="272" r="2" fill="#374151"/>
+  <circle cx="116" cy="272" r="2" fill="#374151"/>
+  <circle cx="123" cy="272" r="1.5" fill="#374151"/>
+  <text x="113" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1f2937">Minivan #2</text>
+  
+  <!-- Efficiency Metrics -->
+  <rect x="150" y="250" width="100" height="40" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="200" y="262" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">VERİMLİLİK ARTIŞI</text>
+  
+  <!-- Fuel Savings -->
+  <rect x="160" y="268" width="35" height="15" rx="2" fill="rgba(34,197,94,0.1)" stroke="#22c55e"/>
+  <text x="177.5" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#16a34a">YAKIT</text>
+  <text x="177.5" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#16a34a">-30%</text>
+  
+  <!-- Time Savings -->
+  <rect x="205" y="268" width="35" height="15" rx="2" fill="rgba(59,130,246,0.1)" stroke="#3b82f6"/>
+  <text x="222.5" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#2563eb">ZAMAN</text>
+  <text x="222.5" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#2563eb">-40%</text>
+  
+  <!-- Analytics Chart -->
+  <rect x="270" y="250" width="80" height="40" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="310" y="262" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">ANALİTİK RAPOR</text>
+  
+  <!-- Mini Chart -->
+  <rect x="280" y="268" width="60" height="15" rx="2" fill="#f8fafc"/>
+  <path d="M 285 278 L 290 275 L 295 273 L 300 270 L 305 268 L 310 265 L 315 267 L 320 265 L 325 263 L 330 260 L 335 258" 
+        stroke="url(#successGradient)" stroke-width="2" fill="none"/>
+  
+  <!-- GPS Signal -->
+  <g transform="translate(360, 60)">
+    <circle cx="0" cy="0" r="8" fill="rgba(6,182,212,0.2)"/>
+    <circle cx="0" cy="0" r="5" fill="rgba(6,182,212,0.4)"/>
+    <circle cx="0" cy="0" r="2" fill="#06b6d4"/>
+    <text x="0" y="15" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#0891b2">GPS</text>
+  </g>
+  
+  <!-- Success Badge -->
+  <ellipse cx="200" cy="15" rx="85" ry="12" fill="rgba(16,185,129,0.9)"/>
+  <text x="200" y="19" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="white">LOJİSTİK OPTİMİZASYON BAŞARI HİKAYESİ</text>
+  
+  <!-- Additional Delivery Icons -->
+  <g transform="translate(20, 100)">
+    <rect x="0" y="0" width="12" height="8" rx="2" fill="#f59e0b"/>
+    <rect x="2" y="2" width="8" height="4" rx="1" fill="#d97706"/>
+    <circle cx="3" cy="10" r="2" fill="#374151"/>
+    <circle cx="9" cy="10" r="2" fill="#374151"/>
+  </g>
+  
+  <g transform="translate(370, 200)">
+    <rect x="0" y="0" width="15" height="10" rx="2" fill="#10b981"/>
+    <rect x="2" y="2" width="11" height="6" rx="1" fill="#059669"/>
+    <circle cx="4" cy="12" r="2" fill="#374151"/>
+    <circle cx="11" cy="12" r="2" fill="#374151"/>
+  </g>
+  
+  <!-- Checkmarks for success -->
+  <path d="M 30 200 L 35 205 L 45 195" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 360 120 L 365 125 L 375 115" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Package Icons -->
+  <rect x="15" y="270" width="8" height="8" rx="1" fill="#8b5cf6" opacity="0.7"/>
+  <rect x="380" y="45" width="10" height="10" rx="1" fill="#f59e0b" opacity="0.6"/>
+  <rect x="10" y="50" width="6" height="6" rx="1" fill="#06b6d4" opacity="0.8"/>
+</svg>

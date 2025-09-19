@@ -1,0 +1,145 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="socialGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffd93d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="socialGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ecdc4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#45b7d1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="socialGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#96ceb4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffecd2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phoneGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="socialShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+    <filter id="socialGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#phoneGradient)" opacity="0.08"/>
+  
+  <!-- Main Smartphone -->
+  <g transform="translate(200,200)">
+    <!-- Phone body -->
+    <rect x="-35" y="-80" width="70" height="160" rx="20" fill="url(#phoneGradient)" filter="url(#socialShadow)"/>
+    
+    <!-- Screen -->
+    <rect x="-30" y="-70" width="60" height="140" rx="15" fill="#000000"/>
+    <rect x="-28" y="-65" width="56" height="130" rx="12" fill="url(#socialGradient2)" opacity="0.9"/>
+    
+    <!-- Status bar -->
+    <rect x="-25" y="-62" width="50" height="8" rx="2" fill="url(#phoneGradient)" opacity="0.7"/>
+    
+    <!-- Social media post mockup -->
+    <g transform="translate(0,-30)">
+      <!-- Profile pic -->
+      <circle cx="-20" cy="-15" r="6" fill="url(#socialGradient1)"/>
+      
+      <!-- Post text lines -->
+      <rect x="-10" y="-20" width="25" height="2" rx="1" fill="#ffffff" opacity="0.8"/>
+      <rect x="-10" y="-16" width="20" height="2" rx="1" fill="#ffffff" opacity="0.6"/>
+      
+      <!-- Post image -->
+      <rect x="-25" y="-8" width="50" height="30" rx="4" fill="url(#socialGradient3)" opacity="0.8"/>
+      
+      <!-- Engagement icons -->
+      <circle cx="-18" cy="28" r="3" fill="#ff6b6b"/>
+      <circle cx="-8" cy="28" r="3" fill="#4ecdc4"/>
+      <circle cx="2" cy="28" r="3" fill="#ffd93d"/>
+      <circle cx="12" cy="28" r="3" fill="#96ceb4"/>
+    </g>
+    
+    <!-- Home indicator -->
+    <rect x="-15" y="65" width="30" height="3" rx="1.5" fill="#ffffff" opacity="0.5"/>
+  </g>
+  
+  <!-- Floating social media icons -->
+  <g opacity="0.8">
+    <!-- Instagram -->
+    <g transform="translate(120,120)">
+      <rect x="0" y="0" width="40" height="40" rx="12" fill="url(#socialGradient1)" filter="url(#socialShadow)"/>
+      <circle cx="20" cy="20" r="10" stroke="#ffffff" stroke-width="3" fill="none"/>
+      <circle cx="28" cy="12" r="3" fill="#ffffff"/>
+    </g>
+    
+    <!-- TikTok -->
+    <g transform="translate(280,140)">
+      <rect x="0" y="0" width="35" height="35" rx="8" fill="#000000" filter="url(#socialShadow)"/>
+      <path d="M15,8 Q20,6 25,8 Q23,12 20,14 L20,22 Q18,25 15,22 Q12,20 15,18 Z" fill="#ff6b6b"/>
+      <path d="M20,8 Q25,6 28,10 Q26,8 23,10 Q25,12 20,14 Z" fill="#4ecdc4"/>
+    </g>
+    
+    <!-- Facebook -->
+    <g transform="translate(100,280)">
+      <rect x="0" y="0" width="38" height="38" rx="10" fill="url(#socialGradient2)" filter="url(#socialShadow)"/>
+      <path d="M22,12 L18,12 L18,16 L22,16 L22,26 L18,26 L18,16 L15,16 L15,12 L18,12 L18,9 Q18,6 21,6 L24,6 L24,9 L22,9 Q21,9 21,10 L21,12 Z" fill="#ffffff"/>
+    </g>
+    
+    <!-- YouTube -->
+    <g transform="translate(280,280)">
+      <rect x="0" y="0" width="42" height="42" rx="12" fill="#ff6b6b" filter="url(#socialShadow)"/>
+      <polygon points="16,14 16,28 28,21" fill="#ffffff"/>
+    </g>
+  </g>
+  
+  <!-- Content creation elements -->
+  <g transform="translate(80,180)" opacity="0.7">
+    <!-- Hashtag -->
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="url(#socialGradient1)">#</text>
+    
+    <!-- Trending arrow -->
+    <g transform="translate(20,-10)">
+      <path d="M0,15 L15,0 L15,5 L25,5 L25,10 L15,10 Z" fill="url(#socialGradient2)" filter="url(#socialGlow)"/>
+    </g>
+  </g>
+  
+  <!-- Engagement metrics -->
+  <g transform="translate(320,100)" opacity="0.8">
+    <!-- Like counter -->
+    <rect x="0" y="0" width="50" height="20" rx="10" fill="url(#socialGradient1)" filter="url(#socialShadow)"/>
+    <text x="25" y="13" font-family="Arial, sans-serif" font-size="12" fill="#ffffff" text-anchor="middle">1.2K</text>
+  </g>
+  
+  <g transform="translate(60,320)" opacity="0.8">
+    <!-- Share counter -->
+    <rect x="0" y="0" width="45" height="18" rx="9" fill="url(#socialGradient3)" filter="url(#socialShadow)"/>
+    <text x="22" y="12" font-family="Arial, sans-serif" font-size="10" fill="#ffffff" text-anchor="middle">847</text>
+  </g>
+  
+  <!-- Floating notification bubbles -->
+  <g opacity="0.6">
+    <circle cx="350" cy="200" r="8" fill="url(#socialGradient1)" filter="url(#socialGlow)">
+      <animate attributeName="r" values="8;12;8" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="100" r="6" fill="url(#socialGradient2)" filter="url(#socialGlow)">
+      <animate attributeName="r" values="6;10;6" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="340" cy="50" r="5" fill="url(#socialGradient3)" filter="url(#socialGlow)">
+      <animate attributeName="r" values="5;9;5" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Connection lines -->
+  <g stroke="url(#socialGradient2)" stroke-width="2" fill="none" opacity="0.3" stroke-dasharray="5,5">
+    <path d="M160,140 Q180,160 200,120">
+      <animate attributeName="stroke-dashoffset" values="0;10;0" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M240,200 Q280,220 300,180">
+      <animate attributeName="stroke-dashoffset" values="0;10;0" dur="2.5s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+</svg>

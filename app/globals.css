@@ -1,0 +1,276 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Clean, bright blue color palette for MKNGROUP */
+  --background: #ffffff; /* Pure white for clean, modern feel */
+  --foreground: #4b5563; /* Dark gray for professional text */
+  --card: #f0f4ff; /* Light blue tint for card backgrounds */
+  --card-foreground: #4b5563;
+  --popover: #ffffff;
+  --popover-foreground: #4b5563;
+  --primary: #007bff; /* Bright blue for trust and professionalism */
+  --primary-foreground: #ffffff;
+  --secondary: #00aaff; /* Light sky blue for energetic highlights */
+  --secondary-foreground: #ffffff;
+  --muted: #f0f4ff;
+  --muted-foreground: #4b5563;
+  --accent: #0056b3; /* Deep blue for depth and contrast */
+  --accent-foreground: #ffffff;
+  --destructive: #dc3545;
+  --destructive-foreground: #ffffff;
+  --border: #e0e0e0;
+  --input: #f0f4ff;
+  --ring: rgba(0, 123, 255, 0.5);
+  --chart-1: #007bff;
+  --chart-2: #00aaff;
+  --chart-3: #0056b3;
+  --chart-4: #4b5563;
+  --chart-5: #f0f4ff;
+  --radius: 0.75rem; /* Slightly more rounded for modern feel */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4b5563;
+  --sidebar-primary: #007bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #00aaff;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e0e0e0;
+  --sidebar-ring: rgba(0, 123, 255, 0.5);
+}
+
+.dark {
+  /* Dark theme with bright blue accents */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+  --primary: #3b82f6; /* Brighter blue in dark mode */
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #60a5fa; /* Light blue accent in dark */
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-foreground: #f1f5f9;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: rgba(59, 130, 246, 0.5);
+  --chart-1: #3b82f6;
+  --chart-2: #60a5fa;
+  --chart-3: #1d4ed8;
+  --chart-4: #94a3b8;
+  --chart-5: #1e293b;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #334155;
+  --sidebar-ring: rgba(59, 130, 246, 0.5);
+}
+
+/* Enhanced font configuration */
+@theme inline {
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-dm-sans);
+  --font-montserrat: var(--font-montserrat);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Enhanced animations for energetic feel */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.8s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Enhanced hover effects */
+  .hover-lift {
+    transition: all 0.3s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px -5px rgba(0, 123, 255, 0.15), 0 10px 10px -5px rgba(0, 123, 255, 0.1);
+  }
+
+  /* Blue gradient backgrounds */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #00aaff 100%);
+  }
+
+  .bg-gradient-secondary {
+    background: linear-gradient(135deg, #00aaff 0%, #0056b3 100%);
+  }
+
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
+  }
+
+  /* Montserrat font utility */
+  .font-montserrat {
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  /* Tasarım Sayfası Özel Animasyonları */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0, 123, 255, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(0, 123, 255, 0.6); }
+  }
+  
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+  
+  .animate-float { animation: float 6s ease-in-out infinite; }
+  .animate-glow { animation: glow 2s ease-in-out infinite; }
+  .animate-gradient { animation: gradientShift 5s ease infinite; background-size: 200% 200%; }
+  .animate-sparkle { animation: sparkle 2s ease-in-out infinite; }
+  
+  .gradient-text {
+    background: linear-gradient(45deg, #007bff, #00aaff, #0056b3);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 3s ease infinite;
+  }
+  
+  .morphing-bg {
+    background: linear-gradient(45deg, #007bff20, #00aaff20, #0056b320, #007bff20);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .neon-border {
+    border: 2px solid transparent;
+    background: linear-gradient(45deg, #007bff, #00aaff) border-box;
+    border-radius: 1rem;
+  }
+  
+  .hover-lift-advanced {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift-advanced:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 123, 255, 0.2);
+  }
+  
+  .particle {
+    position: absolute;
+    background: #007bff;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: sparkle 3s linear infinite;
+  }
+}

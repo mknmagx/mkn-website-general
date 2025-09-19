@@ -1,0 +1,230 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="googleBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4285f4;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#34a853;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#fbbc05;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#ea4335;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9c27b0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="deviceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="googleLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4285f4;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#ea4335;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#fbbc05;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#34a853;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="searchGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#googleBg)"/>
+  
+  <!-- Floating Elements -->
+  <circle cx="50" cy="50" r="15" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="350" cy="60" r="12" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="380" cy="250" r="18" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="30" cy="220" r="10" fill="rgba(255,255,255,0.12)"/>
+  
+  <!-- Main Laptop Display -->
+  <rect x="120" y="60" width="160" height="100" rx="8" fill="url(#deviceGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="2"/>
+  <rect x="125" y="65" width="150" height="85" rx="4" fill="#f8fafc"/>
+  
+  <!-- Google Search Interface -->
+  <rect x="127" y="67" width="146" height="12" fill="#ffffff"/>
+  <circle cx="133" cy="73" r="2" fill="#ef4444"/>
+  <circle cx="139" cy="73" r="2" fill="#f59e0b"/>
+  <circle cx="145" cy="73" r="2" fill="#10b981"/>
+  
+  <!-- Google Logo -->
+  <text x="200" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="url(#googleLogoGradient)">Google</text>
+  
+  <!-- Search Bar -->
+  <rect x="140" y="90" width="120" height="12" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <circle cx="250" cy="96" r="3" fill="#4285f4"/>
+  <path d="M248 96 L252 99 L248 102" fill="none" stroke="#4285f4" stroke-width="1"/>
+  
+  <!-- Search Results -->
+  <rect x="130" y="108" width="90" height="3" rx="1.5" fill="#1a0dab"/>
+  <rect x="130" y="113" width="110" height="2" rx="1" fill="#006621"/>
+  <rect x="130" y="117" width="100" height="2" rx="1" fill="#5f6368"/>
+  <rect x="130" y="121" width="95" height="2" rx="1" fill="#5f6368"/>
+  
+  <!-- Ad Label -->
+  <rect x="130" y="108" width="12" height="3" rx="1.5" fill="#34a853"/>
+  <text x="136" y="110.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="2" font-weight="bold" fill="white">Ad</text>
+  
+  <!-- Second Search Result -->
+  <rect x="130" y="128" width="85" height="3" rx="1.5" fill="#1a0dab"/>
+  <rect x="130" y="133" width="105" height="2" rx="1" fill="#006621"/>
+  <rect x="130" y="137" width="95" height="2" rx="1" fill="#5f6368"/>
+  <rect x="130" y="141" width="88" height="2" rx="1" fill="#5f6368"/>
+  
+  <!-- Google Ads Dashboard -->
+  <rect x="40" y="40" width="100" height="80" rx="8" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="90" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">GOOGLE ADS</text>
+  
+  <!-- Campaign Performance -->
+  <text x="45" y="62" font-family="Arial, sans-serif" font-size="6" fill="#5f6368">Campaign Performance</text>
+  
+  <!-- CTR Chart -->
+  <text x="45" y="70" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">CTR:</text>
+  <rect x="58" y="68" width="30" height="3" fill="#e8f0fe"/>
+  <rect x="58" y="68" width="21" height="3" fill="#4285f4"/>
+  <text x="120" y="71" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#4285f4">3.5%</text>
+  
+  <!-- CPC Chart -->
+  <text x="45" y="78" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">CPC:</text>
+  <rect x="58" y="76" width="30" height="3" fill="#e8f5e9"/>
+  <rect x="58" y="76" width="18" height="3" fill="#34a853"/>
+  <text x="115" y="79" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#34a853">₺2.50</text>
+  
+  <!-- Quality Score -->
+  <text x="45" y="86" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Quality Score:</text>
+  <rect x="78" y="84" width="30" height="3" fill="#fef7e0"/>
+  <rect x="78" y="84" width="24" height="3" fill="#fbbc05"/>
+  <text x="120" y="87" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#fbbc05">8/10</text>
+  
+  <!-- ROAS -->
+  <text x="45" y="94" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">ROAS:</text>
+  <rect x="62" y="92" width="30" height="3" fill="#e8f5e9"/>
+  <rect x="62" y="92" width="25" height="3" fill="#34a853"/>
+  <text x="115" y="95" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#34a853">450%</text>
+  
+  <!-- Impressions -->
+  <text x="45" y="102" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Impressions:</text>
+  <rect x="75" y="100" width="30" height="3" fill="#e8f0fe"/>
+  <rect x="75" y="100" width="28" height="3" fill="#4285f4"/>
+  <text x="115" y="103" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#4285f4">1.2M</text>
+  
+  <!-- Conversions -->
+  <text x="45" y="110" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Conversions:</text>
+  <rect x="75" y="108" width="30" height="3" fill="#fce8e6"/>
+  <rect x="75" y="108" width="20" height="3" fill="#ea4335"/>
+  <text x="115" y="111" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#ea4335">2,450</text>
+  
+  <!-- Mobile Phone with Google Ads -->
+  <rect x="300" y="100" width="70" height="120" rx="12" fill="url(#deviceGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="305" y="108" width="60" height="100" rx="8" fill="#000"/>
+  <rect x="307" y="110" width="56" height="96" rx="6" fill="#ffffff"/>
+  
+  <!-- Mobile Google Search -->
+  <rect x="309" y="112" width="52" height="8" fill="#ffffff"/>
+  <text x="335" y="117" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#4285f4">Google</text>
+  
+  <!-- Mobile Search Bar -->
+  <rect x="312" y="122" width="46" height="6" rx="3" fill="#f1f3f4" stroke="#e8eaed"/>
+  <circle cx="353" cy="125" r="2" fill="#4285f4"/>
+  
+  <!-- Mobile Search Results -->
+  <rect x="312" y="132" width="40" height="2" rx="1" fill="#1a0dab"/>
+  <rect x="312" y="136" width="35" height="1.5" rx="0.75" fill="#006621"/>
+  <rect x="312" y="139" width="38" height="1.5" rx="0.75" fill="#5f6368"/>
+  
+  <!-- Mobile Ad Label -->
+  <rect x="312" y="132" width="8" height="2" rx="1" fill="#34a853"/>
+  <text x="316" y="133.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="1.5" font-weight="bold" fill="white">Ad</text>
+  
+  <!-- Mobile Shopping Ads -->
+  <rect x="312" y="145" width="20" height="15" rx="2" fill="#f8f9fa"/>
+  <circle cx="322" cy="152.5" r="4" fill="#fbbc05"/>
+  <rect x="312" y="162" width="15" height="2" rx="1" fill="#5f6368"/>
+  <rect x="312" y="166" width="18" height="2" rx="1" fill="#34a853"/>
+  
+  <rect x="335" y="145" width="20" height="15" rx="2" fill="#f8f9fa"/>
+  <circle cx="345" cy="152.5" r="4" fill="#ea4335"/>
+  <rect x="335" y="162" width="15" height="2" rx="1" fill="#5f6368"/>
+  <rect x="335" y="166" width="18" height="2" rx="1" fill="#34a853"/>
+  
+  <!-- YouTube Ads Section -->
+  <rect x="180" y="190" width="80" height="50" rx="6" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="220" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">YOUTUBE ADS</text>
+  
+  <!-- Video Thumbnail -->
+  <rect x="185" y="207" width="25" height="15" rx="2" fill="#000000"/>
+  <circle cx="197.5" cy="214.5" r="3" fill="rgba(255,255,255,0.8)"/>
+  <path d="M196 214.5 L200 217 L196 219.5 Z" fill="#ff0000"/>
+  
+  <!-- Video metrics -->
+  <text x="215" y="212" font-family="Arial, sans-serif" font-size="4" fill="#5f6368">Views:</text>
+  <text x="235" y="212" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#ff0000">2.5M</text>
+  <text x="215" y="217" font-family="Arial, sans-serif" font-size="4" fill="#5f6368">CTR:</text>
+  <text x="230" y="217" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#34a853">4.2%</text>
+  <text x="215" y="222" font-family="Arial, sans-serif" font-size="4" fill="#5f6368">CPV:</text>
+  <text x="230" y="222" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#4285f4">₺0.15</text>
+  
+  <!-- Skip Ad Button -->
+  <rect x="185" y="225" width="15" height="5" rx="2" fill="rgba(0,0,0,0.7)"/>
+  <text x="192.5" y="228" text-anchor="middle" font-family="Arial, sans-serif" font-size="2.5" font-weight="bold" fill="white">Skip Ad</text>
+  
+  <!-- Performance Max Campaign -->
+  <rect x="60" y="190" width="90" height="60" rx="6" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="105" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">PERFORMANCE MAX</text>
+  
+  <!-- Asset Groups -->
+  <rect x="65" y="208" width="15" height="10" rx="2" fill="#4285f4"/>
+  <text x="72.5" y="214" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">IMG</text>
+  <rect x="83" y="208" width="15" height="10" rx="2" fill="#34a853"/>
+  <text x="90.5" y="214" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">VID</text>
+  <rect x="101" y="208" width="15" height="10" rx="2" fill="#ea4335"/>
+  <text x="108.5" y="214" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">TXT</text>
+  <rect x="119" y="208" width="15" height="10" rx="2" fill="#fbbc05"/>
+  <text x="126.5" y="214" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">HTM</text>
+  
+  <!-- Performance Metrics -->
+  <text x="70" y="228" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Revenue:</text>
+  <text x="125" y="228" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#34a853">₺850K</text>
+  <text x="70" y="235" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Target ROAS:</text>
+  <text x="125" y="235" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#4285f4">400%</text>
+  <text x="70" y="242" font-family="Arial, sans-serif" font-size="5" fill="#5f6368">Actual ROAS:</text>
+  <text x="125" y="242" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#34a853">520%</text>
+  
+  <!-- Analytics Chart -->
+  <rect x="290" y="240" width="80" height="40" rx="6" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="330" y="252" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#1f2937">ANALYTICS</text>
+  
+  <!-- Chart bars -->
+  <rect x="295" y="265" width="4" height="10" fill="#4285f4"/>
+  <rect x="302" y="260" width="4" height="15" fill="#34a853"/>
+  <rect x="309" y="258" width="4" height="17" fill="#fbbc05"/>
+  <rect x="316" y="262" width="4" height="13" fill="#ea4335"/>
+  <rect x="323" y="255" width="4" height="20" fill="#9c27b0"/>
+  <rect x="330" y="259" width="4" height="16" fill="#4285f4"/>
+  <rect x="337" y="257" width="4" height="18" fill="#34a853"/>
+  <rect x="344" y="261" width="4" height="14" fill="#fbbc05"/>
+  <rect x="351" y="254" width="4" height="21" fill="#ea4335"/>
+  <rect x="358" y="260" width="4" height="15" fill="#9c27b0"/>
+  
+  <!-- Search Console Integration -->
+  <circle cx="50" cy="270" r="15" fill="rgba(255,255,255,0.9)" stroke="#4285f4" stroke-width="2"/>
+  <text x="50" y="275" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#4285f4">SC</text>
+  
+  <!-- Conversion Tracking -->
+  <rect x="320" y="40" width="60" height="30" rx="4" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="350" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#1f2937">CONVERSIONS</text>
+  <circle cx="330" cy="60" r="4" fill="#34a853"/>
+  <text x="340" y="62" font-family="Arial, sans-serif" font-size="5" fill="#34a853">Purchase</text>
+  <circle cx="330" cy="68" r="4" fill="#4285f4"/>
+  <text x="340" y="70" font-family="Arial, sans-serif" font-size="5" fill="#4285f4">Sign-up</text>
+  
+  <!-- ROI Growth Arrow -->
+  <path d="M 20 160 Q 60 140 100 160" stroke="#34a853" stroke-width="4" fill="none"/>
+  <path d="M 93 157 L 100 160 L 93 163 Z" fill="#34a853"/>
+  <text x="60" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#34a853">ROI ↗</text>
+  
+  <!-- Google G Icon -->
+  <circle cx="380" cy="190" r="12" fill="#ffffff"/>
+  <path d="M 380 184 C 385 184, 389 188, 389 193 C 389 198, 385 202, 380 202 C 375 202, 371 198, 371 193 C 371 188, 375 184, 380 184 Z" fill="none" stroke="#4285f4" stroke-width="2"/>
+  <rect x="380" y="190" width="6" height="6" fill="#4285f4"/>
+  
+  <!-- Performance Badge -->
+  <ellipse cx="350" cy="20" rx="25" ry="10" fill="rgba(66,133,244,0.9)"/>
+  <text x="350" y="23" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="white">ROAS 5.2:1</text>
+</svg>

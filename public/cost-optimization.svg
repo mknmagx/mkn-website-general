@@ -1,0 +1,68 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="costGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="#EFF6FF"/>
+  
+  <!-- Chart background -->
+  <rect x="80" y="120" width="240" height="200" fill="#FFFFFF" stroke="#E5E7EB" rx="8"/>
+  
+  <!-- Chart grid lines -->
+  <line x1="80" y1="170" x2="320" y2="170" stroke="#F3F4F6" stroke-width="1"/>
+  <line x1="80" y1="220" x2="320" y2="220" stroke="#F3F4F6" stroke-width="1"/>
+  <line x1="80" y1="270" x2="320" y2="270" stroke="#F3F4F6" stroke-width="1"/>
+  
+  <!-- Y-axis labels -->
+  <text x="70" y="130" text-anchor="end" fill="#6B7280" font-size="10">100%</text>
+  <text x="70" y="175" text-anchor="end" fill="#6B7280" font-size="10">75%</text>
+  <text x="70" y="225" text-anchor="end" fill="#6B7280" font-size="10">50%</text>
+  <text x="70" y="275" text-anchor="end" fill="#6B7280" font-size="10">25%</text>
+  <text x="70" y="325" text-anchor="end" fill="#6B7280" font-size="10">0%</text>
+  
+  <!-- Bars showing cost reduction -->
+  <!-- Before -->
+  <rect x="120" y="140" width="40" height="180" fill="#EF4444" rx="3"/>
+  <text x="140" y="340" text-anchor="middle" fill="#6B7280" font-size="12">Önce</text>
+  
+  <!-- After -->
+  <rect x="240" y="220" width="40" height="100" fill="url(#costGradient)" rx="3"/>
+  <text x="260" y="340" text-anchor="middle" fill="#6B7280" font-size="12">Sonra</text>
+  
+  <!-- Percentage reduction arrow -->
+  <path d="M200 180 Q220 160 240 180" stroke="#10B981" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10B981" />
+    </marker>
+  </defs>
+  
+  <!-- 30% reduction label -->
+  <circle cx="220" cy="160" r="20" fill="#10B981"/>
+  <text x="220" y="155" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">30%</text>
+  <text x="220" y="167" text-anchor="middle" fill="#FFFFFF" font-size="8">AZALMA</text>
+  
+  <!-- Money symbols -->
+  <text x="140" y="110" text-anchor="middle" fill="#EF4444" font-size="24">₺</text>
+  <text x="260" y="200" text-anchor="middle" fill="#3B82F6" font-size="18">₺</text>
+  
+  <!-- Chart title -->
+  <text x="200" y="100" text-anchor="middle" fill="#1F2937" font-size="14" font-weight="bold">Operasyonel Maliyet Optimizasyonu</text>
+  
+  <!-- Benefit indicators -->
+  <circle cx="60" cy="60" r="25" fill="#DCFCE7"/>
+  <text x="60" y="55" text-anchor="middle" fill="#16A34A" font-size="10" font-weight="bold">Hız</text>
+  <text x="60" y="68" text-anchor="middle" fill="#16A34A" font-size="8">+40%</text>
+  
+  <circle cx="340" cy="60" r="25" fill="#FEF3C7"/>
+  <text x="340" y="55" text-anchor="middle" fill="#D97706" font-size="10" font-weight="bold">Kar</text>
+  <text x="340" y="68" text-anchor="middle" fill="#D97706" font-size="8">+25%</text>
+  
+  <circle cx="340" cy="340" r="25" fill="#DBEAFE"/>
+  <text x="340" y="335" text-anchor="middle" fill="#2563EB" font-size="10" font-weight="bold">ROI</text>
+  <text x="340" y="348" text-anchor="middle" fill="#2563EB" font-size="8">180%</text>
+</svg>

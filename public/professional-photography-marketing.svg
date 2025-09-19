@@ -1,0 +1,127 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="camGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9a9e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fecfef;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="camGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a18cd1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbc2eb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="camGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="lensGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
+      <stop offset="70%" style="stop-color:#667eea;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </radialGradient>
+    <filter id="camShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#camGradient3)" opacity="0.1"/>
+  
+  <!-- Professional Camera Body -->
+  <g transform="translate(200,200)">
+    <!-- Main camera body -->
+    <rect x="-80" y="-40" width="160" height="80" rx="12" fill="url(#camGradient3)" filter="url(#camShadow)"/>
+    
+    <!-- Camera grip -->
+    <path d="M80,-40 Q90,-45 90,-25 L90,25 Q90,45 80,40 Z" fill="url(#camGradient1)" filter="url(#camShadow)"/>
+    
+    <!-- Lens -->
+    <circle cx="-40" cy="0" r="45" fill="url(#lensGradient)" filter="url(#camShadow)"/>
+    <circle cx="-40" cy="0" r="35" fill="url(#camGradient2)" opacity="0.8"/>
+    <circle cx="-40" cy="0" r="25" fill="url(#camGradient3)"/>
+    
+    <!-- Lens rings -->
+    <circle cx="-40" cy="0" r="38" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.6"/>
+    <circle cx="-40" cy="0" r="28" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.4"/>
+    
+    <!-- Viewfinder -->
+    <rect x="-20" y="-45" width="40" height="15" rx="3" fill="url(#camGradient1)" filter="url(#camShadow)"/>
+    
+    <!-- Flash -->
+    <rect x="30" y="-35" width="20" height="8" rx="2" fill="#ffffff" filter="url(#glow)" opacity="0.9"/>
+    
+    <!-- Camera controls -->
+    <circle cx="50" cy="-10" r="8" fill="url(#camGradient2)"/>
+    <circle cx="50" cy="-10" r="5" fill="#ffffff" opacity="0.8"/>
+    
+    <!-- Mode dial -->
+    <circle cx="20" cy="-25" r="12" fill="url(#camGradient1)" filter="url(#camShadow)"/>
+    <circle cx="20" cy="-25" r="8" fill="url(#camGradient3)"/>
+    
+    <!-- Screen -->
+    <rect x="15" y="15" width="50" height="35" rx="3" fill="#000000" filter="url(#camShadow)"/>
+    <rect x="18" y="18" width="44" height="29" rx="2" fill="url(#camGradient2)" opacity="0.8"/>
+  </g>
+  
+  <!-- Floating light rays -->
+  <g transform="translate(200,200)" opacity="0.6">
+    <g filter="url(#glow)">
+      <line x1="-85" y1="0" x2="-150" y2="-30" stroke="url(#camGradient1)" stroke-width="3" opacity="0.7"/>
+      <line x1="-85" y1="0" x2="-150" y2="0" stroke="url(#camGradient2)" stroke-width="4" opacity="0.8"/>
+      <line x1="-85" y1="0" x2="-150" y2="30" stroke="url(#camGradient3)" stroke-width="3" opacity="0.7"/>
+    </g>
+  </g>
+  
+  <!-- Aperture blades -->
+  <g transform="translate(160,200)" opacity="0.4">
+    <g transform="rotate(0)">
+      <path d="M0,-15 L10,0 L0,15 Z" fill="url(#camGradient1)"/>
+    </g>
+    <g transform="rotate(45)">
+      <path d="M0,-15 L10,0 L0,15 Z" fill="url(#camGradient2)"/>
+    </g>
+    <g transform="rotate(90)">
+      <path d="M0,-15 L10,0 L0,15 Z" fill="url(#camGradient3)"/>
+    </g>
+    <g transform="rotate(135)">
+      <path d="M0,-15 L10,0 L0,15 Z" fill="url(#camGradient1)"/>
+    </g>
+  </g>
+  
+  <!-- Tripod legs -->
+  <g transform="translate(200,280)" opacity="0.7">
+    <line x1="0" y1="0" x2="-40" y2="60" stroke="url(#camGradient3)" stroke-width="4" filter="url(#camShadow)"/>
+    <line x1="0" y1="0" x2="40" y2="60" stroke="url(#camGradient3)" stroke-width="4" filter="url(#camShadow)"/>
+    <line x1="0" y1="0" x2="0" y2="70" stroke="url(#camGradient3)" stroke-width="4" filter="url(#camShadow)"/>
+  </g>
+  
+  <!-- Photography elements -->
+  <g transform="translate(100,100)" opacity="0.6">
+    <rect x="0" y="0" width="30" height="20" rx="2" fill="url(#camGradient1)" filter="url(#camShadow)"/>
+    <text x="15" y="12" font-family="Arial, sans-serif" font-size="8" fill="#ffffff" text-anchor="middle">ISO</text>
+  </g>
+  
+  <g transform="translate(300,120)" opacity="0.6">
+    <circle cx="0" cy="0" r="15" fill="url(#camGradient2)" filter="url(#camShadow)"/>
+    <text x="0" y="3" font-family="Arial, sans-serif" font-size="10" fill="#ffffff" text-anchor="middle">f/2.8</text>
+  </g>
+  
+  <!-- Bokeh effects -->
+  <g opacity="0.3">
+    <circle cx="80" cy="80" r="12" fill="url(#camGradient1)" filter="url(#glow)">
+      <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="320" cy="300" r="8" fill="url(#camGradient2)" filter="url(#glow)">
+      <animate attributeName="opacity" values="0.2;0.5;0.2" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="350" cy="100" r="10" fill="url(#camGradient3)" filter="url(#glow)">
+      <animate attributeName="opacity" values="0.4;0.7;0.4" dur="4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+</svg>

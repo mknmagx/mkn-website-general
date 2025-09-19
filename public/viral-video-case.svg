@@ -1,0 +1,203 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="viralBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef7ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#fdf4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f0f9ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tiktokGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0050;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00f2ea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff0050;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="youtubeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#cc0000;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="instagramGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f09433;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#e6683c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#dc2743;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#cc2366;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bc1888;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="viralChart" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#viralBg)"/>
+  
+  <!-- Main Dashboard -->
+  <rect x="30" y="30" width="340" height="190" rx="12" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  
+  <!-- Header -->
+  <rect x="40" y="40" width="320" height="25" rx="6" fill="url(#tiktokGradient)"/>
+  <text x="200" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">VİRAL VİDEO KAMPANYA ANALİZİ</text>
+  
+  <!-- Campaign Metrics -->
+  <rect x="50" y="75" width="300" height="55" rx="6" fill="#f8fafc"/>
+  
+  <!-- Views -->
+  <rect x="60" y="85" width="65" height="35" rx="4" fill="rgba(139,92,246,0.1)" stroke="#8b5cf6"/>
+  <text x="92.5" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">TOPLAM İZLENME</text>
+  <text x="92.5" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#8b5cf6">12.5M</text>
+  <text x="92.5" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#8b5cf6">↗ +2,400%</text>
+  
+  <!-- Engagement -->
+  <rect x="135" y="85" width="65" height="35" rx="4" fill="rgba(236,72,153,0.1)" stroke="#ec4899"/>
+  <text x="167.5" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">ETKİLEŞİM ORANI</text>
+  <text x="167.5" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#ec4899">18.7%</text>
+  <text x="167.5" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#ec4899">↗ Endüstri ort. 3x</text>
+  
+  <!-- Shares -->
+  <rect x="210" y="85" width="65" height="35" rx="4" fill="rgba(16,185,129,0.1)" stroke="#10b981"/>
+  <text x="242.5" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">PAYLAŞIM</text>
+  <text x="242.5" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#10b981">890K</text>
+  <text x="242.5" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#10b981">Viral seviye</text>
+  
+  <!-- ROI -->
+  <rect x="285" y="85" width="55" height="35" rx="4" fill="rgba(245,158,11,0.1)" stroke="#f59e0b"/>
+  <text x="312.5" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#6b7280">ROI</text>
+  <text x="312.5" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#f59e0b">1,200%</text>
+  <text x="312.5" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" fill="#f59e0b">Record high</text>
+  
+  <!-- Platform Performance -->
+  <rect x="50" y="140" width="140" height="70" rx="6" fill="#f1f5f9"/>
+  <text x="120" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">PLATFORM PERFORMANSI</text>
+  
+  <!-- TikTok -->
+  <rect x="60" y="160" width="50" height="12" rx="2" fill="rgba(255,0,80,0.1)" stroke="#ff0050"/>
+  <text x="68" y="168" font-family="Arial, sans-serif" font-size="7" fill="#ff0050">TikTok</text>
+  <text x="135" y="168" text-anchor="end" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#ff0050">8.2M</text>
+  
+  <!-- YouTube Shorts -->
+  <rect x="60" y="175" width="50" height="12" rx="2" fill="rgba(255,0,0,0.1)" stroke="#ff0000"/>
+  <text x="68" y="183" font-family="Arial, sans-serif" font-size="7" fill="#ff0000">YouTube</text>
+  <text x="135" y="183" text-anchor="end" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#ff0000">2.8M</text>
+  
+  <!-- Instagram Reels -->
+  <rect x="60" y="190" width="50" height="12" rx="2" fill="rgba(188,24,136,0.1)" stroke="#bc1888"/>
+  <text x="68" y="198" font-family="Arial, sans-serif" font-size="7" fill="#bc1888">Instagram</text>
+  <text x="135" y="198" text-anchor="end" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#bc1888">1.5M</text>
+  
+  <!-- Viral Timeline -->
+  <rect x="200" y="140" width="140" height="70" rx="6" fill="#f8fafc"/>
+  <text x="270" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">VİRAL YAYILIM ZAMANÇİZGİSİ</text>
+  
+  <!-- Timeline Chart -->
+  <rect x="210" y="160" width="120" height="40" rx="2" fill="#ffffff"/>
+  <line x1="215" y1="195" x2="325" y2="195" stroke="#e5e7eb" stroke-width="1"/>
+  <line x1="215" y1="165" x2="215" y2="195" stroke="#e5e7eb" stroke-width="1"/>
+  
+  <!-- Viral Curve -->
+  <path d="M 220 190 Q 230 185 240 175 Q 250 160 260 165 Q 270 170 280 160 Q 290 150 300 155 Q 310 160 320 150" 
+        stroke="url(#viralChart)" stroke-width="3" fill="none"/>
+  
+  <!-- Peak Points -->
+  <circle cx="260" cy="165" r="2" fill="#8b5cf6"/>
+  <circle cx="280" cy="160" r="2" fill="#8b5cf6"/>
+  <circle cx="320" cy="150" r="2" fill="#8b5cf6"/>
+  
+  <!-- Time Labels -->
+  <text x="220" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">0h</text>
+  <text x="250" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">6h</text>
+  <text x="280" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">12h</text>
+  <text x="310" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">24h</text>
+  
+  <!-- Mobile Phones showing videos -->
+  <rect x="40" y="240" width="45" height="75" rx="8" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <rect x="45" y="248" width="35" height="55" rx="6" fill="#000"/>
+  <rect x="47" y="250" width="31" height="51" rx="4" fill="#ffffff"/>
+  
+  <!-- TikTok Video Interface -->
+  <rect x="49" y="252" width="27" height="15" rx="2" fill="#ff0050"/>
+  <circle cx="62.5" cy="259.5" r="3" fill="rgba(255,255,255,0.9)"/>
+  <path d="M 60 257 L 60 262 L 65 259.5 Z" fill="#ff0050"/>
+  
+  <!-- Like and Share indicators -->
+  <circle cx="72" cy="265" r="2" fill="#ff1744"/>
+  <text x="72" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ff1744">456K</text>
+  
+  <circle cx="72" cy="280" r="2" fill="#00f2ea"/>
+  <text x="72" y="288" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#00f2ea">89K</text>
+  
+  <circle cx="72" cy="295" r="2" fill="#ffd700"/>
+  <text x="72" y="303" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ffd700">234K</text>
+  
+  <!-- YouTube Phone -->
+  <rect x="100" y="240" width="45" height="75" rx="8" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <rect x="105" y="248" width="35" height="55" rx="6" fill="#000"/>
+  <rect x="107" y="250" width="31" height="51" rx="4" fill="#ffffff"/>
+  
+  <!-- YouTube Video Interface -->
+  <rect x="109" y="252" width="27" height="15" rx="2" fill="#ff0000"/>
+  <circle cx="122.5" cy="259.5" r="3" fill="rgba(255,255,255,0.9)"/>
+  <path d="M 120 257 L 120 262 L 125 259.5 Z" fill="#ff0000"/>
+  
+  <!-- YouTube metrics -->
+  <rect x="109" y="270" width="27" height="8" rx="1" fill="#f5f5f5"/>
+  <text x="122.5" y="276" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#1f2937">2.8M views</text>
+  
+  <!-- Instagram Phone -->
+  <rect x="160" y="240" width="45" height="75" rx="8" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <rect x="165" y="248" width="35" height="55" rx="6" fill="#000"/>
+  <rect x="167" y="250" width="31" height="51" rx="4" fill="#ffffff"/>
+  
+  <!-- Instagram Reels Interface -->
+  <rect x="169" y="252" width="27" height="15" rx="2" fill="url(#instagramGradient)"/>
+  <circle cx="182.5" cy="259.5" r="3" fill="rgba(255,255,255,0.9)"/>
+  <path d="M 180 257 L 180 262 L 185 259.5 Z" fill="#ffffff"/>
+  
+  <!-- Reels indicator -->
+  <text x="182.5" y="275" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#e91e63">Reels</text>
+  <text x="182.5" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="#e91e63">1.5M</text>
+  
+  <!-- Viral Spread Animation -->
+  <rect x="220" y="240" width="80" height="50" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="260" y="252" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">VİRAL YAYILIM</text>
+  
+  <!-- Spread circles -->
+  <circle cx="240" cy="265" r="6" fill="rgba(255,0,80,0.3)"/>
+  <circle cx="240" cy="265" r="4" fill="rgba(255,0,80,0.5)"/>
+  <circle cx="240" cy="265" r="2" fill="#ff0050"/>
+  
+  <circle cx="260" cy="270" r="8" fill="rgba(59,130,246,0.2)"/>
+  <circle cx="260" cy="270" r="5" fill="rgba(59,130,246,0.4)"/>
+  <circle cx="260" cy="270" r="3" fill="#3b82f6"/>
+  
+  <circle cx="280" cy="265" r="7" fill="rgba(236,72,153,0.3)"/>
+  <circle cx="280" cy="265" r="4" fill="rgba(236,72,153,0.6)"/>
+  <circle cx="280" cy="265" r="2" fill="#ec4899"/>
+  
+  <!-- Cleaning Product Elements -->
+  <rect x="320" y="240" width="60" height="50" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="350" y="252" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">ÜRÜN ETKİSİ</text>
+  
+  <!-- Cleaning bottle -->
+  <rect x="340" y="260" width="8" height="20" rx="2" fill="#06b6d4"/>
+  <rect x="341" y="258" width="6" height="4" rx="1" fill="#0891b2"/>
+  <circle cx="344" cy="256" r="1" fill="#67e8f9"/>
+  
+  <!-- Sales increase -->
+  <text x="355" y="270" font-family="Arial, sans-serif" font-size="6" fill="#1f2937">Satış:</text>
+  <text x="355" y="280" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#10b981">+800%</text>
+  
+  <!-- Success Badge -->
+  <ellipse cx="200" cy="15" rx="90" ry="12" fill="rgba(139,92,246,0.9)"/>
+  <text x="200" y="19" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="white">VİRAL VİDEO MARKETİNG BAŞARI HİKAYESİ</text>
+  
+  <!-- Trending arrows and hashtags -->
+  <path d="M 20 80 L 15 75 L 20 70 L 25 75 Z" fill="#ff0050" opacity="0.7"/>
+  <text x="30" y="78" font-family="Arial, sans-serif" font-size="6" fill="#ff0050">#viral</text>
+  
+  <path d="M 370 100 L 365 95 L 370 90 L 375 95 Z" fill="#8b5cf6" opacity="0.7"/>
+  <text x="355" y="115" font-family="Arial, sans-serif" font-size="6" fill="#8b5cf6">#trending</text>
+  
+  <!-- Fire icons for viral content -->
+  <path d="M 25 150 C 25 148, 26 146, 28 147 C 29 145, 31 146, 31 148 C 32 150, 30 152, 28 152 C 26 152, 25 150, 25 150 Z" fill="#ff4500" opacity="0.8"/>
+  <path d="M 365 180 C 365 178, 366 176, 368 177 C 369 175, 371 176, 371 178 C 372 180, 370 182, 368 182 C 366 182, 365 180, 365 180 Z" fill="#ff4500" opacity="0.7"/>
+</svg>

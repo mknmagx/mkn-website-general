@@ -1,0 +1,244 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="socialBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#f5576c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4facfe;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phoneGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="instagramGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f09433;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#e6683c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#dc2743;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#cc2366;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bc1888;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tiktokGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0050;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00f2ea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="linkedinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0077b5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00a0dc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="twitterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1da1f2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d8bd9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#socialBg)"/>
+  
+  <!-- Floating Elements -->
+  <circle cx="50" cy="50" r="12" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="350" cy="60" r="15" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="380" cy="250" r="10" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="30" cy="220" r="8" fill="rgba(255,255,255,0.07)"/>
+  
+  <!-- Main Instagram Phone -->
+  <rect x="160" y="40" width="80" height="140" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="165" y="47" width="70" height="120" rx="8" fill="#000"/>
+  <rect x="167" y="49" width="66" height="116" rx="6" fill="#ffffff"/>
+  
+  <!-- Instagram Interface -->
+  <rect x="169" y="51" width="62" height="15" fill="#ffffff"/>
+  <circle cx="175" cy="58.5" r="4" fill="url(#instagramGradient)"/>
+  <rect x="182" y="56" width="25" height="2" rx="1" fill="#262626"/>
+  <rect x="182" y="60" width="18" height="1.5" rx="0.75" fill="#8e8e8e"/>
+  
+  <!-- Follower Count -->
+  <rect x="169" y="70" width="62" height="12" fill="#ffffff"/>
+  <text x="200" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#262626">250K Followers</text>
+  
+  <!-- Growth Chart Small -->
+  <rect x="172" y="85" width="56" height="25" rx="3" fill="#f8f9fa"/>
+  <path d="M 175 105 L 185 100 L 195 95 L 205 90 L 215 85 L 225 82" stroke="url(#instagramGradient)" stroke-width="2" fill="none"/>
+  <circle cx="175" cy="105" r="2" fill="#dc2743"/>
+  <circle cx="185" cy="100" r="2" fill="#dc2743"/>
+  <circle cx="195" cy="95" r="2" fill="#dc2743"/>
+  <circle cx="205" cy="90" r="2" fill="#dc2743"/>
+  <circle cx="215" cy="85" r="2" fill="#dc2743"/>
+  <circle cx="225" cy="82" r="2" fill="#dc2743"/>
+  
+  <!-- Post Preview -->
+  <rect x="169" y="115" width="62" height="40" fill="url(#instagramGradient)" opacity="0.9"/>
+  <circle cx="200" cy="135" r="10" fill="rgba(255,255,255,0.9)"/>
+  <path d="M196 135 L199 138 L204 132" stroke="#dc2743" stroke-width="2" fill="none"/>
+  
+  <!-- Engagement metrics -->
+  <rect x="169" y="158" width="30" height="2" rx="1" fill="#262626"/>
+  <rect x="169" y="162" width="25" height="1.5" rx="0.75" fill="#8e8e8e"/>
+  
+  <!-- TikTok Phone -->
+  <rect x="60" y="120" width="70" height="120" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="65" y="127" width="60" height="100" rx="8" fill="#000"/>
+  <rect x="67" y="129" width="56" height="96" rx="6" fill="#000000"/>
+  
+  <!-- TikTok Interface -->
+  <rect x="69" y="131" width="52" height="20" fill="#000000"/>
+  <text x="95" y="143" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#ffffff">@yourbrand</text>
+  <text x="95" y="149" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ffffff">85K Followers</text>
+  
+  <!-- TikTok Video Area -->
+  <rect x="72" y="155" width="35" height="50" rx="4" fill="url(#tiktokGradient)" opacity="0.8"/>
+  <circle cx="89.5" cy="180" r="8" fill="rgba(255,255,255,0.3)"/>
+  <path d="M86 180 L93 184 L86 188 Z" fill="#ffffff"/>
+  
+  <!-- TikTok Engagement -->
+  <circle cx="115" cy="165" r="3" fill="#ffffff"/>
+  <path d="M115 162 L117 165 L115 168 L113 165 Z" fill="#ff0050"/>
+  <text x="115" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ffffff">45K</text>
+  
+  <circle cx="115" cy="185" r="3" fill="#ffffff"/>
+  <rect x="112" y="183" width="6" height="4" rx="1" fill="#00f2ea"/>
+  <text x="115" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ffffff">12K</text>
+  
+  <circle cx="115" cy="205" r="3" fill="#ffffff"/>
+  <path d="M112 205 L118 202 L118 208 Z" fill="#fbbf24"/>
+  <text x="115" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#ffffff">5.2K</text>
+  
+  <!-- LinkedIn Phone -->
+  <rect x="270" y="80" width="75" height="130" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="275" y="87" width="65" height="110" rx="8" fill="#000"/>
+  <rect x="277" y="89" width="61" height="106" rx="6" fill="#ffffff"/>
+  
+  <!-- LinkedIn Header -->
+  <rect x="279" y="91" width="57" height="12" fill="url(#linkedinGradient)"/>
+  <text x="307.5" y="99" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white">LinkedIn</text>
+  
+  <!-- LinkedIn Profile -->
+  <circle cx="290" cy="115" r="8" fill="#e5e7eb"/>
+  <circle cx="290" cy="112" r="4" fill="#0077b5"/>
+  <rect x="286" y="116" width="8" height="6" rx="3" fill="#0077b5"/>
+  
+  <rect x="302" y="110" width="30" height="2" rx="1" fill="#262626"/>
+  <rect x="302" y="114" width="25" height="1.5" rx="0.75" fill="#5f6368"/>
+  <rect x="302" y="118" width="20" height="1.5" rx="0.75" fill="#0077b5"/>
+  
+  <!-- LinkedIn Post -->
+  <rect x="279" y="130" width="57" height="30" rx="3" fill="#f8f9fa"/>
+  <rect x="282" y="133" width="51" height="2" rx="1" fill="#262626"/>
+  <rect x="282" y="137" width="45" height="1.5" rx="0.75" fill="#5f6368"/>
+  <rect x="282" y="141" width="48" height="1.5" rx="0.75" fill="#5f6368"/>
+  <rect x="282" y="145" width="40" height="1.5" rx="0.75" fill="#5f6368"/>
+  
+  <!-- LinkedIn Engagement -->
+  <circle cx="285" cy="153" r="2" fill="#0077b5"/>
+  <rect x="290" y="152" width="8" height="2" rx="1" fill="#0077b5"/>
+  <path d="M302 152 L306 154 L302 156" fill="#0077b5"/>
+  
+  <!-- Analytics Dashboard -->
+  <rect x="30" y="30" width="110" height="70" rx="8" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="85" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">SOCIAL MEDIA ANALYTICS</text>
+  
+  <!-- Platform Performance -->
+  <text x="35" y="52" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">Instagram Growth</text>
+  <rect x="35" y="55" width="40" height="3" fill="#fef3c7"/>
+  <rect x="35" y="55" width="30" height="3" fill="#f59e0b"/>
+  <text x="125" y="58" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#f59e0b">+600%</text>
+  
+  <text x="35" y="65" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">TikTok Reach</text>
+  <rect x="35" y="68" width="40" height="3" fill="#fce7f3"/>
+  <rect x="35" y="68" width="35" height="3" fill="#ec4899"/>
+  <text x="125" y="71" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#ec4899">2.5M</text>
+  
+  <text x="35" y="78" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">LinkedIn Engagement</text>
+  <rect x="35" y="81" width="40" height="3" fill="#dbeafe"/>
+  <rect x="35" y="81" width="25" height="3" fill="#3b82f6"/>
+  <text x="120" y="84" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#3b82f6">+450%</text>
+  
+  <text x="35" y="91" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">Overall ROI</text>
+  <rect x="35" y="94" width="40" height="3" fill="#dcfce7"/>
+  <rect x="35" y="94" width="32" height="3" fill="#10b981"/>
+  <text x="120" y="97" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#10b981">850%</text>
+  
+  <!-- Content Strategy -->
+  <rect x="250" y="220" width="120" height="60" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="310" y="232" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">CONTENT STRATEGY</text>
+  
+  <!-- Content Types -->
+  <rect x="255" y="240" width="15" height="12" rx="2" fill="#8b5cf6"/>
+  <text x="262.5" y="247" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="white">VID</text>
+  <text x="262.5" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#1f2937">Video</text>
+  
+  <rect x="275" y="240" width="15" height="12" rx="2" fill="#3b82f6"/>
+  <text x="282.5" y="247" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="white">IMG</text>
+  <text x="282.5" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#1f2937">Photo</text>
+  
+  <rect x="295" y="240" width="15" height="12" rx="2" fill="#10b981"/>
+  <text x="302.5" y="247" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="white">CAR</text>
+  <text x="302.5" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#1f2937">Carousel</text>
+  
+  <rect x="315" y="240" width="15" height="12" rx="2" fill="#f59e0b"/>
+  <text x="322.5" y="247" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="white">STO</text>
+  <text x="322.5" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#1f2937">Story</text>
+  
+  <rect x="335" y="240" width="15" height="12" rx="2" fill="#ef4444"/>
+  <text x="342.5" y="247" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="white">UGC</text>
+  <text x="342.5" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#1f2937">User Gen</text>
+  
+  <!-- Posting Schedule -->
+  <text x="310" y="268" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">Optimal Posting Times</text>
+  <rect x="255" y="270" width="110" height="6" rx="3" fill="#e5e7eb"/>
+  <rect x="280" y="270" width="15" height="6" rx="3" fill="#10b981"/>
+  <rect x="310" y="270" width="20" height="6" rx="3" fill="#f59e0b"/>
+  <rect x="340" y="270" width="10" height="6" rx="3" fill="#3b82f6"/>
+  
+  <!-- Hashtag Research -->
+  <rect x="60" y="260" width="90" height="30" rx="4" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="105" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#1f2937">#HASHTAG STRATEGY</text>
+  
+  <!-- Trending hashtags -->
+  <ellipse cx="75" cy="280" rx="8" ry="3" fill="#3b82f6" opacity="0.8"/>
+  <text x="75" y="281" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">#trend</text>
+  
+  <ellipse cx="95" cy="277" rx="10" ry="3" fill="#10b981" opacity="0.8"/>
+  <text x="95" y="278" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">#viral</text>
+  
+  <ellipse cx="120" cy="282" rx="9" ry="3" fill="#f59e0b" opacity="0.8"/>
+  <text x="120" y="283" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">#brand</text>
+  
+  <ellipse cx="140" cy="278" rx="7" ry="3" fill="#ef4444" opacity="0.8"/>
+  <text x="140" y="279" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" fill="white">#new</text>
+  
+  <!-- Platform Icons -->
+  <circle cx="350" cy="150" r="12" fill="url(#instagramGradient)"/>
+  <circle cx="350" cy="150" r="8" fill="white"/>
+  <circle cx="350" cy="150" r="3" fill="url(#instagramGradient)"/>
+  
+  <rect x="370" y="130" width="15" height="15" rx="3" fill="#000000"/>
+  <text x="377.5" y="139" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#ff0050">T</text>
+  
+  <rect x="340" y="180" width="15" height="15" rx="2" fill="url(#linkedinGradient)"/>
+  <text x="347.5" y="189" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white">in</text>
+  
+  <circle cx="370" cy="170" r="8" fill="url(#twitterGradient)"/>
+  <path d="M366 170 C366 167, 369 165, 372 167 C373 166, 375 167, 375 169 C375 170, 374 171, 373 171 C374 172, 372 173, 371 172 C370 173, 368 172, 368 171 C367 170, 367 169, 368 169 C367 168, 368 167, 369 168" fill="white"/>
+  
+  <!-- Growth Arrows -->
+  <path d="M 150 200 Q 180 180 210 200" stroke="#10b981" stroke-width="3" fill="none"/>
+  <path d="M 205 197 L 210 200 L 205 203 Z" fill="#10b981"/>
+  <text x="180" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#10b981">GROWTH</text>
+  
+  <!-- Engagement Rate -->
+  <circle cx="30" cy="150" r="15" fill="rgba(255,255,255,0.9)" stroke="#f59e0b" stroke-width="2"/>
+  <text x="30" y="148" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#f59e0b">8.5%</text>
+  <text x="30" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" fill="#f59e0b">ENG</text>
+  
+  <!-- Performance Badge -->
+  <ellipse cx="350" cy="30" rx="35" ry="12" fill="rgba(139,92,246,0.9)"/>
+  <text x="350" y="33" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white">ORGANIC GROWTH +600%</text>
+  
+  <!-- Hearts and Likes floating -->
+  <path d="M 20 100 C 20 98, 22 97, 23 98 C 24 97, 26 98, 26 100 C 26 102, 23 105, 23 105 C 23 105, 20 102, 20 100 Z" fill="#ff3040" opacity="0.7"/>
+  <path d="M 380 120 C 380 118, 382 117, 383 118 C 384 117, 386 118, 386 120 C 386 122, 383 125, 383 125 C 383 125, 380 122, 380 120 Z" fill="#ff3040" opacity="0.6"/>
+  <path d="M 370 250 C 370 248, 372 247, 373 248 C 374 247, 376 248, 376 250 C 376 252, 373 255, 373 255 C 373 255, 370 252, 370 250 Z" fill="#ff3040" opacity="0.5"/>
+</svg>

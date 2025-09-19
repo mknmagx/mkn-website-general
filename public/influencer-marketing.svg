@@ -1,0 +1,191 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="influencerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9a9e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#fecfef;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fecfef;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="phoneGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="instagramGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f09433;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#e6683c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#dc2743;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#cc2366;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bc1888;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tiktokGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0050;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00f2ea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="youtubeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#cc0000;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#influencerBg)"/>
+  
+  <!-- Floating Elements -->
+  <circle cx="50" cy="50" r="15" fill="rgba(255,255,255,0.2)"/>
+  <circle cx="350" cy="60" r="12" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="380" cy="250" r="18" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="30" cy="220" r="10" fill="rgba(255,255,255,0.12)"/>
+  
+  <!-- Main Influencer Phone -->
+  <rect x="160" y="40" width="80" height="140" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="165" y="47" width="70" height="120" rx="8" fill="#000"/>
+  <rect x="167" y="49" width="66" height="116" rx="6" fill="#ffffff"/>
+  
+  <!-- Instagram Interface -->
+  <!-- Header -->
+  <rect x="169" y="51" width="62" height="15" fill="#ffffff"/>
+  <circle cx="175" cy="58.5" r="4" fill="url(#instagramGradient)"/>
+  <rect x="182" y="56" width="25" height="2" rx="1" fill="#262626"/>
+  <rect x="182" y="60" width="18" height="1.5" rx="0.75" fill="#8e8e8e"/>
+  
+  <!-- Story circles -->
+  <circle cx="175" cy="75" r="6" fill="url(#instagramGradient)" opacity="0.8"/>
+  <circle cx="175" cy="75" r="4" fill="#ffffff"/>
+  <circle cx="190" cy="75" r="6" fill="url(#instagramGradient)" opacity="0.6"/>
+  <circle cx="190" cy="75" r="4" fill="#ffffff"/>
+  <circle cx="205" cy="75" r="6" fill="url(#instagramGradient)" opacity="0.4"/>
+  <circle cx="205" cy="75" r="4" fill="#ffffff"/>
+  <circle cx="220" cy="75" r="6" fill="url(#instagramGradient)" opacity="0.3"/>
+  <circle cx="220" cy="75" r="4" fill="#ffffff"/>
+  
+  <!-- Post -->
+  <rect x="169" y="85" width="62" height="50" fill="url(#instagramGradient)" opacity="0.9"/>
+  <!-- Influencer avatar in post -->
+  <circle cx="200" cy="110" r="12" fill="rgba(255,255,255,0.9)"/>
+  <circle cx="200" cy="108" r="6" fill="#8b5cf6"/>
+  <rect x="195" y="112" width="10" height="8" rx="4" fill="#8b5cf6"/>
+  
+  <!-- Engagement buttons -->
+  <circle cx="175" cy="145" r="3" fill="#ff3040"/>
+  <path d="M175 142 L177 145 L175 148 L173 145 Z" fill="#ffffff"/>
+  <rect x="185" y="143" width="6" height="4" rx="1" fill="#262626"/>
+  <path d="M195 142 L199 145 L195 148" fill="none" stroke="#262626" stroke-width="1"/>
+  
+  <!-- Metrics -->
+  <rect x="169" y="150" width="30" height="2" rx="1" fill="#262626"/>
+  <rect x="169" y="154" width="25" height="1.5" rx="0.75" fill="#8e8e8e"/>
+  <rect x="169" y="157" width="35" height="1.5" rx="0.75" fill="#8e8e8e"/>
+  
+  <!-- TikTok Phone -->
+  <rect x="60" y="120" width="70" height="120" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="65" y="127" width="60" height="100" rx="8" fill="#000"/>
+  <rect x="67" y="129" width="56" height="96" rx="6" fill="#000000"/>
+  
+  <!-- TikTok Interface -->
+  <rect x="69" y="131" width="52" height="92" fill="#000000"/>
+  <!-- TikTok Icons -->
+  <circle cx="115" cy="145" r="3" fill="#ffffff"/>
+  <circle cx="115" cy="160" r="3" fill="#ff0050"/>
+  <path d="M115 157 L117 160 L115 163 L113 160 Z" fill="#ffffff"/>
+  <rect x="112" y="170" width="6" height="4" rx="1" fill="#ffffff"/>
+  <path d="M112 180 L118 177 L118 183 Z" fill="#ffffff"/>
+  <circle cx="115" cy="190" r="3" fill="#00f2ea"/>
+  
+  <!-- Video content area -->
+  <rect x="72" y="140" width="35" height="60" rx="4" fill="url(#tiktokGradient)" opacity="0.8"/>
+  <circle cx="89.5" cy="170" r="8" fill="rgba(255,255,255,0.3)"/>
+  <path d="M86 170 L93 174 L86 178 Z" fill="#ffffff"/>
+  
+  <!-- YouTube Phone -->
+  <rect x="270" y="80" width="75" height="130" rx="12" fill="url(#phoneGradient)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
+  <rect x="275" y="87" width="65" height="110" rx="8" fill="#000"/>
+  <rect x="277" y="89" width="61" height="106" rx="6" fill="#ffffff"/>
+  
+  <!-- YouTube Interface -->
+  <rect x="279" y="91" width="57" height="12" fill="#ff0000"/>
+  <rect x="285" y="95" width="15" height="4" rx="2" fill="#ffffff"/>
+  <text x="292.5" y="98" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" font-weight="bold" fill="#ffffff">YouTube</text>
+  
+  <!-- YouTube Video -->
+  <rect x="279" y="107" width="57" height="35" fill="#000000"/>
+  <rect x="281" y="109" width="53" height="31" fill="url(#youtubeGradient)" opacity="0.9"/>
+  <circle cx="307.5" cy="124.5" r="6" fill="rgba(255,255,255,0.8)"/>
+  <path d="M305 124.5 L311 128 L305 131.5 Z" fill="#ff0000"/>
+  
+  <!-- Video metadata -->
+  <rect x="279" y="145" width="40" height="2" rx="1" fill="#262626"/>
+  <rect x="279" y="149" width="30" height="1.5" rx="0.75" fill="#606060"/>
+  <rect x="279" y="152" width="35" height="1.5" rx="0.75" fill="#606060"/>
+  
+  <!-- Subscriber button -->
+  <rect x="285" y="158" width="25" height="6" rx="3" fill="#ff0000"/>
+  <text x="297.5" y="162" text-anchor="middle" font-family="Arial, sans-serif" font-size="3" font-weight="bold" fill="#ffffff">SUBSCRIBE</text>
+  
+  <!-- Engagement Analytics -->
+  <rect x="30" y="40" width="90" height="55" rx="8" fill="rgba(255,255,255,0.95)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="75" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1f2937">INFLUENCER METRICS</text>
+  
+  <!-- Engagement Rate -->
+  <text x="35" y="62" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">Engagement Rate</text>
+  <rect x="35" y="65" width="40" height="3" fill="#e5e7eb"/>
+  <rect x="35" y="65" width="32" height="3" fill="#f59e0b"/>
+  <text x="108" y="68" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#f59e0b">8.5%</text>
+  
+  <!-- Reach -->
+  <text x="35" y="75" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">Reach</text>
+  <rect x="35" y="78" width="40" height="3" fill="#e5e7eb"/>
+  <rect x="35" y="78" width="35" height="3" fill="#8b5cf6"/>
+  <text x="95" y="81" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#8b5cf6">2.5M</text>
+  
+  <!-- ROI -->
+  <text x="35" y="85" font-family="Arial, sans-serif" font-size="6" fill="#6b7280">Campaign ROI</text>
+  <rect x="35" y="88" width="40" height="3" fill="#e5e7eb"/>
+  <rect x="35" y="88" width="30" height="3" fill="#10b981"/>
+  <text x="98" y="91" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#10b981">450%</text>
+  
+  <!-- Influencer Network -->
+  <circle cx="320" cy="240" r="8" fill="rgba(255,255,255,0.9)" stroke="#ff9a9e" stroke-width="2"/>
+  <circle cx="340" cy="225" r="6" fill="rgba(255,255,255,0.9)" stroke="#ff9a9e" stroke-width="1.5"/>
+  <circle cx="300" cy="250" r="5" fill="rgba(255,255,255,0.9)" stroke="#ff9a9e" stroke-width="1.5"/>
+  <circle cx="335" cy="255" r="4" fill="rgba(255,255,255,0.9)" stroke="#ff9a9e" stroke-width="1"/>
+  <circle cx="305" cy="220" r="4" fill="rgba(255,255,255,0.9)" stroke="#ff9a9e" stroke-width="1"/>
+  
+  <!-- Network connections -->
+  <line x1="320" y1="232" x2="335" y2="230" stroke="#ff9a9e" stroke-width="1" opacity="0.6"/>
+  <line x1="320" y1="248" x2="305" y2="246" stroke="#ff9a9e" stroke-width="1" opacity="0.6"/>
+  <line x1="320" y1="232" x2="308" y2="224" stroke="#ff9a9e" stroke-width="1" opacity="0.6"/>
+  <line x1="328" y1="240" x2="335" y2="250" stroke="#ff9a9e" stroke-width="1" opacity="0.6"/>
+  
+  <!-- User Generated Content -->
+  <rect x="250" y="220" width="50" height="35" rx="6" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="275" y="232" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#1f2937">UGC</text>
+  <rect x="255" y="237" width="8" height="6" rx="1" fill="#3b82f6"/>
+  <rect x="266" y="237" width="8" height="6" rx="1" fill="#10b981"/>
+  <rect x="277" y="237" width="8" height="6" rx="1" fill="#f59e0b"/>
+  <rect x="288" y="237" width="8" height="6" rx="1" fill="#ef4444"/>
+  <text x="275" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#6b7280">Content Library</text>
+  
+  <!-- Brand Partnership -->
+  <rect x="140" y="200" width="60" height="25" rx="4" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.1)"/>
+  <text x="170" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#1f2937">BRAND PARTNERSHIPS</text>
+  <circle cx="150" cy="218" r="3" fill="#3b82f6"/>
+  <circle cx="160" cy="218" r="3" fill="#10b981"/>
+  <circle cx="170" cy="218" r="3" fill="#f59e0b"/>
+  <circle cx="180" cy="218" r="3" fill="#ef4444"/>
+  <circle cx="190" cy="218" r="3" fill="#8b5cf6"/>
+  
+  <!-- Viral Growth Arrow -->
+  <path d="M 75 250 Q 125 230 175 250" stroke="#10b981" stroke-width="3" fill="none"/>
+  <path d="M 170 247 L 175 250 L 170 253 Z" fill="#10b981"/>
+  <text x="125" y="240" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#10b981">VIRAL</text>
+  
+  <!-- Hearts floating -->
+  <path d="M 380 100 C 380 97, 383 95, 385 97 C 387 95, 390 97, 390 100 C 390 103, 385 108, 385 108 C 385 108, 380 103, 380 100 Z" fill="#ff3040" opacity="0.7"/>
+  <path d="M 20 150 C 20 148, 22 147, 23 148 C 24 147, 26 148, 26 150 C 26 152, 23 155, 23 155 C 23 155, 20 152, 20 150 Z" fill="#ff3040" opacity="0.6"/>
+  <path d="M 370 190 C 370 188, 372 187, 373 188 C 374 187, 376 188, 376 190 C 376 192, 373 195, 373 195 C 373 195, 370 192, 370 190 Z" fill="#ff3040" opacity="0.5"/>
+  
+  <!-- Performance Badge -->
+  <ellipse cx="50" cy="280" rx="30" ry="10" fill="rgba(139,92,246,0.9)"/>
+  <text x="50" y="283" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white">12.5M VIEWS</text>
+</svg>
