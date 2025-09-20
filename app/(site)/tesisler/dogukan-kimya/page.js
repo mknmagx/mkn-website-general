@@ -133,11 +133,11 @@ export const metadata = {
     siteName: "MKNGROUP",
     images: [
       {
-        url: "https://mkngroup.com.tr/modern-chemical-manufacturing-facility-with-large-.png",
+        url: "https://mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
         width: 1200,
         height: 630,
         alt: "Doğukan Kimya ISO Sertifikalı Modern Temizlik Ürünleri Üretim Tesisi - İstanbul",
-        type: "image/png",
+        type: "image/webp",
       },
     ],
   },
@@ -150,7 +150,7 @@ export const metadata = {
     description:
       "🧽 1500m² ISO sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
     images: [
-      "https://mkngroup.com.tr/modern-chemical-manufacturing-facility-with-large-.png",
+      "https://mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
     ],
   },
 };

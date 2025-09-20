@@ -48,7 +48,7 @@ export const metadata = {
     type: "website",
     images: [
       {
-        url: "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+        url: "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
         alt: "MKNGROUP GMP Sertifikalı Fason Üretim Tesisi - Modern Üretim Hatları",
@@ -61,7 +61,7 @@ export const metadata = {
     description:
       "GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 1000+ başarılı proje.",
     images: [
-      "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
     ],
   },
   robots: {
@@ -312,7 +312,7 @@ export default function FasonUretimPage() {
       <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800 py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-700/90"></div>
         <div
-          className="absolute inset-0 bg-[url('/modern-manufacturing-facility-with-advanced-equipm.png')] bg-cover bg-center opacity-20"
+          className="absolute inset-0 bg-[url('/optimized/modern-manufacturing-facility-with-advanced-equipm.webp')] bg-cover bg-center opacity-20"
           aria-hidden="true"
           role="img"
           aria-label="MKNGROUP GMP Sertifikalı Modern Fason Üretim Tesisi"

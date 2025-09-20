@@ -532,7 +532,7 @@ export default function AmbalajClient() {
         <div className="container mx-auto px-4">
           <div className="rounded-lg sm:rounded-xl overflow-hidden relative min-h-[400px] md:min-h-[500px]">
             <Image
-              src="/cosmetic-packaging-mockup.png"
+              src="/optimized/cosmetic-packaging-mockup.webp"
               alt="Kozmetik Ambalaj Üretim Tesisi"
               width={1600}
               height={500}

@@ -325,7 +325,7 @@ export default function KozmetikFasonUretimPage() {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 dark:from-blue-800 dark:via-purple-800 dark:to-blue-900 py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-700/90 dark:from-blue-800/95 dark:to-purple-900/95"></div>
-        <div className="absolute inset-0 bg-[url('/modern-manufacturing-facility-with-advanced-equipm.png')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
+        <div className="absolute inset-0 bg-[url('/optimized/modern-manufacturing-facility-with-advanced-equipm.webp')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center text-white">

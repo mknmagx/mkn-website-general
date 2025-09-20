@@ -94,11 +94,11 @@ export const metadata = {
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. Contract manufacturing çözümleri.",
     images: [
       {
-        url: "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+        url: "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
         alt: "MKNGROUP ISO Sertifikalı Modern Üretim Tesisleri",
-        type: "image/png",
+        type: "image/webp",
       },
     ],
   },
@@ -110,7 +110,7 @@ export const metadata = {
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Contract manufacturing ve fason üretim çözümleri.",
     images: [
-      "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
     ],
   },
 };
@@ -188,7 +188,7 @@ export default function TesislerPage() {
       dailyCapacity: "Günlük 100.000 Ünite",
       area: "5.600 m² Kapalı Alan",
       location: "İstanbul, Türkiye",
-      image: "/modern-pharmaceutical-manufacturing-facility-with-.png",
+      image: "/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
       icon: FlaskConical,
       specialties: [
         "Krem & Serum Üretimi",
@@ -248,7 +248,7 @@ export default function TesislerPage() {
       dailyCapacity: "Günlük 200.000 Ünite",
       area: "10.000 m² Kapalı Alan",
       location: "İstanbul, Türkiye",
-      image: "/modern-chemical-manufacturing-facility-with-large-.png",
+      image: "/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
       icon: Factory,
       specialties: [
         "Sıvı Sabun Üretimi",
@@ -372,7 +372,7 @@ export default function TesislerPage() {
             </div>
             <div className="hidden lg:block relative rounded-xl overflow-hidden shadow-2xl dark:shadow-slate-800/50">
               <Image
-                src="/modern-manufacturing-facility-with-advanced-equipm.png"
+                src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
                 alt="MKNGROUP ISO Sertifikalı Modern Üretim Tesisi - Contract Manufacturing"
                 width={600}
                 height={400}

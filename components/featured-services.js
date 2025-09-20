@@ -35,7 +35,7 @@ export function FeaturedServices() {
       ],
       href: "/fason-uretim",
       cta: "Üretim Detayları",
-      image: "/modern-manufacturing-facility-with-advanced-equipm.png",
+      image: "/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
       highlight: "15,000m² Üretim Tesisi",
     },
     {
@@ -51,7 +51,7 @@ export function FeaturedServices() {
       ],
       href: "/ambalaj",
       cta: "Ambalaj Kataloğu",
-      image: "/cosmetic-packaging-mockup.png",
+      image: "/optimized/cosmetic-packaging-mockup.webp",
       highlight: "5,000+ Ambalaj Seçeneği",
     },
     {
@@ -67,7 +67,7 @@ export function FeaturedServices() {
       ],
       href: "/e-ticaret",
       cta: "Operasyon Detayları",
-      image: "/cargo-delivery.png",
+      image: "/optimized/cargo-delivery.webp",
       highlight: "24 Saat İçinde Sevkiyat",
     },
     {
@@ -83,7 +83,7 @@ export function FeaturedServices() {
       ],
       href: "/pazarlama",
       cta: "Pazarlama Paketleri",
-      image: "/cosmetic-instagram-campaign.png",
+      image: "/optimized/cosmetic-instagram-campaign.webp",
       highlight: "500+ Başarılı Kampanya",
     },
   ];

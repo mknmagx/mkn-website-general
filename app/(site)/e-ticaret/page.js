@@ -118,7 +118,7 @@ export default function EticaretPage() {
   const services = [
     {
       icon: Warehouse,
-      image: "/cargo-stock.png",
+      image: "/optimized/cargo-stock.webp",
       title: "3PL Depo Yönetimi & Stok Takibi",
       description:
         "İstanbul'daki modern tesislerimizde ürünlerinizi güvenli şekilde saklıyor, WMS (Warehouse Management System) ile gerçek zamanlı stok takibi sağlıyoruz. E-ticaret platformunuzla API entegrasyonu ile otomatik stok güncelleme yapıyoruz.",
@@ -136,7 +136,7 @@ export default function EticaretPage() {
     },
     {
       icon: Package,
-      image: "/order-packaging.png",
+      image: "/optimized/order-packaging.webp",
       title: "Sipariş Fulfillment & Paketleme",
       description:
         "E-ticaret siparişlerinizi 24 saat içinde hazırlıyor, markanıza özel paketleme ile müşteri deneyimini üst seviyeye çıkarıyoruz. Özel günler için hediye paketleme ve promosyon ürünü ekleme hizmetleri sunuyoruz.",
@@ -154,7 +154,7 @@ export default function EticaretPage() {
     },
     {
       icon: Truck,
-      image: "/cargo-delivery.png",
+      image: "/optimized/cargo-delivery.webp",
       title: "Kargo Entegrasyonu & Maliyet Optimizasyonu",
       description:
         "15+ kargo firması ile entegre sistemimiz sayesinde siparişleriniz için en uygun ve ekonomik kargo seçeneklerini otomatik olarak belirliyoruz. Kargo maliyetlerinizi %30'a kadar düşürüyoruz.",
@@ -172,7 +172,7 @@ export default function EticaretPage() {
     },
     {
       icon: Settings,
-      image: "/return-management.png",
+      image: "/optimized/return-management.webp",
       title: "İade Yönetimi & Müşteri Hizmetleri",
       description:
         "E-ticaret'te kritik olan iade süreçlerinizi profesyonel şekilde yönetiyoruz. İade gelen ürünlerin kalite kontrolünü yapıyor, yeniden satılabilir olanları stoka dahil ediyoruz. Müşteri memnuniyetini koruyarak iade maliyetlerinizi minimize ediyoruz.",
@@ -509,6 +509,10 @@ export default function EticaretPage() {
                           alt={service.title}
                           width={48}
                           height={48}
+                          quality={95}
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkrHB0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R/Z/9k="
+                          priority={index === 0}
                           className="w-full h-full object-contain"
                         />
                       </div>
@@ -566,8 +570,13 @@ export default function EticaretPage() {
                         <Image
                           src={service.image}
                           alt={service.title}
-                          width={200}
-                          height={200}
+                          width={400}
+                          height={300}
+                          quality={95}
+                          placeholder="blur" 
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkrHB0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R/Z/9k="
+                          priority={index === 0}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
                           className="w-full h-full object-contain"
                         />
                       </div>
@@ -606,6 +615,10 @@ export default function EticaretPage() {
                       alt={benefit.title}
                       width={48}
                       height={48}
+                      quality={95}
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkrHB0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R/Z/9k="
+                      priority={false}
                       className="w-full h-full object-contain"
                     />
                   </div>

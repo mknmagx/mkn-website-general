@@ -319,7 +319,7 @@ export default function GidaTakviyesiFasonUretimPage() {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-green-600 via-blue-600 to-green-800 dark:from-green-800 dark:via-blue-800 dark:to-green-900 py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-blue-700/90 dark:from-green-800/95 dark:to-blue-900/95"></div>
-        <div className="absolute inset-0 bg-[url('/modern-pharmaceutical-manufacturing-facility-with-.png')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
+        <div className="absolute inset-0 bg-[url('/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center text-white">

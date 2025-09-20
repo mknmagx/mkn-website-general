@@ -244,12 +244,12 @@ export default function TasarimPage() {
   ];
 
   const portfolioImages = [
-    "/cosmetic-packaging-mockup.png",
+    "/optimized/cosmetic-packaging-mockup.webp",
     "/cosmetic-bottle-30ml.png",
     "/airless-bottle-15ml.png",
     "/pump-bottle-250ml.png",
     "/glass-jar-50ml-cosmetic.png",
-    "/cosmetic-instagram-campaign.png",
+    "/optimized/cosmetic-instagram-campaign.webp",
   ];
 
   const processSteps = [

@@ -295,7 +295,7 @@ export default function TemizlikBakimFasonUretimPage() {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 via-teal-600 to-blue-800 dark:from-blue-800 dark:via-teal-800 dark:to-blue-900 py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-teal-700/90 dark:from-blue-800/95 dark:to-teal-900/95"></div>
-        <div className="absolute inset-0 bg-[url('/modern-chemical-manufacturing-facility-with-large-.png')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
+        <div className="absolute inset-0 bg-[url('/optimized/modern-chemical-manufacturing-facility-with-large-.webp')] bg-cover bg-center opacity-20 dark:opacity-10"></div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center text-white">

@@ -15,8 +15,8 @@ export function OrganizationSchema() {
     },
     image: [
       "https://mkngroup.com.tr/og-image.png",
-      "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
-      "https://mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
+      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+      "https://mkngroup.com.tr/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
     ],
     telephone: "+90 531 494 25 94",
     email: "info@mkngroup.com.tr",
