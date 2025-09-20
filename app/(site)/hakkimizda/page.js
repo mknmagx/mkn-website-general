@@ -729,12 +729,12 @@ export default function HakkimizdaPage() {
       />
       <BreadcrumbSchema items={breadcrumbItems} />
       <OrganizationSchema />
-      <div className="min-h-screen animate-fade-in">
+      <div className="min-h-screen animate-fade-in overflow-x-hidden">
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-background via-background to-muted/20 py-32 overflow-hidden">
           <div className="absolute inset-0 bg-grid-pattern opacity-5 -z-10"></div>
-          <div className="absolute top-20 right-20 w-72 h-72 bg-primary/20 rounded-full blur-3xl opacity-20 animate-pulse -z-10"></div>
-          <div className="absolute bottom-20 left-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl opacity-30 animate-pulse -z-10"></div>
+          <div className="absolute top-20 right-20 w-32 h-32 lg:w-72 lg:h-72 bg-primary/20 rounded-full blur-3xl opacity-20 animate-pulse -z-10"></div>
+          <div className="absolute bottom-20 left-20 w-24 h-24 lg:w-64 lg:h-64 bg-blue-500/10 rounded-full blur-3xl opacity-30 animate-pulse -z-10"></div>
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="max-w-5xl mx-auto text-center">
@@ -1017,8 +1017,8 @@ export default function HakkimizdaPage() {
                   </div>
                 </div>
 
-                {/* Floating stats */}
-                <div className="absolute -top-6 -right-6 bg-card rounded-2xl shadow-xl p-4 border">
+                {/* Floating stats - Hidden on mobile to prevent overflow */}
+                <div className="absolute -top-6 -right-6 bg-card rounded-2xl shadow-xl p-4 border hidden lg:block">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">6+</div>
                     <div className="text-xs text-muted-foreground">
@@ -1027,7 +1027,7 @@ export default function HakkimizdaPage() {
                   </div>
                 </div>
 
-                <div className="absolute -bottom-6 -left-6 bg-gradient-to-r from-primary to-blue-600 text-white rounded-2xl shadow-xl p-4">
+                <div className="absolute -bottom-6 -left-6 bg-gradient-to-r from-primary to-blue-600 text-white rounded-2xl shadow-xl p-4 hidden lg:block">
                   <div className="text-center">
                     <div className="text-xl font-bold">🏆 #1</div>
                     <div className="text-xs opacity-90">
@@ -1065,7 +1065,7 @@ export default function HakkimizdaPage() {
               <Card className="relative overflow-hidden border-0 bg-card/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <CardHeader className="p-8 pb-4 relative z-10">
-                  <div className="flex items-center space-x-6 mb-6">
+                  <div className="flex items-center space-x-4 sm:space-x-6 mb-6">
                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
                       <Target className="h-8 w-8 text-white" />
                     </div>
@@ -1127,7 +1127,7 @@ export default function HakkimizdaPage() {
               <Card className="relative overflow-hidden border-0 bg-card/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-500 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <CardHeader className="p-8 pb-4 relative z-10">
-                  <div className="flex items-center space-x-6 mb-6">
+                  <div className="flex items-center space-x-4 sm:space-x-6 mb-6">
                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg">
                       <Eye className="h-8 w-8 text-white" />
                     </div>
@@ -1405,7 +1405,7 @@ export default function HakkimizdaPage() {
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                   <CardContent className="p-8 relative z-10">
-                    <div className="flex items-start space-x-6">
+                    <div className="flex items-start space-x-4 sm:space-x-6">
                       <div className="bg-gradient-to-br from-primary to-primary/80 p-4 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                         {React.cloneElement(value.icon, {
                           className: "h-6 w-6 text-white",
@@ -1652,13 +1652,13 @@ export default function HakkimizdaPage() {
 
             <div className="max-w-5xl mx-auto relative">
               {/* Timeline line */}
-              <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-blue-500 to-green-500 hidden lg:block"></div>
+              <div className="absolute left-4 lg:left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-blue-500 to-green-500 hidden lg:block"></div>
 
               <div className="space-y-16">
                 {timeline.map((item, index) => (
                   <div
                     key={index}
-                    className="relative flex items-start space-x-8 group"
+                    className="relative flex items-start space-x-4 lg:space-x-8 group"
                   >
                     {/* Timeline dot */}
                     <div className="flex-shrink-0 relative">

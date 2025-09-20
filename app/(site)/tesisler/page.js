@@ -296,7 +296,7 @@ export default function TesislerPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-white dark:bg-slate-900 overflow-x-hidden">
       {/* Structured Data */}
       <script
         type="application/ld+json"
@@ -313,7 +313,12 @@ export default function TesislerPage() {
                 ISO Sertifikalı Üretim Tesisleri
               </Badge>
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent mb-6 text-balance">
-                Türkiye'nin Önde Gelen Contract Manufacturing Tesisleri
+                <span className="block sm:hidden">
+                  Contract Manufacturing Tesisleri
+                </span>
+                <span className="hidden sm:block">
+                  Türkiye'nin Önde Gelen Contract Manufacturing Tesisleri
+                </span>
               </h1>
               <p className="text-xl text-gray-600 dark:text-gray-300 mb-6 text-pretty leading-relaxed">
                 <strong>10.600m² toplam alan</strong> üzerinde,{" "}
@@ -322,7 +327,7 @@ export default function TesislerPage() {
                 <strong>contract manufacturing</strong> ve
                 <strong> OEM/ODM hizmetleri</strong> sunuyoruz.
               </p>
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -582,7 +587,7 @@ export default function TesislerPage() {
                       </div>
                     </div>
                     <Tabs defaultValue="uretim" className="mb-6">
-                      <TabsList className="grid grid-cols-4 mb-4 bg-gray-100 dark:bg-slate-800">
+                      <TabsList className="grid grid-cols-2 sm:grid-cols-4 mb-4 bg-gray-100 dark:bg-slate-800">
                         <TabsTrigger
                           value="uretim"
                           className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 text-gray-600 dark:text-gray-300 text-xs"
