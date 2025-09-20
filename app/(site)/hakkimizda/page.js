@@ -55,7 +55,7 @@ export const metadata = {
   title:
     "MKNGROUP | Türkiye'nin En Büyük Contract Manufacturing ve Entegre Üretim Şirketi | 360° Çözüm Ortağı",
   description:
-    "🏭 MKNGROUP: Türkiye'nin #1 contract manufacturing lideri. 10.600m² ISO sertifikalı tesislerde 3+ milyon ünite/ay üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi + 360° entegre çözümler: ambalaj, e-ticaret operasyonları, depolama, lojistik, dijital pazarlama. 2019'dan beri 1000+ başarılı proje, 200+ marka ortağı. OEM/ODM, private label, formülasyon geliştirme uzmanı.",
+    "🏭 MKNGROUP: Türkiye'nin #1 contract manufacturing lideri. 10.600m² ISO sertifikalı tesislerde 3.8+ milyon ünite/ay üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi + 360° entegre çözümler: ambalaj, e-ticaret operasyonları, depolama, lojistik, dijital pazarlama. 2019'dan beri 1000+ başarılı proje, 200+ marka ortağı. OEM/ODM, private label, formülasyon geliştirme uzmanı.",
   keywords: [
     // Ana kurumsal kimlik
     "MKNGROUP",
@@ -89,7 +89,7 @@ export const metadata = {
 
     // Kapasite ve büyüklük vurgusu
     "25000 m2 üretim tesisi",
-    "3 milyon ünite aylık kapasite",
+    "3.8 milyon ünite aylık kapasite",
     "türkiye en büyük üretim kapasitesi",
     "large scale manufacturing turkey",
     "high volume contract manufacturing",
@@ -272,7 +272,7 @@ export default function HakkimizdaPage() {
     name: "MKNGROUP",
     alternateName: ["MKN GROUP", "MKN Grup", "mkngroup", "MKN GROUP Turkey"],
     description:
-      "Türkiye'nin en büyük contract manufacturing ve fason üretim şirketi. 10.600m² ISO sertifikalı tesislerde aylık 3+ milyon ünite üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri üretimi + 360° entegre çözümler: ambalaj, e-ticaret, depolama, lojistik, dijital pazarlama.",
+      "Türkiye'nin en büyük contract manufacturing ve fason üretim şirketi. 10.600m² ISO sertifikalı tesislerde aylık 3.8+ milyon ünite üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri üretimi + 360° entegre çözümler: ambalaj, e-ticaret, depolama, lojistik, dijital pazarlama.",
     url: "https://mkngroup.com.tr",
     logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
     foundingDate: "2019",
@@ -334,7 +334,7 @@ export default function HakkimizdaPage() {
             "@type": "Service",
             name: "Kozmetik Contract Manufacturing",
             description:
-              "ISO 22716 GMP sertifikalı kozmetik ve dermokozmetik ürün fason üretimi. 10.600m² tesislerde aylık 3M+ ünite kapasite.",
+              "ISO 22716 GMP sertifikalı kozmetik ve dermokozmetik ürün fason üretimi. 10.600m² tesislerde aylık 3.8M+ ünite kapasite.",
             category: "Contract Manufacturing",
           },
         },
@@ -755,7 +755,7 @@ export default function HakkimizdaPage() {
 
               <p className="text-xl text-muted-foreground mb-10 text-pretty max-w-4xl mx-auto leading-relaxed">
                 <strong className="text-foreground">
-                  ISO sertifikalı tesislerde aylık 3+ milyon ünite üretim
+                  ISO sertifikalı tesislerde aylık 3.8+ milyon ünite üretim
                   kapasitesi.
                 </strong>{" "}
                 Kozmetik, gıda takviyesi, temizlik ürünleri contract
@@ -923,8 +923,10 @@ export default function HakkimizdaPage() {
                   <p className="text-foreground font-medium">
                     Bugün <strong>200+ marka ortağımız</strong> için güvenilir
                     üretim ve operasyon partneri olarak,
-                    <strong>aylık 3+ milyon ünite üretim kapasitesi</strong> ile
-                    sektörün en büyük contract manufacturing şirketi
+                    <strong>
+                      aylık 3.8+ milyon ünite üretim kapasitesi
+                    </strong>{" "}
+                    ile sektörün en büyük contract manufacturing şirketi
                     konumundayız.
                   </p>
 
@@ -1108,7 +1110,7 @@ export default function HakkimizdaPage() {
                     <div className="flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
                       <span className="text-sm font-medium">
-                        Aylık 3+ milyon ünite üretim kapasitesi
+                        Aylık 3.8+ milyon ünite üretim kapasitesi
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1143,15 +1145,15 @@ export default function HakkimizdaPage() {
                   <CardDescription className="text-lg leading-relaxed text-foreground">
                     <strong className="text-blue-600">2030 yılına kadar</strong>{" "}
                     Türkiye'nin
-                    <strong>#1 contract manufacturing lideri</strong> ve
+                    <strong>#1 contract manufacturing lideri</strong> ve{" "}
                     <strong>Avrupa'nın önde gelen</strong> entegre üretim
                     çözümleri şirketi olmak.
                     <br />
                     <br />
                     Sürekli <strong>inovasyon, teknolojik yatırım</strong> ve
-                    sürdürülebilir büyüme ile
+                    sürdürülebilir büyüme ile{" "}
                     <strong>uluslararası pazarlarda</strong> güvenilir marka
-                    olarak tanınmak ve
+                    olarak tanınmak ve{" "}
                     <strong>endüstri standartlarını belirleyen</strong> konuma
                     ulaşmak.
                   </CardDescription>
@@ -1289,7 +1291,7 @@ export default function HakkimizdaPage() {
                               </div>
                               <div className="flex items-center gap-2 text-sm">
                                 <CheckCircle className="h-4 w-4 text-green-600" />
-                                <span>Aylık 3+ milyon ünite kapasite</span>
+                                <span>Aylık 3.8+ milyon ünite kapasite</span>
                               </div>
                             </>
                           )}
@@ -1537,67 +1539,6 @@ export default function HakkimizdaPage() {
                 <strong>deneyimli kadromuz</strong> ile müşterilerimize en
                 kaliteli hizmeti sunuyoruz.
               </p>
-            </div>
-
-            {/* Liderlik Ekibi */}
-            <div className="mb-16">
-              <h3 className="text-2xl font-bold text-center mb-12">
-                🎯 Liderlik Ekibimiz
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
-                {team.map((member, index) => (
-                  <Card
-                    key={index}
-                    className="group text-center border-0 bg-card/80 backdrop-blur-sm hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2"
-                  >
-                    <CardContent className="p-8">
-                      <div className="mb-6 rounded-2xl overflow-hidden w-32 h-32 mx-auto border-4 border-primary/20 group-hover:border-primary/40 transition-colors">
-                        <Image
-                          src={member.image}
-                          alt={member.name}
-                          width={128}
-                          height={128}
-                          className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-300"
-                        />
-                      </div>
-                      <h4 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                        {member.name}
-                      </h4>
-                      <p className="text-muted-foreground text-sm font-medium">
-                        {member.position}
-                      </p>
-
-                      {/* Position-specific highlights */}
-                      <div className="mt-4 pt-4 border-t border-muted/30">
-                        {member.position.includes("CEO") && (
-                          <div className="flex items-center justify-center gap-2 text-xs text-primary">
-                            <Award className="h-3 w-3" />
-                            <span>15+ Yıl Sektör Deneyimi</span>
-                          </div>
-                        )}
-                        {member.position.includes("Operasyon") && (
-                          <div className="flex items-center justify-center gap-2 text-xs text-blue-600">
-                            <Settings className="h-3 w-3" />
-                            <span>Operasyon Mükemmelliği</span>
-                          </div>
-                        )}
-                        {member.position.includes("Üretim") && (
-                          <div className="flex items-center justify-center gap-2 text-xs text-green-600">
-                            <Factory className="h-3 w-3" />
-                            <span>10.600m² Tesis Yönetimi</span>
-                          </div>
-                        )}
-                        {member.position.includes("Ar-Ge") && (
-                          <div className="flex items-center justify-center gap-2 text-xs text-purple-600">
-                            <Lightbulb className="h-3 w-3" />
-                            <span>1000+ Formülasyon</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             </div>
 
             {/* Ekip İstatistikleri */}
@@ -1854,7 +1795,7 @@ export default function HakkimizdaPage() {
                     <strong>
                       Avrupa'nın önde gelen contract manufacturing şirketi
                     </strong>{" "}
-                    olarak 500+ global marka ortağı ile 50+ milyon ünite aylık
+                    olarak 500+ global marka ortağı ile 20+ milyon ünite aylık
                     üretim kapasitesine ulaşmak.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1868,7 +1809,7 @@ export default function HakkimizdaPage() {
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600 mb-1">
-                        50M+
+                        20M+
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Aylık Üretim

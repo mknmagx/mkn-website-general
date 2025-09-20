@@ -279,7 +279,7 @@ export function PackagingCatalogSection() {
                 size="lg"
                 className="border-white/80 text-white hover:bg-white hover:text-purple-600 dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-purple-700 bg-white/10 backdrop-blur-sm"
               >
-                <Link href="/iletisim">
+                <Link href="/teklif">
                   Özel Teklif Al
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>

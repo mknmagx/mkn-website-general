@@ -34,7 +34,7 @@ export const metadata = {
   title:
     "Aspar İlaç Kozmetik Gıda Sanayi A.Ş | Gıda Takviyesi ve Dermokozmetik Fason Üretim Tesisi | İstanbul",
   description:
-    "🏭 Aspar İlaç: İstanbul Beylikdüzü'nde 5600m² GMP ve ISO 22000 sertifikalı tesisimizde gıda takviyesi, dermokozmetik ve bitkisel ürün fason üretimi. 15+ yıl deneyim, 50M+ aylık üretim kapasitesi, Ar-Ge laboratuvarı. Vitamin, mineral, protein tozu, krem, serum üretimi.",
+    "🏭 Aspar İlaç: İstanbul Beylikdüzü'nde 5600m² GMP ve ISO 22000 sertifikalı tesisimizde gıda takviyesi, dermokozmetik ve bitkisel ürün fason üretimi. 15+ yıl deneyim, 2M+ aylık üretim kapasitesi, Ar-Ge laboratuvarı. Vitamin, mineral, protein tozu, krem, serum üretimi.",
   keywords: [
     // Şirket ismi ve marka
     "Aspar İlaç",
@@ -110,7 +110,7 @@ export const metadata = {
     title:
       "Aspar İlaç | GMP Sertifikalı Gıda Takviyesi ve Dermokozmetik Üretim Tesisi",
     description:
-      "🏭 Aspar İlaç: 5600m² GMP sertifikalı tesisimizde gıda takviyesi, dermokozmetik fason üretimi. 15+ yıl deneyim, 50M+ aylık kapasite. İstanbul Beylikdüzü.",
+      "🏭 Aspar İlaç: 5600m² GMP sertifikalı tesisimizde gıda takviyesi, dermokozmetik fason üretimi. 15+ yıl deneyim, 2M+ aylık kapasite. İstanbul Beylikdüzü.",
     images: [
       {
         url: "https://mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
@@ -222,13 +222,13 @@ export default function AsparIlacPage() {
       description: "Son teknoloji üretim hatları",
     },
     {
-      number: "50M+",
+      number: "2M+",
       label: "Aylık Üretim Kapasitesi",
       icon: Factory,
       description: "Yüksek kapasiteli üretim",
     },
     {
-      number: "500+",
+      number: "300+",
       label: "Başarılı Fason Üretim Projesi",
       icon: Award,
       description: "Kanıtlanmış başarı hikayesi",
@@ -250,7 +250,7 @@ export default function AsparIlacPage() {
         "Özel Formülasyon Geliştirme",
       ],
       icon: FlaskConical,
-      capacity: "30M+ aylık tablet/kapsül",
+      capacity: "1.5M+ aylık tablet/kapsül",
       certifications: ["GMP", "ISO 22000", "HACCP", "FDA Uyumlu"],
     },
     {
@@ -267,7 +267,7 @@ export default function AsparIlacPage() {
         "Özel Marka Geliştirme",
       ],
       icon: Award,
-      capacity: "20M+ aylık kozmetik ünite",
+      capacity: "500K+ aylık kozmetik ünite",
       certifications: [
         "ISO 22716",
         "Dermatologically Tested",
@@ -403,13 +403,13 @@ export default function AsparIlacPage() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    50M+ Aylık Kapasite
+                    2M+ Aylık Kapasite
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    1000+ Başarılı Proje
+                    300+ Başarılı Proje
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">

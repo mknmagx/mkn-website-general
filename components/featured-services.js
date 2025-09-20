@@ -35,7 +35,8 @@ export function FeaturedServices() {
       ],
       href: "/fason-uretim",
       cta: "Üretim Detayları",
-      image: "/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+      image:
+        "/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
       highlight: "15,000m² Üretim Tesisi",
     },
     {
@@ -123,6 +124,9 @@ export function FeaturedServices() {
                     alt={service.title}
                     fill
                     quality={90}
+                    priority={index < 2} // First 2 images get priority for above-the-fold
+                    loading={index < 2 ? "eager" : "lazy"}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>

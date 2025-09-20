@@ -22,9 +22,9 @@ export default function FacilityBanner() {
       shortName: "Aspar İlaç",
       description:
         "ISO 22716 GMP sertifikalı dermokozmetik ürünler ve gıda takviyeleri üretiminde uzmanlaşmış modern üretim tesisi",
-      capacity: "Aylık 5M+ Ünite",
+      capacity: "Aylık 2M+ Ünite",
       location: "Beylikdüzü, İstanbul",
-      area: "10.600 m²",
+      area: "5600 m²",
       certifications: ["ISO 22716 GMP", "FDA Onaylı", "Halal Sertifikalı"],
       specialties: [
         "Krem & Serum",
@@ -37,7 +37,8 @@ export default function FacilityBanner() {
         "Kalite kontrol laboratuvarı",
         "Aseptik üretim alanları",
       ],
-      image: "/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
+      image:
+        "/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
       alt: "Aspar İlaç ISO 22716 GMP Sertifikalı Kozmetik Üretim Tesisi - Beylikdüzü",
       founded: "2020",
       employees: "25+ Uzman",
@@ -48,9 +49,9 @@ export default function FacilityBanner() {
       shortName: "Doğukan Kimya",
       description:
         "ISO 14001 çevre dostu temizlik ürünleri, dezenfektan ve hijyen ürünleri üretiminde yüksek kapasiteli üretim tesisi",
-      capacity: "Aylık 2M+ Ünite",
+      capacity: "Aylık 1.8M+ Ünite",
       location: "Haramidere, İstanbul",
-      area: "10.000 m²",
+      area: "5000 m²",
       certifications: ["ISO 14001", "TSE Onaylı", "CE İşaretli"],
       specialties: [
         "Sıvı Sabun",
@@ -63,7 +64,8 @@ export default function FacilityBanner() {
         "Yüksek kapasite karıştırıcılar",
         "Otomatik dolum hatları",
       ],
-      image: "/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
+      image:
+        "/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
       alt: "Doğukan Kimya ISO 14001 Çevre Dostu Temizlik Ürünleri Üretim Tesisi - İstanbul",
       founded: "2019",
       employees: "20+ Uzman",
@@ -72,7 +74,7 @@ export default function FacilityBanner() {
 
   const facilitiesStats = {
     totalArea: "10.600 m²",
-    totalCapacity: "7M+ Ünite/Ay",
+    totalCapacity: "3.8M+ Ünite/Ay",
     totalEmployees: "50+ Uzman",
     certifications: "10+ Sertifika",
   };
@@ -96,7 +98,7 @@ export default function FacilityBanner() {
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             <strong>10.600m² kapalı alanda</strong> ISO sertifikalı
             tesislerimizde
-            <strong> aylık 3+ milyon ünite üretim kapasitesi</strong> ile
+            <strong> aylık 3.8+ milyon ünite üretim kapasitesi</strong> ile
             kozmetik, gıda takviyesi ve temizlik ürünleri{" "}
             <strong>contract manufacturing</strong> hizmetleri
           </p>

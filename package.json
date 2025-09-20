@@ -42,6 +42,7 @@
     "@remix-run/react": "latest",
     "@sveltejs/kit": "latest",
     "@vercel/analytics": "latest",
+    "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -70,16 +71,16 @@
     "zod": "3.25.67"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.0.0",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "postcss": "^8.5",
+    "sharp": "^0.33.2",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5",
-    "sharp": "^0.33.2",
-    "cross-env": "^7.0.3",
-    "@next/bundle-analyzer": "^15.0.0"
+    "typescript": "^5"
   }
 }

@@ -2,6 +2,7 @@ import { Space_Grotesk, DM_Sans, Montserrat } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -9,7 +10,7 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
   variable: "--font-space-grotesk",
   preload: true,
-  fallback: ['system-ui', 'arial']
+  fallback: ["system-ui", "arial"],
 });
 
 const dmSans = DM_Sans({
@@ -17,21 +18,22 @@ const dmSans = DM_Sans({
   display: "swap",
   variable: "--font-dm-sans",
   preload: false,
-  fallback: ['system-ui', 'arial']
+  fallback: ["system-ui", "arial"],
 });
 
 const montserrat = Montserrat({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-montserrat",
-  preload: false,
-  fallback: ['system-ui', 'arial']
+  preload: true, // Used in navbar brand, above-the-fold
+  fallback: ["system-ui", "arial"],
 });
 
 export const metadata = {
   metadataBase: new URL("https://mkngroup.com.tr"),
   title: {
-    default: "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri | Türkiye",
+    default:
+      "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri | Türkiye",
     template: "%s | MKNGROUP",
   },
   description:
@@ -172,14 +174,24 @@ export default function RootLayout({ children }) {
     >
       <head>
         {/* Critical Resource Preloading */}
-        <link rel="preload" href="/MKN-GROUP-LOGO.png" as="image" type="image/png" />
+        <link
+          rel="preload"
+          href="/MKN-GROUP-LOGO.png"
+          as="image"
+          type="image/png"
+        />
         <link rel="preload" href="/og-image.png" as="image" type="image/png" />
         <link rel="dns-prefetch" href="//res.cloudinary.com" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
       </head>
       <body suppressHydrationWarning={true} className="font-sans antialiased">
+        <SpeedInsights />
         <Suspense fallback={null}>
           <ThemeProvider
             attribute="class"

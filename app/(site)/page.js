@@ -1,18 +1,73 @@
+import { Suspense, lazy } from "react";
 import Hero from "@/components/hero";
 import { FeaturedServices } from "@/components/featured-services";
-import { WhyMKNGroup } from "@/components/why-mkngroup";
-import { ClientLogos } from "@/components/client-logos";
-import { AboutSection } from "@/components/about-section";
-import { CTASection } from "@/components/cta-section";
-import { ManufacturingSection } from "@/components/manufacturing-section";
-import { PackagingSection } from "@/components/packaging-section";
-import { ClientFloatingNavigation } from "@/components/client-floating-navigation";
-import { CosmeticManufacturingSection } from "@/components/cosmetic-manufacturing-section";
-import { PackagingCatalogSection } from "@/components/packaging-catalog-section";
-import { EcommerceOperationSection } from "@/components/ecommerce-operation-section";
-import { CustomerTestimonialsSection } from "@/components/customer-testimonials-section";
-import { SimpleFAQSection } from "@/components/simple-faq-section";
-import { ContactLocationSection } from "@/components/contact-location-section";
+
+// Lazy load below-the-fold components for better performance
+const WhyMKNGroup = lazy(() =>
+  import("@/components/why-mkngroup").then((module) => ({
+    default: module.WhyMKNGroup,
+  }))
+);
+const ClientLogos = lazy(() =>
+  import("@/components/client-logos").then((module) => ({
+    default: module.ClientLogos,
+  }))
+);
+const AboutSection = lazy(() =>
+  import("@/components/about-section").then((module) => ({
+    default: module.AboutSection,
+  }))
+);
+const CTASection = lazy(() =>
+  import("@/components/cta-section").then((module) => ({
+    default: module.CTASection,
+  }))
+);
+const ManufacturingSection = lazy(() =>
+  import("@/components/manufacturing-section").then((module) => ({
+    default: module.ManufacturingSection,
+  }))
+);
+const PackagingSection = lazy(() =>
+  import("@/components/packaging-section").then((module) => ({
+    default: module.PackagingSection,
+  }))
+);
+const ClientFloatingNavigation = lazy(() =>
+  import("@/components/client-floating-navigation").then((module) => ({
+    default: module.ClientFloatingNavigation,
+  }))
+);
+const CosmeticManufacturingSection = lazy(() =>
+  import("@/components/cosmetic-manufacturing-section").then((module) => ({
+    default: module.CosmeticManufacturingSection,
+  }))
+);
+const PackagingCatalogSection = lazy(() =>
+  import("@/components/packaging-catalog-section").then((module) => ({
+    default: module.PackagingCatalogSection,
+  }))
+);
+const EcommerceOperationSection = lazy(() =>
+  import("@/components/ecommerce-operation-section").then((module) => ({
+    default: module.EcommerceOperationSection,
+  }))
+);
+const CustomerTestimonialsSection = lazy(() =>
+  import("@/components/customer-testimonials-section").then((module) => ({
+    default: module.CustomerTestimonialsSection,
+  }))
+);
+const SimpleFAQSection = lazy(() =>
+  import("@/components/simple-faq-section").then((module) => ({
+    default: module.SimpleFAQSection,
+  }))
+);
+const ContactLocationSection = lazy(() =>
+  import("@/components/contact-location-section").then((module) => ({
+    default: module.ContactLocationSection,
+  }))
+);
 import {
   BreadcrumbSchema,
   OrganizationSchema,
@@ -129,6 +184,24 @@ export default function HomePage() {
     },
   ];
 
+  // Loading fallback component with better skeleton structure
+  const SectionLoader = () => (
+    <div className="animate-pulse py-12 px-4">
+      <div className="container mx-auto">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-4 bg-muted rounded w-24"></div>
+          <div className="h-8 bg-muted rounded w-64"></div>
+          <div className="h-4 bg-muted rounded w-96 max-w-full"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-muted/20 h-48 rounded-lg"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <BreadcrumbSchema items={breadcrumbItems} />
@@ -144,28 +217,46 @@ export default function HomePage() {
           <FeaturedServices />
         </section>
         <section id="about">
-          <AboutSection />
+          <Suspense fallback={<SectionLoader />}>
+            <AboutSection />
+          </Suspense>
         </section>
-        <WhyMKNGroup />
+        <Suspense fallback={<SectionLoader />}>
+          <WhyMKNGroup />
+        </Suspense>
         <section id="manufacturing">
-          <CosmeticManufacturingSection />
+          <Suspense fallback={<SectionLoader />}>
+            <CosmeticManufacturingSection />
+          </Suspense>
         </section>
         <section id="packaging">
-          <PackagingCatalogSection />
+          <Suspense fallback={<SectionLoader />}>
+            <PackagingCatalogSection />
+          </Suspense>
         </section>
         <section id="ecommerce">
-          <EcommerceOperationSection />
+          <Suspense fallback={<SectionLoader />}>
+            <EcommerceOperationSection />
+          </Suspense>
         </section>
-        <ClientLogos />
+        <Suspense fallback={<SectionLoader />}>
+          <ClientLogos />
+        </Suspense>
         <section id="faq">
-          <SimpleFAQSection />
+          <Suspense fallback={<SectionLoader />}>
+            <SimpleFAQSection />
+          </Suspense>
         </section>
         <section id="contact">
-          <ContactLocationSection />
+          <Suspense fallback={<SectionLoader />}>
+            <ContactLocationSection />
+          </Suspense>
         </section>
         {/* <CTASection /> */}
       </div>
-      <ClientFloatingNavigation />
+      <Suspense fallback={null}>
+        <ClientFloatingNavigation />
+      </Suspense>
     </>
   );
 }

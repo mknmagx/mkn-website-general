@@ -75,7 +75,7 @@ export const metadata = {
     "İstanbul kimya tesisi",
     "Beylikdüzü kimya fabrikası",
     "Haramidere Sanayi Sitesi",
-    "1500 m² tesis",
+    "5000 m² tesis",
     "kapalı üretim tesisi",
 
     // Sertifikalar ve standartlar
@@ -128,7 +128,7 @@ export const metadata = {
     title:
       "Doğukan Kimya | Fomex Markası ISO Sertifikalı Temizlik Ürünleri ve Islak Mendil Üretim Tesisi",
     description:
-      "🧽 1500m² ISO ve GMP sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
+      "🧽 5000m² ISO ve GMP sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
     url: "https://mkngroup.com.tr/tesisler/dogukan-kimya",
     siteName: "MKNGROUP",
     images: [
@@ -148,7 +148,7 @@ export const metadata = {
     title:
       "Doğukan Kimya | ISO Sertifikalı Temizlik Ürünleri ve Islak Mendil Üretim Tesisi",
     description:
-      "🧽 1500m² ISO sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
+      "🧽 5000m² ISO sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
     images: [
       "https://mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
     ],
@@ -253,25 +253,25 @@ export default function DogukanKimyaPage() {
 
   const companyStats = [
     {
-      number: "1500m²",
+      number: "5000m²",
       label: "Kapalı Üretim Tesisi",
       icon: Building,
       description: "Modern teknoloji ile donatılmış tesis",
     },
     {
-      number: "10M+",
+      number: "800K+",
       label: "Aylık Islak Mendil Kapasitesi",
       icon: Package,
       description: "Yüksek kapasiteli üretim hatları",
     },
     {
-      number: "5M+",
+      number: "400K+",
       label: "Aylık Köpük Sabun Kapasitesi",
       icon: Droplets,
       description: "Çeşitli formülasyonlarda üretim",
     },
     {
-      number: "200+",
+      number: "150+",
       label: "Başarılı Fason Üretim Projesi",
       icon: Award,
       description: "Kanıtlanmış başarı hikayesi",
@@ -293,7 +293,7 @@ export default function DogukanKimyaPage() {
         "Private Label Islak Mendil Üretimi",
       ],
       icon: Layers,
-      capacity: "10M+ aylık mendil ünitesi",
+      capacity: "800K+ aylık mendil ünitesi",
       certifications: ["ISO", "FDA Onaylı", "EPA Onaylı", "CE Sertifikalı"],
     },
     {
@@ -310,7 +310,7 @@ export default function DogukanKimyaPage() {
         "Toplu Satış Köpük Sabun Paketleri",
       ],
       icon: Droplets,
-      capacity: "5M+ aylık köpük sabun ünitesi",
+      capacity: "400K+ aylık köpük sabun ünitesi",
       certifications: [
         "GMP",
         "ISO",
@@ -332,7 +332,7 @@ export default function DogukanKimyaPage() {
         "Özel Marka Kozmetik Geliştirme",
       ],
       icon: Sparkles,
-      capacity: "3M+ aylık kozmetik ünitesi",
+      capacity: "600K+ aylık kozmetik ünitesi",
       certifications: [
         "ISO 22716",
         "Cruelty-Free",
@@ -354,7 +354,7 @@ export default function DogukanKimyaPage() {
         "Hastane Tipi Dezenfektanlar",
       ],
       icon: ShieldCheck,
-      capacity: "2M+ aylık dezenfektan ünitesi",
+      capacity: "400K+ aylık dezenfektan ünitesi",
       certifications: [
         "EPA Onaylı",
         "Biyosidal Ürün Ruhsatı",
@@ -479,7 +479,7 @@ export default function DogukanKimyaPage() {
                 Doğukan Kimya Sanayi ve Ticaret A.Ş
               </h1>
               <p className="text-xl text-gray-600 dark:text-gray-300 mb-6 text-pretty leading-relaxed">
-                <strong>İstanbul Beylikdüzü'nde 1500m² alanda</strong> faaliyet
+                <strong>İstanbul Beylikdüzü'nde 5000m² alanda</strong> faaliyet
                 gösteren,
                 <strong>ISO ve GMP sertifikalı</strong> modern tesisimizde
                 <strong>ıslak mendil</strong>, <strong>köpük sabun</strong>,
@@ -490,7 +490,7 @@ export default function DogukanKimyaPage() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    1500m² Modern Tesis
+                    5000m² Modern Tesis
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -908,7 +908,7 @@ export default function DogukanKimyaPage() {
                       Tesis Alanı
                     </p>
                     <p className="text-gray-600 dark:text-gray-300">
-                      1500 m² Kapalı Alan
+                      5000 m² Kapalı Alan
                     </p>
                   </div>
                 </div>

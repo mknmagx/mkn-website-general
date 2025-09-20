@@ -39,9 +39,9 @@ export const site = {
   },
 
   socials: {
-    instagram: "#",
-    linkedin: "#",
-    youtube: "#",
+    instagram: "https://www.instagram.com/mkngroupofficial/",
+    linkedin: "https://www.linkedin.com/company/mkn-group-official/",
+    twitter: "https://x.com/mkngroup_x",
   },
   navigation: [
     { name: "Ana Sayfa", href: "/" },

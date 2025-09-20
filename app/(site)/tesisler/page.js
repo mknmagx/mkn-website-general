@@ -29,7 +29,7 @@ export const metadata = {
   title:
     "Üretim Tesislerimiz | ISO Sertifikalı Fason Üretim Tesisleri | MKNGROUP",
   description:
-    "🏭 ISO 22716 GMP sertifikalı modern üretim tesislerimiz: 10.600m² toplam üretim alanı. Contract manufacturing, OEM/ODM hizmetleri. Aylık 3+ milyon ünite üretim kapasitesi. Türkiye'nin güvenilir fason üretim partneri.",
+    "🏭 ISO 22716 GMP sertifikalı modern üretim tesislerimiz: 10.600m² toplam üretim alanı. Contract manufacturing, OEM/ODM hizmetleri. Aylık 3.8+ milyon ünite üretim kapasitesi. Türkiye'nin güvenilir fason üretim partneri.",
   keywords: [
     // Ana anahtar kelimeler
     "üretim tesisi türkiye",
@@ -185,10 +185,11 @@ export default function TesislerPage() {
         "Helal Sertifikalı Üretim",
       ],
       capacity: "Aylık 2 Milyon Ünite",
-      dailyCapacity: "Günlük 100.000 Ünite",
+      dailyCapacity: "Günlük 65.000 Ünite",
       area: "5.600 m² Kapalı Alan",
       location: "İstanbul, Türkiye",
-      image: "/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
+      image:
+        "/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
       icon: FlaskConical,
       specialties: [
         "Krem & Serum Üretimi",
@@ -235,7 +236,7 @@ export default function TesislerPage() {
       slug: "dogukan-kimya",
       name: "DOĞUKAN KİMYA TEKSTİL GIDA AMBALAJ SAN. VE TİC. LTD. ŞTİ.",
       description:
-        "ISO 14001 çevre dostu sertifikalı 10.000m² kapalı alana sahip temizlik ürünleri, mendil ve çamaşır suyu üretiminde yüksek kapasiteli modern üretim tesisi. Günlük 200.000 ünite üretim kapasitesi ile endüstriyel boyutta fason üretim hizmetleri.",
+        "ISO 14001 çevre dostu sertifikalı 5000 m² kapalı alana sahip temizlik ürünleri, mendil ve çamaşır suyu üretiminde yüksek kapasiteli modern üretim tesisi. Günlük 200.000 ünite üretim kapasitesi ile endüstriyel boyutta fason üretim hizmetleri.",
       features: [
         "Temizlik Ürünleri Contract Manufacturing",
         "Çevre Dostu Üretim Teknolojileri",
@@ -244,11 +245,12 @@ export default function TesislerPage() {
         "Otomatik Üretim Hatları",
         "Private Label Deterjan Üretimi",
       ],
-      capacity: "Aylık 2 Milyon Ünite",
-      dailyCapacity: "Günlük 200.000 Ünite",
-      area: "10.000 m² Kapalı Alan",
+      capacity: "Aylık 1.8 Milyon Ünite",
+      dailyCapacity: "Günlük 60.000 Ünite",
+      area: "5000  m² Kapalı Alan",
       location: "İstanbul, Türkiye",
-      image: "/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
+      image:
+        "/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
       icon: Factory,
       specialties: [
         "Sıvı Sabun Üretimi",
@@ -324,7 +326,7 @@ export default function TesislerPage() {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Aylık 3+ Milyon Ünite Kapasite
+                    Aylık 3.8+ Milyon Ünite Kapasite
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -472,7 +474,7 @@ export default function TesislerPage() {
                 Yüksek Kapasite Contract Manufacturing
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
-                Aylık 3+ milyon ünite <strong>fason üretim kapasitesi</strong>{" "}
+                Aylık 3.8+ milyon ünite <strong>fason üretim kapasitesi</strong>{" "}
                 ile büyük ölçekli <strong>OEM/ODM projelerine</strong> hazır
                 altyapı
               </p>

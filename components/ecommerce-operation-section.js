@@ -236,7 +236,7 @@ export function EcommerceOperationSection() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="border-white/80 text-white hover:bg-white hover:text-green-600 dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-green-700 bg-white/10 backdrop-blur-sm">
-              <Link href="/iletisim">
+              <Link href="/e-ticaret">
                 Operasyon Detayları
               </Link>
             </Button>

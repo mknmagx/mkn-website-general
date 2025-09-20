@@ -256,3 +256,12 @@ export const SubmissionLoading = () => {
     </div>
   );
 };
+
+// Default export for backwards compatibility
+const SubmissionStatus = {
+  SubmissionSuccess,
+  SubmissionError,
+  SubmissionLoading,
+};
+
+export default SubmissionStatus;

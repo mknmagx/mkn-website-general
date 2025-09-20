@@ -3,7 +3,7 @@ import Image from "next/image";
 import {
   Instagram,
   Linkedin,
-  Youtube,
+  Twitter,
   Mail,
   Phone,
   MapPin,
@@ -84,6 +84,8 @@ export function Footer() {
             <div className="flex space-x-3">
               <Link
                 href={site.socials.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
                 aria-label="MKN Group Instagram Sayfası"
                 itemProp="sameAs"
@@ -92,6 +94,8 @@ export function Footer() {
               </Link>
               <Link
                 href={site.socials.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
                 aria-label="MKN Group LinkedIn Sayfası"
                 itemProp="sameAs"
@@ -99,12 +103,14 @@ export function Footer() {
                 <Linkedin className="h-5 w-5" />
               </Link>
               <Link
-                href={site.socials.youtube}
+                href={site.socials.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
-                aria-label="MKN Group YouTube Kanalı"
+                aria-label="MKN Group Twitter Sayfası"
                 itemProp="sameAs"
               >
-                <Youtube className="h-5 w-5" />
+                <Twitter className="h-5 w-5" />
               </Link>
             </div>
           </div>
