@@ -19,7 +19,59 @@ import Link from "next/link";
 import Image from "next/image";
 
 export function PackagingCatalogSection() {
+  const getCloudinaryUrl = (imageName) => {
+    if (!imageName) return null;
+    return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_400,h_300,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${imageName}`;
+  };
+
   const packagingTypes = [
+    {
+      category: "Disc Top Kapaklar",
+      description: "Şampuan ve temizleyici ürünler için pratik kapak çözümleri",
+      keyword:
+        "disc top kapak, şampuan kapağı, temizleyici kapak, kozmetik kapak",
+      sizes: ["24/410", "28/410"],
+      minOrder: "1000 adet",
+      image: getCloudinaryUrl("disc-top-cap-gold-white.jpg"),
+      popular: true,
+    },
+    {
+      category: "Krem Pompalar",
+      description: "Krem ve jel ürünler için hassas dozaj pompaları",
+      keyword: "krem pompası, dozaj pompası, kozmetik pompa, krem kapağı",
+      sizes: ["18/410", "20/410", "24/410"],
+      minOrder: "500 adet",
+      image: getCloudinaryUrl("cream-pump-silver-white.jpg"),
+      popular: true,
+    },
+    {
+      category: "Losyon Pompaları",
+      description: "Losyon ve sıvı ürünler için yüksek hacimli pompalar",
+      keyword:
+        "losyon pompası, sıvı pompa, yüksek hacimli pompa, bakım ürün pompası",
+      sizes: ["24/410", "28/410"],
+      minOrder: "300 adet",
+      image: getCloudinaryUrl("lotion-pump-gold-black.jpg"),
+      popular: true,
+    },
+    {
+      category: "Sprey Pompalar",
+      description: "Parfüm, temizleyici ve saç bakım ürünleri için",
+      keyword: "sprey pompası, fine mist sprayer, parfüm atomizer, spray pump",
+      sizes: ["18/410", "20/410", "24/410"],
+      minOrder: "200 adet",
+      image: getCloudinaryUrl("spray-pump-gold-black.jpg"),
+      popular: false,
+    },
+    {
+      category: "Köpük Pompalar",
+      description: "El sabunu ve köpük ürünler için özel pompalar",
+      keyword: "köpük pompası, el sabunu pompası, foam pump, köpük dozajlayıcı",
+      sizes: ["43/410"],
+      minOrder: "500 adet",
+      image: getCloudinaryUrl("foam-pump-white.jpg"),
+      popular: false,
+    },
     {
       category: "Airless Şişeler",
       description: "Premium kozmetik ürünler için hava geçirmez ambalaj",
@@ -27,59 +79,8 @@ export function PackagingCatalogSection() {
         "airless şişe toptan, airless bottle turkey, kozmetik airless ambalaj",
       sizes: ["15ml", "30ml", "50ml", "100ml"],
       minOrder: "500 adet",
-      image:
-        "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=300&fit=crop&auto=format",
-      popular: true,
-    },
-    {
-      category: "Pompa Şişeler",
-      description: "Sıvı sabun, losyon ve temizleyici ürünler için",
-      keyword: "pompa şişe üretici, lotion pump bottle, sıvı sabun şişesi",
-      sizes: ["250ml", "500ml", "750ml", "1000ml"],
-      minOrder: "300 adet",
-      image:
-        "https://images.unsplash.com/photo-1556228652-d8f56fee6a74?w=400&h=300&fit=crop&auto=format",
-      popular: true,
-    },
-    {
-      category: "Spray Şişeler",
-      description: "Parfüm, temizleyici ve saç bakım ürünleri için",
-      keyword: "spray bottle turkey, fine mist sprayer, parfüm şişesi",
-      sizes: ["50ml", "100ml", "250ml", "500ml"],
-      minOrder: "200 adet",
-      image:
-        "https://images.unsplash.com/photo-1631729371254-42c2892f0e6e?w=400&h=300&fit=crop&auto=format",
+      image: getCloudinaryUrl("airless-bottle-10-ml.jpg"),
       popular: false,
-    },
-    {
-      category: "Cam Kavanozlar",
-      description: "Premium cilt bakım kremleri ve maskeleri için",
-      keyword: "cam kavanoz toptan, glass jar cosmetic, krem kavanozu",
-      sizes: ["30ml", "50ml", "100ml", "200ml"],
-      minOrder: "100 adet",
-      image:
-        "https://images.unsplash.com/photo-1629194607643-5e41e62b8a51?w=400&h=300&fit=crop&auto=format",
-      popular: true,
-    },
-    {
-      category: "Tüp Ambalajlar",
-      description: "Krem, jel ve pasta ürünler için esnek çözümler",
-      keyword: "kozmetik tüp, tube packaging turkey, krem tüpü",
-      sizes: ["25ml", "50ml", "75ml", "100ml"],
-      minOrder: "250 adet",
-      image:
-        "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400&h=300&fit=crop&auto=format",
-      popular: false,
-    },
-    {
-      category: "Serum Damlalıkları",
-      description: "Yüz serumu ve esansiyel yağlar için hassas dozaj",
-      keyword: "dropper bottle turkey, serum damlalık, essential oil bottle",
-      sizes: ["10ml", "15ml", "30ml", "50ml"],
-      minOrder: "150 adet",
-      image:
-        "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400&h=300&fit=crop&auto=format",
-      popular: true,
     },
   ];
 

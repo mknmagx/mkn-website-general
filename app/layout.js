@@ -8,18 +8,24 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-space-grotesk",
+  preload: true,
+  fallback: ['system-ui', 'arial']
 });
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-dm-sans",
+  preload: false,
+  fallback: ['system-ui', 'arial']
 });
 
 const montserrat = Montserrat({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-montserrat",
+  preload: false,
+  fallback: ['system-ui', 'arial']
 });
 
 export const metadata = {
@@ -164,6 +170,15 @@ export default function RootLayout({ children }) {
       className={`${spaceGrotesk.variable} ${dmSans.variable} ${montserrat.variable}`}
       suppressHydrationWarning={true}
     >
+      <head>
+        {/* Critical Resource Preloading */}
+        <link rel="preload" href="/MKN-GROUP-LOGO.png" as="image" type="image/png" />
+        <link rel="preload" href="/og-image.png" as="image" type="image/png" />
+        <link rel="dns-prefetch" href="//res.cloudinary.com" />
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body suppressHydrationWarning={true} className="font-sans antialiased">
         <Suspense fallback={null}>
           <ThemeProvider
