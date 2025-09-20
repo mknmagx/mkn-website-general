@@ -115,6 +115,7 @@ export default function FacilityBanner() {
                   src={facility.image}
                   alt={facility.alt}
                   fill
+                  quality={90}
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />

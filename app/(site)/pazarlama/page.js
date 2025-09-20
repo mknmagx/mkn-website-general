@@ -81,7 +81,7 @@ export default function PazarlamaPage() {
 
   const services = [
     {
-      image: "/meta-ads-marketing.svg",
+      image: "/meta-ads-marketing.jpg",
       title: "Meta Ads Uzmanı (Facebook & Instagram Reklamları)",
       description:
         "Facebook ve Instagram reklamlarında uzman ekibimizle markanızın hedef kitlesine en etkili şekilde ulaşın. Görsel odaklı kampanyalar, video reklamları, carousel ads ve collection ads ile yüksek dönüşüm oranları elde edin. Pixel optimizasyonu, lookalike audience'lar ve retargeting stratejileri ile ROI'nizi maksimize edin.",
@@ -99,7 +99,7 @@ export default function PazarlamaPage() {
         "Meta Ads ile satışlarınızı %300'e kadar artırın, CPA'nızı %50 azaltın ve marka bilinirliğinizi güçlendirin.",
     },
     {
-      image: "/ecommerce-marketing.svg",
+      image: "/ecommerce-marketing.jpg",
       title: "E-Ticaret Pazarlama Uzmanı",
       description:
         "E-ticaret sitenizin tüm pazarlama süreçlerini optimize ediyoruz. Conversion rate optimization (CRO), email marketing, cart abandonment kampanyaları, upsell/cross-sell stratejileri ve customer lifetime value artışı için kapsamlı e-ticaret pazarlama çözümleri sunuyoruz.",
@@ -117,7 +117,7 @@ export default function PazarlamaPage() {
         "E-ticaret satışlarınızı %250 artırın, conversion rate'inizi ikiye katlayın ve müşteri yaşam boyu değerini %180 yükseltin.",
     },
     {
-      image: "/influencer-marketing.svg",
+      image: "/influencer-marketing.jpg",
       title: "Profesyonel Influencer Marketing Ajansı",
       description:
         "Markanıza uygun mikro ve makro influencer'larla stratejik kampanyalar yürütüyoruz. Instagram, TikTok, YouTube ve diğer platformlarda authentic içerik üretimiyle hedef kitlenize güvenilir bir şekilde ulaşın. Influencer seçimi, kampanya yönetimi ve performans analizi ile garantili sonuçlar.",
@@ -135,7 +135,7 @@ export default function PazarlamaPage() {
         "Influencer marketing ile organik erişimi %400 artırın, marka güvenilirliğini güçlendirin ve hedef kitleyle derin bağ kurun.",
     },
     {
-      image: "/marketplace-advertising.svg",
+      image: "/marketplace-advertising.jpg",
       title: "Pazaryeri Reklamcılığı (Amazon, Trendyol, Hepsiburada)",
       description:
         "Amazon, Trendyol, Hepsiburada, N11 ve diğer pazaryerlerinde reklamlarınızı profesyonelce yönetiyoruz. Sponsored Products, Sponsored Brands, Display reklamları ve pazaryerine özel optimizasyon stratejileri ile satışlarınızı hızla artırın. Keyword research, bid management ve competitive analysis ile en iyi sonuçları elde edin.",
@@ -153,7 +153,7 @@ export default function PazarlamaPage() {
         "Pazaryerlerinde görünürlüğünüzü %350 artırın, organik sıralamalarınızı yükseltin ve satış hacminizi 5 kata kadar çıkarın.",
     },
     {
-      image: "/google-ads-marketing.svg",
+      image: "/google-ads-marketing.jpg",
       title: "Google Ads & Performance Marketing Uzmanı",
       description:
         "Google Ads kampanyalarınızı ROI odaklı yönetiyoruz. Search ads, Shopping ads, Display reklamları, YouTube ads ve Performance Max kampanyaları ile hedef kitlenize en uygun maliyetle ulaşın. Landing page optimizasyonu, Quality Score iyileştirme ve advanced bidding strategies ile maximum performans.",
@@ -171,7 +171,7 @@ export default function PazarlamaPage() {
         "Google Ads ile kaliteli trafiği %400 artırın, CPC'nizi %40 azaltın ve ROAS'nızı minimum 5:1 oranına çıkarın.",
     },
     {
-      image: "/brand-growth-marketing.svg",
+      image: "/brand-growth-marketing.jpg",
       title: "Marka Büyütme Stratejileri (Sıfırdan Zirveye)",
       description:
         "Yeni markaları sıfırdan büyütmek için kapsamlı strateji geliştiriyoruz. Brand positioning, target audience analysis, competitive research, go-to-market stratejisi, omnichannel marketing ve scalable growth hacking teknikleri ile markanızı kısa sürede zirveye taşıyoruz.",
@@ -189,7 +189,7 @@ export default function PazarlamaPage() {
         "12 ay içinde markanızı tanınır hale getirin, pazar payınızı %500 artırın ve sürdürülebilir büyüme sistemi kurun.",
     },
     {
-      image: "/social-media-growth.svg",
+      image: "/social-media-growth.jpg",
       title: "Sosyal Medya Büyütme & İçerik Pazarlaması",
       description:
         "Instagram, TikTok, LinkedIn, YouTube ve Facebook'ta organik büyüme stratejileri uyguluyoruz. Viral içerik üretimi, hashtag stratejileri, community management, engagement optimization ve platform-specific growth tactics ile takipçi ve etkileşim oranlarınızı organik olarak artırıyoruz.",
@@ -207,7 +207,7 @@ export default function PazarlamaPage() {
         "Sosyal medya takipçilerinizi %600 artırın, engagement rate'inizi %300 yükseltin ve organik erişimi maksimize edin.",
     },
     {
-      image: "/video-marketing.svg",
+      image: "/video-marketing.jpg",
       title: "Video Marketing & TikTok Pazarlama Uzmanı",
       description:
         "TikTok, Instagram Reels, YouTube Shorts ve diğer video platformlarında viral video stratejileri geliştiriyoruz. Trend analysis, video editing, storytelling, platform algoritma optimizasyonu ve video SEO ile videolarınızın milyonlarca kişiye ulaşmasını sağlıyoruz.",
@@ -552,13 +552,13 @@ export default function PazarlamaPage() {
                 >
                   <div className={index % 2 === 1 ? "lg:col-start-2" : ""}>
                     <div className="flex items-center space-x-4 mb-6">
-                      <div className="h-12 w-12 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
+                      <div className="h-16 w-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center overflow-hidden">
                         <Image
                           src={service.image}
                           alt={service.title}
-                          width={24}
-                          height={24}
-                          className="object-cover"
+                          width={48}
+                          height={48}
+                          className="object-cover rounded-full"
                         />
                       </div>
                       <h2 className="text-3xl font-bold text-foreground">
@@ -613,22 +613,26 @@ export default function PazarlamaPage() {
                     }
                   >
                     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 dark:bg-slate-800 dark:border-slate-700">
-                      <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/30 dark:from-primary/20 dark:to-primary/40 rounded-lg flex items-center justify-center p-4 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/5 dark:to-black/20 rounded-lg"></div>
+                      {/* Görsel Kısmı */}
+                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/5 to-primary/15 dark:from-primary/10 dark:to-primary/20 flex items-center justify-center p-6 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/5 dark:to-primary/10"></div>
                         <Image
                           src={service.image}
                           alt={service.title}
-                          width={200}
-                          height={200}
-                          className="object-contain relative z-10 max-w-full max-h-full"
+                          width={350}
+                          height={250}
+                          className="object-contain w-full h-full relative z-10 drop-shadow-lg"
+                          priority={index < 2}
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                         />
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg px-3 py-2">
-                            <div className="text-xs font-medium text-primary text-center">
-                              {service.title}
-                            </div>
-                          </div>
-                        </div>
+                      </div>
+                      
+                      {/* Alt Yazı Kısmı */}
+                      <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+                        <h3 className="text-sm font-semibold text-primary text-center leading-tight">
+                          {service.title}
+                        </h3>
                       </div>
                     </Card>
                   </div>
@@ -923,7 +927,9 @@ export default function PazarlamaPage() {
                 asChild
                 className="text-lg px-8 py-4"
               >
-                <Link href="tel:+905314942594">📞 Hemen Ara: 0531 494 25 94</Link>
+                <Link href="tel:+905314942594">
+                  📞 Hemen Ara: 0531 494 25 94
+                </Link>
               </Button>
             </div>
 

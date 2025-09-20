@@ -470,8 +470,6 @@ export default function TasarimPage() {
             style={{ animationDelay: "2s" }}
           />
         </section>
-
-        {/* Portfolio Preview */}
         <section id="portfolio" className="py-20">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
@@ -484,21 +482,28 @@ export default function TasarimPage() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {portfolioImages.map((image, index) => (
-                <div
-                  key={index}
-                  className="group relative overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300"
-                >
-                  <Image
-                    src={image}
-                    alt={`Portfolio ${index + 1}`}
-                    width={200}
-                    height={200}
-                    className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-              ))}
+              {portfolioImages.map((image, index) => {
+                const imageName = image.split("/").pop();
+                return (
+                  <div
+                    key={index}
+                    className="group relative overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300"
+                  >
+                    <Image
+                      src={image}
+                      alt={imageName}
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    {/* Show image name on hover */}
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center">
+                      {imageName}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -608,7 +613,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* CTA Section */}
         <section className="py-20">
           <div className="container mx-auto px-4">
@@ -682,7 +686,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* Design Process Section */}
         <section className="py-20 bg-slate-800/50">
           <div className="container mx-auto px-4">
@@ -736,7 +739,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* Industry Expertise Section */}
         <section className="py-20">
           <div className="container mx-auto px-4">
@@ -781,7 +783,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* Tools & Technologies Section */}
         <section className="py-20 bg-slate-800/50">
           <div className="container mx-auto px-4">
@@ -814,7 +815,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* FAQ Section */}
         <section className="py-20">
           <div className="container mx-auto px-4">
@@ -857,7 +857,6 @@ export default function TasarimPage() {
             </div>
           </div>
         </section>
-
         {/* Final CTA Section */}
         <section className="py-20">
           <div className="container mx-auto px-4">

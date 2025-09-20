@@ -450,7 +450,7 @@ export default function AsparIlacPage() {
             <div className="hidden lg:block relative">
               <div className="aspect-square rounded-xl overflow-hidden shadow-2xl dark:shadow-slate-800/50 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30">
                 <Image
-                  src="/modern-pharmaceutical-manufacturing-facility-with-.png"
+                  src="/optimized/modern-pharmaceutical-manufacturing-facility-with-.png"
                   alt="Aspar İlaç GMP Sertifikalı Modern Üretim Tesisi - İstanbul Beylikdüzü"
                   width={600}
                   height={600}

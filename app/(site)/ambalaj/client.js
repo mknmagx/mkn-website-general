@@ -962,7 +962,7 @@ export default function AmbalajClient() {
             </div>
             <div className="relative aspect-video rounded-lg sm:rounded-xl overflow-hidden">
               <Image
-                src="/modern-manufacturing-facility-with-advanced-equipm.png"
+                src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
                 alt="Kozmetik Ambalaj Üretim"
                 width={600}
                 height={400}

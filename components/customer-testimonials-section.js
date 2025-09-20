@@ -158,6 +158,7 @@ export function CustomerTestimonialsSection() {
                     alt={testimonial.name}
                     width={48}
                     height={48}
+                    quality={90}
                     className="rounded-full"
                   />
                   <div>

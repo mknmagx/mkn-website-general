@@ -150,6 +150,7 @@ export function EcommerceOperationSection() {
                         src={service.image}
                         alt={service.title}
                         fill
+                        quality={85}
                         className="object-cover"
                       />
                     </div>

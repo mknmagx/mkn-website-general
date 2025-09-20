@@ -158,6 +158,7 @@ export function CosmeticManufacturingSection() {
                     src={product.image}
                     alt={product.title}
                     fill
+                    quality={90}
                     className="object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -213,6 +214,7 @@ export function CosmeticManufacturingSection() {
                 alt="Modern fason üretim tesisi ve kalite kontrol laboratuvarı"
                 width={600}
                 height={400}
+                quality={90}
                 className="rounded-xl shadow-lg"
               />
               <div className="absolute -bottom-6 -left-6 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700">

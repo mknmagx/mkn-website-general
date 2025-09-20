@@ -52,6 +52,7 @@ export function Footer() {
                   alt="MKN Group Logo - Kozmetik Üretim Firması"
                   width={32}
                   height={32}
+                  quality={95}
                   className="object-contain"
                 />
               </div>

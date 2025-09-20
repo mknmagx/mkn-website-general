@@ -543,7 +543,7 @@ export default function DogukanKimyaPage() {
             <div className="hidden lg:block relative">
               <div className="aspect-square rounded-xl overflow-hidden shadow-2xl dark:shadow-slate-800/50 bg-gradient-to-br from-blue-100 to-green-100 dark:from-blue-900/30 dark:to-green-900/30">
                 <Image
-                  src="/modern-chemical-manufacturing-facility-with-large-.png"
+                  src="/optimized/modern-chemical-manufacturing-facility-with-large-.webp"
                   alt="Doğukan Kimya ISO Sertifikalı Modern Üretim Tesisi - İstanbul Beylikdüzü"
                   width={600}
                   height={600}

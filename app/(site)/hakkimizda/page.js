@@ -955,7 +955,7 @@ export default function HakkimizdaPage() {
                   <div className="space-y-4">
                     <div className="relative group overflow-hidden rounded-2xl">
                       <Image
-                        src="/modern-manufacturing-facility-with-advanced-equipm.png"
+                        src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
                         alt="MKNGROUP 10.600m² Üretim Tesisi"
                         width={400}
                         height={300}
@@ -970,7 +970,7 @@ export default function HakkimizdaPage() {
                     </div>
                     <div className="relative group overflow-hidden rounded-2xl">
                       <Image
-                        src="/glass-jar-50ml-cosmetic.png"
+                        src="/optimized/glass-jar-50ml-cosmetic.webp"
                         alt="Premium Ambalaj Çözümleri"
                         width={400}
                         height={240}
@@ -986,7 +986,7 @@ export default function HakkimizdaPage() {
                   <div className="space-y-4 mt-8">
                     <div className="relative group overflow-hidden rounded-2xl">
                       <Image
-                        src="/cosmetic-bottle-30ml.png"
+                        src="/optimized/cosmetic-bottle-30ml.webp"
                         alt="ISO Sertifikalı Üretim"
                         width={400}
                         height={240}
@@ -1000,7 +1000,7 @@ export default function HakkimizdaPage() {
                     </div>
                     <div className="relative group overflow-hidden rounded-2xl">
                       <Image
-                        src="/modern-pharmaceutical-manufacturing-facility-with-.png"
+                        src="/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp"
                         alt="Ar-Ge ve Kalite Laboratuvarı"
                         width={400}
                         height={300}

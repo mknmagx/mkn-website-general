@@ -40,6 +40,7 @@ export function Navbar() {
                 alt="MKN Group Logo"
                 width={40}
                 height={40}
+                quality={95}
                 className="object-contain"
                 priority
               />
@@ -105,6 +106,7 @@ export function Navbar() {
                           alt="MKN Group Logo"
                           width={36}
                           height={36}
+                          quality={95}
                           className="object-contain"
                         />
                       </div>
