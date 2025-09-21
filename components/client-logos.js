@@ -5,12 +5,15 @@ import Image from "next/image";
 export function ClientLogos() {
   // Placeholder client logos - these would be replaced with actual client logos
   const clients = [
-    { name: "Müşteri 1", logo: "/corporate-logo-1.png" },
-    { name: "Müşteri 2", logo: "/corporate-logo-2.png" },
-    { name: "Müşteri 3", logo: "/corporate-logo-3.png" },
-    { name: "Müşteri 4", logo: "/corporate-logo-4.png" },
-    { name: "Müşteri 5", logo: "/corporate-logo-5.png" },
-    { name: "Müşteri 6", logo: "/corporate-logo-6.png" },
+    { name: "Quins Derm Solutions", logo: "/brands/quins-derm-solutions.png" },
+    { name: "Luxury Skin Care", logo: "/brands/luxury-skin-care.png" },
+    { name: "Gens's London", logo: "/brands/genss-london.png" },
+    {
+      name: "Loinza Skin Care Solutions",
+      logo: "/brands/loinza-skin-care-solutions.png",
+    },
+    { name: "La Vase Cosmetic", logo: "/brands/la-vase-cosmetic.png" },
+    { name: "Ladymor Cosmetics", logo: "/brands/ladymor-cosmetics.png" },
   ];
 
   return (

@@ -1953,15 +1953,37 @@ export default function HakkimizdaPage() {
             {/* Referans logoları */}
             <div className="relative">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 items-center max-w-6xl mx-auto">
-                {[1, 2, 3, 4, 5, 6].map((index) => (
+                {[
+                  {
+                    name: "Quins Derm Solutions",
+                    logo: "/brands/quins-derm-solutions.png",
+                  },
+                  {
+                    name: "Luxury Skin Care",
+                    logo: "/brands/luxury-skin-care.png",
+                  },
+                  { name: "Gens's London", logo: "/brands/genss-london.png" },
+                  {
+                    name: "Loinza Skin Care Solutions",
+                    logo: "/brands/loinza-skin-care-solutions.png",
+                  },
+                  {
+                    name: "La Vase Cosmetic",
+                    logo: "/brands/la-vase-cosmetic.png",
+                  },
+                  {
+                    name: "Ladymor Cosmetics",
+                    logo: "/brands/ladymor-cosmetics.png",
+                  },
+                ].map((client, index) => (
                   <Card
                     key={index}
                     className="group border-0 bg-card/60 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 hover:shadow-lg"
                   >
                     <CardContent className="p-6 flex items-center justify-center">
                       <Image
-                        src={`/corporate-logo-${index}.png`}
-                        alt={`Referans Firma ${index}`}
+                        src={client.logo || "/placeholder.svg"}
+                        alt={`${client.name} logosu`}
                         width={120}
                         height={60}
                         className="opacity-70 group-hover:opacity-100 grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-300"

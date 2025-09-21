@@ -245,10 +245,10 @@ export default function TasarimPage() {
 
   const portfolioImages = [
     "/optimized/cosmetic-packaging-mockup.webp",
-    "/cosmetic-bottle-30ml.png",
-    "/airless-bottle-15ml.png",
-    "/pump-bottle-250ml.png",
-    "/glass-jar-50ml-cosmetic.png",
+    "/optimized/cosmetic-bottle-30ml.webp",
+    "/optimized/airless-bottle-15ml.webp",
+    "/optimized/pump-bottle-250ml.webp",
+    "/optimized/glass-jar-50ml-cosmetic.webp",
     "/optimized/cosmetic-instagram-campaign.webp",
   ];
 

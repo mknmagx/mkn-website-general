@@ -109,7 +109,7 @@ export default function ProductDetailPage({ params }) {
   const handleDownloadCatalog = () => {
     // Create a link element for downloading the PDF
     const link = document.createElement("a");
-    link.href = "/mkn-ambalaj-katalog-tr.pdf";
+    link.href = "https://firebasestorage.googleapis.com/v0/b/mkngroup-general.firebasestorage.app/o/public%2Fmkn-ambalaj-katalog-tr.pdf?alt=media&token=1ad8671f-60df-496f-aa39-3e6217238a46";
     link.download = "MKN-Ambalaj-Katalog.pdf";
     link.target = "_blank";
     document.body.appendChild(link);

@@ -561,7 +561,7 @@ export default function AmbalajClient() {
                   className="bg-white text-blue-900 hover:bg-blue-50 border-0 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                 >
                   <Link
-                    href="/mkn-ambalaj-katalog-tr.pdf"
+                    href="https://firebasestorage.googleapis.com/v0/b/mkngroup-general.firebasestorage.app/o/public%2Fmkn-ambalaj-katalog-tr.pdf?alt=media&token=1ad8671f-60df-496f-aa39-3e6217238a46"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

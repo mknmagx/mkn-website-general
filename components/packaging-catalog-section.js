@@ -268,7 +268,7 @@ export function PackagingCatalogSection() {
                 size="lg"
                 className="bg-white text-purple-600 hover:bg-gray-100"
               >
-                <Link href="/mkn-ambalaj-katalog-tr.pdf" target="_blank">
+                <Link href="https://firebasestorage.googleapis.com/v0/b/mkngroup-general.firebasestorage.app/o/public%2Fmkn-ambalaj-katalog-tr.pdf?alt=media&token=1ad8671f-60df-496f-aa39-3e6217238a46" target="_blank">
                   <Download className="mr-2 h-5 w-5" />
                   PDF Katalog İndir (Türkçe)
                 </Link>
