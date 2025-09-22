@@ -3,6 +3,9 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import PWAInstallBanner from "@/components/pwa-install-banner";
+import PWAWrapper from "@/components/pwa-wrapper";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -173,6 +176,14 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning={true}
     >
       <head>
+        {/* PWA Manifest and Icons */}
+        <link rel="manifest" href="/site.webmanifest" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="MKN GROUP" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        
         {/* Critical Resource Preloading */}
         <link
           rel="preload"
@@ -199,7 +210,17 @@ export default function RootLayout({ children }) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <PWAWrapper>
+              {children}
+              <PWAInstallBanner />
+              <Toaster 
+                richColors 
+                position="top-center"
+                expand={true}
+                visibleToasts={4}
+                closeButton={true}
+              />
+            </PWAWrapper>
           </ThemeProvider>
         </Suspense>
         <Analytics />

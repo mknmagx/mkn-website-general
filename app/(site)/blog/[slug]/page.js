@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
+import ShareButton from "@/components/share-button";
 import { getBlogPostBySlug, getRelatedBlogPosts } from "@/data/blog-posts";
 
 export async function generateMetadata({ params }) {
@@ -177,14 +178,15 @@ export default async function BlogPostPage({ params }) {
                 </div>
               </div>
 
-              <Button
+              <ShareButton
+                title={post.title}
+                description={post.excerpt}
+                url={`https://mkngroup.com.tr/blog/${post.slug}`}
+                image={post.image}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 rounded-full"
-              >
-                <Share2 className="w-4 h-4" />
-                Paylaş
-              </Button>
+                className="rounded-full"
+              />
             </div>
           </header>
 
