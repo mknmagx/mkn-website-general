@@ -176,6 +176,22 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning={true}
     >
       <head>
+        {/* Google Analytics */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-PM69BZ32G0"
+        ></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-PM69BZ32G0');
+            `,
+          }}
+        />
+
         {/* PWA Manifest and Icons */}
         <link rel="manifest" href="/site.webmanifest" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -183,7 +199,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="MKN GROUP" />
         <meta name="mobile-web-app-capable" content="yes" />
-        
+
         {/* Critical Resource Preloading */}
         <link
           rel="preload"
@@ -213,8 +229,8 @@ export default function RootLayout({ children }) {
             <PWAWrapper>
               {children}
               <PWAInstallBanner />
-              <Toaster 
-                richColors 
+              <Toaster
+                richColors
                 position="top-center"
                 expand={true}
                 visibleToasts={4}

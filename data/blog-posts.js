@@ -9,7 +9,6 @@ export const blogPosts = [
     content: `
       <h2>Giriş</h2>
       <p>2024 yılında kozmetik fason üretim sektörü, teknolojik yenilikler ve değişen tüketici talepleri doğrultusunda hızla evrim geçiriyor. Bu yazıda, sektörün önde gelen trendlerini ve gelecek beklentilerini inceleyeceğiz.</p>
-      
       <h2>Sürdürülebilirlik ve Çevre Dostu Üretim</h2>
       <p>Tüketicilerin çevre bilinci arttıkça, kozmetik markalar sürdürülebilir üretim yöntemlerine yöneliyorlar. Fason üretim şirketleri olarak, bu talebe karşılık vermek için:</p>
       <ul>
@@ -18,7 +17,6 @@ export const blogPosts = [
         <li>Organik ve doğal hammadde tercihi</li>
         <li>Sıfır atık hedefli üretim tesisleri</li>
       </ul>
-      
       <h2>Dijital Dönüşüm ve Akıllı Üretim</h2>
       <p>Endüstri 4.0 teknolojileri kozmetik fason üretimde devrim yaratıyor:</p>
       <ul>
@@ -27,13 +25,10 @@ export const blogPosts = [
         <li><strong>Robotik Sistemler:</strong> Hassas dozajlama ve paketleme</li>
         <li><strong>Blockchain:</strong> Tedarik zinciri şeffaflığı</li>
       </ul>
-      
       <h2>Kişiselleştirilmiş Kozmetik Ürünler</h2>
       <p>Tüketiciler artık kendilerine özel formüle edilmiş ürünler talep ediyor. Bu trend, fason üretim şirketlerinin esnek üretim kapasitelerine sahip olmasını gerektiriyor.</p>
-      
       <h2>MKN Group'un Vizyonu</h2>
       <p>MKN Group olarak, bu trendlere öncülük ederek müşterilerimize en güncel teknolojiler ve sürdürülebilir çözümler sunuyoruz. ISO sertifikalı tesislerimizde, çevre dostu üretim süreçleri ile kaliteli ürünler üretiyoruz.</p>
-      
       <h2>Sonuç</h2>
       <p>2024 yılı kozmetik fason üretim sektörü için dönüm noktası olacak. Teknolojik yenilikler, sürdürülebilirlik odağı ve kişiselleştirilmiş ürün talepleri sektörü şekillendiriyor.</p>
     `,
@@ -44,7 +39,8 @@ export const blogPosts = [
     updatedAt: "2024-09-15",
     readingTime: "5 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1576671081837-49000212a370?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1600634999623-864991678406?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "kozmetik",
       "fason üretim",
@@ -71,7 +67,6 @@ export const blogPosts = [
     content: `
       <h2>Sürdürülebilir Ambalajın Önemi</h2>
       <p>Kozmetik sektöründe ambalaj, ürünün korunması kadar çevresel etkisi açısından da kritik öneme sahiptir. Sürdürülebilir ambalaj çözümleri, hem çevreyi korur hem de marka imajını güçlendirir.</p>
-      
       <h2>Çevre Dostu Ambalaj Materyalleri</h2>
       <ul>
         <li><strong>Geri Dönüştürülmüş Plastik:</strong> PCR (Post-Consumer Recycled) malzemeler</li>
@@ -80,7 +75,6 @@ export const blogPosts = [
         <li><strong>Alüminyum:</strong> Hafif, dayanıklı ve geri dönüştürülebilir</li>
         <li><strong>Kağıt ve Karton:</strong> FSC sertifikalı sürdürülebilir kaynaklardan</li>
       </ul>
-      
       <h2>Innovative Ambalaj Tasarım Yaklaşımları</h2>
       <p>Modern sürdürülebilir ambalaj tasarımı şu prensipleri benimsiyor:</p>
       <ul>
@@ -89,10 +83,8 @@ export const blogPosts = [
         <li>Refill (yeniden doldurulabilir) sistemler</li>
         <li>Modüler ambalaj çözümleri</li>
       </ul>
-      
       <h2>MKN Group'un Sürdürülebilir Ambalaj Yaklaşımı</h2>
       <p>5000+ ambalaj seçeneği ile müşterilerimize çevre dostu alternatifler sunuyoruz. Refill sistemleri, minimize ambalaj tasarımları ve geri dönüştürülebilir materyaller önceliğimiz.</p>
-      
       <h3>Ambalaj Kategorilerimizde Sürdürülebilirlik:</h3>
       <ul>
         <li><strong>Airless Şişeler:</strong> Uzun ömürlü, geri dönüştürülebilir</li>
@@ -100,7 +92,6 @@ export const blogPosts = [
         <li><strong>Pompa Sistemleri:</strong> Uzun kullanım ömrü</li>
         <li><strong>Eco-Friendly Kapaklar:</strong> Biyobozunur materyaller</li>
       </ul>
-      
       <h2>Gelecek Trendleri</h2>
       <p>Sürdürülebilir ambalaj alanında beklediğimiz gelişmeler:</p>
       <ul>
@@ -109,7 +100,6 @@ export const blogPosts = [
         <li>Nano-teknoloji ile geliştirilmiş geri dönüşüm</li>
         <li>Blockchain ile ambalaj takip sistemi</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Sürdürülebilir ambalaj, kozmetik sektörünün geleceği için kritik önem taşıyor. MKN Group olarak, çevre dostu çözümler geliştirmeye ve müşterilerimize sürdürülebilir seçenekler sunmaya devam ediyoruz.</p>
     `,
@@ -120,7 +110,8 @@ export const blogPosts = [
     updatedAt: "2024-09-12",
     readingTime: "4 dk",
     featured: false,
-    image: "https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&h=400&fit=crop&q=80",
     tags: [
       "sürdürülebilirlik",
       "ambalaj",
@@ -147,7 +138,6 @@ export const blogPosts = [
     content: `
       <h2>E-ticaret Operasyonlarının Temelleri</h2>
       <p>Başarılı bir e-ticaret operasyonu, depo yönetiminden müşteri hizmetlerine kadar birçok bileşenin koordineli çalışmasını gerektirir. 2024'te e-ticaret operasyonları daha da kritik hale geldi.</p>
-      
       <h2>Etkili Depo Yönetimi (WMS)</h2>
       <p>Modern depo yönetimi sistemleri e-ticaret başarısının anahtarıdır:</p>
       <ul>
@@ -157,7 +147,6 @@ export const blogPosts = [
         <li><strong>Barcode/RFID:</strong> Hatasız stok yönetimi</li>
         <li><strong>Zone Picking:</strong> Verimlilik artışı</li>
       </ul>
-      
       <h2>Kargo ve Lojistik Optimizasyonu</h2>
       <p>Hızlı ve güvenilir teslimat müşteri memnuniyetinin temelidir:</p>
       <ul>
@@ -166,7 +155,6 @@ export const blogPosts = [
         <li><strong>Kargo Takip Sistemi:</strong> Şeffaf süreç</li>
         <li><strong>Paketleme Optimizasyonu:</strong> Maliyet ve süre tasarrufu</li>
       </ul>
-      
       <h2>Teknoloji ve Otomasyon</h2>
       <p>E-ticaret operasyonlarında teknoloji kullanımı:</p>
       <ul>
@@ -175,7 +163,6 @@ export const blogPosts = [
         <li><strong>Chatbot ve CRM:</strong> Müşteri hizmetleri otomasyonu</li>
         <li><strong>Analytics ve BI:</strong> Veri odaklı kararlar</li>
       </ul>
-      
       <h2>MKN Group'un 3PL Hizmetleri</h2>
       <p>E-ticaret operasyonlarınızı profesyonelce yönetiyoruz:</p>
       <ul>
@@ -185,7 +172,6 @@ export const blogPosts = [
         <li><strong>Returns Management:</strong> İade süreç yönetimi</li>
         <li><strong>Inventory Management:</strong> Stok optimizasyonu</li>
       </ul>
-      
       <h2>Performance Metrikleri (KPI'lar)</h2>
       <p>E-ticaret operasyonlarında takip edilmesi gereken ana metrikler:</p>
       <ul>
@@ -195,7 +181,6 @@ export const blogPosts = [
         <li><strong>Inventory Turnover:</strong> Stok devir hızı</li>
         <li><strong>Customer Satisfaction Score:</strong> Müşteri memnuniyeti</li>
       </ul>
-      
       <h2>2024 Trendleri ve Gelecek</h2>
       <p>E-ticaret operasyonlarında öne çıkan trendler:</p>
       <ul>
@@ -204,7 +189,6 @@ export const blogPosts = [
         <li>Mikro-fulfillment merkezleri</li>
         <li>Sosyal ticaret entegrasyonu</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>E-ticaret operasyonları optimizasyonu, rekabet avantajı sağlamak için kritik önem taşıyor. MKN Group'un deneyimi ve teknoloji altyapısı ile e-ticaret işletmenizi büyütün.</p>
     `,
@@ -215,7 +199,8 @@ export const blogPosts = [
     updatedAt: "2024-09-07",
     readingTime: "6 dk",
     featured: false,
-    image: "https://images.unsplash.com/photo-1674027392887-751d6396b710?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image:
+      "https://images.unsplash.com/photo-1686061594225-3e92c0cd51b0?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "e-ticaret",
       "operasyon",
@@ -244,7 +229,6 @@ export const blogPosts = [
     content: `
       <h2>Private Label Nedir?</h2>
       <p>Private label, bir üreticinin hazır formülasyonlarını kendi markanız altında pazarlama stratejisidir. Bu yöntem, hızla kozmetik sektörüne girmek isteyen girişimciler için ideal bir çözümdür.</p>
-      
       <h2>Private Label'in Avantajları</h2>
       <ul>
         <li><strong>Düşük Başlangıç Maliyeti:</strong> R&D yatırımı gerektirmez</li>
@@ -253,10 +237,8 @@ export const blogPosts = [
         <li><strong>Düşük Risk:</strong> Mevcut başarılı ürünler</li>
         <li><strong>Esneklik:</strong> Küçük partiler ile başlama imkanı</li>
       </ul>
-      
       <h2>MKN Group Private Label Süreci</h2>
       <p>Kapsamlı private label hizmetimiz 5 aşamadan oluşur:</p>
-      
       <h3>1. Konsept Geliştirme</h3>
       <ul>
         <li>Hedef kitle analizi</li>
@@ -264,7 +246,6 @@ export const blogPosts = [
         <li>Fiyat stratejisi belirleme</li>
         <li>Rekabet analizi</li>
       </ul>
-      
       <h3>2. Formülasyon Seçimi</h3>
       <ul>
         <li>100+ hazır formülasyon seçeneği</li>
@@ -272,7 +253,6 @@ export const blogPosts = [
         <li>Doğal/organik seçenekler</li>
         <li>Sertifikasyon gereksinimleri</li>
       </ul>
-      
       <h3>3. Ambalaj Tasarımı</h3>
       <ul>
         <li>5000+ ambalaj seçeneği</li>
@@ -280,7 +260,6 @@ export const blogPosts = [
         <li>Sürdürülebilir ambalaj seçenekleri</li>
         <li>Premium finishing seçenekleri</li>
       </ul>
-      
       <h3>4. Üretim ve Kalite Kontrol</h3>
       <ul>
         <li>ISO sertifikalı üretim</li>
@@ -288,7 +267,6 @@ export const blogPosts = [
         <li>Lot bazlı kalite kontrol</li>
         <li>Stability testleri</li>
       </ul>
-      
       <h3>5. Pazarlama Desteği</h3>
       <ul>
         <li>Ürün fotoğraf çekimi</li>
@@ -296,9 +274,7 @@ export const blogPosts = [
         <li>Social media stratejisi</li>
         <li>Influencer kampanya yönetimi</li>
       </ul>
-      
       <h2>Popüler Private Label Kategorileri</h2>
-      
       <h3>Cilt Bakım Ürünleri</h3>
       <ul>
         <li>Yüz temizleyicileri</li>
@@ -306,7 +282,6 @@ export const blogPosts = [
         <li>Nemlendirici kremler</li>
         <li>Güneş koruyucu ürünler</li>
       </ul>
-      
       <h3>Saç Bakım Ürünleri</h3>
       <ul>
         <li>Şampuan ve saç kremi</li>
@@ -314,7 +289,6 @@ export const blogPosts = [
         <li>Leave-in conditioner</li>
         <li>Saç yağları</li>
       </ul>
-      
       <h3>Kişisel Bakım</h3>
       <ul>
         <li>Vücut lotionları</li>
@@ -322,7 +296,6 @@ export const blogPosts = [
         <li>Deodorant</li>
         <li>Ağız bakım ürünleri</li>
       </ul>
-      
       <h2>Minimum Sipariş Miktarları</h2>
       <p>Girişimci dostu MOQ politikamız:</p>
       <ul>
@@ -331,7 +304,6 @@ export const blogPosts = [
         <li><strong>Serum/Ampul:</strong> 300 adet</li>
         <li><strong>Özel Formülasyon:</strong> 1000 adet</li>
       </ul>
-      
       <h2>Başarı İçin İpuçları</h2>
       <ul>
         <li><strong>Niche Pazara Odaklanın:</strong> Spesifik ihtiyaçları hedefleyin</li>
@@ -340,7 +312,6 @@ export const blogPosts = [
         <li><strong>Customer Feedback:</strong> Müşteri geri bildirimlerini değerlendirin</li>
         <li><strong>Consistency:</strong> Kalite tutarlılığını koruyun</li>
       </ul>
-      
       <h2>Yasal Gereklilikler</h2>
       <p>Kozmetik ürün pazarlaması için gerekli belgeler:</p>
       <ul>
@@ -349,7 +320,6 @@ export const blogPosts = [
         <li>Sorumlu kişi ataması</li>
         <li>Etiket uygunluk kontrolleri</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Private label kozmetik, doğru partner ile kozmetik sektörüne giriş için mükemmel bir fırsattır. MKN Group'un deneyimi ve kapsamlı hizmetleri ile markanızı başarıya taşıyın.</p>
     `,
@@ -360,7 +330,8 @@ export const blogPosts = [
     updatedAt: "2024-09-01",
     readingTime: "7 dk",
     featured: false,
-    image: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://plus.unsplash.com/premium_photo-1661328251929-c530c82c59a4?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "private label",
       "marka yaratma",
@@ -388,9 +359,7 @@ export const blogPosts = [
     content: `
       <h2>Kozmetik R&D'nin Önemi</h2>
       <p>Başarılı bir kozmetik ürün, derinlemesine araştırma ve geliştirme sürecinin sonucudur. MKN Group olarak, innovative ürünler geliştirmek için kapsamlı R&D yatırımları yapıyoruz.</p>
-      
       <h2>Ürün Geliştirme Sürecinin 8 Aşamasi</h2>
-      
       <h3>1. Konsept ve İhtiyaç Analizi</h3>
       <p>Her başarılı ürün, gerçek bir ihtiyaçtan doğar:</p>
       <ul>
@@ -399,7 +368,6 @@ export const blogPosts = [
         <li><strong>Rekabet Analizi:</strong> Mevcut ürünlerin incelenmesi</li>
         <li><strong>Target Persona:</strong> Hedef kitlenin belirlenmesi</li>
       </ul>
-      
       <h3>2. Formülasyon Geliştirme</h3>
       <p>Bilimsel yaklaşım ile etkili formüller oluşturuyoruz:</p>
       <ul>
@@ -408,7 +376,6 @@ export const blogPosts = [
         <li><strong>Texture Geliştirme:</strong> Kullanıcı deneyimi</li>
         <li><strong>Preservasyon Sistemi:</strong> Mikrobiyolojik güvenlik</li>
       </ul>
-      
       <h3>3. Laboratuvar Testleri</h3>
       <p>Kapsamlı test protokolleri ile kalite güvencesi:</p>
       <ul>
@@ -417,7 +384,6 @@ export const blogPosts = [
         <li><strong>Mikrobiyolojik Testler:</strong> Preservasyon efficacy</li>
         <li><strong>Compatibilite Testleri:</strong> Ambalaj uyumluluğu</li>
       </ul>
-      
       <h3>4. Pilot Üretim</h3>
       <p>Küçük ölçekli üretim ile süreç optimizasyonu:</p>
       <ul>
@@ -426,7 +392,6 @@ export const blogPosts = [
         <li>Maliyet analizi ve optimizasyon</li>
         <li>Scale-up planlaması</li>
       </ul>
-      
       <h3>5. Güvenlik ve Etkililik Testleri</h3>
       <p>Ürün güvenliği için zorunlu testler:</p>
       <ul>
@@ -435,7 +400,6 @@ export const blogPosts = [
         <li><strong>Use Test:</strong> Gerçek kullanım koşulları</li>
         <li><strong>Klinik Testler:</strong> Etkililik kanıtlaması</li>
       </ul>
-      
       <h3>6. Regulatör Uygunluk</h3>
       <p>Yasal gereksinimlerin karşılanması:</p>
       <ul>
@@ -444,7 +408,6 @@ export const blogPosts = [
         <li><strong>PIF Hazırlama:</strong> Ürün bilgi dosyası</li>
         <li><strong>CPNP Notifikasyonu:</strong> AB pazarı için gerekli</li>
       </ul>
-      
       <h3>7. Ambalaj Geliştirme</h3>
       <p>Ürünü koruyacak ve markanızı yansıtacak ambalaj:</p>
       <ul>
@@ -453,7 +416,6 @@ export const blogPosts = [
         <li><strong>Fonksiyonellik:</strong> Kullanım kolaylığı</li>
         <li><strong>Sürdürülebilirlik:</strong> Çevre dostu seçenekler</li>
       </ul>
-      
       <h3>8. Market Lansmanı</h3>
       <p>Başarılı pazara giriş stratejisi:</p>
       <ul>
@@ -462,9 +424,7 @@ export const blogPosts = [
         <li><strong>Launch Campaign:</strong> Tanıtım kampanyası</li>
         <li><strong>Performance Tracking:</strong> Satış ve feedback analizi</li>
       </ul>
-      
       <h2>MKN Group R&D Yetenekleri</h2>
-      
       <h3>Laboratuvar Altyapısı</h3>
       <ul>
         <li>State-of-the-art analiz cihazları</li>
@@ -472,7 +432,6 @@ export const blogPosts = [
         <li>Stabilite test odaları</li>
         <li>Pilot üretim tesisleri</li>
       </ul>
-      
       <h3>Uzman Ekip</h3>
       <ul>
         <li>Kimya mühendisleri</li>
@@ -480,7 +439,6 @@ export const blogPosts = [
         <li>Mikrobiyoloji uzmanları</li>
         <li>Regulatör affairs specialists</li>
       </ul>
-      
       <h3>Formülasyon Uzmanlığı</h3>
       <ul>
         <li><strong>Anti-aging:</strong> Peptidler, vitaminler, botanikaller</li>
@@ -488,7 +446,6 @@ export const blogPosts = [
         <li><strong>Sensitive Skin:</strong> Hipoalerjenik formülasyonlar</li>
         <li><strong>Natural/Organic:</strong> Sertifikalı organik ingredients</li>
       </ul>
-      
       <h2>Innovation Trends 2024</h2>
       <p>Kozmetik R&D'de öne çıkan trendler:</p>
       <ul>
@@ -498,7 +455,6 @@ export const blogPosts = [
         <li><strong>Biotechnology:</strong> Fermente aktif maddeler</li>
         <li><strong>Nanotechnology:</strong> Enhanced delivery systems</li>
       </ul>
-      
       <h2>Sürdürülebilir R&D Yaklaşımı</h2>
       <p>Çevre dostu geliştirme stratejileri:</p>
       <ul>
@@ -507,7 +463,6 @@ export const blogPosts = [
         <li>Renewable raw materials</li>
         <li>Minimal environmental impact</li>
       </ul>
-      
       <h2>Timeline ve Maliyetler</h2>
       <p>Tipik geliştirme süreleri:</p>
       <ul>
@@ -516,7 +471,6 @@ export const blogPosts = [
         <li><strong>Clinical Claims ile:</strong> 12-18 ay</li>
         <li><strong>Regulatory Approval:</strong> +3-6 ay</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Kozmetik ürün geliştirme, multidisipliner yaklaşım gerektiren karmaşık bir süreçtir. MKN Group'un deneyimi ve teknoloji altyapısı ile innovative ürünlerinizi başarıyla pazara sunun.</p>
     `,
@@ -527,7 +481,8 @@ export const blogPosts = [
     updatedAt: "2024-08-28",
     readingTime: "8 dk",
     featured: false,
-    image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&h=400&fit=crop&q=80",
     tags: [
       "R&D",
       "ürün geliştirme",
@@ -556,9 +511,7 @@ export const blogPosts = [
     content: `
       <h2>Gıda Takviyesi Fason Üretim Nedir?</h2>
       <p>Gıda takviyesi fason üretimi, markaların kendi ürünlerini üçüncü parti üretici firmalarla hayata geçirmesi sürecidir. MKN Group olarak, vitamin tabletlerinden protein tozlarına, mineraller den bitki ekstraktlarına kadar geniş bir yelpazede gıda takviyesi üretimi yapıyoruz.</p>
-      
       <h2>Üretim Alanlarımız</h2>
-      
       <h3>1. Vitamin ve Mineral Takviyeler</h3>
       <ul>
         <li><strong>Tablet Formları:</strong> Vitamin C, D3, B Kompleks, Multivitamin</li>
@@ -566,7 +519,6 @@ export const blogPosts = [
         <li><strong>Sıvı Formlar:</strong> Vitamin D damla, B12 sublingual</li>
         <li><strong>Effervescent Tabletler:</strong> Çözücü vitamin formülasyonları</li>
       </ul>
-      
       <h3>2. Protein ve Spor Takviyeleri</h3>
       <ul>
         <li><strong>Whey Protein:</strong> İzole, konsantre ve hidrolize formlar</li>
@@ -575,7 +527,6 @@ export const blogPosts = [
         <li><strong>BCAA ve Amino Asitler:</strong> Toz ve kapsül formları</li>
         <li><strong>Pre-Workout:</strong> Enerji artırıcı karışımlar</li>
       </ul>
-      
       <h3>3. Bitki Ekstraktları ve Doğal Takviyeler</h3>
       <ul>
         <li><strong>Kurkumin Ekstraktı:</strong> Anti-inflamatuar özellikler</li>
@@ -583,9 +534,7 @@ export const blogPosts = [
         <li><strong>Spirulina ve Chlorella:</strong> Süper gıda takviyeleri</li>
         <li><strong>Probiyotik:</strong> Bağırsak sağlığı destekleyiciler</li>
       </ul>
-      
       <h2>Üretim Süreci (A'dan Z'ye)</h2>
-      
       <h3>1. Formülasyon Geliştirme</h3>
       <p>Uzman ekibimizle birlikte ürün formülasyonu belirleniyor:</p>
       <ul>
@@ -595,7 +544,6 @@ export const blogPosts = [
         <li>Tat ve koku maskeleme teknikleri</li>
         <li>Stabilite ve raf ömrü analizi</li>
       </ul>
-      
       <h3>2. Hammadde Tedariki</h3>
       <p>Kaliteli hammadde tedarik ağımız:</p>
       <ul>
@@ -604,9 +552,7 @@ export const blogPosts = [
         <li>Heavy metal ve mikrobiyolojik testler</li>
         <li>Halal ve organik sertifikalı hammaddeler</li>
       </ul>
-      
       <h3>3. Üretim Aşamaları</h3>
-      
       <h4>Tablet Üretimi</h4>
       <ul>
         <li><strong>Karıştırma:</strong> Homojen karışım elde etme</li>
@@ -614,14 +560,12 @@ export const blogPosts = [
         <li><strong>Sıkıştırma:</strong> Modern tablet presleri ile şekillendirme</li>
         <li><strong>Kaplama:</strong> Film coating veya enteric coating</li>
       </ul>
-      
       <h4>Kapsül Üretimi</h4>
       <ul>
         <li><strong>Dolum:</strong> Otomatik kapsül dolum makineleri</li>
         <li><strong>Miktalar Kontrolü:</strong> Ağırlık kontrolü ve standardizasyon</li>
         <li><strong>Kalite Kontrol:</strong> Görsel ve mekanik testler</li>
       </ul>
-      
       <h4>Toz Ürün Üretimi</h4>
       <ul>
         <li><strong>Blending:</strong> Protein ve tatlandırıcı karışımı</li>
@@ -629,9 +573,7 @@ export const blogPosts = [
         <li><strong>Homogenization:</strong> Tekdüze dağılım sağlama</li>
         <li><strong>Packaging:</strong> Pouch, tub veya sachet ambalajlama</li>
       </ul>
-      
       <h2>Kalite Kontrol ve Sertifikasyonlar</h2>
-      
       <h3>Laboratuvar Testleri</h3>
       <ul>
         <li><strong>Mikrobiyal Analiz:</strong> Toplam bakteri, maya, küf sayımı</li>
@@ -640,7 +582,6 @@ export const blogPosts = [
         <li><strong>Dissolution Test:</strong> Tablet çözünme hızı testi</li>
         <li><strong>Stabilite Çalışmaları:</strong> Raf ömrü belirleme</li>
       </ul>
-      
       <h3>Sahip Olduğumuz Sertifikalar</h3>
       <ul>
         <li>GMP (Good Manufacturing Practices)</li>
@@ -649,9 +590,7 @@ export const blogPosts = [
         <li>Halal Sertifikası</li>
         <li>Organik Üretim Sertifikası</li>
       </ul>
-      
       <h2>Ambalaj ve Etiketleme Seçenekleri</h2>
-      
       <h3>Ambalaj Türleri</h3>
       <ul>
         <li><strong>Blister Ambalaj:</strong> Tablet ve kapsüller için</li>
@@ -660,7 +599,6 @@ export const blogPosts = [
         <li><strong>Tub Ambalaj:</strong> Protein tozları için büyük kaplar</li>
         <li><strong>Stick Pack:</strong> Tek kullanımlık porsiyon ambalajları</li>
       </ul>
-      
       <h3>Etiket Tasarımı ve Baskı</h3>
       <ul>
         <li>FDA/EU uyumlu etiket tasarımı</li>
@@ -669,9 +607,7 @@ export const blogPosts = [
         <li>Anti-counterfeit güvenlik özellikleri</li>
         <li>Çevre dostu baskı teknolojileri</li>
       </ul>
-      
       <h2>Regulatör Uyumluluk</h2>
-      
       <h3>Türkiye Mevzuatı</h3>
       <ul>
         <li>Gıda Takviyeleri Yönetmeliği</li>
@@ -679,7 +615,6 @@ export const blogPosts = [
         <li>Sağlık Bakanlığı bildirimleri</li>
         <li>İddia denetimi ve onayları</li>
       </ul>
-      
       <h3>İhracat Pazarları</h3>
       <ul>
         <li>EU Novel Food Regulation</li>
@@ -687,9 +622,7 @@ export const blogPosts = [
         <li>Health Canada NPN başvuruları</li>
         <li>Halal ve Kosher sertifikasyonları</li>
       </ul>
-      
       <h2>Pazar Trendleri ve Fırsatlar</h2>
-      
       <h3>2025 Gıda Takviyesi Trendleri</h3>
       <ul>
         <li><strong>Personalized Nutrition:</strong> Kişiselleştirilmiş besin takviyeleri</li>
@@ -698,7 +631,6 @@ export const blogPosts = [
         <li><strong>Gut Health:</strong> Probiyotik ve prebiyotik ürünler</li>
         <li><strong>Clean Label:</strong> Minimal işlem görmüş, doğal ürünler</li>
       </ul>
-      
       <h2>Minimum Sipariş Miktarları</h2>
       <p>Girişimci dostu MOQ politikamız:</p>
       <ul>
@@ -708,9 +640,7 @@ export const blogPosts = [
         <li><strong>Sıvı Formlar:</strong> 1.000 litre</li>
         <li><strong>Özel Formülasyon:</strong> 100.000 adet</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Protein Tozu Markası</h3>
       <p>Yeni kurulan spor takviyeleri markası için:</p>
       <ul>
@@ -719,7 +649,6 @@ export const blogPosts = [
         <li>Premium ambalaj tasarımı</li>
         <li>6 ayda 50.000 tub satış</li>
       </ul>
-      
       <h3>Vaka 2: Vitamin C Effervescent</h3>
       <p>Bağışıklık destekleyici ürün:</p>
       <ul>
@@ -728,7 +657,6 @@ export const blogPosts = [
         <li>Çocuklar için güvenli formül</li>
         <li>Sağlık Bakanlığı onaylı iddialar</li>
       </ul>
-      
       <h2>Neden MKN Group?</h2>
       <ul>
         <li><strong>6+ Yıl Deneyim:</strong> Gıda takviyesi sektöründe uzman ekip</li>
@@ -738,7 +666,6 @@ export const blogPosts = [
         <li><strong>Maliyet Optimizasyonu:</strong> Rekabetçi fiyat avantajı</li>
         <li><strong>Regulatör Destek:</strong> Yasal süreçlerde tam destek</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Gıda takviyesi pazarı hızla büyüyen bir sektör. MKN Group'un deneyimi ve teknoloji altyapısı ile gıda takviyesi markanızı başarıyla pazara sunun. Formülasyondan pazarlamaya kadar tüm süreçlerde yanınızdayız.</p>
     `,
@@ -749,7 +676,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "12 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1584362917165-526a968579e8?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1584362917165-526a968579e8?w=800&h=400&fit=crop&q=80",
     tags: [
       "gıda takviyesi",
       "fason üretim",
@@ -778,11 +706,8 @@ export const blogPosts = [
     content: `
       <h2>Temizlik Ürünleri Fason Üretim Alanlarımız</h2>
       <p>MKN Group olarak, ev temizliğinden kişisel hijyene kadar geniş bir yelpazede temizlik ürünleri üretimi gerçekleştiriyoruz. Modern tesislerimizde çevre dostu ve etkili formülasyonlar geliştiriyoruz.</p>
-      
       <h2>Üretim Kategorilerimiz</h2>
-      
       <h3>1. Ev Temizlik Ürünleri</h3>
-      
       <h4>Deterjan ve Yumuşatıcılar</h4>
       <ul>
         <li><strong>Çamaşır Deterjanları:</strong> Toz, sıvı ve kapsül formları</li>
@@ -790,7 +715,6 @@ export const blogPosts = [
         <li><strong>Çamaşır Yumuşatıcıları:</strong> Konsantre ve normal formülasyonlar</li>
         <li><strong>Oksijen Ağartıcıları:</strong> Renkliler için güvenli ağartma</li>
       </ul>
-      
       <h4>Genel Temizlik Ürünleri</h4>
       <ul>
         <li><strong>Çok Amaçlı Temizleyiciler:</strong> Yüzey temizleme formülleri</li>
@@ -799,7 +723,6 @@ export const blogPosts = [
         <li><strong>Mutfak Temizleyicileri:</strong> Yağ çözücü özel formüller</li>
         <li><strong>Zemin Temizleyicileri:</strong> Farklı yüzeyler için özel formüller</li>
       </ul>
-      
       <h4>Dezenfektan Ürünler</h4>
       <ul>
         <li><strong>Yüzey Dezenfektanları:</strong> %99.9 bakteri öldürücü</li>
@@ -807,9 +730,7 @@ export const blogPosts = [
         <li><strong>Hava Spreyleri:</strong> Antibakteriyel oda spreyleri</li>
         <li><strong>WC Temizleyicileri:</strong> Güçlü dezenfektan özellikli</li>
       </ul>
-      
       <h3>2. Kişisel Hijyen Ürünleri</h3>
-      
       <h4>Sabun ve Duş Jelleri</h4>
       <ul>
         <li><strong>Katı Sabunlar:</strong> Gliserin bazlı nemlendirici formüller</li>
@@ -817,16 +738,13 @@ export const blogPosts = [
         <li><strong>Duş Jelleri:</strong> Farklı cilt tipleri için özel formülasyonlar</li>
         <li><strong>Şampuanlar:</strong> Saç tipi bazında özel formüller</li>
       </ul>
-      
       <h4>Ağız ve Diş Bakımı</h4>
       <ul>
         <li><strong>Diş Macunları:</strong> Fluorlu ve doğal formülasyonlar</li>
         <li><strong>Ağız Gargaraları:</strong> Antibakteriyel ve ferahlatıcı</li>
         <li><strong>Diş İpi:</strong> Waxlı ve waxsız seçenekler</li>
       </ul>
-      
       <h2>Üretim Süreci ve Teknolojiler</h2>
-      
       <h3>1. Formülasyon Geliştirme</h3>
       <p>R&D laboratuvarımızda özel formülasyonlar geliştiriyoruz:</p>
       <ul>
@@ -836,9 +754,7 @@ export const blogPosts = [
         <li>Alerjen-free formülasyon geliştirme</li>
         <li>Konsantre ve ekonomik formüller</li>
       </ul>
-      
       <h3>2. Üretim Teknolojileri</h3>
-      
       <h4>Sıvı Ürün Üretimi</h4>
       <ul>
         <li><strong>High-Speed Mixing:</strong> Homojen karışım sağlama</li>
@@ -846,7 +762,6 @@ export const blogPosts = [
         <li><strong>pH Adjustment:</strong> Otomatik pH kontrol sistemleri</li>
         <li><strong>Sterile Filling:</strong> Aseptik dolum teknolojisi</li>
       </ul>
-      
       <h4>Toz Ürün Üretimi</h4>
       <ul>
         <li><strong>Spray Drying:</strong> Toz deterjan üretimi</li>
@@ -854,7 +769,6 @@ export const blogPosts = [
         <li><strong>Dust Control:</strong> Toz kontrol sistemleri</li>
         <li><strong>Packaging Automation:</strong> Otomatik ambalajlama</li>
       </ul>
-      
       <h4>Katı Sabun Üretimi</h4>
       <ul>
         <li><strong>Cold Process:</strong> Geleneksel soğuk işlem</li>
@@ -862,9 +776,7 @@ export const blogPosts = [
         <li><strong>Melt & Pour:</strong> Özel şekil ve renk seçenekleri</li>
         <li><strong>Stamping:</strong> Logo ve marka baskısı</li>
       </ul>
-      
       <h2>Kalite Kontrol ve Testler</h2>
-      
       <h3>Mikrobiyal Testler</h3>
       <ul>
         <li><strong>Antimikrobiyel Etkinlik:</strong> Bakteri öldürücü etki testi</li>
@@ -872,7 +784,6 @@ export const blogPosts = [
         <li><strong>Challenge Test:</strong> Mikroorganizma direnci</li>
         <li><strong>Biofilm Removal:</strong> Biyofilm giderme etkinliği</li>
       </ul>
-      
       <h3>Performans Testleri</h3>
       <ul>
         <li><strong>Cleaning Efficiency:</strong> Temizleme etkinliği ölçümü</li>
@@ -880,7 +791,6 @@ export const blogPosts = [
         <li><strong>Rinsability:</strong> Durulama kolaylığı</li>
         <li><strong>Skin Compatibility:</strong> Cilt uyumluluğu testleri</li>
       </ul>
-      
       <h3>Güvenlik Testleri</h3>
       <ul>
         <li><strong>Dermatological Testing:</strong> Cilt irritasyon testleri</li>
@@ -888,9 +798,7 @@ export const blogPosts = [
         <li><strong>Acute Toxicity:</strong> Akut toksisite testleri</li>
         <li><strong>Environmental Impact:</strong> Çevresel etki analizi</li>
       </ul>
-      
       <h2>Sürdürülebilirlik ve Çevre</h2>
-      
       <h3>Çevre Dostu Formülasyonlar</h3>
       <ul>
         <li><strong>Biodegradable Ingredients:</strong> Biyobozunur hammaddeler</li>
@@ -898,7 +806,6 @@ export const blogPosts = [
         <li><strong>Concentrated Formulas:</strong> Az su, yüksek etkinlik</li>
         <li><strong>Plant-Based Surfactants:</strong> Bitkisel kaynaklı yüzey aktif maddeler</li>
       </ul>
-      
       <h3>Sürdürülebilir Ambalaj</h3>
       <ul>
         <li>Geri dönüştürülebilir plastik ambalajlar</li>
@@ -906,9 +813,7 @@ export const blogPosts = [
         <li>Refill (yeniden doldurulabilir) ambalaj seçenekleri</li>
         <li>Minimal ambalaj tasarımı</li>
       </ul>
-      
       <h2>Regulatör Uyumluluk</h2>
-      
       <h3>Türkiye Mevzuatı</h3>
       <ul>
         <li>Deterjan Yönetmeliği uyumluluğu</li>
@@ -916,7 +821,6 @@ export const blogPosts = [
         <li>Biyosidal Ürünler Tebliği</li>
         <li>MSDS (Güvenlik Bilgi Formu) hazırlığı</li>
       </ul>
-      
       <h3>Uluslararası Standartlar</h3>
       <ul>
         <li>EU REACH Compliance</li>
@@ -924,9 +828,7 @@ export const blogPosts = [
         <li>Ecocert organic certification</li>
         <li>Cradle to Cradle sertifikasyonu</li>
       </ul>
-      
       <h2>Ambalaj ve Etiketleme</h2>
-      
       <h3>Ambalaj Seçenekleri</h3>
       <ul>
         <li><strong>Plastik Şişeler:</strong> HDPE, PET squeeze bottles</li>
@@ -935,7 +837,6 @@ export const blogPosts = [
         <li><strong>Tablet Ambalaj:</strong> Toz deterjan tabletleri</li>
         <li><strong>Aerosol Kutular:</strong> Hava spreyleri için</li>
       </ul>
-      
       <h3>Etiket Tasarımı</h3>
       <ul>
         <li>Kullanım talimatları ve uyarılar</li>
@@ -944,9 +845,7 @@ export const blogPosts = [
         <li>Çoklu dil desteği</li>
         <li>QR kod entegrasyonu</li>
       </ul>
-      
       <h2>Pazar Trendleri 2025</h2>
-      
       <h3>Tüketici Talepleri</h3>
       <ul>
         <li><strong>Clean Label:</strong> Minimal ve anlaşılır içerik</li>
@@ -955,7 +854,6 @@ export const blogPosts = [
         <li><strong>Multipurpose Products:</strong> Çok amaçlı kullanım</li>
         <li><strong>Refillable Packaging:</strong> Sürdürülebilir ambalaj</li>
       </ul>
-      
       <h3>Teknoloji Trendleri</h3>
       <ul>
         <li><strong>Enzyme Technology:</strong> Enzim bazlı temizleyiciler</li>
@@ -963,7 +861,6 @@ export const blogPosts = [
         <li><strong>Smart Packaging:</strong> QR kod ve NFC entegrasyonu</li>
         <li><strong>Concentrated Formulas:</strong> Ultra konsantre ürünler</li>
       </ul>
-      
       <h2>Minimum Sipariş Miktarları</h2>
       <p>Esnek MOQ politikamız:</p>
       <ul>
@@ -973,9 +870,7 @@ export const blogPosts = [
         <li><strong>Tablet Formlar:</strong> 50.000 adet</li>
         <li><strong>Özel Formülasyon:</strong> 10.000 litre</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Çok Amaçlı Temizleyici</h3>
       <p>Startup markası için geliştirdiğimiz ürün:</p>
       <ul>
@@ -984,7 +879,6 @@ export const blogPosts = [
         <li>Eco-friendly ambalaj tasarımı</li>
         <li>6 ayda 100.000 şişe satış</li>
       </ul>
-      
       <h3>Vaka 2: Premium El Sabunu Serisi</h3>
       <p>Butik hotel zinciri için:</p>
       <ul>
@@ -993,7 +887,6 @@ export const blogPosts = [
         <li>Luxury ambalaj tasarımı</li>
         <li>1000+ otel odası tedariki</li>
       </ul>
-      
       <h2>Neden MKN Group?</h2>
       <ul>
         <li><strong>Geniş Ürün Yelpazesi:</strong> Tüm temizlik kategorilerinde uzman</li>
@@ -1004,7 +897,6 @@ export const blogPosts = [
         <li><strong>Rekabetçi Fiyat:</strong> Maliyet optimizasyonu</li>
         <li><strong>Teknik Destek:</strong> Formülasyondan pazara tam destek</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Temizlik ürünleri sektörü, hijyen bilincinin artmasıyla sürekli büyüyor. MKN Group'un deneyimi ve teknik altyapısı ile temizlik ürünleri markanızı başarıyla pazara sunun. Çevre dostu ve etkili formülasyonlarımızla fark yaratın.</p>
     `,
@@ -1015,7 +907,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "10 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1583947581924-860bda6a26df?q=80&w=2067&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image:
+      "https://images.unsplash.com/photo-1583947581924-860bda6a26df?q=80&w=2067&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "temizlik ürünleri",
       "fason üretim",
@@ -1044,11 +937,8 @@ export const blogPosts = [
     content: `
       <h2>E-ticaret Fulfillment Nedir?</h2>
       <p>E-ticaret fulfillment, online satış yapan işletmelerin sipariş alımından müşteriye teslimat sürecine kadar olan tüm operasyonel süreçlerin profesyonel olarak yönetilmesidir. MKN Group olarak, e-ticaret işletmelerine kapsamlı 3PL (Third Party Logistics) hizmetleri sunuyoruz.</p>
-      
       <h2>Fulfillment Hizmetlerimiz</h2>
-      
       <h3>1. Depo Yönetimi (WMS)</h3>
-      
       <h4>Modern Depo Altyapısı</h4>
       <ul>
         <li><strong>25.000 m² Depo Alanı:</strong> Güvenli ve klimatize ortam</li>
@@ -1057,7 +947,6 @@ export const blogPosts = [
         <li><strong>Yangın Güvenlik Sistemi:</strong> Otomatik söndürme sistemi</li>
         <li><strong>CCTV İzleme:</strong> Gerçek zamanlı görüntü takibi</li>
       </ul>
-      
       <h4>WMS (Warehouse Management System)</h4>
       <ul>
         <li><strong>Real-Time Inventory:</strong> Gerçek zamanlı stok takibi</li>
@@ -1067,9 +956,7 @@ export const blogPosts = [
         <li><strong>FIFO/LIFO Yönetimi:</strong> Raf ömrü optimizasyonu</li>
         <li><strong>Location Management:</strong> Optimal yerleşim planı</li>
       </ul>
-      
       <h3>2. Sipariş İşleme (Order Processing)</h3>
-      
       <h4>Otomatik Sipariş Alımı</h4>
       <ul>
         <li><strong>API Entegrasyonu:</strong> Tüm e-ticaret platformları</li>
@@ -1077,7 +964,6 @@ export const blogPosts = [
         <li><strong>Real-Time Processing:</strong> Anında sipariş işleme</li>
         <li><strong>Priority Order Management:</strong> Öncelik bazlı sipariş sıralama</li>
       </ul>
-      
       <h4>Picking ve Packing</h4>
       <ul>
         <li><strong>Pick List Generation:</strong> Otomatik toplama listesi</li>
@@ -1087,9 +973,7 @@ export const blogPosts = [
         <li><strong>Gift Wrapping:</strong> Hediye paketleme hizmeti</li>
         <li><strong>Insert/Flyer Addition:</strong> Promosyon malzemesi ekleme</li>
       </ul>
-      
       <h3>3. Kargo ve Lojistik</h3>
-      
       <h4>Kargo Firması Entegrasyonları</h4>
       <ul>
         <li><strong>Aras Kargo:</strong> Türkiye geneli teslimat</li>
@@ -1099,7 +983,6 @@ export const blogPosts = [
         <li><strong>DHL:</strong> Express teslimat</li>
         <li><strong>FedEx:</strong> Global lojistik çözümleri</li>
       </ul>
-      
       <h4>Teslimat Seçenekleri</h4>
       <ul>
         <li><strong>Same Day Delivery:</strong> Aynı gün teslimat (İstanbul)</li>
@@ -1108,9 +991,7 @@ export const blogPosts = [
         <li><strong>Time-Slotted Delivery:</strong> Zaman aralığı seçimi</li>
         <li><strong>Pick-up Points:</strong> Teslim alma noktaları</li>
       </ul>
-      
       <h3>4. İade Yönetimi (Returns Management)</h3>
-      
       <h4>İade Süreci</h4>
       <ul>
         <li><strong>Return Portal:</strong> Müşteri self-service iade</li>
@@ -1119,11 +1000,8 @@ export const blogPosts = [
         <li><strong>Refund Processing:</strong> Otomatik iade işlemi</li>
         <li><strong>Restocking:</strong> Tekrar satışa hazırlama</li>
       </ul>
-      
       <h2>Teknoloji Altyapımız</h2>
-      
       <h3>Entegrasyon Seçenekleri</h3>
-      
       <h4>E-ticaret Platformları</h4>
       <ul>
         <li><strong>Shopify:</strong> API entegrasyonu</li>
@@ -1133,7 +1011,6 @@ export const blogPosts = [
         <li><strong>Ticimax:</strong> Doğrudan entegrasyon</li>
         <li><strong>IdeasSoft:</strong> API bağlantısı</li>
       </ul>
-      
       <h4>Pazaryeri Entegrasyonları</h4>
       <ul>
         <li><strong>Trendyol:</strong> Satıcı paneli entegrasyonu</li>
@@ -1142,9 +1019,7 @@ export const blogPosts = [
         <li><strong>GittiGidiyor:</strong> Stok senkronizasyonu</li>
         <li><strong>N11:</strong> Fiyat ve stok güncellemesi</li>
       </ul>
-      
       <h3>Dashboard ve Raporlama</h3>
-      
       <h4>Real-Time Dashboard</h4>
       <ul>
         <li><strong>Order Status:</strong> Sipariş durumu takibi</li>
@@ -1153,7 +1028,6 @@ export const blogPosts = [
         <li><strong>Cost Analysis:</strong> Maliyet analizi</li>
         <li><strong>Revenue Tracking:</strong> Gelir takibi</li>
       </ul>
-      
       <h4>Detaylı Raporlar</h4>
       <ul>
         <li><strong>Daily Operations Report:</strong> Günlük operasyon raporu</li>
@@ -1162,9 +1036,7 @@ export const blogPosts = [
         <li><strong>Return Analysis:</strong> İade analiz raporu</li>
         <li><strong>Customer Satisfaction:</strong> Müşteri memnuniyet raporu</li>
       </ul>
-      
       <h2>Performans Metrikleri (KPIs)</h2>
-      
       <h3>Operasyonel KPIlar</h3>
       <ul>
         <li><strong>Order Accuracy Rate:</strong> Sipariş doğruluk oranı %99.8+</li>
@@ -1173,7 +1045,6 @@ export const blogPosts = [
         <li><strong>Inventory Accuracy:</strong> Stok doğruluğu %99.5+</li>
         <li><strong>Damage Rate:</strong> Hasar oranı %0.1 altında</li>
       </ul>
-      
       <h3>Müşteri Memnuniyet KPIları</h3>
       <ul>
         <li><strong>Delivery Time:</strong> Ortalama teslimat süresi</li>
@@ -1181,9 +1052,7 @@ export const blogPosts = [
         <li><strong>Return Rate:</strong> İade oranı</li>
         <li><strong>Complaint Resolution:</strong> Şikayet çözüm süresi</li>
       </ul>
-      
       <h2>Sektör Özel Çözümler</h2>
-      
       <h3>Fashion & Tekstil</h3>
       <ul>
         <li><strong>Size Management:</strong> Beden yönetimi</li>
@@ -1191,7 +1060,6 @@ export const blogPosts = [
         <li><strong>Garment Handling:</strong> Özel giyim işleme</li>
         <li><strong>Return Processing:</strong> Hızlı iade işleme</li>
       </ul>
-      
       <h3>Kozmetik & Kişisel Bakım</h3>
       <ul>
         <li><strong>Temperature Control:</strong> Sıcaklık kontrollü depolama</li>
@@ -1199,7 +1067,6 @@ export const blogPosts = [
         <li><strong>Fragile Item Handling:</strong> Kırılgan ürün işleme</li>
         <li><strong>Batch Tracking:</strong> Lot numarası takibi</li>
       </ul>
-      
       <h3>Elektronik & Teknoloji</h3>
       <ul>
         <li><strong>Anti-Static Environment:</strong> Statik önleyici ortam</li>
@@ -1207,9 +1074,7 @@ export const blogPosts = [
         <li><strong>Warranty Management:</strong> Garanti takip sistemi</li>
         <li><strong>Technical Support Integration:</strong> Teknik destek entegrasyonu</li>
       </ul>
-      
       <h2>Fiyatlandırma Modelleri</h2>
-      
       <h3>Depolama Ücretleri</h3>
       <ul>
         <li><strong>Per Pallet:</strong> Palet bazında aylık ücret</li>
@@ -1217,7 +1082,6 @@ export const blogPosts = [
         <li><strong>Per SKU:</strong> Ürün varyasyonu bazında</li>
         <li><strong>Seasonal Rates:</strong> Mevsimsel özel ücretler</li>
       </ul>
-      
       <h3>İşleme Ücretleri</h3>
       <ul>
         <li><strong>Pick & Pack Fee:</strong> Toplama ve paketleme ücreti</li>
@@ -1225,9 +1089,7 @@ export const blogPosts = [
         <li><strong>Return Processing:</strong> İade işleme ücreti</li>
         <li><strong>Value-Added Services:</strong> Katma değerli hizmet ücretleri</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Fashion E-ticaret Markası</h3>
       <p>Online giyim markası için fulfillment çözümü:</p>
       <ul>
@@ -1236,7 +1098,6 @@ export const blogPosts = [
         <li>24 saat içinde kargo çıkışı</li>
         <li>%40 operasyon maliyeti tasarrufu</li>
       </ul>
-      
       <h3>Vaka 2: Kozmetik Startup</h3>
       <p>Yeni kurulan kozmetik markası için:</p>
       <ul>
@@ -1245,7 +1106,6 @@ export const blogPosts = [
         <li>Influence marketing için özel kargo</li>
         <li>6 ayda 500% büyüme destekleme</li>
       </ul>
-      
       <h3>Vaka 3: Elektronik Distribütörü</h3>
       <p>Teknoloji ürünleri dağıtımcısı için:</p>
       <ul>
@@ -1254,9 +1114,7 @@ export const blogPosts = [
         <li>B2B ve B2C hybrid çözüm</li>
         <li>Uluslararası kargo entegrasyonu</li>
       </ul>
-      
       <h2>Neden MKN Group Fulfillment?</h2>
-      
       <h3>Operasyonel Üstünlükler</h3>
       <ul>
         <li><strong>Kapsamlı Altyapı:</strong> 25.000 m² modern depo tesisi</li>
@@ -1264,7 +1122,6 @@ export const blogPosts = [
         <li><strong>Yüksek Performans:</strong> Sektör lideri KPI'lar</li>
         <li><strong>Esnek Çözümler:</strong> Her sektöre özel hizmet</li>
       </ul>
-      
       <h3>Maliyet Avantajları</h3>
       <ul>
         <li><strong>%40 Maliyet Tasarrufu:</strong> Kendi deposuna karşı</li>
@@ -1272,7 +1129,6 @@ export const blogPosts = [
         <li><strong>Skalabilite:</strong> Büyümeye paralel ölçeklendirme</li>
         <li><strong>No CapEx:</strong> Sermaye yatırımı gerektirmez</li>
       </ul>
-      
       <h3>Stratejik Faydalar</h3>
       <ul>
         <li><strong>Focus on Core Business:</strong> Ana işe odaklanma</li>
@@ -1280,9 +1136,7 @@ export const blogPosts = [
         <li><strong>Geographic Expansion:</strong> Coğrafi genişleme desteği</li>
         <li><strong>Customer Experience:</strong> Üstün müşteri deneyimi</li>
       </ul>
-      
       <h2>Gelecek Planları ve Yenilikler</h2>
-      
       <h3>2025 Yol Haritası</h3>
       <ul>
         <li><strong>AI-Powered Forecasting:</strong> Yapay zeka destekli talep tahmini</li>
@@ -1290,7 +1144,6 @@ export const blogPosts = [
         <li><strong>Drone Delivery Pilot:</strong> Drone teslimat pilot projesi</li>
         <li><strong>Sustainability Initiatives:</strong> Sürdürülebilirlik projeleri</li>
       </ul>
-      
       <h3>Teknoloji Yatırımları</h3>
       <ul>
         <li><strong>Automated Sorting:</strong> Otomatik sıralama sistemleri</li>
@@ -1298,9 +1151,7 @@ export const blogPosts = [
         <li><strong>Predictive Analytics:</strong> Tahminsel analitik</li>
         <li><strong>Blockchain Tracking:</strong> Blockchain bazlı takip</li>
       </ul>
-      
       <h2>Başlangıç Süreci</h2>
-      
       <h3>Onboarding Adımları</h3>
       <ol>
         <li><strong>İhtiyaç Analizi:</strong> Detaylı gereksinim incelemesi</li>
@@ -1310,7 +1161,6 @@ export const blogPosts = [
         <li><strong>Go-Live:</strong> Sistemin canlıya alınması</li>
         <li><strong>Optimization:</strong> Sürekli optimizasyon</li>
       </ol>
-      
       <h3>Gerekli Dokümanlar</h3>
       <ul>
         <li>İş ortaklığı sözleşmesi</li>
@@ -1319,7 +1169,6 @@ export const blogPosts = [
         <li>MSDS ve güvenlik bilgileri</li>
         <li>Sigorta ve sorumluluk belgeleri</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>E-ticaret fulfillment, online işletmelerin başarısında kritik rol oynuyor. MKN Group'un kapsamlı 3PL hizmetleri ile operasyonel mükemmellik elde edin, maliyetlerinizi optimize edin ve müşteri memnuniyetinizi artırın. Gelişmiş teknoloji altyapımız ve deneyimli ekibimizle e-ticaret işletmenizi büyütün.</p>
     `,
@@ -1330,7 +1179,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "14 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1627915589334-14a3c3e3a741?q=80&w=1237&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image:
+      "https://images.unsplash.com/photo-1627915589334-14a3c3e3a741?q=80&w=1237&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "e-ticaret",
       "fulfillment",
@@ -1360,11 +1210,8 @@ export const blogPosts = [
     content: `
       <h2>Meta Ads ile E-ticaret Pazarlaması</h2>
       <p>Facebook ve Instagram reklamları, e-ticaret işletmeleri için en etkili pazarlama kanallarından biri. MKN Group olarak, Meta Ads uzmanı ekibimizle e-ticaret markalarının satışlarını %300'e kadar artırma konusunda kanıtlanmış deneyime sahibiz.</p>
-      
       <h2>Meta Ads Temel Stratejileri</h2>
-      
       <h3>1. Pixel Kurulumu ve Optimizasyonu</h3>
-      
       <h4>Facebook Pixel Kurulumu</h4>
       <ul>
         <li><strong>Base Code Installation:</strong> Site genelinde temel kod</li>
@@ -1372,7 +1219,6 @@ export const blogPosts = [
         <li><strong>Custom Events:</strong> Özel etkileşim takibi</li>
         <li><strong>Parameter Configuration:</strong> Değer, para birimi, ürün bilgileri</li>
       </ul>
-      
       <h4>iOS 14.5+ Sonrası Optimizasyon</h4>
       <ul>
         <li><strong>Conversions API:</strong> Server-side tracking entegrasyonu</li>
@@ -1380,9 +1226,7 @@ export const blogPosts = [
         <li><strong>Event Prioritization:</strong> 8 etkinlik öncelik sıralaması</li>
         <li><strong>ATT Compliance:</strong> App Tracking Transparency uyumluluğu</li>
       </ul>
-      
       <h3>2. Audience Strategy (Hedef Kitle Stratejisi)</h3>
-      
       <h4>Core Audiences (Temel Kitle)</h4>
       <ul>
         <li><strong>Demographics:</strong> Yaş, cinsiyet, gelir seviyesi</li>
@@ -1390,7 +1234,6 @@ export const blogPosts = [
         <li><strong>Behaviors:</strong> Satın alma davranışları</li>
         <li><strong>Location:</strong> Coğrafi hedefleme</li>
       </ul>
-      
       <h4>Custom Audiences (Özel Kitle)</h4>
       <ul>
         <li><strong>Website Traffic:</strong> Site ziyaretçileri</li>
@@ -1398,7 +1241,6 @@ export const blogPosts = [
         <li><strong>App Activity:</strong> Uygulama kullanıcıları</li>
         <li><strong>Engagement:</strong> Sosyal medya etkileşimi</li>
       </ul>
-      
       <h4>Lookalike Audiences (Benzeri Kitle)</h4>
       <ul>
         <li><strong>1% LLA:</strong> En yakın benzerlik, küçük kitle</li>
@@ -1406,11 +1248,8 @@ export const blogPosts = [
         <li><strong>Source Optimization:</strong> Kaynak kitlenin kalitesi</li>
         <li><strong>Country-Specific:</strong> Ülke bazında benzeri kitle</li>
       </ul>
-      
       <h3>3. Campaign Structure (Kampanya Yapısı)</h3>
-      
       <h4>Full Funnel Approach</h4>
-      
       <h5>TOF (Top of Funnel) - Farkındalık</h5>
       <ul>
         <li><strong>Objective:</strong> Reach, Video Views, Brand Awareness</li>
@@ -1418,7 +1257,6 @@ export const blogPosts = [
         <li><strong>Creative:</strong> Marka hikayesi, ürün tanıtımı</li>
         <li><strong>KPI:</strong> CPM, Video View Rate, CTR</li>
       </ul>
-      
       <h5>MOF (Middle of Funnel) - Değerlendirme</h5>
       <ul>
         <li><strong>Objective:</strong> Traffic, Engagement</li>
@@ -1426,7 +1264,6 @@ export const blogPosts = [
         <li><strong>Creative:</strong> Ürün detayları, müşteri yorumları</li>
         <li><strong>KPI:</strong> CPC, Session Duration, Page Views</li>
       </ul>
-      
       <h5>BOF (Bottom of Funnel) - Dönüşüm</h5>
       <ul>
         <li><strong>Objective:</strong> Conversions, Catalog Sales</li>
@@ -1434,11 +1271,8 @@ export const blogPosts = [
         <li><strong>Creative:</strong> Özel teklifler, indirim kodları</li>
         <li><strong>KPI:</strong> CPA, ROAS, Conversion Rate</li>
       </ul>
-      
       <h2>Creative Strategy (Kreatif Strateji)</h2>
-      
       <h3>1. Visual Content (Görsel İçerik)</h3>
-      
       <h4>Product Photography</h4>
       <ul>
         <li><strong>Lifestyle Shots:</strong> Yaşam tarzı fotoğrafları</li>
@@ -1446,7 +1280,6 @@ export const blogPosts = [
         <li><strong>Before/After:</strong> Öncesi/sonrası karşılaştırmaları</li>
         <li><strong>User-Generated Content:</strong> Kullanıcı üretimi içerik</li>
       </ul>
-      
       <h4>Video Content</h4>
       <ul>
         <li><strong>Product Demos:</strong> Ürün kullanım videoları</li>
@@ -1454,9 +1287,7 @@ export const blogPosts = [
         <li><strong>Customer Testimonials:</strong> Müşteri referansları</li>
         <li><strong>Behind the Scenes:</strong> Sahne arkası içerik</li>
       </ul>
-      
       <h3>2. Ad Copy (Reklam Metni)</h3>
-      
       <h4>Hook (Çengel)</h4>
       <ul>
         <li><strong>Problem/Solution:</strong> Sorun ve çözüm yaklaşımı</li>
@@ -1464,7 +1295,6 @@ export const blogPosts = [
         <li><strong>Urgency/Scarcity:</strong> Aciliyet ve kıtlık hissi</li>
         <li><strong>Question Format:</strong> Soru ile başlama</li>
       </ul>
-      
       <h4>Body Text</h4>
       <ul>
         <li><strong>Benefits Focus:</strong> Faydalar üzerine odaklanma</li>
@@ -1472,7 +1302,6 @@ export const blogPosts = [
         <li><strong>Social Proof:</strong> Müşteri yorumları, satış rakamları</li>
         <li><strong>Risk Reversal:</strong> Garanti, iade politikası</li>
       </ul>
-      
       <h4>Call-to-Action (CTA)</h4>
       <ul>
         <li><strong>Action-Oriented:</strong> Eylem odaklı ifadeler</li>
@@ -1480,11 +1309,8 @@ export const blogPosts = [
         <li><strong>Urgency Elements:</strong> Aciliyet unsurları</li>
         <li><strong>Clear Instruction:</strong> Net talimatlar</li>
       </ul>
-      
       <h2>Advanced Targeting Techniques</h2>
-      
       <h3>1. Behavioral Targeting</h3>
-      
       <h4>Purchase Behaviors</h4>
       <ul>
         <li><strong>Online Shoppers:</strong> E-ticaret alışverişçileri</li>
@@ -1492,7 +1318,6 @@ export const blogPosts = [
         <li><strong>Deal Seekers:</strong> İndirim arayanlar</li>
         <li><strong>Premium Buyers:</strong> Premium ürün alıcıları</li>
       </ul>
-      
       <h4>Device Usage</h4>
       <ul>
         <li><strong>Mobile Heavy Users:</strong> Mobil ağırlıklı kullanıcılar</li>
@@ -1500,9 +1325,7 @@ export const blogPosts = [
         <li><strong>App Users:</strong> Uygulama kullanıcıları</li>
         <li><strong>Cross-Device:</strong> Çoklu cihaz kullanıcıları</li>
       </ul>
-      
       <h3>2. Interest Stacking</h3>
-      
       <h4>Narrow Targeting</h4>
       <ul>
         <li><strong>Interest + Behavior:</strong> İlgi alanı + davranış</li>
@@ -1510,11 +1333,8 @@ export const blogPosts = [
         <li><strong>Multiple Interests:</strong> Çoklu ilgi alanı kesişimi</li>
         <li><strong>Exclude Competitors:</strong> Rakip marka hariç tutma</li>
       </ul>
-      
       <h2>Budget Optimization (Bütçe Optimizasyonu)</h2>
-      
       <h3>1. Campaign Budget Optimization (CBO)</h3>
-      
       <h4>CBO Best Practices</h4>
       <ul>
         <li><strong>Learning Phase:</strong> Öğrenme süreci yönetimi</li>
@@ -1522,9 +1342,7 @@ export const blogPosts = [
         <li><strong>Bid Strategy:</strong> Teklif stratejisi seçimi</li>
         <li><strong>Budget Allocation:</strong> Bütçe dağılımı</li>
       </ul>
-      
       <h3>2. Bid Strategies (Teklif Stratejileri)</h3>
-      
       <h4>Automatic Bidding</h4>
       <ul>
         <li><strong>Lowest Cost:</strong> En düşük maliyet</li>
@@ -1532,11 +1350,8 @@ export const blogPosts = [
         <li><strong>Bid Cap:</strong> Teklif üst sınırı</li>
         <li><strong>Target Cost:</strong> Hedef maliyet</li>
       </ul>
-      
       <h2>Performance Analysis (Performans Analizi)</h2>
-      
       <h3>1. Key Metrics (Ana Metrikler)</h3>
-      
       <h4>Traffic Metrics</h4>
       <ul>
         <li><strong>CTR (Click-Through Rate):</strong> Tıklama oranı</li>
@@ -1544,7 +1359,6 @@ export const blogPosts = [
         <li><strong>CPM (Cost Per Mille):</strong> Bin gösterim maliyeti</li>
         <li><strong>Reach:</strong> Ulaşılan kişi sayısı</li>
       </ul>
-      
       <h4>Conversion Metrics</h4>
       <ul>
         <li><strong>ROAS (Return on Ad Spend):</strong> Reklam harcama getirisi</li>
@@ -1552,9 +1366,7 @@ export const blogPosts = [
         <li><strong>Conversion Rate:</strong> Dönüşüm oranı</li>
         <li><strong>AOV (Average Order Value):</strong> Ortalama sipariş değeri</li>
       </ul>
-      
       <h3>2. Attribution Analysis</h3>
-      
       <h4>Attribution Models</h4>
       <ul>
         <li><strong>Last Click:</strong> Son tıklama modelı</li>
@@ -1562,11 +1374,8 @@ export const blogPosts = [
         <li><strong>Linear:</strong> Doğrusal attribution</li>
         <li><strong>Time Decay:</strong> Zaman azalması modeli</li>
       </ul>
-      
       <h2>Advanced Strategies (İleri Düzey Stratejiler)</h2>
-      
       <h3>1. Dynamic Product Ads (DPA)</h3>
-      
       <h4>Catalog Setup</h4>
       <ul>
         <li><strong>Product Feed:</strong> Ürün beslemesi oluşturma</li>
@@ -1574,7 +1383,6 @@ export const blogPosts = [
         <li><strong>Template Design:</strong> Dinamik şablon tasarımı</li>
         <li><strong>Audience Configuration:</strong> Kitle konfigürasyonu</li>
       </ul>
-      
       <h4>DPA Campaign Types</h4>
       <ul>
         <li><strong>Retargeting:</strong> Yeniden hedefleme</li>
@@ -1582,9 +1390,7 @@ export const blogPosts = [
         <li><strong>Cross-sell:</strong> Çapraz satış</li>
         <li><strong>Upsell:</strong> Üst satış</li>
       </ul>
-      
       <h3>2. Retargeting Strategies</h3>
-      
       <h4>Funnel-Based Retargeting</h4>
       <ul>
         <li><strong>Page Visitors:</strong> Sayfa ziyaretçileri</li>
@@ -1592,7 +1398,6 @@ export const blogPosts = [
         <li><strong>Cart Abandoners:</strong> Sepet terk edenleri</li>
         <li><strong>Past Purchasers:</strong> Geçmiş alıcıları</li>
       </ul>
-      
       <h4>Time-Based Segmentation</h4>
       <ul>
         <li><strong>1-3 Days:</strong> Kısa vadeli retargeting</li>
@@ -1600,11 +1405,8 @@ export const blogPosts = [
         <li><strong>15-30 Days:</strong> Uzun vadeli nurturing</li>
         <li><strong>30+ Days:</strong> Re-activation kampanyaları</li>
       </ul>
-      
       <h2>Seasonal Campaigns (Mevsimsel Kampanyalar)</h2>
-      
       <h3>1. Holiday Marketing</h3>
-      
       <h4>Black Friday/Cyber Monday</h4>
       <ul>
         <li><strong>Early Bird Campaigns:</strong> Erken kuş kampanyaları</li>
@@ -1612,7 +1414,6 @@ export const blogPosts = [
         <li><strong>Bundle Offers:</strong> Paket teklifleri</li>
         <li><strong>Gift Guides:</strong> Hediye rehberleri</li>
       </ul>
-      
       <h4>Ramadan/Bayram Kampanyaları</h4>
       <ul>
         <li><strong>Cultural Messaging:</strong> Kültürel mesajlaşma</li>
@@ -1620,11 +1421,8 @@ export const blogPosts = [
         <li><strong>Family Values:</strong> Aile değerleri vurgusu</li>
         <li><strong>Special Offers:</strong> Özel teklifler</li>
       </ul>
-      
       <h2>Compliance ve Best Practices</h2>
-      
       <h3>1. Facebook Advertising Policies</h3>
-      
       <h4>Content Guidelines</h4>
       <ul>
         <li><strong>Prohibited Content:</strong> Yasak içerik kuralları</li>
@@ -1632,9 +1430,7 @@ export const blogPosts = [
         <li><strong>Image Text Policy:</strong> Görsel metin kuralı</li>
         <li><strong>Landing Page Quality:</strong> İniş sayfası kalitesi</li>
       </ul>
-      
       <h3>2. Account Health</h3>
-      
       <h4>Quality Metrics</h4>
       <ul>
         <li><strong>Quality Ranking:</strong> Kalite sıralaması</li>
@@ -1642,9 +1438,7 @@ export const blogPosts = [
         <li><strong>Conversion Rate Ranking:</strong> Dönüşüm oranı</li>
         <li><strong>Feedback Score:</strong> Geri bildirim puanı</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Fashion E-ticaret</h3>
       <p>Online giyim markası için Meta Ads kampanyası:</p>
       <ul>
@@ -1653,7 +1447,6 @@ export const blogPosts = [
         <li><strong>Satış Artışı:</strong> %1,200</li>
         <li><strong>Aylık Ciro:</strong> ₺2.8M</li>
       </ul>
-      
       <h3>Vaka 2: Kozmetik Startup</h3>
       <p>Yeni kozmetik markası için marka bilinirliği:</p>
       <ul>
@@ -1662,11 +1455,8 @@ export const blogPosts = [
         <li><strong>Website Traffic:</strong> %850 artış</li>
         <li><strong>Brand Recall:</strong> %45 artış</li>
       </ul>
-      
       <h2>MKN Group Meta Ads Uzmanı Hizmetleri</h2>
-      
       <h3>Hizmet Paketlerimiz</h3>
-      
       <h4>Starter Package</h4>
       <ul>
         <li>Pixel kurulumu ve konfigürasyonu</li>
@@ -1674,7 +1464,6 @@ export const blogPosts = [
         <li>Aylık performans raporu</li>
         <li>Haftalık optimizasyon</li>
       </ul>
-      
       <h4>Growth Package</h4>
       <ul>
         <li>Full funnel kampanya stratejisi</li>
@@ -1682,7 +1471,6 @@ export const blogPosts = [
         <li>Kreatif üretim desteği</li>
         <li>Bi-weekly strateji toplantıları</li>
       </ul>
-      
       <h4>Enterprise Package</h4>
       <ul>
         <li>Dedicated account management</li>
@@ -1690,7 +1478,6 @@ export const blogPosts = [
         <li>Advanced audience research</li>
         <li>Weekly performance reviews</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Meta Ads, e-ticaret işletmeleri için güçlü bir satış artırma aracı. Doğru strateji, kitle hedeflemesi ve kreatif yaklaşımla satışlarınızı exponential olarak artırabilirsiniz. MKN Group Meta Ads uzmanları ile markanızın potansiyelini keşfedin ve rakiplerinizin önüne geçin.</p>
     `,
@@ -1701,7 +1488,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "16 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1611926653458-09294b3142bf?w=800&h=400&fit=crop&q=80",
     tags: [
       "meta ads",
       "facebook reklamları",
@@ -1729,11 +1517,8 @@ export const blogPosts = [
     content: `
       <h2>360° Kreatif Tasarım Portföyümüz</h2>
       <p>MKN Group olarak, markanızın görsel kimliğinden ürün ambalajına, dijital varlığından fiziksel materyallerine kadar tüm tasarım ihtiyaçlarınızı karşılıyoruz. Kreatif tasarım bölümümüz, marka değerinizi artıran profesyonel çözümler sunuyor.</p>
-      
       <h2>Marka Kimliği ve Logo Tasarımı</h2>
-      
       <h3>1. Marka Stratejisi ve Konumlama</h3>
-      
       <h4>Brand Discovery Process</h4>
       <ul>
         <li><strong>Marka Araştırması:</strong> Hedef kitle ve rakip analizi</li>
@@ -1742,7 +1527,6 @@ export const blogPosts = [
         <li><strong>Brand Personality:</strong> Marka kişiliği belirleme</li>
         <li><strong>Tone of Voice:</strong> İletişim tonu geliştirme</li>
       </ul>
-      
       <h4>Logo Tasarım Süreci</h4>
       <ul>
         <li><strong>Concept Development:</strong> Konsept geliştirme</li>
@@ -1752,9 +1536,7 @@ export const blogPosts = [
         <li><strong>Typography Selection:</strong> Tipografi seçimi</li>
         <li><strong>Versatility Testing:</strong> Çok yönlülük testleri</li>
       </ul>
-      
       <h3>2. Kurumsal Kimlik Sistemi</h3>
-      
       <h4>Brand Guidelines</h4>
       <ul>
         <li><strong>Logo Usage:</strong> Logo kullanım kuralları</li>
@@ -1763,11 +1545,8 @@ export const blogPosts = [
         <li><strong>Imagery Style:</strong> Görsel stil rehberi</li>
         <li><strong>Application Examples:</strong> Uygulama örnekleri</li>
       </ul>
-      
       <h2>Ambalaj ve Etiket Tasarımı</h2>
-      
       <h3>1. Ürün Etiket Tasarımı</h3>
-      
       <h4>Kozmetik Ürün Etiketleri</h4>
       <ul>
         <li><strong>FDA/EU Compliance:</strong> Regulatör uyumluluk</li>
@@ -1776,7 +1555,6 @@ export const blogPosts = [
         <li><strong>Premium Finishing:</strong> Premium kaplama seçenekleri</li>
         <li><strong>Anti-Counterfeit Features:</strong> Sahtecilik önleyici özellikler</li>
       </ul>
-      
       <h4>Gıda Takviyesi Etiketleri</h4>
       <ul>
         <li><strong>Nutrition Facts Panel:</strong> Besin değerleri paneli</li>
@@ -1785,7 +1563,6 @@ export const blogPosts = [
         <li><strong>Storage Instructions:</strong> Saklama talimatları</li>
         <li><strong>Barcode Integration:</strong> Barkod entegrasyonu</li>
       </ul>
-      
       <h4>Temizlik Ürünü Etiketleri</h4>
       <ul>
         <li><strong>Hazard Symbols:</strong> Tehlike sembolleri</li>
@@ -1794,9 +1571,7 @@ export const blogPosts = [
         <li><strong>Environmental Icons:</strong> Çevre dostu semboller</li>
         <li><strong>Waterproof Materials:</strong> Su geçirmez malzemeler</li>
       </ul>
-      
       <h3>2. Kutu ve Ambalaj Tasarımı</h3>
-      
       <h4>Structural Packaging Design</h4>
       <ul>
         <li><strong>Die-line Creation:</strong> Kesim çizgisi oluşturma</li>
@@ -1805,7 +1580,6 @@ export const blogPosts = [
         <li><strong>Functionality Testing:</strong> İşlevsellik testleri</li>
         <li><strong>Cost Optimization:</strong> Maliyet optimizasyonu</li>
       </ul>
-      
       <h4>Premium Packaging Options</h4>
       <ul>
         <li><strong>Hot Stamping:</strong> Sıcak baskı (altın, gümüş)</li>
@@ -1814,11 +1588,8 @@ export const blogPosts = [
         <li><strong>Soft-Touch Coating:</strong> Yumuşak dokunuş kaplama</li>
         <li><strong>Holographic Effects:</strong> Holografik efektler</li>
       </ul>
-      
       <h2>Katalog ve Broşür Tasarımı</h2>
-      
       <h3>1. Ürün Katalogları</h3>
-      
       <h4>Dijital Katalog Tasarımı</h4>
       <ul>
         <li><strong>Interactive Elements:</strong> Etkileşimli öğeler</li>
@@ -1827,7 +1598,6 @@ export const blogPosts = [
         <li><strong>E-commerce Integration:</strong> E-ticaret entegrasyonu</li>
         <li><strong>Analytics Tracking:</strong> Analitik takip kodu</li>
       </ul>
-      
       <h4>Basılı Katalog Tasarımı</h4>
       <ul>
         <li><strong>High-Quality Photography:</strong> Yüksek kalite fotoğrafçılık</li>
@@ -1836,9 +1606,7 @@ export const blogPosts = [
         <li><strong>Paper Selection:</strong> Kağıt seçimi</li>
         <li><strong>Binding Options:</strong> Ciltleme seçenekleri</li>
       </ul>
-      
       <h3>2. Pazarlama Materyalleri</h3>
-      
       <h4>Broşür ve Flyer Tasarımı</h4>
       <ul>
         <li><strong>Bi-fold/Tri-fold Design:</strong> İki/üç katlama tasarım</li>
@@ -1846,11 +1614,8 @@ export const blogPosts = [
         <li><strong>QR Code Implementation:</strong> QR kod kullanımı</li>
         <li><strong>Variable Data Printing:</strong> Değişken veri baskısı</li>
       </ul>
-      
       <h2>Website ve Dijital Tasarım</h2>
-      
       <h3>1. Website Tasarımı</h3>
-      
       <h4>E-ticaret Website Tasarımı</h4>
       <ul>
         <li><strong>User Experience (UX) Design:</strong> Kullanıcı deneyimi tasarımı</li>
@@ -1859,7 +1624,6 @@ export const blogPosts = [
         <li><strong>Shopping Cart Optimization:</strong> Sepet optimizasyonu</li>
         <li><strong>Payment Gateway Integration:</strong> Ödeme sistemi entegrasyonu</li>
       </ul>
-      
       <h4>Kurumsal Website Tasarımı</h4>
       <ul>
         <li><strong>Corporate Identity Integration:</strong> Kurumsal kimlik entegrasyonu</li>
@@ -1868,9 +1632,7 @@ export const blogPosts = [
         <li><strong>Multi-Language Support:</strong> Çok dil desteği</li>
         <li><strong>Social Media Integration:</strong> Sosyal medya entegrasyonu</li>
       </ul>
-      
       <h3>2. Sosyal Medya Tasarımı</h3>
-      
       <h4>Social Media Graphics</h4>
       <ul>
         <li><strong>Instagram Post/Story Design:</strong> Instagram gönderi/hikaye tasarımı</li>
@@ -1879,7 +1641,6 @@ export const blogPosts = [
         <li><strong>YouTube Thumbnail/Banner:</strong> YouTube thumbnail/banner</li>
         <li><strong>TikTok Video Graphics:</strong> TikTok video grafikleri</li>
       </ul>
-      
       <h4>Digital Marketing Materials</h4>
       <ul>
         <li><strong>Google Ads Banners:</strong> Google Ads banner tasarımı</li>
@@ -1887,11 +1648,8 @@ export const blogPosts = [
         <li><strong>Landing Page Design:</strong> İniş sayfası tasarımı</li>
         <li><strong>Display Ad Banners:</strong> Display reklam bannerları</li>
       </ul>
-      
       <h2>3D Modelleme ve Ürün Görselleri</h2>
-      
       <h3>1. 3D Ürün Modelleme</h3>
-      
       <h4>Kozmetik Ürün Modelleme</h4>
       <ul>
         <li><strong>Packaging 3D Models:</strong> Ambalaj 3D modelleri</li>
@@ -1900,7 +1658,6 @@ export const blogPosts = [
         <li><strong>Lighting Setup:</strong> Işık düzenlemesi</li>
         <li><strong>High-Resolution Rendering:</strong> Yüksek çözünürlük render</li>
       </ul>
-      
       <h4>Architectural Visualization</h4>
       <ul>
         <li><strong>Factory/Facility Modeling:</strong> Fabrika/tesis modelleme</li>
@@ -1908,9 +1665,7 @@ export const blogPosts = [
         <li><strong>Virtual Tours:</strong> Sanal tur oluşturma</li>
         <li><strong>Interactive Presentations:</strong> Etkileşimli sunumlar</li>
       </ul>
-      
       <h3>2. Augmented Reality (AR) Uygulamaları</h3>
-      
       <h4>AR Product Try-On</h4>
       <ul>
         <li><strong>Virtual Makeup Try-On:</strong> Sanal makyaj deneme</li>
@@ -1918,11 +1673,8 @@ export const blogPosts = [
         <li><strong>Product Placement:</strong> Ürün yerleştirme</li>
         <li><strong>Interactive Catalogues:</strong> Etkileşimli kataloglar</li>
       </ul>
-      
       <h2>Profesyonel Ürün Fotoğrafçılığı</h2>
-      
       <h3>1. Product Photography</h3>
-      
       <h4>E-ticaret Ürün Çekimi</h4>
       <ul>
         <li><strong>White Background Shots:</strong> Beyaz zemin çekimleri</li>
@@ -1931,7 +1683,6 @@ export const blogPosts = [
         <li><strong>Scale Reference:</strong> Ölçek referans çekimleri</li>
         <li><strong>Multiple Angle Views:</strong> Çoklu açı görünümleri</li>
       </ul>
-      
       <h4>Lifestyle Photography</h4>
       <ul>
         <li><strong>Usage Context Shots:</strong> Kullanım bağlamı çekimleri</li>
@@ -1939,9 +1690,7 @@ export const blogPosts = [
         <li><strong>Atmosphere Creation:</strong> Atmosfer oluşturma</li>
         <li><strong>Brand Story Telling:</strong> Marka hikayesi anlatımı</li>
       </ul>
-      
       <h3>2. Video Production</h3>
-      
       <h4>Product Video Content</h4>
       <ul>
         <li><strong>Unboxing Videos:</strong> Kutu açma videoları</li>
@@ -1950,7 +1699,6 @@ export const blogPosts = [
         <li><strong>Behind-the-Scenes:</strong> Sahne arkası videoları</li>
         <li><strong>Customer Testimonials:</strong> Müşteri referans videoları</li>
       </ul>
-      
       <h4>Corporate Video Production</h4>
       <ul>
         <li><strong>Company Introduction:</strong> Şirket tanıtım videosu</li>
@@ -1958,11 +1706,8 @@ export const blogPosts = [
         <li><strong>Process Documentation:</strong> Süreç belgelendirme</li>
         <li><strong>Training Videos:</strong> Eğitim videoları</li>
       </ul>
-      
       <h2>Tasarım Süreci ve Metodolojisi</h2>
-      
       <h3>1. Discovery ve Araştırma</h3>
-      
       <h4>Creative Brief Development</h4>
       <ul>
         <li><strong>Project Objectives:</strong> Proje hedefleri</li>
@@ -1971,9 +1716,7 @@ export const blogPosts = [
         <li><strong>Technical Requirements:</strong> Teknik gereksinimler</li>
         <li><strong>Timeline & Budget:</strong> Zaman çizelgesi ve bütçe</li>
       </ul>
-      
       <h3>2. Concept Development</h3>
-      
       <h4>İdeation Process</h4>
       <ul>
         <li><strong>Brainstorming Sessions:</strong> Beyin fırtınası seansları</li>
@@ -1981,9 +1724,7 @@ export const blogPosts = [
         <li><strong>Concept Sketching:</strong> Konsept çizimi</li>
         <li><strong>Design Direction:</strong> Tasarım yönü belirleme</li>
       </ul>
-      
       <h3>3. Design Execution</h3>
-      
       <h4>Iterative Design Process</h4>
       <ul>
         <li><strong>Initial Concepts:</strong> İlk konseptler</li>
@@ -1992,11 +1733,8 @@ export const blogPosts = [
         <li><strong>Final Approval:</strong> Final onay</li>
         <li><strong>Production Ready Files:</strong> Üretim hazır dosyalar</li>
       </ul>
-      
       <h2>Teknoloji ve Yazılım Altyapısı</h2>
-      
       <h3>1. Design Software Stack</h3>
-      
       <h4>Adobe Creative Suite</h4>
       <ul>
         <li><strong>Photoshop:</strong> Görsel düzenleme ve retuş</li>
@@ -2005,7 +1743,6 @@ export const blogPosts = [
         <li><strong>After Effects:</strong> Motion graphics</li>
         <li><strong>Premiere Pro:</strong> Video düzenleme</li>
       </ul>
-      
       <h4>3D Modeling Software</h4>
       <ul>
         <li><strong>Cinema 4D:</strong> 3D modelleme ve animasyon</li>
@@ -2013,7 +1750,6 @@ export const blogPosts = [
         <li><strong>KeyShot:</strong> 3D rendering ve görselleştirme</li>
         <li><strong>Rhino 3D:</strong> Endüstriyel tasarım</li>
       </ul>
-      
       <h4>Web Design Tools</h4>
       <ul>
         <li><strong>Figma:</strong> UI/UX tasarım</li>
@@ -2021,11 +1757,8 @@ export const blogPosts = [
         <li><strong>Adobe XD:</strong> User experience design</li>
         <li><strong>Webflow:</strong> Visual web development</li>
       </ul>
-      
       <h2>Kalite Kontrol ve Teslim</h2>
-      
       <h3>1. Quality Assurance</h3>
-      
       <h4>Design Review Process</h4>
       <ul>
         <li><strong>Technical Specifications Check:</strong> Teknik şartname kontrolü</li>
@@ -2033,9 +1766,7 @@ export const blogPosts = [
         <li><strong>Print Production Review:</strong> Baskı üretim kontrolü</li>
         <li><strong>File Format Optimization:</strong> Dosya format optimizasyonu</li>
       </ul>
-      
       <h3>2. Delivery and Support</h3>
-      
       <h4>File Delivery System</h4>
       <ul>
         <li><strong>Source Files:</strong> Kaynak dosyalar (AI, PSD, etc.)</li>
@@ -2044,9 +1775,7 @@ export const blogPosts = [
         <li><strong>Print Ready:</strong> Baskı hazır dosyalar</li>
         <li><strong>Usage Guidelines:</strong> Kullanım rehberi</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Kozmetik Markası Rebranding</h3>
       <p>Mevcut kozmetik markası için kapsamlı yeniden markalaşma:</p>
       <ul>
@@ -2056,7 +1785,6 @@ export const blogPosts = [
         <li>Sosyal medya görsel kimlik güncellemesi</li>
         <li>%85 marka tanınırlık artışı</li>
       </ul>
-      
       <h3>Vaka 2: Startup Gıda Takviyesi Markası</h3>
       <p>Sıfırdan marka yaratma projesi:</p>
       <ul>
@@ -2066,11 +1794,8 @@ export const blogPosts = [
         <li>Digital marketing asset'leri</li>
         <li>6 ayda pazar lideri konumuna ulaşım</li>
       </ul>
-      
       <h2>Fiyatlandırma ve Hizmet Paketleri</h2>
-      
       <h3>Paket Seçenekleri</h3>
-      
       <h4>Startup Package</h4>
       <ul>
         <li>Logo tasarımı</li>
@@ -2078,7 +1803,6 @@ export const blogPosts = [
         <li>5 ürün etiketi tasarımı</li>
         <li>Sosyal medya şablonları</li>
       </ul>
-      
       <h4>Growth Package</h4>
       <ul>
         <li>Kapsamlı marka rehberi</li>
@@ -2087,7 +1811,6 @@ export const blogPosts = [
         <li>3D ürün görselleri</li>
         <li>Video content üretimi</li>
       </ul>
-      
       <h4>Enterprise Package</h4>
       <ul>
         <li>360° marka stratejisi</li>
@@ -2096,7 +1819,6 @@ export const blogPosts = [
         <li>Dedicated creative team</li>
         <li>Priority project management</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Profesyonel tasarım, markanızın başarısında kritik rol oynar. MKN Group'un 360° kreatif tasarım hizmetleri ile markanızı güçlendirin, müşterilerinizle duygusal bağ kurun ve pazarda öne çıkın. Uzman tasarım ekibimiz, her projeyi marka değerinizi artıracak şekilde yönetiyor.</p>
     `,
@@ -2107,7 +1829,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "18 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1647492989217-afaf693e19b8?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image:
+      "https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&h=400&fit=crop&q=80",
     tags: [
       "kreatif tasarım",
       "marka kimliği",
@@ -2135,11 +1858,8 @@ export const blogPosts = [
     content: `
       <h2>MKN Group Kozmetik Ambalaj Katalogu</h2>
       <p>5000+ ürün seçeneği ile Türkiye'nin en kapsamlı kozmetik ambalaj katalogu. Airless şişelerden premium kavanozlara, pompa sistemlerinden özel tasarım çözümlerine kadar her ihtiyacınıza uygun ambalaj ürünleri.</p>
-      
       <h2>Airless Ambalaj Sistemleri</h2>
-      
       <h3>1. Airless Şişeler</h3>
-      
       <h4>15ml - 50ml Airless Şişeler</h4>
       <ul>
         <li><strong>15ml Airless:</strong> Serum ve konsantre ürünler için</li>
@@ -2149,7 +1869,6 @@ export const blogPosts = [
         <li><strong>Renk Seçenekleri:</strong> Beyaz, siyah, şeffaf, özel renk</li>
         <li><strong>Pump Sistemi:</strong> %99 ürün verimlilik</li>
       </ul>
-      
       <h4>Premium Airless Serisi</h4>
       <ul>
         <li><strong>Gold/Silver Kaplama:</strong> Metalik görünüm</li>
@@ -2158,9 +1877,7 @@ export const blogPosts = [
         <li><strong>Custom Colors:</strong> Özel renk formülasyonu</li>
         <li><strong>Gradient Effects:</strong> Geçişli renk efektleri</li>
       </ul>
-      
       <h3>2. Airless Pompa Teknolojisi</h3>
-      
       <h4>Pompa Özellikleri</h4>
       <ul>
         <li><strong>360° Kullanım:</strong> Her açıda çalışma</li>
@@ -2169,11 +1886,8 @@ export const blogPosts = [
         <li><strong>Kolay Temizlik:</strong> Hijyenik kullanım</li>
         <li><strong>Uzun Ömür:</strong> 10.000+ kullanım garantisi</li>
       </ul>
-      
       <h2>Pompa Şişe ve Sistemleri</h2>
-      
       <h3>1. Lotion Pompa Şişeleri</h3>
-      
       <h4>Standart Boyut Seçenekleri</h4>
       <ul>
         <li><strong>100ml Pompa Şişe:</strong> Seyahat boyu</li>
@@ -2181,7 +1895,6 @@ export const blogPosts = [
         <li><strong>500ml Pompa Şişe:</strong> Aile boyu</li>
         <li><strong>1000ml Pompa Şişe:</strong> Profesyonel kullanım</li>
       </ul>
-      
       <h4>Pompa Çeşitleri</h4>
       <ul>
         <li><strong>Smooth Pump:</strong> Düz pompa başlığı</li>
@@ -2189,9 +1902,7 @@ export const blogPosts = [
         <li><strong>Lock Pump:</strong> Kilitli pompa sistemi</li>
         <li><strong>Spray Pump:</strong> Sprey pompa seçeneği</li>
       </ul>
-      
       <h3>2. Şampuan ve Duş Jeli Pompaları</h3>
-      
       <h4>Banyo Ürünleri Pompaları</h4>
       <ul>
         <li><strong>Yüksek Akış Pompası:</strong> 2-4ml dosaj</li>
@@ -2199,11 +1910,8 @@ export const blogPosts = [
         <li><strong>Anti-Clog System:</strong> Tıkanma önleyici</li>
         <li><strong>Ergonomik Tasarım:</strong> Kolay kullanım</li>
       </ul>
-      
       <h2>Cam Kavanoz ve Şişeler</h2>
-      
       <h3>1. Krem Kavanozları</h3>
-      
       <h4>Boyut Seçenekleri</h4>
       <ul>
         <li><strong>5ml Sample Kavanozu:</strong> Deneme ürünleri</li>
@@ -2212,7 +1920,6 @@ export const blogPosts = [
         <li><strong>50ml Günlük Krem:</strong> Yaygın kullanım</li>
         <li><strong>100ml Body Krem:</strong> Vücut ürünleri</li>
       </ul>
-      
       <h4>Cam Kalitesi ve Özellikleri</h4>
       <ul>
         <li><strong>Flint Glass:</strong> Berrak şeffaf cam</li>
@@ -2221,9 +1928,7 @@ export const blogPosts = [
         <li><strong>Frosted Glass:</strong> Mat görünüm</li>
         <li><strong>Colored Glass:</strong> Özel renk seçenekleri</li>
       </ul>
-      
       <h3>2. Serum ve Yağ Şişeleri</h3>
-      
       <h4>Damlalık Şişeler</h4>
       <ul>
         <li><strong>10ml Serum Şişesi:</strong> Konsantre serumlar</li>
@@ -2231,11 +1936,8 @@ export const blogPosts = [
         <li><strong>Pipet Damlalık:</strong> Hassas dozaj</li>
         <li><strong>Çocuk Güvenliği:</strong> CRC kapak seçeneği</li>
       </ul>
-      
       <h2>Plastik Ambalaj Çözümleri</h2>
-      
       <h3>1. PE/PP Şişeler</h3>
-      
       <h4>Squeeze Şişeler</h4>
       <ul>
         <li><strong>100ml - 500ml Arası:</strong> Çeşitli boyut seçenekleri</li>
@@ -2243,9 +1945,7 @@ export const blogPosts = [
         <li><strong>Disc-Top Kapaklar:</strong> Kontrollü akış</li>
         <li><strong>Orifice Reducer:</strong> Akış azaltıcı</li>
       </ul>
-      
       <h3>2. PET Şişeler</h3>
-      
       <h4>Şampuan ve Duş Jeli Şişeleri</h4>
       <ul>
         <li><strong>250ml - 1000ml:</strong> Geniş kapasite aralığı</li>
@@ -2253,11 +1953,8 @@ export const blogPosts = [
         <li><strong>Oval Shape:</strong> Ergonomik kavrama</li>
         <li><strong>Square Bottles:</strong> Maksimum depolama</li>
       </ul>
-      
       <h2>Özel Tasarım ve Custom Ambalaj</h2>
-      
       <h3>1. Kalıp Tasarımı ve Üretimi</h3>
-      
       <h4>Custom Şekil Tasarımı</h4>
       <ul>
         <li><strong>3D Modelleme:</strong> Önizleme ve onay</li>
@@ -2266,7 +1963,6 @@ export const blogPosts = [
         <li><strong>Seri Üretim:</strong> Büyük miktar üretim</li>
         <li><strong>Kalite Kontrol:</strong> Sürekli kalite takibi</li>
       </ul>
-      
       <h4>Minimum Sipariş Miktarları</h4>
       <ul>
         <li><strong>Custom Kalıp:</strong> 50.000 adet minimum</li>
@@ -2274,9 +1970,7 @@ export const blogPosts = [
         <li><strong>Özel Baskı:</strong> 5.000 adet minimum</li>
         <li><strong>Standart Ürünler:</strong> 1.000 adet minimum</li>
       </ul>
-      
       <h3>2. Yüzey İşlemleri ve Dekorasyon</h3>
-      
       <h4>Premium Finishing Seçenekleri</h4>
       <ul>
         <li><strong>Hot Stamping:</strong> Altın/gümüş sıcak baskı</li>
@@ -2286,11 +1980,8 @@ export const blogPosts = [
         <li><strong>Embossing:</strong> Kabartma işlemi</li>
         <li><strong>UV Coating:</strong> UV lake kaplama</li>
       </ul>
-      
       <h2>Kapak ve Aksesuar Seçenekleri</h2>
-      
       <h3>1. Kapak Çeşitleri</h3>
-      
       <h4>Vidalı Kapaklar</h4>
       <ul>
         <li><strong>PP Kapak:</strong> Standart kullanım</li>
@@ -2298,7 +1989,6 @@ export const blogPosts = [
         <li><strong>Child Resistant:</strong> Çocuk güvenlik kapağı</li>
         <li><strong>Tamper Evident:</strong> Açılma göstergeli</li>
       </ul>
-      
       <h4>Özel Kapak Tasarımları</h4>
       <ul>
         <li><strong>Ergonomic Design:</strong> Ergonomik tasarım</li>
@@ -2306,9 +1996,7 @@ export const blogPosts = [
         <li><strong>Metallic Finish:</strong> Metalik görünüm</li>
         <li><strong>Transparent Caps:</strong> Şeffaf kapak</li>
       </ul>
-      
       <h3>2. Aksesuar Ürünleri</h3>
-      
       <h4>Uygulama Aksesuarları</h4>
       <ul>
         <li><strong>Spatula:</strong> Krem uygulama spatulası</li>
@@ -2316,11 +2004,8 @@ export const blogPosts = [
         <li><strong>Rollerball:</strong> Roll-on uygulama başlığı</li>
         <li><strong>Sprayer:</strong> Ince mist sprey başlığı</li>
       </ul>
-      
       <h2>Sürdürülebilir Ambalaj Seçenekleri</h2>
-      
       <h3>1. Geri Dönüştürülebilir Malzemeler</h3>
-      
       <h4>PCR (Post-Consumer Recycled) Plastik</h4>
       <ul>
         <li><strong>%25 PCR İçerik:</strong> Çevre dostu seçenek</li>
@@ -2328,9 +2013,7 @@ export const blogPosts = [
         <li><strong>%75 PCR İçerik:</strong> Maksimum sürdürülebilirlik</li>
         <li><strong>Kalite Garantisi:</strong> Virgin plastik performansı</li>
       </ul>
-      
       <h3>2. Biyobozunur Alternatifler</h3>
-      
       <h4>Bioplastik Ürünler</h4>
       <ul>
         <li><strong>PLA Bazlı Ambalaj:</strong> Mısır nişastası kaynaklı</li>
@@ -2338,11 +2021,8 @@ export const blogPosts = [
         <li><strong>Refillable Systems:</strong> Yeniden doldurulabilir</li>
         <li><strong>Compostable Options:</strong> Kompostlanabilir seçenekler</li>
       </ul>
-      
       <h2>Kalite Kontrol ve Sertifikasyonlar</h2>
-      
       <h3>1. Kalite Standartları</h3>
-      
       <h4>Test Süreçleri</h4>
       <ul>
         <li><strong>Drop Test:</strong> Düşme testi</li>
@@ -2351,9 +2031,7 @@ export const blogPosts = [
         <li><strong>Chemical Compatibility:</strong> Kimyasal uyumluluk</li>
         <li><strong>Stress Crack Resistance:</strong> Çatlama dayanımı</li>
       </ul>
-      
       <h3>2. Sertifikalar</h3>
-      
       <h4>Uluslararası Standartlar</h4>
       <ul>
         <li><strong>FDA Approved:</strong> ABD gıda güvenliği onayı</li>
@@ -2362,11 +2040,8 @@ export const blogPosts = [
         <li><strong>BPA-Free:</strong> BPA içermeyen formülasyon</li>
         <li><strong>Phthalate-Free:</strong> Ftalat içermeyen</li>
       </ul>
-      
       <h2>Lojistik ve Teslimat</h2>
-      
       <h3>1. Stok Yönetimi</h3>
-      
       <h4>Depo Kapasitesi</h4>
       <ul>
         <li><strong>5000+ SKU:</strong> Geniş ürün yelpazesi</li>
@@ -2374,9 +2049,7 @@ export const blogPosts = [
         <li><strong>Stok Takibi:</strong> Real-time stok durumu</li>
         <li><strong>Minimum Stok Garantisi:</strong> Sürekli ürün mevcudiyeti</li>
       </ul>
-      
       <h3>2. Ambalajlama ve Sevkiyat</h3>
-      
       <h4>Güvenli Paketleme</h4>
       <ul>
         <li><strong>Bubble Wrap:</strong> Hasar önleyici ambalaj</li>
@@ -2384,11 +2057,8 @@ export const blogPosts = [
         <li><strong>Pallet Shipping:</strong> Büyük siparişler için</li>
         <li><strong>Express Delivery:</strong> Acil teslimat seçeneği</li>
       </ul>
-      
       <h2>Fiyatlandırma ve Sipariş Süreci</h2>
-      
       <h3>1. Fiyat Avantajları</h3>
-      
       <h4>Miktar İndirimleri</h4>
       <ul>
         <li><strong>1.000-5.000 adet:</strong> %5 indirim</li>
@@ -2396,9 +2066,7 @@ export const blogPosts = [
         <li><strong>10.000-25.000 adet:</strong> %12 indirim</li>
         <li><strong>25.000+ adet:</strong> %15+ indirim</li>
       </ul>
-      
       <h3>2. Sipariş Süreci</h3>
-      
       <h4>Kolay Sipariş Adımları</h4>
       <ol>
         <li><strong>Ürün Seçimi:</strong> Katalogdan ürün belirleme</li>
@@ -2408,11 +2076,8 @@ export const blogPosts = [
         <li><strong>Üretim/Hazırlık:</strong> Sipariş hazırlama süreci</li>
         <li><strong>Teslimat:</strong> Güvenli sevkiyat</li>
       </ol>
-      
       <h2>Teknik Destek ve Danışmanlık</h2>
-      
       <h3>1. Ürün Seçim Danışmanlığı</h3>
-      
       <h4>Uzman Desteği</h4>
       <ul>
         <li><strong>Formülasyon Uyumluluğu:</strong> Ürün-ambalaj uyumu</li>
@@ -2420,9 +2085,7 @@ export const blogPosts = [
         <li><strong>Trend Analizi:</strong> Pazar trendleri paylaşımı</li>
         <li><strong>Teknik Özellikler:</strong> Detaylı ürün bilgilendirme</li>
       </ul>
-      
       <h3>2. After-Sales Support</h3>
-      
       <h4>Satış Sonrası Hizmetler</h4>
       <ul>
         <li><strong>Problem Çözümü:</strong> Hızlı müdahale</li>
@@ -2430,11 +2093,8 @@ export const blogPosts = [
         <li><strong>Teknik Yardım:</strong> Kullanım desteği</li>
         <li><strong>Yedek Parça:</strong> Pompa ve kapak yedekleri</li>
       </ul>
-      
       <h2>Sektör Özel Çözümler</h2>
-      
       <h3>1. Startup Markaları</h3>
-      
       <h4>Girişimci Dostu Paketler</h4>
       <ul>
         <li><strong>Düşük MOQ:</strong> 1.000 adet minimum</li>
@@ -2442,9 +2102,7 @@ export const blogPosts = [
         <li><strong>Esnek Ödeme:</strong> Vadeli ödeme seçenekleri</li>
         <li><strong>Design Support:</strong> Tasarım desteği</li>
       </ul>
-      
       <h3>2. Büyük Markalar</h3>
-      
       <h4>Enterprise Çözümler</h4>
       <ul>
         <li><strong>Dedicated Account Manager:</strong> Özel hesap yöneticisi</li>
@@ -2452,11 +2110,8 @@ export const blogPosts = [
         <li><strong>Volume Discounts:</strong> Hacim indirimleri</li>
         <li><strong>Priority Service:</strong> Öncelikli hizmet</li>
       </ul>
-      
       <h2>Gelecek Trendleri ve Yenilikler</h2>
-      
       <h3>1. Smart Packaging</h3>
-      
       <h4>Teknoloji Entegrasyonu</h4>
       <ul>
         <li><strong>QR Code Integration:</strong> QR kod entegrasyonu</li>
@@ -2464,9 +2119,7 @@ export const blogPosts = [
         <li><strong>Temperature Indicators:</strong> Sıcaklık göstergeleri</li>
         <li><strong>Freshness Sensors:</strong> Tazelik sensörleri</li>
       </ul>
-      
       <h3>2. Sürdürülebilirlik İnovasyonları</h3>
-      
       <h4>Gelecek Materyalleri</h4>
       <ul>
         <li><strong>Ocean Plastic:</strong> Okyanusdan toplanan plastik</li>
@@ -2474,7 +2127,6 @@ export const blogPosts = [
         <li><strong>Mushroom Packaging:</strong> Mantar bazlı biyomalzeme</li>
         <li><strong>Edible Packaging:</strong> Yenilebilir ambalaj teknolojileri</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>MKN Group'un 5000+ ürün seçeneği ile donatılmış kapsamlı kozmetik ambalaj katalogu, her markanın ihtiyacına uygun çözümler sunuyor. Sürdürülebilirlikten premium tasarıma, funktionaliteden estetiğe kadar tüm kriterleri karşılayan ambalaj ürünlerimizle markanızı güçlendirin.</p>
     `,
@@ -2485,7 +2137,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "20 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=400&fit=crop&q=80",
     tags: [
       "kozmetik ambalaj",
       "airless şişe",
@@ -2513,11 +2166,8 @@ export const blogPosts = [
     content: `
       <h2>E-ticaret Dünyasına Giriş</h2>
       <p>2025 yılında e-ticaret sektörü, geleneksel perakendeyi geride bırakarak ana satış kanalı haline geldi. MKN Group'un kapsamlı e-ticaret mağaza kurulum ve optimizasyon hizmetleri ile dijital satış potansiyelinizi maksimize edin.</p>
-      
       <h2>E-ticaret Platform Seçimi</h2>
-      
       <h3>1. Platform Karşılaştırması</h3>
-      
       <h4>Shopify</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Kolay kurulum, güçlü app store, mobil responsive</li>
@@ -2526,7 +2176,6 @@ export const blogPosts = [
         <li><strong>Maliyet:</strong> $29-$2000+/ay</li>
         <li><strong>Transaction Fee:</strong> %0.5-2.9</li>
       </ul>
-      
       <h4>WooCommerce</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Açık kaynak, tam özelleştirme, düşük maliyet</li>
@@ -2535,7 +2184,6 @@ export const blogPosts = [
         <li><strong>Maliyet:</strong> $100-$10.000 (setup)</li>
         <li><strong>Eklenti Maliyetleri:</strong> $0-$300/eklenti</li>
       </ul>
-      
       <h4>Magento Commerce</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Enterprise özellikler, B2B desteği, çoklu mağaza</li>
@@ -2543,7 +2191,6 @@ export const blogPosts = [
         <li><strong>Uygun Olduğu İşletmeler:</strong> Büyük e-ticaret siteleri</li>
         <li><strong>Maliyet:</strong> $22.000+/yıl</li>
       </ul>
-      
       <h4>BigCommerce</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Built-in özellikler, transaction fee yok</li>
@@ -2551,9 +2198,7 @@ export const blogPosts = [
         <li><strong>Uygun Olduğu İşletmeler:</strong> Hızlı büyüyen markalar</li>
         <li><strong>Maliyet:</strong> $29-$400+/ay</li>
       </ul>
-      
       <h3>2. Türkiye Özel Platformlar</h3>
-      
       <h4>Ticimax</h4>
       <ul>
         <li><strong>Yerel Destek:</strong> Türkçe müşteri hizmetleri</li>
@@ -2561,7 +2206,6 @@ export const blogPosts = [
         <li><strong>Ödeme Sistemleri:</strong> Yerli ödeme servisleri</li>
         <li><strong>Maliyet:</strong> ₺299-₺2.999/ay</li>
       </ul>
-      
       <h4>Ideasoft</h4>
       <ul>
         <li><strong>Yerli Çözüm:</strong> Türk hukuku uyumlu</li>
@@ -2569,11 +2213,8 @@ export const blogPosts = [
         <li><strong>Kargo Entegrasyonu:</strong> Tüm kargo firmaları</li>
         <li><strong>Maliyet:</strong> ₺199-₺1.999/ay</li>
       </ul>
-      
       <h2>Mağaza Tasarımı ve Kullanıcı Deneyimi</h2>
-      
       <h3>1. UX/UI Tasarım Prensipleri</h3>
-      
       <h4>Ana Sayfa Optimizasyonu</h4>
       <ul>
         <li><strong>Hero Section:</strong> Güçlü ilk izlenim</li>
@@ -2582,7 +2223,6 @@ export const blogPosts = [
         <li><strong>Trust Signals:</strong> Güven işaretleri</li>
         <li><strong>Call-to-Actions:</strong> Eylem çağrıları</li>
       </ul>
-      
       <h4>Ürün Sayfası Optimizasyonu</h4>
       <ul>
         <li><strong>High-Quality Images:</strong> Yüksek kalite görseller</li>
@@ -2593,7 +2233,6 @@ export const blogPosts = [
         <li><strong>Related Products:</strong> İlgili ürünler</li>
         <li><strong>Size Charts:</strong> Beden tabloları</li>
       </ul>
-      
       <h4>Mobil Optimizasyon</h4>
       <ul>
         <li><strong>Responsive Design:</strong> Tüm cihazlarda uyumlu</li>
@@ -2602,9 +2241,7 @@ export const blogPosts = [
         <li><strong>One-Thumb Navigation:</strong> Tek el kullanım</li>
         <li><strong>Mobile Checkout:</strong> Mobil ödeme optimizasyonu</li>
       </ul>
-      
       <h3>2. Conversion Rate Optimization (CRO)</h3>
-      
       <h4>Sepet Terk Etme Azaltma</h4>
       <ul>
         <li><strong>Exit-Intent Popups:</strong> Çıkış niyeti popupları</li>
@@ -2613,7 +2250,6 @@ export const blogPosts = [
         <li><strong>Save for Later:</strong> Daha sonra kaydetme</li>
         <li><strong>Email Reminders:</strong> E-posta hatırlatmaları</li>
       </ul>
-      
       <h4>Trust Building Elements</h4>
       <ul>
         <li><strong>SSL Sertifikası:</strong> Güvenli bağlantı</li>
@@ -2623,11 +2259,8 @@ export const blogPosts = [
         <li><strong>Contact Information:</strong> İletişim bilgileri</li>
         <li><strong>Social Proof:</strong> Sosyal kanıt öğeleri</li>
       </ul>
-      
       <h2>Ödeme Sistemleri ve Güvenlik</h2>
-      
       <h3>1. Ödeme Yöntemleri</h3>
-      
       <h4>Kredi Kartı İşlem Sağlayıcıları</h4>
       <ul>
         <li><strong>iyzico:</strong>
@@ -2655,7 +2288,6 @@ export const blogPosts = [
           </ul>
         </li>
       </ul>
-      
       <h4>Alternatif Ödeme Yöntemleri</h4>
       <ul>
         <li><strong>Kapıda Ödeme:</strong> Güven artırıcı seçenek</li>
@@ -2664,9 +2296,7 @@ export const blogPosts = [
         <li><strong>Kripto Para:</strong> Bitcoin, Ethereum kabul</li>
         <li><strong>BNPL (Buy Now Pay Later):</strong> Şimdi al sonra öde</li>
       </ul>
-      
       <h3>2. Güvenlik Önlemleri</h3>
-      
       <h4>PCI DSS Compliance</h4>
       <ul>
         <li><strong>Data Encryption:</strong> Veri şifreleme</li>
@@ -2675,7 +2305,6 @@ export const blogPosts = [
         <li><strong>Regular Monitoring:</strong> Düzenli izleme</li>
         <li><strong>Vulnerability Management:</strong> Güvenlik açığı yönetimi</li>
       </ul>
-      
       <h4>Fraud Prevention</h4>
       <ul>
         <li><strong>Machine Learning:</strong> AI tabanlı dolandırıcılık tespiti</li>
@@ -2683,11 +2312,8 @@ export const blogPosts = [
         <li><strong>Geolocation Checks:</strong> Konum bazlı kontroller</li>
         <li><strong>Velocity Checks:</strong> İşlem hız kontrolü</li>
       </ul>
-      
       <h2>Lojistik ve Kargo Entegrasyonu</h2>
-      
       <h3>1. Kargo Firma Entegrasyonları</h3>
-      
       <h4>Türkiye Kargo Firmaları</h4>
       <ul>
         <li><strong>Yurtiçi Kargo:</strong>
@@ -2715,7 +2341,6 @@ export const blogPosts = [
           </ul>
         </li>
       </ul>
-      
       <h4>Uluslararası Kargo</h4>
       <ul>
         <li><strong>DHL:</strong> Express uluslararası kargo</li>
@@ -2723,9 +2348,7 @@ export const blogPosts = [
         <li><strong>UPS:</strong> B2B odaklı servisler</li>
         <li><strong>TNT:</strong> Avrupa ağırlıklı servis</li>
       </ul>
-      
       <h3>2. Fulfillment Stratejileri</h3>
-      
       <h4>Self-Fulfillment</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Tam kontrol, düşük başlangıç maliyeti</li>
@@ -2733,7 +2356,6 @@ export const blogPosts = [
         <li><strong>Uygun Olduğu Durumlar:</strong> Düşük sipariş hacmi</li>
         <li><strong>Gerekli Altyapı:</strong> Depo, paketleme malzemeleri</li>
       </ul>
-      
       <h4>Third-Party Logistics (3PL)</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Profesyonel hizmet, ölçeklenebilirlik</li>
@@ -2741,7 +2363,6 @@ export const blogPosts = [
         <li><strong>Hizmet Kapsamı:</strong> Depolama, paketleme, kargo</li>
         <li><strong>Fiyatlandırma:</strong> Sipariş başına ₺5-₺25</li>
       </ul>
-      
       <h4>Dropshipping</h4>
       <ul>
         <li><strong>Avantajlar:</strong> Minimum yatırım, stok riski yok</li>
@@ -2749,11 +2370,8 @@ export const blogPosts = [
         <li><strong>Tedarikçi Seçimi:</strong> Güvenilir, hızlı teslimat</li>
         <li><strong>Platform Entegrasyonu:</strong> Otomatik sipariş aktarımı</li>
       </ul>
-      
       <h2>Stok Yönetimi ve ERP Entegrasyonu</h2>
-      
       <h3>1. Stok Yönetim Sistemleri</h3>
-      
       <h4>Multi-Channel Inventory</h4>
       <ul>
         <li><strong>Unified Stock:</strong> Birleşik stok yönetimi</li>
@@ -2761,7 +2379,6 @@ export const blogPosts = [
         <li><strong>Low Stock Alerts:</strong> Düşük stok uyarıları</li>
         <li><strong>Automated Reordering:</strong> Otomatik sipariş verme</li>
       </ul>
-      
       <h4>Warehouse Management</h4>
       <ul>
         <li><strong>Location Tracking:</strong> Konum takibi</li>
@@ -2769,9 +2386,7 @@ export const blogPosts = [
         <li><strong>Pick & Pack Optimization:</strong> Toplama ve paketleme optimizasyonu</li>
         <li><strong>Cycle Counting:</strong> Devresel sayım</li>
       </ul>
-      
       <h3>2. ERP Sistem Entegrasyonları</h3>
-      
       <h4>Muhasebe Programları</h4>
       <ul>
         <li><strong>Luca:</strong> Cloud-based muhasebe</li>
@@ -2779,7 +2394,6 @@ export const blogPosts = [
         <li><strong>SAP Business One:</strong> Enterprise çözüm</li>
         <li><strong>Microsoft Dynamics:</strong> Kapsamlı ERP sistemi</li>
       </ul>
-      
       <h4>Data Synchronization</h4>
       <ul>
         <li><strong>Real-Time Sync:</strong> Anlık senkronizasyon</li>
@@ -2787,11 +2401,8 @@ export const blogPosts = [
         <li><strong>Error Handling:</strong> Hata yönetimi</li>
         <li><strong>Backup Systems:</strong> Yedekleme sistemleri</li>
       </ul>
-      
       <h2>SEO ve Dijital Pazarlama</h2>
-      
       <h3>1. E-ticaret SEO</h3>
-      
       <h4>On-Page Optimization</h4>
       <ul>
         <li><strong>Product Title Optimization:</strong> Ürün başlık optimizasyonu</li>
@@ -2800,7 +2411,6 @@ export const blogPosts = [
         <li><strong>Schema Markup:</strong> Yapılandırılmış veri</li>
         <li><strong>Internal Linking:</strong> İç bağlantılar</li>
       </ul>
-      
       <h4>Technical SEO</h4>
       <ul>
         <li><strong>Site Speed:</strong> Sayfa yükleme hızı</li>
@@ -2809,9 +2419,7 @@ export const blogPosts = [
         <li><strong>XML Sitemaps:</strong> Site haritaları</li>
         <li><strong>Robots.txt:</strong> Tarama yönetimi</li>
       </ul>
-      
       <h3>2. Google Ads ve Facebook Ads</h3>
-      
       <h4>Google Shopping Ads</h4>
       <ul>
         <li><strong>Merchant Center Setup:</strong> Üretici merkezi kurulumu</li>
@@ -2819,7 +2427,6 @@ export const blogPosts = [
         <li><strong>Bidding Strategies:</strong> Teklif verme stratejileri</li>
         <li><strong>Performance Tracking:</strong> Performans takibi</li>
       </ul>
-      
       <h4>Facebook & Instagram Shopping</h4>
       <ul>
         <li><strong>Facebook Shop:</strong> Facebook mağaza kurulumu</li>
@@ -2827,11 +2434,8 @@ export const blogPosts = [
         <li><strong>Dynamic Ads:</strong> Dinamik reklamlar</li>
         <li><strong>Retargeting Campaigns:</strong> Yeniden hedefleme</li>
       </ul>
-      
       <h2>Analytics ve Performans Takibi</h2>
-      
       <h3>1. Google Analytics 4 Setup</h3>
-      
       <h4>E-commerce Tracking</h4>
       <ul>
         <li><strong>Enhanced E-commerce:</strong> Gelişmiş e-ticaret takibi</li>
@@ -2839,7 +2443,6 @@ export const blogPosts = [
         <li><strong>Customer Journey:</strong> Müşteri yolculuğu analizi</li>
         <li><strong>Funnel Analysis:</strong> Huni analizi</li>
       </ul>
-      
       <h4>Key Performance Indicators (KPIs)</h4>
       <ul>
         <li><strong>Conversion Rate:</strong> Dönüşüm oranı</li>
@@ -2848,9 +2451,7 @@ export const blogPosts = [
         <li><strong>Return on Ad Spend (ROAS):</strong> Reklam harcama getirisi</li>
         <li><strong>Cart Abandonment Rate:</strong> Sepet terk etme oranı</li>
       </ul>
-      
       <h3>2. Business Intelligence Dashboards</h3>
-      
       <h4>Real-Time Reporting</h4>
       <ul>
         <li><strong>Sales Performance:</strong> Satış performansı</li>
@@ -2858,11 +2459,8 @@ export const blogPosts = [
         <li><strong>Customer Behavior:</strong> Müşteri davranışları</li>
         <li><strong>Marketing ROI:</strong> Pazarlama getirisi</li>
       </ul>
-      
       <h2>Müşteri Hizmetleri ve Support</h2>
-      
       <h3>1. Customer Support Channels</h3>
-      
       <h4>Live Chat Integration</h4>
       <ul>
         <li><strong>Real-Time Communication:</strong> Anlık iletişim</li>
@@ -2870,7 +2468,6 @@ export const blogPosts = [
         <li><strong>Multi-Language Support:</strong> Çoklu dil desteği</li>
         <li><strong>Integration with CRM:</strong> CRM entegrasyonu</li>
       </ul>
-      
       <h4>Help Desk Systems</h4>
       <ul>
         <li><strong>Ticket Management:</strong> Bilet yönetimi</li>
@@ -2878,9 +2475,7 @@ export const blogPosts = [
         <li><strong>FAQ Section:</strong> Sık sorulan sorular</li>
         <li><strong>Video Tutorials:</strong> Video eğitimler</li>
       </ul>
-      
       <h3>2. Return & Refund Management</h3>
-      
       <h4>Return Process Automation</h4>
       <ul>
         <li><strong>Return Portal:</strong> İade portalı</li>
@@ -2888,11 +2483,8 @@ export const blogPosts = [
         <li><strong>Automated Refunds:</strong> Otomatik geri ödeme</li>
         <li><strong>Return Analytics:</strong> İade analitikleri</li>
       </ul>
-      
       <h2>Güvenlik ve Uyumluluk</h2>
-      
       <h3>1. GDPR ve KVKK Uyumluluğu</h3>
-      
       <h4>Data Protection</h4>
       <ul>
         <li><strong>Cookie Consent:</strong> Çerez izni</li>
@@ -2900,9 +2492,7 @@ export const blogPosts = [
         <li><strong>Data Minimization:</strong> Veri minimizasyonu</li>
         <li><strong>Right to Erasure:</strong> Unutulma hakkı</li>
       </ul>
-      
       <h3>2. Security Measures</h3>
-      
       <h4>Infrastructure Security</h4>
       <ul>
         <li><strong>DDoS Protection:</strong> DDoS saldırı koruması</li>
@@ -2910,11 +2500,8 @@ export const blogPosts = [
         <li><strong>Regular Security Audits:</strong> Düzenli güvenlik denetimleri</li>
         <li><strong>Backup & Recovery:</strong> Yedekleme ve kurtarma</li>
       </ul>
-      
       <h2>Ölçeklendirme ve Büyüme Stratejileri</h2>
-      
       <h3>1. International Expansion</h3>
-      
       <h4>Global E-commerce Requirements</h4>
       <ul>
         <li><strong>Multi-Currency Support:</strong> Çoklu para birimi</li>
@@ -2922,9 +2509,7 @@ export const blogPosts = [
         <li><strong>Tax Compliance:</strong> Vergi uyumluluğu</li>
         <li><strong>Shipping Zones:</strong> Sevkiyat bölgeleri</li>
       </ul>
-      
       <h3>2. Automation and AI</h3>
-      
       <h4>E-commerce Automation</h4>
       <ul>
         <li><strong>Personalized Recommendations:</strong> Kişiselleştirilmiş öneriler</li>
@@ -2932,11 +2517,8 @@ export const blogPosts = [
         <li><strong>Automated Email Marketing:</strong> Otomatik e-posta pazarlaması</li>
         <li><strong>Smart Inventory Management:</strong> Akıllı stok yönetimi</li>
       </ul>
-      
       <h2>Maliyet Analizi ve ROI</h2>
-      
       <h3>1. Setup Costs</h3>
-      
       <h4>Initial Investment</h4>
       <ul>
         <li><strong>Platform License:</strong> $0-$2.000/ay</li>
@@ -2944,9 +2526,7 @@ export const blogPosts = [
         <li><strong>Third-party Integrations:</strong> $1.000-$10.000</li>
         <li><strong>Marketing Setup:</strong> $2.000-$10.000</li>
       </ul>
-      
       <h3>2. Ongoing Operational Costs</h3>
-      
       <h4>Monthly Expenses</h4>
       <ul>
         <li><strong>Hosting & CDN:</strong> $100-$1.000/ay</li>
@@ -2954,9 +2534,7 @@ export const blogPosts = [
         <li><strong>Marketing Spend:</strong> Revenue'nun %10-25'i</li>
         <li><strong>Customer Support:</strong> $500-$5.000/ay</li>
       </ul>
-      
       <h2>Başarı Hikayeleri</h2>
-      
       <h3>Vaka 1: Kozmetik Startup E-ticaret</h3>
       <p>Sıfırdan kurulan kozmetik markası:</p>
       <ul>
@@ -2966,7 +2544,6 @@ export const blogPosts = [
         <li>Conversion rate: %3.2</li>
         <li>AOV: $85</li>
       </ul>
-      
       <h3>Vaka 2: B2B Gıda Takviyesi E-ticareti</h3>
       <p>Geleneksel distribütörden e-ticarete geçiş:</p>
       <ul>
@@ -2975,34 +2552,27 @@ export const blogPosts = [
         <li>%300 online sales artışı</li>
         <li>Operational efficiency %40 artış</li>
       </ul>
-      
       <h2>Gelecek Trendleri</h2>
-      
       <h3>1. Emerging Technologies</h3>
-      
       <h4>Voice Commerce</h4>
       <ul>
         <li><strong>Voice Search Optimization:</strong> Sesli arama optimizasyonu</li>
         <li><strong>Smart Speaker Integration:</strong> Akıllı hoparlör entegrasyonu</li>
         <li><strong>Voice-Activated Shopping:</strong> Sesle alışveriş</li>
       </ul>
-      
       <h4>Augmented Reality (AR)</h4>
       <ul>
         <li><strong>Virtual Try-On:</strong> Sanal deneme</li>
         <li><strong>AR Product Visualization:</strong> Ürün görselleştirme</li>
         <li><strong>Interactive Catalogs:</strong> Etkileşimli kataloglar</li>
       </ul>
-      
       <h3>2. Sustainability Focus</h3>
-      
       <h4>Green E-commerce</h4>
       <ul>
         <li><strong>Carbon Neutral Shipping:</strong> Karbon nötr kargo</li>
         <li><strong>Sustainable Packaging:</strong> Sürdürülebilir ambalaj</li>
         <li><strong>Circular Economy:</strong> Döngüsel ekonomi modeli</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>E-ticaret mağaza kurulumu ve optimizasyonu, teknik uzmanlık ve stratejik yaklaşım gerektiren kapsamlı bir süreçtir. MKN Group'un deneyimli ekibi ile mağazanızı profesyonel şekilde kurun, optimize edin ve büyütün. Doğru platform seçiminden gelişmiş optimizasyon tekniklerine kadar her adımda yanınızdayız.</p>
     `,
@@ -3013,7 +2583,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "22 dk",
     featured: true,
-    image: "https://plus.unsplash.com/premium_photo-1683758342885-7acf321f5d53?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image:
+      "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=400&fit=crop&q=80",
     tags: [
       "e-ticaret",
       "mağaza kurulumu",
@@ -3041,11 +2612,8 @@ export const blogPosts = [
     content: `
       <h2>2025 Kozmetik Dünyasına Genel Bakış</h2>
       <p>Kozmetik sektörü, teknolojik yenilikler, değişen tüketici tercihleri ve sürdürülebilirlik odağıyla köklü bir dönüşüm yaşıyor. 2025'te $800 milyar değere ulaşması beklenen global kozmetik pazarında öne çıkmak için bu trendleri yakından takip etmek kritik.</p>
-      
       <h2>Sürdürülebilirlik ve Çevre Bilinci</h2>
-      
       <h3>1. Green Beauty Movement</h3>
-      
       <h4>Sürdürülebilir İçerikler</h4>
       <ul>
         <li><strong>Plant-Based Formulations:</strong> Bitkisel kökenli formülasyonlar</li>
@@ -3054,7 +2622,6 @@ export const blogPosts = [
         <li><strong>Zero-Waste Products:</strong> Sıfır atık ürünler</li>
         <li><strong>Waterless Beauty:</strong> Susuz kozmetik ürünleri</li>
       </ul>
-      
       <h4>Sürdürülebilir Ambalaj İnovasyonları</h4>
       <ul>
         <li><strong>Refillable Packaging:</strong> Yeniden doldurulabilir ambalajlar</li>
@@ -3063,9 +2630,7 @@ export const blogPosts = [
         <li><strong>Mushroom-Based Packaging:</strong> Mantar bazlı ambalaj</li>
         <li><strong>Edible Packaging:</strong> Yenilebilir ambalaj teknolojileri</li>
       </ul>
-      
       <h3>2. Circular Economy in Beauty</h3>
-      
       <h4>Take-Back Programs</h4>
       <ul>
         <li><strong>Empty Container Returns:</strong> Boş ambalaj geri alma</li>
@@ -3073,11 +2638,8 @@ export const blogPosts = [
         <li><strong>Upcycling Initiatives:</strong> Geri dönüşüm girişimleri</li>
         <li><strong>Partnership with Recycling:</strong> Geri dönüşüm ortaklıkları</li>
       </ul>
-      
       <h2>Clean Beauty ve Şeffaflık</h2>
-      
       <h3>1. Ingredient Transparency</h3>
-      
       <h4>Full Disclosure Trend</h4>
       <ul>
         <li><strong>Complete INCI Listing:</strong> Tam içerik listesi</li>
@@ -3086,7 +2648,6 @@ export const blogPosts = [
         <li><strong>Concentration Percentages:</strong> Konsantrasyon yüzdeleri</li>
         <li><strong>Environmental Impact:</strong> Çevresel etki bilgileri</li>
       </ul>
-      
       <h4>Clean Beauty Standards</h4>
       <ul>
         <li><strong>Paraben-Free:</strong> Paraben içermeyen formülasyonlar</li>
@@ -3095,9 +2656,7 @@ export const blogPosts = [
         <li><strong>Synthetic Fragrance-Free:</strong> Sentetik parfümsüz</li>
         <li><strong>Non-Toxic Formulations:</strong> Toksik olmayan içerikler</li>
       </ul>
-      
       <h3>2. Scientific Backing</h3>
-      
       <h4>Evidence-Based Beauty</h4>
       <ul>
         <li><strong>Clinical Testing:</strong> Klinik test sonuçları</li>
@@ -3105,11 +2664,8 @@ export const blogPosts = [
         <li><strong>Peer-Reviewed Research:</strong> Hakemli araştırmalar</li>
         <li><strong>Dermatologist Approval:</strong> Dermatolog onayı</li>
       </ul>
-      
       <h2>K-Beauty ve Asian Beauty Influence</h2>
-      
       <h3>1. Korean Beauty Innovation</h3>
-      
       <h4>Multi-Step Skincare</h4>
       <ul>
         <li><strong>10-Step Routine:</strong> 10 adımlı cilt bakımı</li>
@@ -3117,7 +2673,6 @@ export const blogPosts = [
         <li><strong>Essence and Serums:</strong> Essence ve serum kullanımı</li>
         <li><strong>Sheet Mask Culture:</strong> Maske kültürü</li>
       </ul>
-      
       <h4>K-Beauty Ingredients</h4>
       <ul>
         <li><strong>Snail Mucin:</strong> Salyangoz müsin özü</li>
@@ -3126,9 +2681,7 @@ export const blogPosts = [
         <li><strong>Centella Asiatica:</strong> Centella asiatica bitkisi</li>
         <li><strong>Hyaluronic Acid:</strong> Hyaluronik asit</li>
       </ul>
-      
       <h3>2. J-Beauty and C-Beauty Trends</h3>
-      
       <h4>Japanese Beauty Philosophy</h4>
       <ul>
         <li><strong>Minimalist Approach:</strong> Minimalist yaklaşım</li>
@@ -3136,7 +2689,6 @@ export const blogPosts = [
         <li><strong>Long-term Results:</strong> Uzun vadeli sonuçlar</li>
         <li><strong>Traditional Ingredients:</strong> Geleneksel bileşenler</li>
       </ul>
-      
       <h4>Chinese Beauty Market</h4>
       <ul>
         <li><strong>TCM Influence:</strong> Geleneksel Çin tıbbı etkisi</li>
@@ -3144,11 +2696,8 @@ export const blogPosts = [
         <li><strong>Digital-First Approach:</strong> Dijital öncelikli yaklaşım</li>
         <li><strong>Live Commerce:</strong> Canlı yayın satışı</li>
       </ul>
-      
       <h2>Teknoloji ve Dijital Dönüşüm</h2>
-      
       <h3>1. AI ve Machine Learning</h3>
-      
       <h4>Personalized Beauty</h4>
       <ul>
         <li><strong>Skin Analysis Apps:</strong> Cilt analizi uygulamaları</li>
@@ -3156,7 +2705,6 @@ export const blogPosts = [
         <li><strong>AI-Powered Recommendations:</strong> AI tabanlı öneriler</li>
         <li><strong>Virtual Consultations:</strong> Sanal danışmanlık</li>
       </ul>
-      
       <h4>Smart Product Development</h4>
       <ul>
         <li><strong>Predictive Analytics:</strong> Tahmine dayalı analitik</li>
@@ -3164,9 +2712,7 @@ export const blogPosts = [
         <li><strong>Consumer Behavior Analysis:</strong> Tüketici davranış analizi</li>
         <li><strong>Supply Chain Optimization:</strong> Tedarik zinciri optimizasyonu</li>
       </ul>
-      
       <h3>2. Augmented Reality ve Virtual Try-On</h3>
-      
       <h4>AR Beauty Applications</h4>
       <ul>
         <li><strong>Virtual Makeup Try-On:</strong> Sanal makyaj deneme</li>
@@ -3174,7 +2720,6 @@ export const blogPosts = [
         <li><strong>Skin Tone Matching:</strong> Ten rengi eşleştirme</li>
         <li><strong>Product Visualization:</strong> Ürün görselleştirme</li>
       </ul>
-      
       <h4>Shopping Experience Enhancement</h4>
       <ul>
         <li><strong>In-Store AR Mirrors:</strong> Mağaza içi AR aynalar</li>
@@ -3182,11 +2727,8 @@ export const blogPosts = [
         <li><strong>Social Media Filters:</strong> Sosyal medya filtreleri</li>
         <li><strong>Virtual Beauty Advisors:</strong> Sanal güzellik danışmanları</li>
       </ul>
-      
       <h2>Inclusive Beauty ve Diversity</h2>
-      
       <h3>1. Shade Inclusivity</h3>
-      
       <h4>Extended Shade Ranges</h4>
       <ul>
         <li><strong>50+ Foundation Shades:</strong> 50+ fondöten tonu</li>
@@ -3194,9 +2736,7 @@ export const blogPosts = [
         <li><strong>Global Skin Tones:</strong> Küresel ten renkleri</li>
         <li><strong>Custom Shade Matching:</strong> Özel ton eşleştirme</li>
       </ul>
-      
       <h3>2. Gender-Neutral Beauty</h3>
-      
       <h4>Unisex Product Lines</h4>
       <ul>
         <li><strong>Gender-Free Packaging:</strong> Cinsiyetsiz ambalaj</li>
@@ -3204,11 +2744,8 @@ export const blogPosts = [
         <li><strong>Inclusive Marketing:</strong> Kapsayıcı pazarlama</li>
         <li><strong>Non-Binary Representation:</strong> Non-binary temsil</li>
       </ul>
-      
       <h2>Men's Grooming Market Growth</h2>
-      
       <h3>1. Expanding Male Demographics</h3>
-      
       <h4>Men's Skincare Evolution</h4>
       <ul>
         <li><strong>Anti-Aging Products:</strong> Yaşlanma karşıtı ürünler</li>
@@ -3216,7 +2753,6 @@ export const blogPosts = [
         <li><strong>Beard Care Products:</strong> Sakal bakım ürünleri</li>
         <li><strong>Color Cosmetics for Men:</strong> Erkekler için renkli kozmetik</li>
       </ul>
-      
       <h4>Marketing to Men</h4>
       <ul>
         <li><strong>Performance-Based Messaging:</strong> Performans odaklı mesajlar</li>
@@ -3224,11 +2760,8 @@ export const blogPosts = [
         <li><strong>Masculine Packaging:</strong> Maskülen ambalaj tasarımı</li>
         <li><strong>Celebrity Endorsements:</strong> Ünlü destekleri</li>
       </ul>
-      
       <h2>Ingredient Innovation</h2>
-      
       <h3>1. Next-Generation Actives</h3>
-      
       <h4>Advanced Peptides</h4>
       <ul>
         <li><strong>Signal Peptides:</strong> Sinyal peptitleri</li>
@@ -3236,7 +2769,6 @@ export const blogPosts = [
         <li><strong>Neurotransmitter Peptides:</strong> Nörotransmitter peptitleri</li>
         <li><strong>Biomimetic Peptides:</strong> Biyomimetik peptitler</li>
       </ul>
-      
       <h4>Novel Natural Ingredients</h4>
       <ul>
         <li><strong>Adaptogenic Herbs:</strong> Adaptojenik bitkiler</li>
@@ -3244,9 +2776,7 @@ export const blogPosts = [
         <li><strong>Probiotics for Skin:</strong> Cilt için probiyotikler</li>
         <li><strong>CBD and Hemp-Derived:</strong> CBD ve kenevir türevleri</li>
       </ul>
-      
       <h3>2. Biotechnology in Beauty</h3>
-      
       <h4>Lab-Grown Ingredients</h4>
       <ul>
         <li><strong>Cell-Cultured Actives:</strong> Hücre kültürü aktif maddeler</li>
@@ -3254,11 +2784,8 @@ export const blogPosts = [
         <li><strong>Fermentation Technology:</strong> Fermantasyon teknolojisi</li>
         <li><strong>Precision Fermentation:</strong> Hassas fermantasyon</li>
       </ul>
-      
       <h2>Social Commerce ve Influencer Marketing</h2>
-      
       <h3>1. Creator Economy</h3>
-      
       <h4>Micro-Influencer Power</h4>
       <ul>
         <li><strong>Authentic Endorsements:</strong> Otantik destekler</li>
@@ -3266,7 +2793,6 @@ export const blogPosts = [
         <li><strong>Higher Engagement Rates:</strong> Yüksek etkileşim oranları</li>
         <li><strong>Cost-Effective Marketing:</strong> Maliyet etkin pazarlama</li>
       </ul>
-      
       <h4>User-Generated Content</h4>
       <ul>
         <li><strong>Before/After Posts:</strong> Öncesi/sonrası paylaşımlar</li>
@@ -3274,9 +2800,7 @@ export const blogPosts = [
         <li><strong>Product Reviews:</strong> Ürün değerlendirmeleri</li>
         <li><strong>Hashtag Campaigns:</strong> Hashtag kampanyaları</li>
       </ul>
-      
       <h3>2. Social Shopping Integration</h3>
-      
       <h4>Platform Shopping Features</h4>
       <ul>
         <li><strong>Instagram Shopping:</strong> Instagram alışveriş</li>
@@ -3284,11 +2808,8 @@ export const blogPosts = [
         <li><strong>YouTube Shopping:</strong> YouTube alışveriş</li>
         <li><strong>Pinterest Shopping:</strong> Pinterest alışveriş</li>
       </ul>
-      
       <h2>Türkiye Kozmetik Pazarı Özel Trendleri</h2>
-      
       <h3>1. Yerel Marka Yükselişi</h3>
-      
       <h4>Made in Turkey Avantajı</h4>
       <ul>
         <li><strong>Local Pride:</strong> Yerel marka gururu</li>
@@ -3296,9 +2817,7 @@ export const blogPosts = [
         <li><strong>Economic Nationalism:</strong> Ekonomik milliyetçilik</li>
         <li><strong>Export Potential:</strong> İhracat potansiyeli</li>
       </ul>
-      
       <h3>2. Halal Beauty Market</h3>
-      
       <h4>Growing Halal Segment</h4>
       <ul>
         <li><strong>Halal Certification:</strong> Helal sertifikasyonu</li>
@@ -3306,11 +2825,8 @@ export const blogPosts = [
         <li><strong>Religious Compliance:</strong> Dini uyumluluk</li>
         <li><strong>Export to Muslim Countries:</strong> Müslüman ülkelere ihracat</li>
       </ul>
-      
       <h2>Regulatory Changes ve Compliance</h2>
-      
       <h3>1. Global Regulatory Trends</h3>
-      
       <h4>Safety Requirements</h4>
       <ul>
         <li><strong>Enhanced Safety Testing:</strong> Gelişmiş güvenlik testleri</li>
@@ -3318,9 +2834,7 @@ export const blogPosts = [
         <li><strong>Nanomaterial Regulations:</strong> Nanomateryal düzenlemeleri</li>
         <li><strong>Animal Testing Bans:</strong> Hayvan testi yasakları</li>
       </ul>
-      
       <h3>2. Türkiye Regulatory Framework</h3>
-      
       <h4>Local Compliance</h4>
       <ul>
         <li><strong>TITCK Regulations:</strong> TITCK düzenlemeleri</li>
@@ -3328,11 +2842,8 @@ export const blogPosts = [
         <li><strong>Labeling Standards:</strong> Etiketleme standartları</li>
         <li><strong>Good Manufacturing Practices:</strong> İyi üretim uygulamaları</li>
       </ul>
-      
       <h2>Distribution Channel Evolution</h2>
-      
       <h3>1. Omnichannel Retail</h3>
-      
       <h4>Seamless Experience</h4>
       <ul>
         <li><strong>Online to Offline Integration:</strong> Online-offline entegrasyonu</li>
@@ -3340,9 +2851,7 @@ export const blogPosts = [
         <li><strong>Virtual Store Experiences:</strong> Sanal mağaza deneyimleri</li>
         <li><strong>Personalized In-Store:</strong> Kişiselleştirilmiş mağaza</li>
       </ul>
-      
       <h3>2. Direct-to-Consumer Growth</h3>
-      
       <h4>DTC Advantages</h4>
       <ul>
         <li><strong>Higher Margins:</strong> Yüksek kar marjları</li>
@@ -3350,11 +2859,8 @@ export const blogPosts = [
         <li><strong>Brand Control:</strong> Marka kontrolü</li>
         <li><strong>Personalized Service:</strong> Kişiselleştirilmiş hizmet</li>
       </ul>
-      
       <h2>Gelecekte Öne Çıkacak Kategoriler</h2>
-      
       <h3>1. Wellness Beauty</h3>
-      
       <h4>Beauty from Within</h4>
       <ul>
         <li><strong>Beauty Supplements:</strong> Güzellik takviyeleri</li>
@@ -3362,9 +2868,7 @@ export const blogPosts = [
         <li><strong>Collagen Products:</strong> Kolajen ürünleri</li>
         <li><strong>Adaptogenic Beauty:</strong> Adaptojenik güzellik</li>
       </ul>
-      
       <h3>2. Blue Light Protection</h3>
-      
       <h4>Digital Age Skincare</h4>
       <ul>
         <li><strong>HEV Light Protection:</strong> HEV ışık koruması</li>
@@ -3372,11 +2876,8 @@ export const blogPosts = [
         <li><strong>Screen Time Skincare:</strong> Ekran zamanı cilt bakımı</li>
         <li><strong>Circadian Rhythm Beauty:</strong> Sirkadiyen ritim güzelliği</li>
       </ul>
-      
       <h2>Investment ve Funding Trendleri</h2>
-      
       <h3>1. Venture Capital in Beauty</h3>
-      
       <h4>Investment Hotspots</h4>
       <ul>
         <li><strong>Clean Beauty Startups:</strong> Temiz güzellik girişimleri</li>
@@ -3384,9 +2885,7 @@ export const blogPosts = [
         <li><strong>DTC Beauty Brands:</strong> DTC güzellik markaları</li>
         <li><strong>Sustainable Beauty:</strong> Sürdürülebilir güzellik</li>
       </ul>
-      
       <h3>2. M&A Activity</h3>
-      
       <h4>Consolidation Trends</h4>
       <ul>
         <li><strong>Big Beauty Acquisitions:</strong> Büyük güzellik satın almaları</li>
@@ -3394,11 +2893,8 @@ export const blogPosts = [
         <li><strong>Vertical Integration:</strong> Dikey entegrasyon</li>
         <li><strong>Geographic Expansion:</strong> Coğrafi genişleme</li>
       </ul>
-      
       <h2>2025 Pazarlama Stratejileri</h2>
-      
       <h3>1. Content Marketing Evolution</h3>
-      
       <h4>Video-First Approach</h4>
       <ul>
         <li><strong>Short-Form Video:</strong> Kısa form video içerik</li>
@@ -3406,9 +2902,7 @@ export const blogPosts = [
         <li><strong>Behind-the-Scenes:</strong> Sahne arkası içeriği</li>
         <li><strong>Live Streaming:</strong> Canlı yayın etkinlikleri</li>
       </ul>
-      
       <h3>2. Community Building</h3>
-      
       <h4>Brand Communities</h4>
       <ul>
         <li><strong>Private Facebook Groups:</strong> Özel Facebook grupları</li>
@@ -3416,11 +2910,8 @@ export const blogPosts = [
         <li><strong>Brand Ambassadors:</strong> Marka elçileri</li>
         <li><strong>Loyalty Programs:</strong> Sadakat programları</li>
       </ul>
-      
       <h2>Actionable Insights ve Stratejiler</h2>
-      
       <h3>1. Marka Konumlandırması</h3>
-      
       <h4>2025 için Marka Stratejisi</h4>
       <ul>
         <li><strong>Purpose-Driven Branding:</strong> Amaç odaklı markalama</li>
@@ -3428,9 +2919,7 @@ export const blogPosts = [
         <li><strong>Transparency Focus:</strong> Şeffaflık odaklı yaklaşım</li>
         <li><strong>Community Engagement:</strong> Topluluk katılımı</li>
       </ul>
-      
       <h3>2. Ürün Geliştirme Yönlendirmeleri</h3>
-      
       <h4>Innovation Priorities</h4>
       <ul>
         <li><strong>Sustainable Formulations:</strong> Sürdürülebilir formülasyonlar</li>
@@ -3438,11 +2927,8 @@ export const blogPosts = [
         <li><strong>Personalization Technology:</strong> Kişiselleştirme teknolojisi</li>
         <li><strong>Clean Ingredient Focus:</strong> Temiz bileşen odağı</li>
       </ul>
-      
       <h2>Risk Faktörleri ve Fırsat Alanları</h2>
-      
       <h3>1. Potansiyel Riskler</h3>
-      
       <h4>Market Challenges</h4>
       <ul>
         <li><strong>Increased Competition:</strong> Artan rekabet</li>
@@ -3450,9 +2936,7 @@ export const blogPosts = [
         <li><strong>Supply Chain Disruptions:</strong> Tedarik zinciri kesintileri</li>
         <li><strong>Economic Uncertainties:</strong> Ekonomik belirsizlikler</li>
       </ul>
-      
       <h3>2. Büyüme Fırsatları</h3>
-      
       <h4>Growth Opportunities</h4>
       <ul>
         <li><strong>Emerging Markets:</strong> Gelişmekte olan pazarlar</li>
@@ -3460,7 +2944,6 @@ export const blogPosts = [
         <li><strong>Sustainability Leadership:</strong> Sürdürülebilirlik liderliği</li>
         <li><strong>Cross-Industry Partnerships:</strong> Endüstriler arası ortaklıklar</li>
       </ul>
-      
       <h2>Sonuç ve Öneriler</h2>
       <p>2025 kozmetik sektörü, sürdürülebilirlik, teknoloji entegrasyonu ve kişiselleştirme odaklı bir dönüşüm yaşayacak. Bu trendlere uyum sağlamak ve öncü yaklaşımlar benimseneak, rekabet avantajı elde etmek mümkün. MKN Group olarak, sektördeki bu değişimlere hazırlanmanızda ve geleceğin kozmetik pazarında lider konuma gelmenizde yanınızdayız.</p>
     `,
@@ -3471,7 +2954,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "25 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=800&h=400&fit=crop&q=80",
     tags: [
       "kozmetik trendleri",
       "2025 trendleri",
@@ -3499,11 +2983,8 @@ export const blogPosts = [
     content: `
       <h2>Fason Üretim Nedir?</h2>
       <p>Fason üretim, bir markanın sahip olduğu ürün tasarımını ve formülasyonunu, üretim tesisi olmayan ya da mevcut kapasitesi yetersiz olan durumda, bu işi uzmanlaşmış başka bir üretici firmaya yaptırması sürecidir. Bu iş modeli özellikle kozmetik, gıda takviyesi ve temizlik ürünleri sektörlerinde yaygın olarak kullanılır.</p>
-      
       <h2>Fason Üretim Nasıl Çalışır?</h2>
-      
       <h3>1. Temel Süreç Adımları</h3>
-      
       <h4>İhtiyaç Belirleme</h4>
       <ul>
         <li><strong>Ürün Tanımı:</strong> Üretilecek ürünün özelliklerinin belirlenmesi</li>
@@ -3511,7 +2992,6 @@ export const blogPosts = [
         <li><strong>Kalite Standartları:</strong> Aranan kalite kriterlerinin tanımlanması</li>
         <li><strong>Zaman Çerçevesi:</strong> Teslimat tarihlerinin belirlenmesi</li>
       </ul>
-      
       <h4>Fason Üretici Araştırması</h4>
       <ul>
         <li><strong>Pazar Araştırması:</strong> Uygun üreticilerin tespiti</li>
@@ -3519,7 +2999,6 @@ export const blogPosts = [
         <li><strong>Kapasite Değerlendirmesi:</strong> Üretim kapasitesinin kontrolü</li>
         <li><strong>Sertifika Kontrolü:</strong> Kalite belgelerinin doğrulanması</li>
       </ul>
-      
       <h4>Teklif Alma ve Değerlendirme</h4>
       <ul>
         <li><strong>RFQ Süreci:</strong> Detaylı teklif talebinin hazırlanması</li>
@@ -3527,9 +3006,7 @@ export const blogPosts = [
         <li><strong>Şartname İncelemesi:</strong> Teknik detayların gözden geçirilmesi</li>
         <li><strong>Ödeme Koşulları:</strong> Finansal şartların değerlendirilmesi</li>
       </ul>
-      
       <h3>2. Sözleşme ve Anlaşma</h3>
-      
       <h4>Fason Üretim Sözleşmesi</h4>
       <ul>
         <li><strong>Ürün Spesifikasyonları:</strong> Teknik özellikler ve standartlar</li>
@@ -3539,11 +3016,8 @@ export const blogPosts = [
         <li><strong>Gizlilik Maddeleri:</strong> Ticari sır koruma hükümleri</li>
         <li><strong>Sorumluluk Dağılımı:</strong> Risklerin paylaşılması</li>
       </ul>
-      
       <h2>Fason Üretimin Avantajları</h2>
-      
       <h3>1. Finansal Avantajlar</h3>
-      
       <h4>Düşük Başlangıç Yatırımı</h4>
       <ul>
         <li><strong>Tesis Yatırımı Yok:</strong> Fabrika kurma maliyeti eliminasyonu</li>
@@ -3551,7 +3025,6 @@ export const blogPosts = [
         <li><strong>İşçilik Maliyeti Düşük:</strong> Sadece yönetim personeli gerekli</li>
         <li><strong>Nakit Akışı Optimizasyonu:</strong> Sermaye daha verimli kullanılır</li>
       </ul>
-      
       <h4>Operasyonel Maliyet Kontrolü</h4>
       <ul>
         <li><strong>Sabit Gider Azalması:</strong> Elektrik, su, kira giderleri yok</li>
@@ -3559,9 +3032,7 @@ export const blogPosts = [
         <li><strong>Sigortare Maliyeti:</strong> Tesis sigortası gerekmez</li>
         <li><strong>Bakım Gideri Yok:</strong> Ekipman bakım masrafları yok</li>
       </ul>
-      
       <h3>2. Operasyonel Avantajlar</h3>
-      
       <h4>Hızlı Pazara Giriş</h4>
       <ul>
         <li><strong>Kısa Kurulum Süresi:</strong> Hazır altyapı kullanımı</li>
@@ -3569,7 +3040,6 @@ export const blogPosts = [
         <li><strong>Mevcut Süreçler:</strong> Test edilmiş üretim prosedürleri</li>
         <li><strong>Kalite Güvencesi:</strong> Deneyimli kalite kontrol</li>
       </ul>
-      
       <h4>Esneklik ve Ölçeklendirme</h4>
       <ul>
         <li><strong>Miktar Esnekliği:</strong> İhtiyaca göre üretim ayarlama</li>
@@ -3577,9 +3047,7 @@ export const blogPosts = [
         <li><strong>Mevsimsel Adaptasyon:</strong> Talep değişimlerine hızlı cevap</li>
         <li><strong>Risk Dağıtımı:</strong> Birden fazla üretici ile çalışma</li>
       </ul>
-      
       <h3>3. Stratejik Avantajlar</h3>
-      
       <h4>Core Business Odaklanması</h4>
       <ul>
         <li><strong>Pazarlama Odağı:</strong> Satış ve marka yönetimine konsantrasyon</li>
@@ -3587,11 +3055,8 @@ export const blogPosts = [
         <li><strong>Müşteri İlişkileri:</strong> CRM aktivitelerine odaklanma</li>
         <li><strong>Stratejik Planlama:</strong> Uzun vadeli vizyona yoğunlaşma</li>
       </ul>
-      
       <h2>Fason Üretimin Dezavantajları</h2>
-      
       <h3>1. Kontrol Kaybı Riskleri</h3>
-      
       <h4>Kalite Kontrolü Zorlukları</h4>
       <ul>
         <li><strong>Dolaylı Kalite Yönetimi:</strong> Direkt kontrol eksikliği</li>
@@ -3599,7 +3064,6 @@ export const blogPosts = [
         <li><strong>İzleme Zorluğu:</strong> Süreç takibinde güçlükler</li>
         <li><strong>Müdahale Sınırları:</strong> Anlık düzeltme yapma güçlüğü</li>
       </ul>
-      
       <h4>Üretim Süreci Kontrolü</h4>
       <ul>
         <li><strong>Timing Kontrolü:</strong> Teslimat zamanlarında belirsizlik</li>
@@ -3607,9 +3071,7 @@ export const blogPosts = [
         <li><strong>Süreç Değişiklikleri:</strong> Ani değişikliklere adaptasyon zorluğu</li>
         <li><strong>İletişim Gecikmeleri:</strong> Bilgi akışında zaman kayıpları</li>
       </ul>
-      
       <h3>2. Bağımlılık Riskleri</h3>
-      
       <h4>Tedarikçi Bağımlılığı</h4>
       <ul>
         <li><strong>Tek Kaynak Riski:</strong> Üreticiye aşırı bağımlılık</li>
@@ -3617,9 +3079,7 @@ export const blogPosts = [
         <li><strong>Finansal Durum:</strong> Üreticinin mali durumu riski</li>
         <li><strong>Teknoloji Bağımlılığı:</strong> Üreticinin teknolojisine bağlılık</li>
       </ul>
-      
       <h3>3. Gizlilik ve Güvenlik</h3>
-      
       <h4>Ticari Sır Koruması</h4>
       <ul>
         <li><strong>Formül Güvenliği:</strong> Reçete ve formülasyon riski</li>
@@ -3627,7 +3087,6 @@ export const blogPosts = [
         <li><strong>Rekabet Bilgileri:</strong> Pazar stratejilerinin gizliliği</li>
         <li><strong>Teknoloji Transferi:</strong> Know-how paylaşım riskleri</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Fason üretim, doğru yönetildiğinde işletmelere büyük avantajlar sağlayan güçlü bir iş modelidir. Başarı için doğru üretici seçimi, detaylı sözleşme hazırlığı ve etkili proje yönetimi kritik önem taşır. MKN Group olarak 15+ yıllık deneyimimizle, kozmetik, gıda takviyesi ve temizlik ürünleri fason üretiminde güvenilir partneriniz olarak hizmet veriyoruz.</p>
     `,
@@ -3638,7 +3097,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "12 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1565514020179-026b92b84bb6?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://res.cloudinary.com/dnfmvs2ci/image/upload/v1652748874/aspar%20sunum%20galeri%20resimleri/r4_qi8252.jpg",
     tags: [
       "fason üretim nedir",
       "contract manufacturing",
@@ -3665,11 +3125,8 @@ export const blogPosts = [
     content: `
       <h2>Private Label Nedir?</h2>
       <p>Private label (özel etiket), bir üreticinin kendi tesislerinde ürettiği ürünleri, başka bir markanın etiketi ve markası altında satışa sunmasıdır. Bu iş modelinde ürün kalitesi ve formülasyonu üretici tarafından belirlenirken, marka kimliği ve pazarlama alıcı firma tarafından yönetilir.</p>
-      
       <h2>Private Label Nasıl Çalışır?</h2>
-      
       <h3>1. Temel İş Modeli</h3>
-      
       <h4>Üretici Perspektifi</h4>
       <ul>
         <li><strong>Ürün Geliştirme:</strong> Pazar araştırmasına dayalı formülasyon</li>
@@ -3677,7 +3134,6 @@ export const blogPosts = [
         <li><strong>Kalite Kontrolü:</strong> Tutarlı kalite standartlarının sağlanması</li>
         <li><strong>Maliyet Optimizasyonu:</strong> Ölçek ekonomisinden yararlanma</li>
       </ul>
-      
       <h4>Marka Sahibi Perspektifi</h4>
       <ul>
         <li><strong>Marka Stratejisi:</strong> Marka kimliği ve konumlandırma</li>
@@ -3685,9 +3141,7 @@ export const blogPosts = [
         <li><strong>Müşteri İlişkileri:</strong> End customer ile direkt ilişki</li>
         <li><strong>Fiyatlandırma:</strong> Pazar koşullarına göre fiyat belirleme</li>
       </ul>
-      
       <h3>2. Süreç Adımları</h3>
-      
       <h4>Ürün Seçimi ve Araştırma</h4>
       <ul>
         <li><strong>Pazar Analizi:</strong> Hedef pazarın ihtiyaç analizi</li>
@@ -3695,7 +3149,6 @@ export const blogPosts = [
         <li><strong>Trend Takibi:</strong> Sektörel eğilimlerin izlenmesi</li>
         <li><strong>Fiyat Araştırması:</strong> Pazar fiyat seviyelerinin tespiti</li>
       </ul>
-      
       <h4>Private Label Üretici Seçimi</h4>
       <ul>
         <li><strong>Sertifika Kontrolü:</strong> Kalite ve güvenlik sertifikaları</li>
@@ -3703,11 +3156,8 @@ export const blogPosts = [
         <li><strong>Referans İncelemesi:</strong> Geçmiş müşteri deneyimleri</li>
         <li><strong>Minimum Sipariş Miktarları:</strong> MOQ şartlarının uygunluğu</li>
       </ul>
-      
       <h2>Private Label Avantajları</h2>
-      
       <h3>1. Marka Sahibi İçin Avantajlar</h3>
-      
       <h4>Hızlı Pazara Giriş</h4>
       <ul>
         <li><strong>Hazır Ürünler:</strong> Test edilmiş ve onaylanmış formülasyonlar</li>
@@ -3715,7 +3165,6 @@ export const blogPosts = [
         <li><strong>Düşük Risk:</strong> Kanıtlanmış ürün konseptleri</li>
         <li><strong>Hızlı Launch:</strong> 2-4 hafta içinde pazara çıkış</li>
       </ul>
-      
       <h4>Düşük Yatırım Gereksinimleri</h4>
       <ul>
         <li><strong>Ar-Ge Maliyeti Yok:</strong> Ürün geliştirme giderlerinin eliminasyonu</li>
@@ -3723,7 +3172,6 @@ export const blogPosts = [
         <li><strong>Test Maliyeti Yok:</strong> Güvenlik ve etkinlik testleri hazır</li>
         <li><strong>Formülasyon Gideri Yok:</strong> Hammadde araştırma maliyeti yok</li>
       </ul>
-      
       <h4>Kalite Güvencesi</h4>
       <ul>
         <li><strong>Deneyimli Üretim:</strong> Uzman üreticinin know-how'ı</li>
@@ -3731,9 +3179,7 @@ export const blogPosts = [
         <li><strong>Compliance:</strong> Mevzuat uyumluluğu garanti</li>
         <li><strong>Sürekli İyileştirme:</strong> Sürekli kalite geliştirme</li>
       </ul>
-      
       <h3>2. Üretici İçin Avantajlar</h3>
-      
       <h4>Ölçek Ekonomisi</h4>
       <ul>
         <li><strong>Yüksek Hacim:</strong> Büyük miktarlarda üretim</li>
@@ -3741,7 +3187,6 @@ export const blogPosts = [
         <li><strong>Kapasite Kullanımı:</strong> Optimal fabrika kullanımı</li>
         <li><strong>Hammadde Gücü:</strong> Toplu alım avantajları</li>
       </ul>
-      
       <h4>İş Garantisi</h4>
       <ul>
         <li><strong>Sürekli Sipariş:</strong> Düzenli üretim garantisi</li>
@@ -3749,11 +3194,8 @@ export const blogPosts = [
         <li><strong>Çeşitli Müşteriler:</strong> Risk dağıtımı</li>
         <li><strong>Marka Çeşitliliği:</strong> Farklı segmentlere hizmet</li>
       </ul>
-      
       <h2>Private Label Türleri</h2>
-      
       <h3>1. Standart Private Label</h3>
-      
       <h4>Temel Özellikler</h4>
       <ul>
         <li><strong>Hazır Formülasyonlar:</strong> Üreticinin mevcut ürün gamı</li>
@@ -3761,7 +3203,6 @@ export const blogPosts = [
         <li><strong>Düşük MOQ:</strong> Düşük minimum sipariş miktarları</li>
         <li><strong>Hızlı Teslimat:</strong> Kısa üretim süreleri</li>
       </ul>
-      
       <h4>Uygulama Alanları</h4>
       <ul>
         <li><strong>Kozmetik Ürünler:</strong> Krem, serum, şampuan</li>
@@ -3769,9 +3210,7 @@ export const blogPosts = [
         <li><strong>Temizlik Ürünleri:</strong> Deterjan, sabun, dezenfektan</li>
         <li><strong>Kişisel Bakım:</strong> Diş macunu, deodorant, parfüm</li>
       </ul>
-      
       <h3>2. Özelleştirilmiş Private Label</h3>
-      
       <h4>Customization Seviyeleri</h4>
       <ul>
         <li><strong>Formül Modifikasyonu:</strong> Mevcut formülde küçük değişiklikler</li>
@@ -3779,11 +3218,8 @@ export const blogPosts = [
         <li><strong>Renk ve Koku:</strong> Markanın istediği özellikler</li>
         <li><strong>Konsantrasyon Ayarı:</strong> Aktif madde oranları</li>
       </ul>
-      
       <h2>Başarılı Private Label Stratejileri</h2>
-      
       <h3>1. Pazar Positioning</h3>
-      
       <h4>Hedef Segment Belirleme</h4>
       <ul>
         <li><strong>Demografik Analiz:</strong> Yaş, cinsiyet, gelir seviyesi</li>
@@ -3791,7 +3227,6 @@ export const blogPosts = [
         <li><strong>İhtiyaç Analizi:</strong> Karşılanmayan ihtiyaçların tespiti</li>
         <li><strong>Fiyat Hassasiyeti:</strong> Hedef grubun fiyat algısı</li>
       </ul>
-      
       <h4>Diferansiyasyon Stratejileri</h4>
       <ul>
         <li><strong>Kalite Odaklı:</strong> Premium kalite vurgusu</li>
@@ -3799,9 +3234,7 @@ export const blogPosts = [
         <li><strong>Doğal/Organik:</strong> Sürdürülebilir ürün yaklaşımı</li>
         <li><strong>İnovatif Özellikler:</strong> Benzersiz faydalar</li>
       </ul>
-      
       <h3>2. Marka Geliştirme</h3>
-      
       <h4>Görsel Kimlik</h4>
       <ul>
         <li><strong>Logo Tasarımı:</strong> Marka değerlerini yansıtan logo</li>
@@ -3809,7 +3242,6 @@ export const blogPosts = [
         <li><strong>Tipografi:</strong> Marka karakterine uygun yazı tipleri</li>
         <li><strong>Ambalaj Tasarımı:</strong> Raf görünürlüğü ve çekiciliği</li>
       </ul>
-      
       <h4>Marka Hikayesi</h4>
       <ul>
         <li><strong>Origin Story:</strong> Markanın kuruluş amacı</li>
@@ -3817,11 +3249,8 @@ export const blogPosts = [
         <li><strong>USP (Unique Selling Proposition):</strong> Benzersiz satış önerisi</li>
         <li><strong>Emotional Connection:</strong> Duygusal bağ kurma</li>
       </ul>
-      
       <h2>Private Label Süreç Yönetimi</h2>
-      
       <h3>1. Üretici İlişkileri</h3>
-      
       <h4>Sözleşme Yönetimi</h4>
       <ul>
         <li><strong>Kalite Standartları:</strong> Detaylı kalite kriterleri</li>
@@ -3829,7 +3258,6 @@ export const blogPosts = [
         <li><strong>Fiyat Mekanizmaları:</strong> Maliyet artışı prosedürleri</li>
         <li><strong>Exclusivity Anlaşmaları:</strong> Münhasırlık hak ve sınırları</li>
       </ul>
-      
       <h4>Kalite Kontrolü</h4>
       <ul>
         <li><strong>Incoming Inspection:</strong> Gelen ürün kontrolü</li>
@@ -3837,9 +3265,7 @@ export const blogPosts = [
         <li><strong>Audit Programları:</strong> Üretici denetimleri</li>
         <li><strong>Corrective Actions:</strong> Düzeltici faaliyet süreçleri</li>
       </ul>
-      
       <h3>2. Stok ve Lojistik</h3>
-      
       <h4>Inventory Management</h4>
       <ul>
         <li><strong>Demand Forecasting:</strong> Talep tahminlemesi</li>
@@ -3847,7 +3273,6 @@ export const blogPosts = [
         <li><strong>Order Planning:</strong> Sipariş zamanlaması</li>
         <li><strong>Seasonality Management:</strong> Mevsimsel yönetim</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>Private label, doğru strateji ve yürütümle büyük fırsatlar sunan güçlü bir iş modelidir. MKN Group olarak, kozmetik, gıda takviyesi ve temizlik ürünleri kategorilerinde geniş private label ürün gamımızla markalar için güvenilir partneriniz olarak hizmet veriyoruz. 15+ yıllık deneyimimiz ve kaliteli ürün portföyümüzle başarılı private label projelerinizi destekliyoruz.</p>
     `,
@@ -3858,7 +3283,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "11 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1607522370275-f14206abe5d3?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1668775589938-58517ad578b9?q=80&w=1334&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "private label nedir",
       "özel etiket",
@@ -3885,11 +3311,8 @@ export const blogPosts = [
     content: `
       <h2>E-ticaret Nasıl Başlanır?</h2>
       <p>E-ticaret (elektronik ticaret), internetra ürün veya hizmet satışı yapma sürecidir. 2025'te e-ticaret sektörü hızla büyürken, doğru strateji ve planlama ile başarılı bir online işletme kurmak mümkündür. Bu rehber, sıfırdan e-ticaret işi kurmak isteyenler için kapsamlı bir yol haritası sunar.</p>
-      
       <h2>E-ticaret Başlangıç Planlması</h2>
-      
       <h3>1. Pazar Araştırması ve Niche Seçimi</h3>
-      
       <h4>Pazar Analizi</h4>
       <ul>
         <li><strong>Trend Analizi:</strong> Google Trends, sosyal medya trendleri</li>
@@ -3897,7 +3320,6 @@ export const blogPosts = [
         <li><strong>Fiyat Araştırması:</strong> Pazar fiyat seviyelerinin tespiti</li>
         <li><strong>Talep Projeksiyonu:</strong> Gelecek talep tahminleri</li>
       </ul>
-      
       <h4>Niche Seçim Kriterleri</h4>
       <ul>
         <li><strong>Kişisel İlgi ve Bilgi:</strong> Alanda deneyim ve tutksu</li>
@@ -3905,9 +3327,7 @@ export const blogPosts = [
         <li><strong>Rekabet Seviyesi:</strong> Giriş yapılabilir rekabet</li>
         <li><strong>Kar Marjı:</strong> Sürdürülebilir karlılık</li>
       </ul>
-      
       <h3>2. Ürün Seçimi ve Tedarik</h3>
-      
       <h4>Ürün Kategori Seçenekleri</h4>
       <ul>
         <li><strong>Fiziksel Ürünler:</strong> El yapımı, toptan, private label</li>
@@ -3915,7 +3335,6 @@ export const blogPosts = [
         <li><strong>Hizmetler:</strong> Danışmanlık, tasarım, eğitim</li>
         <li><strong>Dropshipping:</strong> Stoksuz satış modeli</li>
       </ul>
-      
       <h4>Tedarik Stratejileri</h4>
       <ul>
         <li><strong>Üretici ile Direkt:</strong> Toptan alma ve stok yönetimi</li>
@@ -3923,11 +3342,8 @@ export const blogPosts = [
         <li><strong>Dropshipping:</strong> Stoksuz tedarik modeli</li>
         <li><strong>El Yapımı:</strong> Kişisel üretim ve customization</li>
       </ul>
-      
       <h2>E-ticaret Platform Seçimi</h2>
-      
       <h3>1. Platform Türleri</h3>
-      
       <h4>Hosted Çözümler</h4>
       <ul>
         <li><strong>Shopify:</strong> En popüler, kolay kullanım, geniş app ecosystem</li>
@@ -3935,7 +3351,6 @@ export const blogPosts = [
         <li><strong>Wix eCommerce:</strong> Drag-drop kolaylığı</li>
         <li><strong>Squarespace:</strong> Tasarım odaklı, creative brands için</li>
       </ul>
-      
       <h4>Self-Hosted Çözümler</h4>
       <ul>
         <li><strong>WooCommerce:</strong> WordPress entegrasyonu, ücretsiz</li>
@@ -3943,7 +3358,6 @@ export const blogPosts = [
         <li><strong>OpenCart:</strong> Açık kaynak, özelleştirilebilir</li>
         <li><strong>PrestaShop:</strong> Ücretsiz, Avrupa odaklı</li>
       </ul>
-      
       <h4>Marketplace Seçenekleri</h4>
       <ul>
         <li><strong>Amazon:</strong> En büyük erişim, yüksek rekabet</li>
@@ -3951,9 +3365,7 @@ export const blogPosts = [
         <li><strong>eBay:</strong> Açık artırma ve sabit fiyat</li>
         <li><strong>Facebook Marketplace:</strong> Sosyal medya entegrasyonu</li>
       </ul>
-      
       <h3>2. Platform Seçim Kriterleri</h3>
-      
       <h4>Teknik Özellikler</h4>
       <ul>
         <li><strong>Responsive Design:</strong> Mobil uyumlu temalar</li>
@@ -3961,7 +3373,6 @@ export const blogPosts = [
         <li><strong>Payment Integration:</strong> Ödeme sistemi entegrasyonları</li>
         <li><strong>Inventory Management:</strong> Stok yönetimi özellikleri</li>
       </ul>
-      
       <h4>Maliyet Faktörleri</h4>
       <ul>
         <li><strong>Aylık/Yıllık Ücret:</strong> Platform kullanım bedeli</li>
@@ -3969,11 +3380,8 @@ export const blogPosts = [
         <li><strong>Payment Processing:</strong> Ödeme işleme ücretleri</li>
         <li><strong>App/Extension Costs:</strong> Ek özellik maliyetleri</li>
       </ul>
-      
       <h2>Website Kurulum ve Tasarım</h2>
-      
       <h3>1. Mağaza Tasarımı</h3>
-      
       <h4>Ana Sayfa Elementleri</h4>
       <ul>
         <li><strong>Hero Section:</strong> Çarpıcı ilk görünüm</li>
@@ -3981,7 +3389,6 @@ export const blogPosts = [
         <li><strong>Value Proposition:</strong> Benzersiz değer önerisi</li>
         <li><strong>Trust Signals:</strong> Güven işaretleri ve sertifikalar</li>
       </ul>
-      
       <h4>Ürün Sayfaları</h4>
       <ul>
         <li><strong>High-Quality Images:</strong> Profesyonel ürün fotoğrafları</li>
@@ -3989,9 +3396,7 @@ export const blogPosts = [
         <li><strong>Customer Reviews:</strong> Müşteri yorumları ve değerlendirmeleri</li>
         <li><strong>Related Products:</strong> İlgili ürün önerileri</li>
       </ul>
-      
       <h3>2. Kullanıcı Deneyimi (UX)</h3>
-      
       <h4>Navigation ve Site Yapısı</h4>
       <ul>
         <li><strong>Clear Menu Structure:</strong> Anlaşılır menü yapısı</li>
@@ -3999,7 +3404,6 @@ export const blogPosts = [
         <li><strong>Filter Options:</strong> Ürün filtreleme seçenekleri</li>
         <li><strong>Breadcrumb Navigation:</strong> Konum gösterge sistemi</li>
       </ul>
-      
       <h4>Checkout Süreci</h4>
       <ul>
         <li><strong>Simple Checkout:</strong> Basit ve hızlı ödeme</li>
@@ -4007,11 +3411,8 @@ export const blogPosts = [
         <li><strong>Multiple Payment Options:</strong> Çeşitli ödeme yöntemleri</li>
         <li><strong>Security Assurance:</strong> Güvenlik garantisi gösterimleri</li>
       </ul>
-      
       <h2>Pazarlama ve Satış Stratejileri</h2>
-      
       <h3>1. Dijital Pazarlama</h3>
-      
       <h4>Search Engine Optimization (SEO)</h4>
       <ul>
         <li><strong>Keyword Research:</strong> Anahtar kelime araştırması</li>
@@ -4019,7 +3420,6 @@ export const blogPosts = [
         <li><strong>Content Marketing:</strong> Blog ve içerik stratejisi</li>
         <li><strong>Link Building:</strong> Bağlantı kurma stratejileri</li>
       </ul>
-      
       <h4>Sosyal Medya Pazarlama</h4>
       <ul>
         <li><strong>Platform Seçimi:</strong> Hedef kitleye uygun platformlar</li>
@@ -4027,7 +3427,6 @@ export const blogPosts = [
         <li><strong>Influencer Partnerships:</strong> Influencer iş birlikleri</li>
         <li><strong>Social Commerce:</strong> Sosyal medyadan direkt satış</li>
       </ul>
-      
       <h4>Paid Advertising</h4>
       <ul>
         <li><strong>Google Ads:</strong> Search ve shopping campaigns</li>
@@ -4035,9 +3434,7 @@ export const blogPosts = [
         <li><strong>Retargeting:</strong> Yeniden hedefleme kampanyaları</li>
         <li><strong>Display Advertising:</strong> Banner ve görsel reklamlar</li>
       </ul>
-      
       <h3>2. Email Marketing</h3>
-      
       <h4>Email Liste Oluşturma</h4>
       <ul>
         <li><strong>Lead Magnets:</strong> Ücretsiz içerik teklifleri</li>
@@ -4045,7 +3442,6 @@ export const blogPosts = [
         <li><strong>Social Proof:</strong> Sosyal kanıt ve testimonial'lar</li>
         <li><strong>Incentives:</strong> İndirim ve özel teklifler</li>
       </ul>
-      
       <h4>Email Campaign'leri</h4>
       <ul>
         <li><strong>Welcome Series:</strong> Hoş geldin e-posta serisi</li>
@@ -4053,11 +3449,8 @@ export const blogPosts = [
         <li><strong>Product Recommendations:</strong> Ürün önerisi e-postaları</li>
         <li><strong>Newsletter:</strong> Düzenli haber bültenleri</li>
       </ul>
-      
       <h2>Operasyonel Süreçler</h2>
-      
       <h3>1. Stok ve Envanter Yönetimi</h3>
-      
       <h4>Inventory Planning</h4>
       <ul>
         <li><strong>Demand Forecasting:</strong> Talep tahmin modelleri</li>
@@ -4065,7 +3458,6 @@ export const blogPosts = [
         <li><strong>Safety Stock:</strong> Güvenlik stoku hesaplama</li>
         <li><strong>Reorder Points:</strong> Yeniden sipariş noktaları</li>
       </ul>
-      
       <h4>Warehouse Management</h4>
       <ul>
         <li><strong>Storage Systems:</strong> Depolama sistemleri</li>
@@ -4073,9 +3465,7 @@ export const blogPosts = [
         <li><strong>Quality Control:</strong> Kalite kontrol prosedürleri</li>
         <li><strong>Returns Management:</strong> İade yönetimi</li>
       </ul>
-      
       <h3>2. Lojistik ve Kargo</h3>
-      
       <h4>Shipping Strategies</h4>
       <ul>
         <li><strong>Carrier Selection:</strong> Kargo firması seçimi</li>
@@ -4083,7 +3473,6 @@ export const blogPosts = [
         <li><strong>Free Shipping Thresholds:</strong> Ücretsiz kargo limitleri</li>
         <li><strong>International Shipping:</strong> Uluslararası gönderim</li>
       </ul>
-      
       <h4>Fulfillment Options</h4>
       <ul>
         <li><strong>Self-Fulfillment:</strong> Kendi evinde gerçekleştirme</li>
@@ -4091,11 +3480,8 @@ export const blogPosts = [
         <li><strong>Dropshipping:</strong> Direkt tedarikçi gönderimi</li>
         <li><strong>Hybrid Models:</strong> Karma fulfillment modelleri</li>
       </ul>
-      
       <h2>Finansal Planlama</h2>
-      
       <h3>1. Başlangıç Maliyetleri</h3>
-      
       <h4>Platform ve Teknik Maliyetler</h4>
       <ul>
         <li><strong>Platform Ücretleri:</strong> Aylık/yıllık platform bedeli</li>
@@ -4103,7 +3489,6 @@ export const blogPosts = [
         <li><strong>Theme/Template:</strong> Tasarım tema maliyetleri</li>
         <li><strong>Apps/Extensions:</strong> Ek özellik ve entegrasyon</li>
       </ul>
-      
       <h4>Pazarlama Maliyetleri</h4>
       <ul>
         <li><strong>Advertising Budget:</strong> Reklam bütçesi</li>
@@ -4111,9 +3496,7 @@ export const blogPosts = [
         <li><strong>Email Marketing Tools:</strong> Email pazarlama araçları</li>
         <li><strong>SEO Tools:</strong> SEO araç abonelikleri</li>
       </ul>
-      
       <h3>2. Finansal Takip</h3>
-      
       <h4>Key Performance Indicators (KPIs)</h4>
       <ul>
         <li><strong>Conversion Rate:</strong> Dönüşüm oranı</li>
@@ -4121,11 +3504,8 @@ export const blogPosts = [
         <li><strong>Customer Lifetime Value (CLV):</strong> Müşteri yaşam boyu değeri</li>
         <li><strong>Return on Ad Spend (ROAS):</strong> Reklam harcaması getirisi</li>
       </ul>
-      
       <h2>2025 E-ticaret Trendleri</h2>
-      
       <h3>1. Teknoloji Trendleri</h3>
-      
       <h4>AI ve Automation</h4>
       <ul>
         <li><strong>Chatbots:</strong> AI destekli müşteri hizmetleri</li>
@@ -4133,7 +3513,6 @@ export const blogPosts = [
         <li><strong>Predictive Analytics:</strong> Tahmine dayalı analitik</li>
         <li><strong>Voice Commerce:</strong> Sesli alışveriş teknolojisi</li>
       </ul>
-      
       <h4>Mobile Commerce</h4>
       <ul>
         <li><strong>Mobile-First Design:</strong> Mobil öncelikli tasarım</li>
@@ -4141,9 +3520,7 @@ export const blogPosts = [
         <li><strong>Mobile Payments:</strong> Mobil ödeme çözümleri</li>
         <li><strong>App Integration:</strong> Mobil uygulama entegrasyonu</li>
       </ul>
-      
       <h3>2. Tüketici Davranış Trendleri</h3>
-      
       <h4>Sustainability Focus</h4>
       <ul>
         <li><strong>Eco-Friendly Products:</strong> Çevre dostu ürünler</li>
@@ -4151,7 +3528,6 @@ export const blogPosts = [
         <li><strong>Carbon Neutral Shipping:</strong> Karbon nötr kargo</li>
         <li><strong>Ethical Sourcing:</strong> Etik tedarik süreçleri</li>
       </ul>
-      
       <h2>Sonuç</h2>
       <p>E-ticaret başarısı, doğru planlama, kaliteli ürün seçimi ve etkili pazarlama stratejileri ile mümkündür. 2025'te e-ticaret dünyasında başarılı olmak için teknoloji trendlerini takip etmek ve müşteri deneyimini öne çıkarmak kritik önem taşır. MKN Group olarak, e-ticaret operasyonlarınız için fulfillment, private label ürün tedariki ve dijital pazarlama desteği sunarak başarılı online işletmenizi kurmaya yardımcı oluyoruz.</p>
     `,
@@ -4162,7 +3538,8 @@ export const blogPosts = [
     updatedAt: "2025-09-18",
     readingTime: "15 dk",
     featured: true,
-    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=400&fit=crop&q=80",
+    image:
+      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1115&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     tags: [
       "e-ticaret nasıl başlanır",
       "online satış",

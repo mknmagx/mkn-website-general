@@ -881,9 +881,8 @@ export default function HakkimizdaPage() {
                   </p>
 
                   <p className="text-muted-foreground">
-                    Kurucumuz <strong>Ahmet Yılmaz'ın 15+ yıllık</strong> sektör
-                    deneyimi ve vizyoner bakış açısıyla, sadece ambalaj tedariki
-                    değil,{" "}
+                    Kurucumuzun <strong>15+ yıllık</strong> sektör deneyimi ve
+                    vizyoner bakış açısıyla, sadece ambalaj tedariki değil,{" "}
                     <strong>kapsamlı contract manufacturing ekosistemi</strong>{" "}
                     yaratma hedefiyle yola çıktık.
                   </p>

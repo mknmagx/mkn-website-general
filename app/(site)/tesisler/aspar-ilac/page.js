@@ -485,7 +485,7 @@ export default function AsparIlacPage() {
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               <strong>2008'den beri</strong> gıda takviyesi ve dermokozmetik
-              sektöründe
+              sektöründe {" "}
               <strong>fason üretim</strong> alanında Türkiye'nin öncü
               firmalarından biriyiz.
             </p>
