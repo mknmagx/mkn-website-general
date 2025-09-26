@@ -15,6 +15,7 @@ export default function robots() {
           "/private/",
           "/*.json$",
           "/node_modules/",
+          "/contact-card",
         ],
         crawlDelay: 1,
       },
