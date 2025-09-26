@@ -103,3 +103,7 @@ pids
 # temporary folders
 tmp/
 temp/
+
+# Security-sensitive scripts (keep local only)
+/scripts/
+/docs/

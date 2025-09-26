@@ -345,11 +345,11 @@ export default function AdminDashboard() {
                 count={contactStats.new + contactStats.inProgress}
               />
               <QuickActionCard
-                title="Ayarlar"
-                description="Admin panel ayarlarını yapılandırın"
+                title="Kullanıcı Yönetimi"
+                description="Kullanıcıları görüntüleyin ve rollerini düzenleyin"
                 icon={Users}
-                color="text-gray-600"
-                href="/admin/settings"
+                color="text-indigo-600"
+                href="/admin/users"
               />
             </div>
           </div>

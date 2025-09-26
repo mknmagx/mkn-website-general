@@ -1,5 +1,8 @@
 import { useState, useEffect, useContext, createContext } from "react";
-import { onAdminAuthStateChanged } from "../lib/services/admin-auth-service";
+import {
+  onAdminAuthStateChanged,
+  adminSignOut,
+} from "../lib/services/admin-auth-service";
 
 const AdminAuthContext = createContext({});
 
@@ -9,11 +12,17 @@ export const AdminAuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     const loadingTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 10000);
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 5000); // Daha kısa timeout
 
     const unsubscribe = onAdminAuthStateChanged((authUser) => {
+      if (!mounted) return;
+
       console.log("Auth state changed:", authUser?.email || "No user");
       clearTimeout(loadingTimeout);
       setUser(authUser);
@@ -22,15 +31,27 @@ export const AdminAuthProvider = ({ children }) => {
     });
 
     return () => {
+      mounted = false;
       clearTimeout(loadingTimeout);
       unsubscribe();
     };
   }, []);
 
+  const signOut = async () => {
+    try {
+      await adminSignOut();
+      setUser(null);
+      setIsAdmin(false);
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
   const value = {
     user,
     isAdmin,
     loading,
+    signOut,
   };
 
   return (
@@ -44,7 +65,8 @@ export const AdminAuthProvider = ({ children }) => {
 export const useAdminAuth = () => {
   const context = useContext(AdminAuthContext);
   if (!context) {
-    throw new Error("useAdminAuth must be used within AdminAuthProvider");
+    console.error("useAdminAuth must be used within AdminAuthProvider");
+    return { user: null, isAdmin: false, loading: true };
   }
   return context;
 };

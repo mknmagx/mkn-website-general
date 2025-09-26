@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { adminSignIn, adminPasswordReset } from '../../../lib/services/admin-auth-service';
 import { useAdminAuth, useAdminLogin } from '../../../hooks/use-admin-auth';
 import { Eye, EyeOff, Lock, Mail, Shield, AlertCircle, CheckCircle } from 'lucide-react';
+import { useToast } from '../../../hooks/use-toast';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { isAdmin, loading } = useAdminAuth();
   const { login, isLoading, error, clearError } = useAdminLogin();
+  const { toast } = useToast();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -19,6 +21,7 @@ export default function AdminLoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetStatus, setResetStatus] = useState(null);
+  const [loginStatus, setLoginStatus] = useState(null);
 
   // Admin zaten giriş yapmışsa dashboard'a yönlendir
   useEffect(() => {
@@ -34,6 +37,7 @@ export default function AdminLoginPage() {
       [name]: value
     }));
     clearError();
+    setLoginStatus(null);
   };
 
   const handleSubmit = async (e) => {
@@ -46,7 +50,23 @@ export default function AdminLoginPage() {
     const result = await login(formData.email, formData.password, adminSignIn);
     
     if (result.success) {
+      toast({
+        title: "Giriş Başarılı",
+        description: "Admin paneline yönlendiriliyorsunuz...",
+      });
       router.push('/admin/dashboard');
+    } else if (result.requiresApproval) {
+      // Admin yetkisi olmayan kullanıcı için toast
+      toast({
+        title: "Admin Onayı Bekleniyor",
+        description: "Hesabınız başarıyla doğrulandı ancak admin yetkileriniz henüz onaylanmamış. Talebiniz sistem yöneticisine iletildi.",
+        variant: "default",
+      });
+      setLoginStatus({
+        type: 'pending',
+        title: 'Admin Onayı Bekleniyor',
+        message: 'Hesabınız başarıyla doğrulandı ancak admin yetkileriniz henüz onaylanmamış. Talebiniz sistem yöneticisine iletildi.'
+      });
     }
   };
 
@@ -54,14 +74,29 @@ export default function AdminLoginPage() {
     e.preventDefault();
     
     if (!resetEmail) {
-      setResetStatus({
-        type: 'error',
-        message: 'Lütfen email adresinizi girin.'
+      toast({
+        title: "Hata",
+        description: "Lütfen email adresinizi girin.",
+        variant: "destructive",
       });
       return;
     }
 
     const result = await adminPasswordReset(resetEmail);
+    
+    if (result.success) {
+      toast({
+        title: "Email Gönderildi",
+        description: "Şifre sıfırlama bağlantısı email adresinize gönderildi.",
+      });
+    } else {
+      toast({
+        title: "Hata",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+
     setResetStatus({
       type: result.success ? 'success' : 'error',
       message: result.message
@@ -72,6 +107,7 @@ export default function AdminLoginPage() {
         setShowResetForm(false);
         setResetEmail('');
         setResetStatus(null);
+        setLoginStatus(null);
       }, 3000);
     }
   };
@@ -147,8 +183,23 @@ export default function AdminLoginPage() {
                 </div>
               </div>
 
-              {/* Error Message */}
-              {error && (
+              {/* Status Messages */}
+              {loginStatus && (
+                <div className={`flex items-start space-x-3 p-4 rounded-lg border ${
+                  loginStatus.type === 'pending' 
+                    ? 'text-yellow-200 bg-yellow-500/20 border-yellow-500/30' 
+                    : 'text-red-300 bg-red-500/20 border-red-500/30'
+                }`}>
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">{loginStatus.title}</h4>
+                    <p className="text-xs opacity-90">{loginStatus.message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message (for other errors) */}
+              {error && !loginStatus && (
                 <div className="flex items-center space-x-2 text-red-300 bg-red-500/20 p-3 rounded-lg border border-red-500/30">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm">{error}</span>
@@ -168,7 +219,10 @@ export default function AdminLoginPage() {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setShowResetForm(true)}
+                  onClick={() => {
+                    setShowResetForm(true);
+                    setLoginStatus(null);
+                  }}
                   className="text-blue-300 hover:text-white text-sm transition-colors"
                 >
                   Şifremi Unuttum
@@ -228,6 +282,7 @@ export default function AdminLoginPage() {
                     setShowResetForm(false);
                     setResetEmail('');
                     setResetStatus(null);
+                    setLoginStatus(null);
                   }}
                   className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
                 >
@@ -248,7 +303,7 @@ export default function AdminLoginPage() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-blue-200 text-sm">
-            © 2024 MKN Group. Tüm hakları saklıdır.
+            © 2025 MKN Group. Tüm hakları saklıdır.
           </p>
         </div>
       </div>

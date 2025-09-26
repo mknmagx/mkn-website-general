@@ -138,6 +138,7 @@ END:VCARD`;
                   </p>
                 </div>
               </div>
+
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleCall(site.phone)}
@@ -146,6 +147,7 @@ END:VCARD`;
                 >
                   <Phone className="w-4 h-4" />
                 </button>
+
                 <button
                   onClick={() => handleWhatsApp(site.phone)}
                   className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
@@ -155,6 +157,49 @@ END:VCARD`;
                 </button>
                 <button
                   onClick={() => handleCopy(site.phone, "phone")}
+                  className="p-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                  title="Kopyala"
+                >
+                  {copiedItem === "phone" ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    Telefon 2
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {"+90 541 390 3969"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleCall("+90 541 390 3969")}
+                  className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                  title="Ara"
+                >
+                  <Phone className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleWhatsApp("+90 541 390 3969")}
+                  className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                  title="WhatsApp"
+                >
+                  <span className="text-sm font-bold">WA</span>
+                </button>
+                <button
+                  onClick={() => handleCopy("+90 541 390 3969", "phone")}
                   className="p-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg transition-colors"
                   title="Kopyala"
                 >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAdminAuth } from "../hooks/use-admin-auth";
 import { adminSignOut } from "../lib/services/admin-auth-service";
 import {
@@ -17,6 +17,7 @@ import {
   Bell,
 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function AdminProtectedWrapper({
   children,
@@ -24,14 +25,18 @@ export default function AdminProtectedWrapper({
 }) {
   const { user, isAdmin, loading } = useAdminAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    console.log("useEffect triggered:", { loading, isAdmin });
-    if (!loading && !isAdmin) {
+    console.log("useEffect triggered:", { loading, isAdmin, pathname });
+
+    // Loading bitince ve admin değilse, login sayfasına değilse yönlendir
+    if (!loading && !isAdmin && !pathname?.includes("/admin/login")) {
+      console.log("Redirecting to login page");
       router.push("/admin/login");
     }
-  }, [isAdmin, loading, router]);
+  }, [isAdmin, loading, router, pathname]);
 
   const handleSignOut = async () => {
     await adminSignOut();
@@ -60,36 +65,53 @@ export default function AdminProtectedWrapper({
     return null;
   }
 
+  // Kullanıcı rol seviyesini kontrol et
+  const getRoleLevel = (role) => {
+    const roleLevels = {
+      super_admin: 4,
+      admin: 3,
+      moderator: 2,
+      user: 1,
+    };
+    return roleLevels[role] || 0;
+  };
+
+  const canAccessUserManagement = getRoleLevel(user?.role) >= 3; // Admin ve üstü
+
   const navigationItems = [
     {
       name: "Dashboard",
       href: "/admin/dashboard",
       icon: Home,
-      current: title === "Dashboard",
+      current: pathname === "/admin/dashboard",
     },
     {
       name: "Quote İstekleri",
       href: "/admin/quotes",
       icon: FileText,
-      current: title === "Quote İstekleri",
+      current: pathname === "/admin/quotes",
     },
     {
       name: "İletişim Mesajları",
       href: "/admin/contacts",
       icon: MessageSquare,
-      current: title === "İletişim Mesajları",
+      current: pathname === "/admin/contacts",
     },
-    {
-      name: "İstatistikler",
-      href: "/admin/analytics",
-      icon: BarChart3,
-      current: title === "İstatistikler",
-    },
+    ...(canAccessUserManagement
+      ? [
+          {
+            name: "Kullanıcı Yönetimi",
+            href: "/admin/users",
+            icon: Users,
+            current: pathname?.startsWith("/admin/users"),
+          },
+        ]
+      : []),
     {
       name: "Ayarlar",
       href: "/admin/settings",
       icon: Settings,
-      current: title === "Ayarlar",
+      current: pathname === "/admin/settings",
     },
   ];
 
@@ -114,9 +136,10 @@ export default function AdminProtectedWrapper({
           </div>
           <nav className="mt-5 flex-1 space-y-1 px-2">
             {navigationItems.map((item) => (
-              <a
+              <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={`${
                   item.current
                     ? "bg-blue-100 text-blue-900"
@@ -131,7 +154,7 @@ export default function AdminProtectedWrapper({
                   } mr-4 h-6 w-6 flex-shrink-0`}
                 />
                 {item.name}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
@@ -152,7 +175,7 @@ export default function AdminProtectedWrapper({
                 <ul role="list" className="-mx-2 space-y-1">
                   {navigationItems.map((item) => (
                     <li key={item.name}>
-                      <a
+                      <Link
                         href={item.href}
                         className={`${
                           item.current
@@ -168,18 +191,31 @@ export default function AdminProtectedWrapper({
                           } h-6 w-6 shrink-0`}
                         />
                         {item.name}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ul>
               </li>
               <li className="mt-auto">
-                <div className="flex items-center gap-x-4 px-2 py-3 text-sm font-semibold leading-6 text-gray-900">
+                <div className="flex items-center gap-x-4 px-2 py-3 text-sm leading-6 text-gray-900">
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Users className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-600">
+                      {user?.displayName?.charAt(0)?.toUpperCase() ||
+                        user?.email?.charAt(0)?.toUpperCase() ||
+                        "A"}
+                    </span>
                   </div>
-                  <span className="sr-only">Your profile</span>
-                  <span className="truncate">{user?.email}</span>
+                  <div className="flex flex-col">
+                    <span className="truncate font-semibold">
+                      {user?.displayName || "Admin User"}
+                    </span>
+                    <span className="text-xs text-gray-500 truncate">
+                      {user?.role === "super_admin" && "Süper Admin"}
+                      {user?.role === "admin" && "Admin"}
+                      {user?.role === "moderator" && "Moderatör"}
+                      {(!user?.role || user?.role === "user") && "Kullanıcı"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={handleSignOut}
