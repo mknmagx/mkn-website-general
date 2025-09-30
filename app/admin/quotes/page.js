@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AdminProtectedWrapper from "../../../components/admin-protected-wrapper";
+
 import {
   getQuotes,
   updateQuoteStatus,
@@ -485,7 +485,7 @@ export default function QuotesPage() {
   };
 
   return (
-    <AdminProtectedWrapper title="Quote İstekleri">
+    <div className="space-y-6">
       <div className="space-y-6">
         {/* İstatistikler */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
@@ -641,6 +641,6 @@ export default function QuotesPage() {
           setSelectedQuote(null);
         }}
       />
-    </AdminProtectedWrapper>
+    </div>
   );
 }

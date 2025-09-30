@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AdminProtectedWrapper from '../../../components/admin-protected-wrapper';
+import { useAdminAuth } from '../../../hooks/use-admin-auth';
+import { PermissionGuard, RoleGuard, usePermissions } from '../../../components/admin-route-guard';
 import { getQuoteStats } from '../../../lib/services/admin-quote-service';
 import { getContactStats } from '../../../lib/services/admin-contact-service';
+import { getUserStats } from '../../../lib/services/admin-user-service';
 import { 
   BarChart3,
   FileText,
   MessageSquare,
   Users,
+  Building2,
   Clock,
   TrendingUp,
   AlertTriangle,
@@ -16,10 +19,14 @@ import {
   Calendar,
   Activity,
   Mail,
-  Phone
+  Phone,
+  DollarSign
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const { user, permissions, userRole, loading: authLoading } = useAdminAuth();
+  const { hasPermission } = usePermissions();
+  
   const [quoteStats, setQuoteStats] = useState({
     total: 0,
     new: 0,
@@ -36,26 +43,87 @@ export default function AdminDashboard() {
     closed: 0
   });
 
+  const [userStats, setUserStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    superAdmins: 0,
+    admins: 0,
+    moderators: 0,
+    users: 0
+  });
+
+  const [companyStats, setCompanyStats] = useState({
+    total: 0,
+    clients: 0,
+    prospects: 0,
+    active: 0,
+    highPriority: 0,
+    monthlyRevenue: 0
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
-  }, []);
+    if (!authLoading && permissions) {
+      loadStats();
+    }
+  }, [authLoading, permissions]);
 
   const loadStats = async () => {
     setLoading(true);
     try {
-      const [quoteResult, contactResult] = await Promise.all([
-        getQuoteStats(),
-        getContactStats()
-      ]);
-
-      if (quoteResult.success) {
-        setQuoteStats(quoteResult.stats);
+      const promises = [];
+      
+      // Quote stats - tüm admin rollerine açık
+      if (hasPermission("canViewAllQuotes")) {
+        promises.push(getQuoteStats());
+      }
+      
+      // Contact stats - tüm admin rollerine açık  
+      if (hasPermission("canViewAllContacts")) {
+        promises.push(getContactStats());
+      }
+      
+      // User stats - sadece yetki sahibi kullanıcılar için
+      if (hasPermission("canViewAnalytics")) {
+        promises.push(getUserStats(permissions));
       }
 
-      if (contactResult.success) {
-        setContactStats(contactResult.stats);
+      const results = await Promise.all(promises);
+      let resultIndex = 0;
+
+      if (hasPermission("canViewAllQuotes")) {
+        const quoteResult = results[resultIndex++];
+        if (quoteResult.success) {
+          setQuoteStats(quoteResult.stats);
+        }
+      }
+
+      if (hasPermission("canViewAllContacts")) {
+        const contactResult = results[resultIndex++];
+        if (contactResult.success) {
+          setContactStats(contactResult.stats);
+        }
+      }
+
+      if (hasPermission("canViewAnalytics")) {
+        const userResult = results[resultIndex++];
+        if (userResult.success) {
+          setUserStats(userResult.stats);
+        }
+      }
+
+      // Mock company data - replace with actual Firebase data if permission exists
+      if (hasPermission("canManageCompanies")) {
+        setCompanyStats({
+          total: 12,
+          clients: 5,
+          prospects: 4,
+          active: 3,
+          highPriority: 2,
+          monthlyRevenue: 85000
+        });
       }
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -167,11 +235,9 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <AdminProtectedWrapper title="Dashboard">
-        <div className="flex items-center justify-center min-h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      </AdminProtectedWrapper>
+      <div className="flex items-center justify-center min-h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
     );
   }
 
@@ -179,45 +245,36 @@ export default function AdminDashboard() {
   const pendingRequests = quoteStats.new + quoteStats.inProgress + contactStats.new + contactStats.inProgress;
 
   return (
-    <AdminProtectedWrapper title="Dashboard">
-      <div className="space-y-6">
-        {/* Hoş Geldiniz */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow">
-          <div className="px-6 py-8">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-white">
-                  MKN Group Admin Paneli
-                </h1>
-                <p className="text-blue-100 mt-2">
-                  Quote istekleri ve iletişim mesajlarını yönetin
-                </p>
+    <div className="space-y-6">
+      {/* Hoş Geldiniz */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow">
+        <div className="px-6 py-8">
+          <div className="flex items-center">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-white">
+                Hoş Geldiniz, {user?.displayName || user?.email || "Admin"}
+              </h1>
+              <div className="flex items-center mt-2">
+                <span className="text-blue-100">
+                  {userRole === "super_admin" && "Süper Admin olarak giriş yaptınız - Tüm sistem yetkilerine sahipsiniz"}
+                  {userRole === "admin" && "Admin olarak giriş yaptınız - Kullanıcı ve sistem yönetimi yetkileriniz bulunmaktadır"}
+                  {userRole === "moderator" && "Moderatör olarak giriş yaptınız - İçerik yönetimi yetkileriniz bulunmaktadır"}
+                </span>
               </div>
-              <div className="hidden md:block">
-                <div className="bg-white/20 rounded-lg p-4">
-                  <BarChart3 className="h-12 w-12 text-white" />
-                </div>
+            </div>
+            <div className="hidden md:block">
+              <div className="bg-white/20 rounded-lg p-4">
+                <BarChart3 className="h-12 w-12 text-white" />
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Ana İstatistikler */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Toplam Talep"
-            value={totalRequests}
-            icon={Activity}
-            color="text-blue-600"
-            description="Quote + İletişim"
-          />
-          <StatCard
-            title="Bekleyen Talepler"
-            value={pendingRequests}
-            icon={AlertTriangle}
-            color="text-orange-600"
-            description="Yeni + İşlemde"
-          />
+      {/* Ana İstatistikler - Role-based */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Quote Stats - Tüm admin rollerine görünür */}
+        <PermissionGuard requiredPermission="canViewAllQuotes">
           <StatCard
             title="Quote İstekleri"
             value={quoteStats.total}
@@ -225,162 +282,56 @@ export default function AdminDashboard() {
             color="text-purple-600"
             description="Fason üretim talepleri"
           />
+        </PermissionGuard>
+
+        {/* Contact Stats - Tüm admin rollerine görünür */}
+        <PermissionGuard requiredPermission="canViewAllContacts">
           <StatCard
             title="İletişim Mesajları"
             value={contactStats.total}
             icon={MessageSquare}
             color="text-green-600"
-            description="Genel iletişim talepleri"
+            description="Müşteri mesajları"
           />
-        </div>
+        </PermissionGuard>
 
-        {/* Quote ve Contact İstatistikleri */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Quote İstatistikleri */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                <FileText className="h-5 w-5 text-purple-600 mr-2" />
-                Quote İstekleri Durumu
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Yeni</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{quoteStats.new}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-orange-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">İşlemde</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{quoteStats.inProgress}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Yanıtlandı</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{quoteStats.responded}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Kapatıldı</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{quoteStats.closed}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Company Stats - Sadece admin ve üstü roller */}
+        <PermissionGuard requiredPermission="canManageCompanies">
+          <StatCard
+            title="Toplam Firma"
+            value={companyStats.total}
+            icon={Building2}
+            color="text-indigo-600"
+            description="Kayıtlı firmalar"
+          />
+        </PermissionGuard>
 
-          {/* Contact İstatistikleri */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                <MessageSquare className="h-5 w-5 text-green-600 mr-2" />
-                İletişim Mesajları Durumu
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Yeni</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{contactStats.new}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-orange-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">İşlemde</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{contactStats.inProgress}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Yanıtlandı</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{contactStats.responded}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                    <span className="text-sm text-gray-600">Kapatıldı</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{contactStats.closed}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* User Stats - Sadece user management yetkisi olanlar */}
+        <PermissionGuard requiredPermission="canViewAnalytics">
+          <StatCard
+            title="Sistem Kullanıcıları"
+            value={userStats.total}
+            icon={Users}
+            color="text-blue-600"
+            description="Toplam kullanıcı"
+          />
+        </PermissionGuard>
+      </div>
 
-        {/* Hızlı Erişim */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Hızlı Erişim</h3>
+      {/* Özet Bilgiler */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Sistem Özeti</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{totalRequests}</div>
+            <div className="text-sm text-gray-500">Toplam Talep</div>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <QuickActionCard
-                title="Quote İstekleri"
-                description="Fason üretim taleplerini görüntüleyin ve yönetin"
-                icon={FileText}
-                color="text-purple-600"
-                href="/admin/quotes"
-                count={quoteStats.new + quoteStats.inProgress}
-              />
-              <QuickActionCard
-                title="İletişim Mesajları"
-                description="Müşteri iletişim taleplerini görüntüleyin"
-                icon={MessageSquare}
-                color="text-green-600"
-                href="/admin/contacts"
-                count={contactStats.new + contactStats.inProgress}
-              />
-              <QuickActionCard
-                title="Kullanıcı Yönetimi"
-                description="Kullanıcıları görüntüleyin ve rollerini düzenleyin"
-                icon={Users}
-                color="text-indigo-600"
-                href="/admin/users"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Günlük Özet */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-              Günlük Özet
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{quoteStats.new}</div>
-                <div className="text-sm text-gray-500">Yeni Quote İsteği</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{contactStats.new}</div>
-                <div className="text-sm text-gray-500">Yeni İletişim Mesajı</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{pendingRequests}</div>
-                <div className="text-sm text-gray-500">Bekleyen Toplam</div>
-              </div>
-            </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600">{pendingRequests}</div>
+            <div className="text-sm text-gray-500">Bekleyen Toplam</div>
           </div>
         </div>
       </div>
-    </AdminProtectedWrapper>
+    </div>
   );
 }

@@ -10,6 +10,8 @@ export const AdminAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [permissions, setPermissions] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -20,13 +22,24 @@ export const AdminAuthProvider = ({ children }) => {
       }
     }, 5000); // Daha kısa timeout
 
-    const unsubscribe = onAdminAuthStateChanged((authUser) => {
+    const unsubscribe = onAdminAuthStateChanged((authData) => {
       if (!mounted) return;
 
-      console.log("Auth state changed:", authUser?.email || "No user");
+      console.log("Auth state changed:", authData?.user?.email || "No user");
       clearTimeout(loadingTimeout);
-      setUser(authUser);
-      setIsAdmin(!!authUser);
+      
+      if (authData) {
+        setUser(authData.user);
+        setIsAdmin(authData.isAdmin);
+        setPermissions(authData.permissions);
+        setUserRole(authData.user?.role);
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+        setPermissions(null);
+        setUserRole(null);
+      }
+      
       setLoading(false);
     });
 
@@ -42,16 +55,50 @@ export const AdminAuthProvider = ({ children }) => {
       await adminSignOut();
       setUser(null);
       setIsAdmin(false);
+      setPermissions(null);
+      setUserRole(null);
     } catch (error) {
       console.error("Sign out error:", error);
     }
+  };
+
+  const hasPermission = (permissionKey) => {
+    return permissions && permissions[permissionKey] === true;
+  };
+
+  const canAccessRoute = (routePath) => {
+    if (!userRole) return false;
+    
+    const roleRoutes = {
+      "super_admin": ["*"], // Tüm sayfalara erişim
+      "admin": [
+        "/admin/dashboard",
+        "/admin/users",
+        "/admin/companies",
+        "/admin/contacts",
+        "/admin/quotes",
+        "/admin/permissions",
+      ],
+      "moderator": [
+        "/admin/dashboard",
+        "/admin/contacts",
+        "/admin/quotes",
+      ],
+    };
+
+    const allowedRoutes = roleRoutes[userRole] || [];
+    return allowedRoutes.includes("*") || allowedRoutes.some(route => routePath.startsWith(route));
   };
 
   const value = {
     user,
     isAdmin,
     loading,
+    permissions,
+    userRole,
     signOut,
+    hasPermission,
+    canAccessRoute,
   };
 
   return (

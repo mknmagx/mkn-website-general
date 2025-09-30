@@ -33,11 +33,7 @@ const PackagingSection = lazy(() =>
     default: module.PackagingSection,
   }))
 );
-const ClientFloatingNavigation = lazy(() =>
-  import("@/components/client-floating-navigation").then((module) => ({
-    default: module.ClientFloatingNavigation,
-  }))
-);
+
 const CosmeticManufacturingSection = lazy(() =>
   import("@/components/cosmetic-manufacturing-section").then((module) => ({
     default: module.CosmeticManufacturingSection,
@@ -254,9 +250,6 @@ export default function HomePage() {
         </section>
         {/* <CTASection /> */}
       </div>
-      <Suspense fallback={null}>
-        <ClientFloatingNavigation />
-      </Suspense>
     </>
   );
 }

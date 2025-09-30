@@ -13,6 +13,7 @@ import {
   FileText,
   Settings,
   Users,
+  Building2,
   BarChart3,
   Bell,
 } from "lucide-react";
@@ -84,6 +85,12 @@ export default function AdminProtectedWrapper({
       href: "/admin/dashboard",
       icon: Home,
       current: pathname === "/admin/dashboard",
+    },
+    {
+      name: "Firma Yönetimi",
+      href: "/admin/companies",
+      icon: Building2,
+      current: pathname.startsWith("/admin/companies"),
     },
     {
       name: "Quote İstekleri",
