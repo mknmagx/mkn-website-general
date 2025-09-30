@@ -16,6 +16,7 @@ import {
   X,
   Shield,
   UserCheck,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -67,7 +68,8 @@ export default function AdminNavigation() {
       href: "/admin/companies",
       icon: Building2,
       current: pathname.startsWith("/admin/companies"),
-      show: hasPermission("companies.view") || hasPermission("canManageCompanies"),
+      show:
+        hasPermission("companies.view") || hasPermission("canManageCompanies"),
     },
     {
       name: "Quote İstekleri",
@@ -81,7 +83,8 @@ export default function AdminNavigation() {
       href: "/admin/contacts",
       icon: MessageSquare,
       current: pathname === "/admin/contacts",
-      show: hasPermission("contacts.view") || hasPermission("canViewAllContacts"),
+      show:
+        hasPermission("contacts.view") || hasPermission("canViewAllContacts"),
     },
     {
       name: "Kullanıcı Yönetimi",
@@ -95,14 +98,25 @@ export default function AdminNavigation() {
       href: "/admin/admins",
       icon: UserCheck,
       current: pathname.startsWith("/admin/admins"),
-      show: hasPermission("users.manage_roles") || hasPermission("canManageAdmins"),
+      show:
+        hasPermission("users.manage_roles") || hasPermission("canManageAdmins"),
     },
     {
       name: "Yetki Yönetimi",
       href: "/admin/permissions",
       icon: Shield,
       current: pathname.startsWith("/admin/permissions"),
-      show: hasPermission("users.manage_permissions") || hasPermission("users.manage_roles") || hasRole("super_admin"),
+      show:
+        hasPermission("users.manage_permissions") ||
+        hasPermission("users.manage_roles") ||
+        hasRole("super_admin"),
+    },
+    {
+      name: "Sistem Logları",
+      href: "/admin/logs",
+      icon: Activity,
+      current: pathname.startsWith("/admin/logs"),
+      show: true, // Tüm admin kullanıcıları logları görebilir
     },
     {
       name: "Sistem Ayarları",
@@ -114,7 +128,7 @@ export default function AdminNavigation() {
   ];
 
   // Sadece gösterilmesi gereken navigation items
-  const navigationItems = getAllNavigationItems().filter(item => item.show);
+  const navigationItems = getAllNavigationItems().filter((item) => item.show);
 
   const handleSignOut = async () => {
     try {
@@ -183,7 +197,11 @@ export default function AdminNavigation() {
                 {user?.displayName || user?.email || "Admin User"}
               </p>
               <div className="flex items-center mt-1">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(userRole)}`}>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                    userRole
+                  )}`}
+                >
                   <Shield className="w-3 h-3 mr-1" />
                   {getRoleDisplayName(userRole)}
                 </span>
@@ -276,7 +294,11 @@ export default function AdminNavigation() {
                       {user?.displayName || user?.email || "Admin User"}
                     </p>
                     <div className="flex items-center mt-1">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(userRole)}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                          userRole
+                        )}`}
+                      >
                         <Shield className="w-3 h-3 mr-1" />
                         {getRoleDisplayName(userRole)}
                       </span>

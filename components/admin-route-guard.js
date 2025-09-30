@@ -18,8 +18,17 @@ export const AdminRouteGuard = ({
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
+  // Public routes that don't require authentication
+  const publicRoutes = ['/admin/login'];
+
   useEffect(() => {
     if (loading) return;
+
+    // Allow access to public routes without authentication
+    if (publicRoutes.includes(pathname)) {
+      setIsAuthorized(true);
+      return;
+    }
 
     // Kullanıcı giriş yapmamışsa login sayfasına yönlendir
     if (!user || !isAdmin) {

@@ -65,7 +65,7 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
-logs
+# logs (commented out to allow admin logs page)
 *.log
 
 # Runtime data

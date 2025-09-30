@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAdminAuth } from "../hooks/use-admin-auth";
+import { useAdminNavigation } from "../hooks/use-admin-navigation";
 import { adminSignOut } from "../lib/services/admin-auth-service";
 import {
   Shield,
@@ -16,6 +17,7 @@ import {
   Building2,
   BarChart3,
   Bell,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -28,6 +30,9 @@ export default function AdminProtectedWrapper({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Navigasyon loglaması
+  useAdminNavigation();
 
   useEffect(() => {
     console.log("useEffect triggered:", { loading, isAdmin, pathname });
@@ -114,6 +119,12 @@ export default function AdminProtectedWrapper({
           },
         ]
       : []),
+    {
+      name: "Sistem Logları",
+      href: "/admin/logs",
+      icon: Activity,
+      current: pathname?.startsWith("/admin/logs"),
+    },
     {
       name: "Ayarlar",
       href: "/admin/settings",

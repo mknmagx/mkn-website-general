@@ -18,6 +18,7 @@ import {
   ROLE_LEVELS,
 } from "../../../lib/services/admin-user-service";
 import { useAdminAuth } from "../../../hooks/use-admin-auth";
+import { useAdminLogger } from "../../../hooks/use-admin-logger";
 import { useToast } from "../../../hooks/use-toast";
 import {
   Users,
@@ -70,6 +71,7 @@ export default function UsersPage() {
     loading: authLoading,
   } = useAdminAuth();
   const { toast } = useToast();
+  const logger = useAdminLogger();
 
   useEffect(() => {
     if (!authLoading && currentUserPermissions) {
@@ -82,6 +84,9 @@ export default function UsersPage() {
 
     setLoading(true);
     try {
+      // Kullanıcı listesi görüntüleme logla
+      await logger.logRead('users', null, 'Kullanıcı listesi görüntülendi');
+      
       const usersResult = await getAllUsers(currentUserPermissions);
       const statsResult = hasPermission("canViewAnalytics")
         ? await getUserStats(currentUserPermissions)
@@ -98,6 +103,8 @@ export default function UsersPage() {
       }
     } catch (error) {
       console.error("Error loading data:", error);
+      await logger.logErrorAction('user_list_load_failed', error);
+      
       toast({
         title: "Hata",
         description:
@@ -111,13 +118,24 @@ export default function UsersPage() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
+      const targetUser = users.find(u => u.id === userId);
+      const oldRole = targetUser?.role;
+      
       const result = await updateUserRole(
         userId,
         newRole,
         permissions,
         userRole
       );
+      
       if (result.success) {
+        await logger.logUserAction(
+          'user_role_changed',
+          userId,
+          `Kullanıcı rolü ${oldRole} → ${newRole} olarak değiştirildi`,
+          { oldRole, newRole, targetUserEmail: targetUser?.email }
+        );
+        
         await loadData();
         toast({
           title: "Başarılı",
@@ -127,6 +145,8 @@ export default function UsersPage() {
         throw new Error(result.error);
       }
     } catch (error) {
+      await logger.logErrorAction('user_role_change_failed', error, { userId, newRole });
+      
       toast({
         title: "Hata",
         description: error.message,
@@ -137,7 +157,21 @@ export default function UsersPage() {
 
   const handleStatusToggle = async (userId, currentStatus) => {
     try {
+      const targetUser = users.find(u => u.id === userId);
+      
       await toggleUserStatus(userId, !currentStatus, currentUser?.role);
+      
+      await logger.logUserAction(
+        currentStatus ? 'user_deactivated' : 'user_activated',
+        userId,
+        `Kullanıcı ${currentStatus ? 'deaktifleştirildi' : 'aktifleştirildi'}`,
+        { 
+          oldStatus: currentStatus, 
+          newStatus: !currentStatus,
+          targetUserEmail: targetUser?.email 
+        }
+      );
+      
       await loadData();
       toast({
         title: "Başarılı",
@@ -146,6 +180,8 @@ export default function UsersPage() {
         }.`,
       });
     } catch (error) {
+      await logger.logErrorAction('user_status_toggle_failed', error, { userId, currentStatus });
+      
       toast({
         title: "Hata",
         description: error.message,
@@ -160,13 +196,28 @@ export default function UsersPage() {
     }
 
     try {
+      const targetUser = users.find(u => u.id === userId);
+      
       await deleteUser(userId, currentUser?.role);
+      
+      await logger.logUserAction(
+        'user_deleted',
+        userId,
+        `Kullanıcı kalıcı olarak silindi`,
+        { 
+          targetUserEmail: targetUser?.email,
+          targetUserRole: targetUser?.role
+        }
+      );
+      
       await loadData();
       toast({
         title: "Başarılı",
         description: "Kullanıcı silindi.",
       });
     } catch (error) {
+      await logger.logErrorAction('user_delete_failed', error, { userId });
+      
       toast({
         title: "Hata",
         description: error.message,
@@ -177,7 +228,19 @@ export default function UsersPage() {
 
   const handleCreateUser = async (userData) => {
     try {
-      await createUser(userData, currentUser?.role);
+      const result = await createUser(userData, currentUser?.role);
+      
+      await logger.logUserAction(
+        'user_created',
+        result.userId || 'new-user',
+        `Yeni kullanıcı oluşturuldu: ${userData.email}`,
+        { 
+          newUserEmail: userData.email,
+          newUserRole: userData.role,
+          newUserName: userData.displayName
+        }
+      );
+      
       await loadData();
       setShowCreateModal(false);
       toast({
@@ -185,6 +248,8 @@ export default function UsersPage() {
         description: "Yeni kullanıcı oluşturuldu.",
       });
     } catch (error) {
+      await logger.logErrorAction('user_create_failed', error, { email: userData.email });
+      
       toast({
         title: "Hata",
         description: error.message,
@@ -193,19 +258,51 @@ export default function UsersPage() {
     }
   };
 
-  const handleViewUser = (user) => {
+  const handleViewUser = async (user) => {
     setViewingUser(user);
     setShowViewModal(true);
+    
+    await logger.logRead(
+      'user',
+      user.id,
+      `Kullanıcı detayları görüntülendi: ${user.email}`,
+      { viewedUserEmail: user.email, viewedUserRole: user.role }
+    );
   };
 
-  const handleEditUser = (user) => {
+  const handleEditUser = async (user) => {
     setEditingUser(user);
     setShowEditModal(true);
+    
+    await logger.logRead(
+      'user',
+      user.id,
+      `Kullanıcı düzenleme ekranı açıldı: ${user.email}`,
+      { editTargetEmail: user.email, editTargetRole: user.role }
+    );
   };
 
   const handleUpdateUser = async (userData) => {
     try {
+      const oldUserData = editingUser;
+      
       await updateUser(editingUser.id, userData, currentUser?.role);
+      
+      await logger.logUserAction(
+        'user_updated',
+        editingUser.id,
+        `Kullanıcı bilgileri güncellendi: ${editingUser.email}`,
+        { 
+          targetUserEmail: editingUser.email,
+          updatedFields: userData,
+          oldData: {
+            displayName: oldUserData.displayName,
+            role: oldUserData.role,
+            isActive: oldUserData.isActive
+          }
+        }
+      );
+      
       await loadData();
       setShowEditModal(false);
       setEditingUser(null);
@@ -214,6 +311,11 @@ export default function UsersPage() {
         description: "Kullanıcı bilgileri güncellendi.",
       });
     } catch (error) {
+      await logger.logErrorAction('user_update_failed', error, { 
+        userId: editingUser?.id,
+        userData 
+      });
+      
       toast({
         title: "Hata",
         description: error.message,

@@ -6,6 +6,8 @@ import { PermissionGuard, RoleGuard, usePermissions } from '../../../components/
 import { getQuoteStats } from '../../../lib/services/admin-quote-service';
 import { getContactStats } from '../../../lib/services/admin-contact-service';
 import { getUserStats } from '../../../lib/services/admin-user-service';
+import { getLogStats } from '../../../lib/services/admin-log-service';
+import { CompanyService } from '../../../lib/services/company-service';
 import { 
   BarChart3,
   FileText,
@@ -22,6 +24,7 @@ import {
   Phone,
   DollarSign
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
   const { user, permissions, userRole, loading: authLoading } = useAdminAuth();
@@ -58,8 +61,18 @@ export default function AdminDashboard() {
     clients: 0,
     prospects: 0,
     active: 0,
+    inactive: 0,
     highPriority: 0,
+    mediumPriority: 0,
+    lowPriority: 0,
     monthlyRevenue: 0
+  });
+
+  const [logStats, setLogStats] = useState({
+    totalLogs: 0,
+    todayLogs: 0,
+    errors: 0,
+    warnings: 0
   });
 
   const [loading, setLoading] = useState(true);
@@ -90,6 +103,16 @@ export default function AdminDashboard() {
         promises.push(getUserStats(permissions));
       }
 
+      // Company stats - firma yönetimi yetkisi olanlar için
+      if (hasPermission("canManageCompanies")) {
+        promises.push(CompanyService.getCompanyStats());
+      }
+
+      // Log stats - tüm admin kullanıcıları görebilir
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      promises.push(getLogStats(today.toISOString(), null));
+
       const results = await Promise.all(promises);
       let resultIndex = 0;
 
@@ -114,15 +137,23 @@ export default function AdminDashboard() {
         }
       }
 
-      // Mock company data - replace with actual Firebase data if permission exists
+      // Company stats - firma yönetimi yetkisi olanlar için
       if (hasPermission("canManageCompanies")) {
-        setCompanyStats({
-          total: 12,
-          clients: 5,
-          prospects: 4,
-          active: 3,
-          highPriority: 2,
-          monthlyRevenue: 85000
+        const companyResult = results[resultIndex++];
+        if (companyResult.success) {
+          setCompanyStats(companyResult.stats);
+        }
+      }
+
+      // Log stats her zaman yükle
+      const logResult = results[resultIndex++];
+      if (logResult.success) {
+        const stats = logResult.stats;
+        setLogStats({
+          totalLogs: stats.totalLogs || 0,
+          todayLogs: stats.totalLogs || 0, // Today için ayrı hesaplanabilir
+          errors: stats.levels?.error || 0,
+          warnings: stats.levels?.warning || 0,
         });
       }
     } catch (error) {
@@ -295,17 +326,6 @@ export default function AdminDashboard() {
           />
         </PermissionGuard>
 
-        {/* Company Stats - Sadece admin ve üstü roller */}
-        <PermissionGuard requiredPermission="canManageCompanies">
-          <StatCard
-            title="Toplam Firma"
-            value={companyStats.total}
-            icon={Building2}
-            color="text-indigo-600"
-            description="Kayıtlı firmalar"
-          />
-        </PermissionGuard>
-
         {/* User Stats - Sadece user management yetkisi olanlar */}
         <PermissionGuard requiredPermission="canViewAnalytics">
           <StatCard
@@ -316,12 +336,73 @@ export default function AdminDashboard() {
             description="Toplam kullanıcı"
           />
         </PermissionGuard>
+
+        {/* Log Stats - Tüm admin kullanıcılarına görünür */}
+        <Link href="/admin/logs" className="block hover:shadow-lg transition-shadow">
+          <StatCard
+            title="Sistem Logları"
+            value={logStats.totalLogs}
+            icon={Activity}
+            color="text-orange-600"
+            description={`${logStats.errors} hata, ${logStats.warnings} uyarı`}
+          />
+        </Link>
       </div>
+
+      {/* Firma İstatistikleri - Sadece company management yetkisi olanlar */}
+      <PermissionGuard requiredPermission="canManageCompanies">
+        <div className="mt-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Firma Yönetimi</h2>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Toplam Firma"
+              value={companyStats.total}
+              icon={Building2}
+              color="text-indigo-600"
+              description="Kayıtlı tüm firmalar"
+            />
+            <StatCard
+              title="Aktif Müşteriler"
+              value={companyStats.clients}
+              icon={CheckCircle}
+              color="text-green-600"
+              description="Anlaşmalı müşteriler"
+            />
+            <StatCard
+              title="Potansiyel Müşteriler"
+              value={companyStats.prospects}
+              icon={Clock}
+              color="text-yellow-600"
+              description="Görüşme aşamasında"
+            />
+            <StatCard
+              title="Yüksek Öncelik"
+              value={companyStats.highPriority}
+              icon={AlertTriangle}
+              color="text-red-600"
+              description="Öncelikli takip"
+            />
+          </div>
+          
+          {/* Aylık Gelir Kartı */}
+          {companyStats.monthlyRevenue > 0 && (
+            <div className="mt-4">
+              <StatCard
+                title="Aylık Tahmini Gelir"
+                value={`₺${companyStats.monthlyRevenue.toLocaleString('tr-TR')}`}
+                icon={DollarSign}
+                color="text-emerald-600"
+                description="Aktif müşterilerden"
+              />
+            </div>
+          )}
+        </div>
+      </PermissionGuard>
 
       {/* Özet Bilgiler */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Sistem Özeti</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">{totalRequests}</div>
             <div className="text-sm text-gray-500">Toplam Talep</div>
@@ -330,6 +411,18 @@ export default function AdminDashboard() {
             <div className="text-2xl font-bold text-orange-600">{pendingRequests}</div>
             <div className="text-sm text-gray-500">Bekleyen Toplam</div>
           </div>
+          
+          {/* Company özet bilgileri - sadece yetki sahibi kullanıcılar için */}
+          <PermissionGuard requiredPermission="canManageCompanies">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-indigo-600">{companyStats.active}</div>
+              <div className="text-sm text-gray-500">Aktif Firma</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-600">{companyStats.inactive}</div>
+              <div className="text-sm text-gray-500">Pasif Firma</div>
+            </div>
+          </PermissionGuard>
         </div>
       </div>
     </div>
