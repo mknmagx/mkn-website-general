@@ -12,11 +12,11 @@ import {
   updateUserRole,
   toggleUserStatus,
   deleteUser,
-  createUser,
   updateUser,
   USER_ROLES,
   ROLE_LEVELS,
 } from "../../../lib/services/admin-user-service";
+import { createUserWithAdmin } from "../../../lib/services/admin-user-api";
 import { useAdminAuth } from "../../../hooks/use-admin-auth";
 import { useAdminLogger } from "../../../hooks/use-admin-logger";
 import { useToast } from "../../../hooks/use-toast";
@@ -60,6 +60,9 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [sortBy, setSortBy] = useState("createdAt");
@@ -228,25 +231,34 @@ export default function UsersPage() {
 
   const handleCreateUser = async (userData) => {
     try {
-      const result = await createUser(userData, currentUser?.role);
+      const result = await createUserWithAdmin(userData, currentUser?.role);
       
-      await logger.logUserAction(
-        'user_created',
-        result.userId || 'new-user',
-        `Yeni kullanıcı oluşturuldu: ${userData.email}`,
-        { 
-          newUserEmail: userData.email,
-          newUserRole: userData.role,
-          newUserName: userData.displayName
-        }
-      );
-      
-      await loadData();
-      setShowCreateModal(false);
-      toast({
-        title: "Başarılı",
-        description: "Yeni kullanıcı oluşturuldu.",
-      });
+      if (result.success) {
+        await logger.logUserAction(
+          'user_created',
+          result.userId,
+          `Yeni kullanıcı oluşturuldu: ${userData.email}`,
+          { 
+            newUserEmail: userData.email,
+            newUserRole: userData.role,
+            newUserName: userData.displayName
+          }
+        );
+        
+        setShowCreateModal(false);
+        
+        // Şifre modalını göster
+        setGeneratedPassword(result.generatedPassword);
+        setNewUserEmail(userData.email);
+        setShowPasswordModal(true);
+        
+        toast({
+          title: "Başarılı",
+          description: "Yeni kullanıcı oluşturuldu.",
+        });
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       await logger.logErrorAction('user_create_failed', error, { email: userData.email });
       
@@ -832,6 +844,21 @@ export default function UsersPage() {
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateUser}
           currentUserRole={currentUser?.role}
+        />
+      )}
+
+      {/* Şifre Gösterim Modal */}
+      {showPasswordModal && (
+        <PasswordDisplayModal
+          email={newUserEmail}
+          password={generatedPassword}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setGeneratedPassword("");
+            setNewUserEmail("");
+            // Modal kapandıktan sonra kullanıcı listesini güncelle
+            loadData();
+          }}
         />
       )}
 
@@ -2285,6 +2312,205 @@ function EditUserModal({ user, onClose, onUpdate, currentUserRole }) {
                 Güncelle
               </>
             )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Şifre Gösterim Modal Komponenti
+function PasswordDisplayModal({ email, password, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      console.error('Panoya kopyalanamadı:', err);
+    }
+  };
+
+  const handleCopyAll = async () => {
+    const loginInfo = `Email: ${email}\nŞifre: ${password}`;
+    try {
+      await navigator.clipboard.writeText(loginInfo);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      console.error('Panoya kopyalanamadı:', err);
+    }
+  };
+
+  const handleCloseAttempt = () => {
+    setShowWarning(true);
+  };
+
+  const handleConfirmClose = () => {
+    onClose();
+  };
+
+  if (showWarning) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Şifre Bilgisini Kaydettiniz mi?
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bu şifre bir daha gösterilmeyecektir. Lütfen güvenli bir yerde kaydettiğinizden emin olun.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowWarning(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Geri Dön
+              </button>
+              <button
+                onClick={handleConfirmClose}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Evet, Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        // Dış tıklama ile kapanmayı engelle
+        e.stopPropagation();
+      }}
+      onKeyDown={(e) => {
+        // ESC tuşu ile kapanmayı engelle
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          handleCloseAttempt();
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-green-600" />
+            Kullanıcı Başarıyla Oluşturuldu
+          </h3>
+          <button
+            onClick={handleCloseAttempt}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            title="Modalı Kapat"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* İçerik */}
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-yellow-800">Önemli Güvenlik Bilgisi</h4>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Bu şifre yalnızca burada gösterilmektedir. Lütfen güvenli bir yerde saklayın ve kullanıcıya iletebilirsiniz.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={email}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Geçici Şifre
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono"
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                  title={showPassword ? "Şifreyi Gizle" : "Şifreyi Göster"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+                <button
+                  onClick={handleCopyPassword}
+                  className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Şifreyi Kopyala"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-800 mb-2">Kullanıcı Bilgileri:</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• Kullanıcı hesabı başarıyla oluşturulmuştur</li>
+              <li>• Bu bilgileri güvenli bir şekilde kullanıcıya iletebilirsiniz</li>
+              <li>• Kullanıcı isterse hesap ayarlarından şifresini değiştirebilir</li>
+              <li>• Giriş yapmak için email ve yukarıdaki şifreyi kullanmalıdır</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={handleCopyAll}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            {copied ? "Kopyalandı!" : "Tüm Bilgileri Kopyala"}
+          </button>
+          <button
+            onClick={handleCloseAttempt}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Kapat
           </button>
         </div>
       </div>

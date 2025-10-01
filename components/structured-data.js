@@ -1,4 +1,5 @@
 import { site } from "@/config/site";
+import { slugifyTr } from "@/utils/slugify-tr";
 
 export function OrganizationSchema() {
   const schema = {
@@ -393,7 +394,7 @@ export function ProductSchema({ product }) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "@id": `https://mkngroup.com.tr/ambalaj/${product.id}`,
+    "@id": `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
     name: product.name,
     description:
       product.description ||
@@ -494,6 +495,18 @@ export function ProductSchema({ product }) {
       "@type": "Order",
       target: "https://mkngroup.com.tr/iletisim",
     },
+    offers: {
+      "@type": "Offer",
+      url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+      priceCurrency: "TRY",
+      price: "0.00",
+      availability: "https://schema.org/InStock",
+      seller: {
+        "@type": "Organization",
+        name: "MKN Group",
+        url: "https://mkngroup.com.tr",
+      },
+    },
     isRelatedTo: {
       "@type": "ProductGroup",
       name: product.category,
@@ -534,7 +547,7 @@ export function ProductCatalogSchema({ products, category }) {
           position: index + 1,
           item: {
             "@type": "Product",
-            "@id": `https://mkngroup.com.tr/ambalaj/${product.id}`,
+            "@id": `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
             name: product.name,
             description:
               product.description ||
@@ -550,6 +563,18 @@ export function ProductCatalogSchema({ products, category }) {
             },
             category: product.category,
             sku: product.code,
+            offers: {
+              "@type": "Offer",
+              url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+              priceCurrency: "TRY",
+              price: "0.00",
+              availability: "https://schema.org/InStock",
+              seller: {
+                "@type": "Organization",
+                name: "MKN Group",
+                url: "https://mkngroup.com.tr",
+              },
+            },
           },
         })) || [],
     },
