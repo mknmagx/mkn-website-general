@@ -42,8 +42,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup_official",
-    creator: "@mkngroup_official",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "Blog | MKN Group - Fason Üretim Uzmanları",
     description:
       "Kozmetik fason üretim ve endüstri trendleri hakkında uzman görüşleri ve profesyonel rehberler.",

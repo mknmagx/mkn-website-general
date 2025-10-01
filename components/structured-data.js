@@ -1,3 +1,5 @@
+import { site } from "@/config/site";
+
 export function OrganizationSchema() {
   const schema = {
     "@context": "https://schema.org",
@@ -18,8 +20,8 @@ export function OrganizationSchema() {
       "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
       "https://mkngroup.com.tr/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
     ],
-    telephone: "+90 531 494 25 94",
-    email: "info@mkngroup.com.tr",
+    telephone: site.phone,
+    email: site.email,
     address: {
       "@type": "PostalAddress",
       streetAddress: "Akçaburgaz Mah, 3026 Sk, No:5",
@@ -133,17 +135,16 @@ export function OrganizationSchema() {
       ],
     },
     sameAs: [
-      "https://www.linkedin.com/company/mkngroup",
-      "https://www.instagram.com/mkngroup_official",
-      "https://www.facebook.com/mkngroup",
-      "https://www.youtube.com/@mkngroup",
+      site.socials.linkedin,
+      site.socials.instagram,
+      site.socials.twitter,
     ],
     contactPoint: [
       {
         "@type": "ContactPoint",
-        telephone: "+90 531 494 25 94",
+        telephone: site.phone,
         contactType: "customer service",
-        email: "info@mkngroup.com.tr",
+        email: site.email,
         availableLanguage: ["Turkish", "English"],
         hoursAvailable: {
           "@type": "OpeningHoursSpecification",
@@ -250,8 +251,8 @@ export function LocalBusinessSchema() {
     description:
       "Türkiye'nin önde gelen fason üretim ve operasyon çözümleri şirketi",
     url: "https://mkngroup.com.tr",
-    telephone: "+90 531 494 25 94",
-    email: "info@mkngroup.com.tr",
+    telephone: site.phone,
+    email: site.email,
     address: {
       "@type": "PostalAddress",
       streetAddress: "Akçaburgaz Mah, 3026 Sk, No:5",
@@ -417,8 +418,8 @@ export function ProductSchema({ product }) {
         addressCountry: "TR",
         postalCode: "34522",
       },
-      telephone: "+90 531 494 25 94",
-      email: "info@mkngroup.com.tr",
+      telephone: site.phone,
+      email: site.email,
     },
     category: product.category,
     productID: product.code,
@@ -489,21 +490,6 @@ export function ProductSchema({ product }) {
         description: "Kullanım alanları",
       },
     ],
-    offers: {
-      "@type": "Offer",
-      "@id": `https://mkngroup.com.tr/ambalaj/${product.id}#offer`,
-      url: `https://mkngroup.com.tr/ambalaj/${product.id}`,
-      availability: product.inStock
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
-      itemCondition: "https://schema.org/NewCondition",
-      seller: {
-        "@type": "Organization",
-        name: "MKN Group",
-        url: "https://mkngroup.com.tr",
-        logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
-      },
-    },
     potentialAction: {
       "@type": "Order",
       target: "https://mkngroup.com.tr/iletisim",
@@ -564,17 +550,6 @@ export function ProductCatalogSchema({ products, category }) {
             },
             category: product.category,
             sku: product.code,
-            offers: {
-              "@type": "Offer",
-              availability: product.inStock
-                ? "https://schema.org/InStock"
-                : "https://schema.org/OutOfStock",
-              seller: {
-                "@type": "Organization",
-                name: "MKN Group",
-                url: "https://mkngroup.com.tr",
-              },
-            },
           },
         })) || [],
     },
@@ -754,9 +729,9 @@ export function ManufacturerSchema() {
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+90 531 494 25 94",
+      telephone: site.phone,
       contactType: "sales",
-      email: "info@mkngroup.com.tr",
+      email: site.email,
       availableLanguage: ["Turkish", "English"],
     },
   };

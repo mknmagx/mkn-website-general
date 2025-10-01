@@ -150,8 +150,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
-    creator: "@mkngroup",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "MKN GROUP - Türkiye'nin Güvenilir Fason Üretim Partneri",
     description:
       "🏭 6+ yıl deneyim, 1000+ başarılı proje! ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama.",

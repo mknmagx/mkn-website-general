@@ -123,7 +123,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
+    site: "@mkngroup_x",
     creator: "@asparilac",
     title:
       "Aspar İlaç | GMP Sertifikalı Gıda Takviyesi ve Dermokozmetik Üretim Tesisi",

@@ -95,8 +95,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
-    creator: "@mkngroup",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "İletişim | MKNGROUP Contract Manufacturing",
     description:
       "ISO sertifikalı tesislerde contract manufacturing. Ücretsiz danışmanlık için iletişime geçin.",

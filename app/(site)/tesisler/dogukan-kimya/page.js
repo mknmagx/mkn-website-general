@@ -143,7 +143,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
+    site: "@mkngroup_x",
     creator: "@dogukankimya",
     title:
       "Doğukan Kimya | ISO Sertifikalı Temizlik Ürünleri ve Islak Mendil Üretim Tesisi",

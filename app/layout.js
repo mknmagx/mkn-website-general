@@ -105,8 +105,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
-    creator: "@mkngroup",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
     description:
       "Türkiye'nin önde gelen fason üretim şirketi MKNGROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri.",

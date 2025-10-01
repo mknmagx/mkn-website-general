@@ -77,8 +77,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup_official",
-    creator: "@mkngroup_official",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "Kozmetik Ambalaj Ürünleri | MKN Group",
     description:
       "Premium kalitede kozmetik ambalaj ürünleri. Geniş ürün yelpazesi, hızlı teslimat ve uygun fiyatlarla.",

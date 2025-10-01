@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { site } from "@/config/site";
 
 export function ContactLocationSection() {
   return (
@@ -24,7 +25,7 @@ export function ContactLocationSection() {
               </div>
               <div>
                 <div className="font-semibold text-gray-900 dark:text-white">Telefon</div>
-                <div className="text-green-600 dark:text-green-400">+90 531 494 25 94</div>
+                <div className="text-green-600 dark:text-green-400">{site.phone}</div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">7/24 WhatsApp Destek</div>
               </div>
             </div>
@@ -35,7 +36,7 @@ export function ContactLocationSection() {
               </div>
               <div>
                 <div className="font-semibold text-gray-900 dark:text-white">E-posta</div>
-                <div className="text-blue-600 dark:text-blue-400">info@mkngroup.com.tr</div>
+                <div className="text-blue-600 dark:text-blue-400">{site.email}</div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">48 saat içinde yanıt</div>
               </div>
             </div>

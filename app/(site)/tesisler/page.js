@@ -104,8 +104,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
-    creator: "@mkngroup",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "ISO Sertifikalı Üretim Tesislerimiz | MKNGROUP",
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Contract manufacturing ve fason üretim çözümleri.",

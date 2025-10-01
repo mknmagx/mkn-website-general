@@ -253,8 +253,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mkngroup",
-    creator: "@mkngroup",
+    site: "@mkngroup_x",
+    creator: "@mkngroup_x",
     title: "MKNGROUP | Türkiye'nin Contract Manufacturing Lideri",
     description:
       "🏭 6+ yıllık deneyim, 10.600m² ISO sertifikalı tesisler, 360° çözümler. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi.",
@@ -312,8 +312,8 @@ export default function HakkimizdaPage() {
       "https://mkngroup.com.tr",
       "https://asparilac.com",
       "https://www.fomex.com.tr",
-      "https://www.linkedin.com/company/mkngroup",
-      "https://www.instagram.com/mkngroup",
+      "https://www.linkedin.com/company/mkn-group-official/",
+      "https://www.instagram.com/mkngroupofficial/",
     ],
     founder: {
       "@type": "Person",
