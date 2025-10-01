@@ -279,7 +279,6 @@ export function LocalBusinessSchema() {
         closes: "14:00",
       },
     ],
-    priceRange: "$$",
     currenciesAccepted: "TRY, USD, EUR",
     paymentAccepted: "Bank Transfer, Credit Card, Cash",
     hasMap:
@@ -497,25 +496,12 @@ export function ProductSchema({ product }) {
       availability: product.inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
-      businessFunction: "https://schema.org/Sell",
       itemCondition: "https://schema.org/NewCondition",
-      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
       seller: {
         "@type": "Organization",
         name: "MKN Group",
         url: "https://mkngroup.com.tr",
         logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
-      },
-      validFrom: new Date().toISOString().split("T")[0],
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "TR",
-        returnPolicyCategory:
-          "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 14,
-        returnMethod: "https://schema.org/ReturnByMail",
       },
     },
     potentialAction: {
