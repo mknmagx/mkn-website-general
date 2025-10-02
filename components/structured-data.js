@@ -555,10 +555,6 @@ export function ProductCatalogSchema({ products, category }) {
                   .map((img) => getCloudinaryUrl(img))
                   .filter(Boolean)
               : [],
-            brand: {
-              "@type": "Brand",
-              name: "MKN Group",
-            },
             category: product.category,
             sku: product.code,
             offers: {
