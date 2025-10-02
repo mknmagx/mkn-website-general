@@ -403,8 +403,6 @@ export function ProductSchema({ product }) {
     brand: {
       "@type": "Brand",
       name: "MKN Group",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
-      url: "https://mkngroup.com.tr",
     },
     manufacturer: {
       "@type": "Organization",
