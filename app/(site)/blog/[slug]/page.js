@@ -13,11 +13,14 @@ import {
 } from "lucide-react";
 import { SEOHead } from "@/components/seo-head";
 import ShareButton from "@/components/share-button";
-import { getBlogPostBySlug, getRelatedBlogPosts } from "@/data/blog-posts";
+import {
+  getBlogPostBySlug,
+  getRelatedBlogPosts,
+} from "@/lib/services/blog-service";
 
 export async function generateMetadata({ params }) {
   const awaitedParams = await params;
-  const post = getBlogPostBySlug(awaitedParams.slug);
+  const post = await getBlogPostBySlug(awaitedParams.slug);
 
   if (!post) {
     return {
@@ -28,7 +31,7 @@ export async function generateMetadata({ params }) {
   return {
     title: `${post.title} | MKN Group Blog`,
     description: post.metaDescription || post.excerpt,
-    keywords: post.tags.join(", "),
+    keywords: post.tags?.join(", "),
     authors: [{ name: post.author }],
     openGraph: {
       title: post.title,
@@ -65,13 +68,13 @@ export async function generateStaticParams() {
 
 export default async function BlogPostPage({ params }) {
   const awaitedParams = await params;
-  const post = getBlogPostBySlug(awaitedParams.slug);
+  const post = await getBlogPostBySlug(awaitedParams.slug);
 
   if (!post) {
     notFound();
   }
 
-  const relatedPosts = getRelatedBlogPosts(post.id, post.categorySlug);
+  const relatedPosts = await getRelatedBlogPosts(post.id, post.categorySlug);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -113,7 +116,7 @@ export default async function BlogPostPage({ params }) {
             articleSection: post.category,
             keywords: post.tags.join(", "),
             wordCount: post.content.split(" ").length,
-            readingTime: `PT${post.readingTime.replace(' dk', '')}M`,
+            readingTime: `PT${post.readingTime.replace(" dk", "")}M`,
             inLanguage: "tr-TR",
           }),
         }}

@@ -1,37 +1,3 @@
-import Link from "next/link";
-import Image from "next/image";
-import {
-  Search,
-  Filter,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Check,
-  Sliders,
-  Tag,
-  Package,
-  Droplets,
-  ShoppingBag,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   ServiceSchema,
   BreadcrumbSchema,
@@ -40,8 +6,7 @@ import {
   ManufacturerSchema,
   AmbalajFAQSchema,
 } from "@/components/structured-data";
-import { products, product_catalog } from "@/data/products-catalog";
-import { slugifyTr } from "@/utils/slugify-tr";
+import { products } from "@/data/products-catalog";
 import AmbalajClient from "./client";
 
 export const metadata = {

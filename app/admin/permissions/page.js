@@ -18,6 +18,7 @@ import {
   Building2,
   BarChart3,
   FileText,
+  BookOpen,
   Check,
   X,
 } from "lucide-react";
@@ -27,6 +28,8 @@ import {
   getAllPermissions,
   DETAILED_PERMISSIONS,
   PERMISSION_CATEGORIES,
+  updateExistingRolesWithBlogPermissions,
+  addBlogPermissionsToCollection,
 } from "../../../lib/services/admin-permissions-service";
 
 export default function PermissionsPage() {
@@ -38,6 +41,7 @@ export default function PermissionsPage() {
   const [availablePermissions, setAvailablePermissions] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updatingBlogPermissions, setUpdatingBlogPermissions] = useState(false);
 
   // Yetki kontrolü
   const canManagePermissions =
@@ -72,8 +76,13 @@ export default function PermissionsPage() {
       }
 
       if (permissionsResult.success) {
+        console.log("Firestore'dan alınan yetkiler:", permissionsResult.data);
+        console.log("Blog yetkileri:", Object.keys(permissionsResult.data).filter(k => k.startsWith('blog.')));
         setAvailablePermissions(permissionsResult.data);
       } else {
+        // Firestore'dan alınamadıysa, DETAILED_PERMISSIONS'ı kullan
+        console.warn("Firestore'dan yetkiler alınamadı, DETAILED_PERMISSIONS kullanılıyor");
+        console.log("DETAILED_PERMISSIONS blog yetkileri:", Object.keys(DETAILED_PERMISSIONS).filter(k => k.startsWith('blog.')));
         setAvailablePermissions(DETAILED_PERMISSIONS);
       }
     } catch (error) {
@@ -145,6 +154,37 @@ export default function PermissionsPage() {
     }
   };
 
+  const updateBlogPermissions = async () => {
+    setUpdatingBlogPermissions(true);
+    try {
+      // Önce permissions koleksiyonuna blog yetkilerini ekle
+      const permissionsResult = await addBlogPermissionsToCollection();
+      if (!permissionsResult.success) {
+        throw new Error("Permissions koleksiyonu güncellenemedi: " + permissionsResult.error);
+      }
+      
+      // Sonra rollere blog yetkilerini ekle
+      const rolesResult = await updateExistingRolesWithBlogPermissions();
+      if (!rolesResult.success) {
+        throw new Error("Roller güncellenemedi: " + rolesResult.error);
+      }
+      
+      toast({
+        title: "Başarılı",
+        description: "Blog yetkileri başarıyla eklendi ve rollere atandı.",
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Blog yetkileri güncellenirken hata: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingBlogPermissions(false);
+    }
+  };
+
   const selectRole = (role) => {
     setSelectedRole(role);
     const rolePermissions = {};
@@ -161,6 +201,7 @@ export default function PermissionsPage() {
       case 'quotes': return <FileText className="h-4 w-4" />;
       case 'companies': return <Building2 className="h-4 w-4" />;
       case 'content': return <Edit className="h-4 w-4" />;
+      case 'blog': return <BookOpen className="h-4 w-4" />;
       case 'analytics': return <BarChart3 className="h-4 w-4" />;
       case 'system': return <Settings className="h-4 w-4" />;
       default: return <Key className="h-4 w-4" />;
@@ -174,6 +215,7 @@ export default function PermissionsPage() {
       case 'quotes': return 'text-orange-600 bg-orange-50';
       case 'companies': return 'text-purple-600 bg-purple-50';
       case 'content': return 'text-pink-600 bg-pink-50';
+      case 'blog': return 'text-cyan-600 bg-cyan-50';
       case 'analytics': return 'text-indigo-600 bg-indigo-50';
       case 'system': return 'text-red-600 bg-red-50';
       default: return 'text-gray-600 bg-gray-50';
@@ -231,23 +273,42 @@ export default function PermissionsPage() {
             Kullanıcı rollerini ve yetkilerini yönetin
           </p>
         </div>
-        <button
-          onClick={savePermissions}
-          disabled={saving}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium shadow-lg"
-        >
-          {saving ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Kaydediliyor...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Kaydet
-            </>
-          )}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={updateBlogPermissions}
+            disabled={updatingBlogPermissions}
+            className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors font-medium shadow-lg"
+          >
+            {updatingBlogPermissions ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Güncelleniyor...
+              </>
+            ) : (
+              <>
+                <BookOpen className="h-4 w-4" />
+                Blog Yetkileri Ekle
+              </>
+            )}
+          </button>
+          <button
+            onClick={savePermissions}
+            disabled={saving}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium shadow-lg"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Kaydet
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -328,6 +389,7 @@ export default function PermissionsPage() {
                         {category === 'quotes' && 'Teklif Yönetimi'}
                         {category === 'companies' && 'Şirket Yönetimi'}
                         {category === 'content' && 'İçerik Yönetimi'}
+                        {category === 'blog' && 'Blog Yönetimi'}
                         {category === 'analytics' && 'Analitik & Raporlama'}
                         {category === 'system' && 'Sistem Yönetimi'}
                       </h3>

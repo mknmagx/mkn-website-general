@@ -7,6 +7,7 @@ import { getQuoteStats } from '../../../lib/services/admin-quote-service';
 import { getContactStats } from '../../../lib/services/admin-contact-service';
 import { getUserStats } from '../../../lib/services/admin-user-service';
 import { getLogStats } from '../../../lib/services/admin-log-service';
+import { getBlogStats } from '../../../lib/services/blog-service';
 import { CompanyService } from '../../../lib/services/company-service';
 import { 
   BarChart3,
@@ -22,7 +23,8 @@ import {
   Activity,
   Mail,
   Phone,
-  DollarSign
+  DollarSign,
+  Edit3
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -75,6 +77,13 @@ export default function AdminDashboard() {
     warnings: 0
   });
 
+  const [blogStats, setBlogStats] = useState({
+    totalPosts: 0,
+    totalCategories: 0,
+    featuredPosts: 0,
+    publishedThisMonth: 0
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -112,6 +121,11 @@ export default function AdminDashboard() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       promises.push(getLogStats(today.toISOString(), null));
+
+      // Blog stats - blog yönetimi yetkisi olanlar için
+      if (hasPermission("blog.read") || hasPermission("canManageBlog")) {
+        promises.push(getBlogStats());
+      }
 
       const results = await Promise.all(promises);
       let resultIndex = 0;
@@ -155,6 +169,14 @@ export default function AdminDashboard() {
           errors: stats.levels?.error || 0,
           warnings: stats.levels?.warning || 0,
         });
+      }
+
+      // Blog stats - blog yönetimi yetkisi olanlar için
+      if (hasPermission("blog.read") || hasPermission("canManageBlog")) {
+        const blogResult = results[resultIndex++];
+        if (blogResult) {
+          setBlogStats(blogResult);
+        }
       }
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -337,6 +359,19 @@ export default function AdminDashboard() {
           />
         </PermissionGuard>
 
+        {/* Blog Stats - Blog yönetimi yetkisi olanlar */}
+        <PermissionGuard requiredPermission="blog.read">
+          <Link href="/admin/blog" className="block hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Blog Yazıları"
+              value={blogStats.totalPosts}
+              icon={Edit3}
+              color="text-purple-600"
+              description={`${blogStats.featuredPosts} öne çıkan, ${blogStats.totalCategories} kategori`}
+            />
+          </Link>
+        </PermissionGuard>
+
         {/* Log Stats - Tüm admin kullanıcılarına görünür */}
         <Link href="/admin/logs" className="block hover:shadow-lg transition-shadow">
           <StatCard
@@ -348,6 +383,43 @@ export default function AdminDashboard() {
           />
         </Link>
       </div>
+
+      {/* Blog Yönetimi İstatistikleri - Blog yetkisi olanlar */}
+      <PermissionGuard requiredPermission="blog.read">
+        <div className="mt-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Blog Yönetimi</h2>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Toplam Yazı"
+              value={blogStats.totalPosts}
+              icon={Edit3}
+              color="text-blue-600"
+              description="Yayınlanan blog yazıları"
+            />
+            <StatCard
+              title="Kategoriler"
+              value={blogStats.totalCategories}
+              icon={BarChart3}
+              color="text-green-600"
+              description="Blog kategorileri"
+            />
+            <StatCard
+              title="Öne Çıkan"
+              value={blogStats.featuredPosts}
+              icon={TrendingUp}
+              color="text-purple-600"
+              description="Öne çıkan yazılar"
+            />
+            <StatCard
+              title="Bu Ay Yayınlanan"
+              value={blogStats.publishedThisMonth}
+              icon={Calendar}
+              color="text-orange-600"
+              description="Bu ay yayınlanan yazılar"
+            />
+          </div>
+        </div>
+      </PermissionGuard>
 
       {/* Firma İstatistikleri - Sadece company management yetkisi olanlar */}
       <PermissionGuard requiredPermission="canManageCompanies">

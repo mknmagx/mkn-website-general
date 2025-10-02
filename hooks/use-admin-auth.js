@@ -27,7 +27,7 @@ export const AdminAuthProvider = ({ children }) => {
 
       console.log("Auth state changed:", authData?.user?.email || "No user");
       clearTimeout(loadingTimeout);
-      
+
       if (authData) {
         setUser(authData.user);
         setIsAdmin(authData.isAdmin);
@@ -39,7 +39,7 @@ export const AdminAuthProvider = ({ children }) => {
         setPermissions(null);
         setUserRole(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -68,10 +68,10 @@ export const AdminAuthProvider = ({ children }) => {
 
   const canAccessRoute = (routePath) => {
     if (!userRole) return false;
-    
+
     const roleRoutes = {
-      "super_admin": ["*"], // Tüm sayfalara erişim
-      "admin": [
+      super_admin: ["*"], // Tüm sayfalara erişim
+      admin: [
         "/admin/dashboard",
         "/admin/users",
         "/admin/companies",
@@ -79,15 +79,14 @@ export const AdminAuthProvider = ({ children }) => {
         "/admin/quotes",
         "/admin/permissions",
       ],
-      "moderator": [
-        "/admin/dashboard",
-        "/admin/contacts",
-        "/admin/quotes",
-      ],
+      moderator: ["/admin/dashboard", "/admin/contacts", "/admin/quotes"],
     };
 
     const allowedRoutes = roleRoutes[userRole] || [];
-    return allowedRoutes.includes("*") || allowedRoutes.some(route => routePath.startsWith(route));
+    return (
+      allowedRoutes.includes("*") ||
+      allowedRoutes.some((route) => routePath.startsWith(route))
+    );
   };
 
   const value = {

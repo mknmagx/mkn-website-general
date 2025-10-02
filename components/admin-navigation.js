@@ -17,6 +17,7 @@ import {
   Shield,
   UserCheck,
   Activity,
+  Edit3,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -85,6 +86,13 @@ export default function AdminNavigation() {
       current: pathname === "/admin/contacts",
       show:
         hasPermission("contacts.view") || hasPermission("canViewAllContacts"),
+    },
+    {
+      name: "Blog Yönetimi",
+      href: "/admin/blog",
+      icon: Edit3,
+      current: pathname.startsWith("/admin/blog"),
+      show: hasPermission("blog.read") || hasPermission("canManageBlog"),
     },
     {
       name: "Kullanıcı Yönetimi",

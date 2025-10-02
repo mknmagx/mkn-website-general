@@ -1,13 +1,13 @@
 import { site } from "@/config/site";
 import { products } from "@/data/products-catalog";
-import { getAllBlogPosts } from "@/data/blog-posts";
+import { getAllBlogPosts } from "@/lib/services/blog-service";
 
-export default function sitemap() {
+export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
   const currentDate = new Date();
 
-  // Blog postlarını al
-  const blogPosts = getAllBlogPosts();
+  // Blog postlarını Firestore'dan al
+  const blogPosts = await getAllBlogPosts();
 
   // Ana sayfalar ve öncelik sıralaması
   const mainRoutes = [

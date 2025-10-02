@@ -8,19 +8,15 @@ import {
   BookOpen,
   Package,
   Eye,
-  Brush,
   Layers,
   Monitor,
   Tag,
   CheckCircle,
   Sparkles,
-  Zap,
   Star,
   Award,
-  Users,
   Clock,
   Target,
-  TrendingUp,
   Lightbulb,
   Wand2,
   Rocket,
@@ -29,11 +25,8 @@ import {
   Play,
   Phone,
   Code,
-  Pen,
-  MousePointer,
   PenTool,
   Hexagon,
-  Triangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +42,7 @@ export const metadata = {
   title:
     "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP - 3D Modelleme, Marka Kimliği, Dijital Tasarım Çözümleri",
   description:
-    "✨ Türkiye'nin en inovatif tasarım stüdyosu! 3D modelleme, marka kimliği, web tasarım, ürün görselleri, katalog tasarımı ve daha fazlası. Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz. %100 müşteri memnuniyeti garantili.",
+    "✨ Türkiye'nin en inovatif tasarım stüdyosu! 3D modelleme, marka kimliği, web tasarım, ürün görselleri ve katalog tasarımı. Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz. %100 müşteri memnuniyeti garantili.",
   keywords:
     "profesyonel tasarım stüdyosu, 3d modelleme uzmanı, marka kimliği tasarımı, logo tasarım ajansı, web site tasarım şirketi, ürün fotoğrafçılığı, katalog tasarım hizmeti, etiket tasarımı, ambalaj tasarımı, kreatif ajans, tasarım danışmanlığı, görsel kimlik, kurumsal tasarım, e-ticaret görselleri, pazarlama materyalleri, reklam tasarımı, sosyal medya tasarımı, baskı tasarımı, dijital tasarım çözümleri, inovatif tasarım, modern tasarım ajansı, mkngroup tasarım",
   alternates: {
@@ -244,12 +237,12 @@ export default function TasarimPage() {
   ];
 
   const portfolioImages = [
-    "/optimized/cosmetic-packaging-mockup.webp",
-    "/optimized/cosmetic-bottle-30ml.webp",
-    "/optimized/airless-bottle-15ml.webp",
-    "/optimized/pump-bottle-250ml.webp",
-    "/optimized/glass-jar-50ml-cosmetic.webp",
-    "/optimized/cosmetic-instagram-campaign.webp",
+    "/optimized/rebooster.webp",
+    "/optimized/body-peeling.webp",
+    "/optimized/la-vase-body-oil.webp",
+    "/optimized/quins-body-lotion.webp",
+    "/optimized/la-vase-cosmetics.webp",
+    "/optimized/quins-tonic.webp",
   ];
 
   const processSteps = [
@@ -459,12 +452,8 @@ export default function TasarimPage() {
             </div>
           </div>
 
-          {/* Floating Elements */}
+          {/* Floating Elements - Optimized */}
           <div className="absolute top-20 left-10 w-20 h-20 bg-blue-500/20 rounded-full blur-xl animate-float" />
-          <div
-            className="absolute top-40 right-20 w-16 h-16 bg-purple-500/20 rounded-full blur-xl animate-float"
-            style={{ animationDelay: "1s" }}
-          />
           <div
             className="absolute bottom-40 left-20 w-24 h-24 bg-cyan-500/20 rounded-full blur-xl animate-float"
             style={{ animationDelay: "2s" }}
@@ -494,7 +483,8 @@ export default function TasarimPage() {
                       alt={imageName}
                       width={200}
                       height={200}
-                      className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-500"
+                      loading="lazy"
+                      className="w-full h-32 object-cover group-hover:scale-110 transition-transform duration-500 will-change-transform"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     {/* Show image name on hover */}
@@ -529,7 +519,7 @@ export default function TasarimPage() {
               {designServices.map((service, index) => (
                 <Card
                   key={service.id}
-                  className="group bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-500 overflow-hidden rounded-2xl hover:bg-white/10 flex flex-col h-full"
+                  className="group bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-500 overflow-hidden rounded-2xl hover:bg-white/10 flex flex-col h-full will-change-transform"
                 >
                   <div className="relative flex-1 flex flex-col">
                     {/* Service Image */}
@@ -678,10 +668,8 @@ export default function TasarimPage() {
                 </div>
               </div>
 
-              {/* Floating Shapes */}
+              {/* Floating Shapes - Optimized */}
               <div className="absolute top-4 left-4 w-8 h-8 bg-white/20 rounded-full" />
-              <div className="absolute top-8 right-8 w-6 h-6 bg-yellow-400/30 rounded-full" />
-              <div className="absolute bottom-4 left-8 w-4 h-4 bg-pink-400/30 rounded-full" />
               <div className="absolute bottom-8 right-4 w-10 h-10 bg-cyan-400/20 rounded-full" />
             </div>
           </div>
