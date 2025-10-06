@@ -61,7 +61,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { products, product_catalog } from "@/data/products-catalog";
-import { slugifyTr } from "@/utils/slugify-tr";
+import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const getCloudinaryUrl = (imageName) => {
@@ -503,7 +503,7 @@ export default function AmbalajClient() {
                   asChild
                   className="flex-1 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
-                  <Link href={`/ambalaj/${slugifyTr(selectedProduct.name)}`}>
+                  <Link href={`/ambalaj/${createProductSlug(selectedProduct)}`}>
                     Detayları Gör
                   </Link>
                 </Button>
@@ -794,7 +794,7 @@ export default function AmbalajClient() {
                       </CardContent>
                       <CardFooter className="p-3 md:p-4 pt-0">
                         <Link
-                          href={`/ambalaj/${slugifyTr(product.name)}`}
+                          href={`/ambalaj/${createProductSlug(product)}`}
                           className="w-full"
                         >
                           <Button

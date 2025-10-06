@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { slugifyTr } from "@/utils/slugify-tr";
+import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 
 const getCloudinaryUrl = (imageName) => {
   if (!imageName) return null;
@@ -58,7 +58,9 @@ export default function ProductDetailClient({ product, relatedProducts }) {
     const whatsappNumber = "905314942594";
     let message = `Merhaba MKNGROUP! 👋\n\n`;
     message += `Aşağıdaki ürün hakkında bilgi almak istiyorum:\n\n`;
-    message += `📦 *Ürün:* ${product.name}\n`;
+    message += `📦 *Ürün:* ${product.name}${
+      product.size ? ` - ${product.size}` : ""
+    }\n`;
     message += `📋 *Kategori:* ${product.category}\n`;
 
     if (product.code) {
@@ -90,7 +92,9 @@ export default function ProductDetailClient({ product, relatedProducts }) {
 
   const handleShare = async () => {
     const shareData = {
-      title: `${product.name} | MKN Group Ambalaj`,
+      title: `${product.name}${
+        product.size ? ` - ${product.size}` : ""
+      } | MKN Group Ambalaj`,
       text: `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`,
       url: window.location.href,
     };
@@ -110,7 +114,9 @@ export default function ProductDetailClient({ product, relatedProducts }) {
 
       const shareUrl = encodeURIComponent(window.location.href);
       const shareTitle = encodeURIComponent(
-        `${product.name} | MKN Group Ambalaj`
+        `${product.name}${
+          product.size ? ` - ${product.size}` : ""
+        } | MKN Group Ambalaj`
       );
       const shareText = encodeURIComponent(
         `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`
@@ -211,17 +217,23 @@ export default function ProductDetailClient({ product, relatedProducts }) {
     product.images && product.images.length > 0
       ? product.images.map((imageName, index) => ({
           src: getCloudinaryUrl(imageName),
-          alt: `${product.name} - ${index + 1}`,
+          alt: `${product.name}${product.size ? ` - ${product.size}` : ""} - ${
+            index + 1
+          }`,
           caption:
             index === 0
-              ? product.name
-              : `${product.name} - Görünüm ${index + 1}`,
+              ? `${product.name}${product.size ? ` - ${product.size}` : ""}`
+              : `${product.name}${
+                  product.size ? ` - ${product.size}` : ""
+                } - Görünüm ${index + 1}`,
         }))
       : [
           {
             src: getCloudinaryUrl("placeholder.jpg"),
-            alt: product.name,
-            caption: product.name,
+            alt: `${product.name}${product.size ? ` - ${product.size}` : ""}`,
+            caption: `${product.name}${
+              product.size ? ` - ${product.size}` : ""
+            }`,
           },
         ];
 
@@ -247,6 +259,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
             <ChevronRight className="h-4 w-4" />
             <span className="text-gray-900 dark:text-gray-100 font-medium">
               {product.name}
+              {product.size && ` - ${product.size}`}
             </span>
           </nav>
         </div>
@@ -394,6 +407,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                   </Badge>
                   <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                     {product.name}
+                    {product.size && <span className="">- {product.size}</span>}
                   </h1>
                 </div>
 
@@ -787,14 +801,16 @@ export default function ProductDetailClient({ product, relatedProducts }) {
               {relatedProducts.map((relatedProduct) => (
                 <Link
                   key={relatedProduct.id}
-                  href={`/ambalaj/${slugifyTr(relatedProduct.name)}`}
+                  href={`/ambalaj/${createProductSlug(relatedProduct)}`}
                   className="group bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 overflow-hidden"
                 >
                   {/* Product Image */}
                   <div className="relative aspect-square bg-gray-50 dark:bg-gray-700">
                     <Image
                       src={getCloudinaryUrl(relatedProduct.images[0])}
-                      alt={relatedProduct.name}
+                      alt={`${relatedProduct.name}${
+                        relatedProduct.size ? ` - ${relatedProduct.size}` : ""
+                      }`}
                       fill
                       className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
@@ -820,6 +836,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                     </div>
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm line-clamp-2 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {relatedProduct.name}
+                      {relatedProduct.size && ` - ${relatedProduct.size}`}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-2 mb-3">
                       {relatedProduct.description}

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { products } from "@/data/products-catalog";
-import { slugifyTr } from "@/utils/slugify-tr";
+import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 import {
   ProductSchema,
   BreadcrumbSchema,
@@ -15,7 +15,7 @@ const getCloudinaryUrl = (imageName) => {
 
 // Server-side function to get product data
 async function getProductData(slug) {
-  const product = products.find((p) => slugifyTr(p.name) === slug);
+  const product = products.find((p) => createProductSlug(p) === slug);
 
   if (!product) {
     return null;
@@ -112,7 +112,7 @@ export async function generateMetadata({ params }) {
 // Generate static params for better performance
 export async function generateStaticParams() {
   return products.slice(0, 50).map((product) => ({
-    slug: slugifyTr(product.name),
+    slug: createProductSlug(product),
   }));
 }
 
@@ -140,14 +140,14 @@ export default async function ProductDetailPage({ params }) {
           },
           {
             name: product.name,
-            url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+            url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
           },
         ]}
       />
       <WebPageSchema
         title={`${product.name} | MKN Group Ambalaj`}
         description={`${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`}
-        url={`https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`}
+        url={`https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`}
         breadcrumbs={[
           { name: "Ana Sayfa", url: "https://mkngroup.com.tr" },
           { name: "Ambalaj", url: "https://mkngroup.com.tr/ambalaj" },
@@ -159,7 +159,7 @@ export default async function ProductDetailPage({ params }) {
           },
           {
             name: product.name,
-            url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+            url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
           },
         ]}
       />

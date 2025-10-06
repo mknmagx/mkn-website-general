@@ -1,5 +1,5 @@
 import { site } from "@/config/site";
-import { slugifyTr } from "@/utils/slugify-tr";
+import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 
 export function OrganizationSchema() {
   const schema = {
@@ -394,7 +394,7 @@ export function ProductSchema({ product }) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "@id": `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+    "@id": `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
     name: product.name,
     description:
       product.description ||
@@ -495,7 +495,7 @@ export function ProductSchema({ product }) {
     },
     offers: {
       "@type": "Offer",
-      url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+      url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
       priceCurrency: "TRY",
       price: "0.00",
       availability: "https://schema.org/InStock",
@@ -545,7 +545,7 @@ export function ProductCatalogSchema({ products, category }) {
           position: index + 1,
           item: {
             "@type": "Product",
-            "@id": `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+            "@id": `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
             name: product.name,
             description:
               product.description ||
@@ -559,7 +559,7 @@ export function ProductCatalogSchema({ products, category }) {
             sku: product.code,
             offers: {
               "@type": "Offer",
-              url: `https://mkngroup.com.tr/ambalaj/${slugifyTr(product.name)}`,
+              url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
               priceCurrency: "TRY",
               price: "0.00",
               availability: "https://schema.org/InStock",

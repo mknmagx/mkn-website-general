@@ -1,6 +1,7 @@
 import { site } from "@/config/site";
 import { products } from "@/data/products-catalog";
 import { getAllBlogPosts } from "@/lib/services/blog-service";
+import { createProductSlug } from "@/utils/slugify-tr";
 
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
@@ -73,34 +74,8 @@ export default async function sitemap() {
 
   // Ürün URL'lerini oluştur
   const productUrls = products.map((product) => {
-    // Kategori adını URL-friendly hale getir
-    const categorySlug = product.category
-      .toLowerCase()
-      .replace(/ç/g, "c")
-      .replace(/ğ/g, "g")
-      .replace(/ı/g, "i")
-      .replace(/ö/g, "o")
-      .replace(/ş/g, "s")
-      .replace(/ü/g, "u")
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-
-    // Ürün adını URL-friendly hale getir
-    const productSlug = product.name
-      .toLowerCase()
-      .replace(/ç/g, "c")
-      .replace(/ğ/g, "g")
-      .replace(/ı/g, "i")
-      .replace(/ö/g, "o")
-      .replace(/ş/g, "s")
-      .replace(/ü/g, "u")
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-      .replace(/--+/g, "-") // Çoklu tire işaretlerini tek tire yap
-      .replace(/^-|-$/g, ""); // Başta ve sonda tire varsa kaldır
-
     return {
-      url: `${baseUrl}/ambalaj/${productSlug}`,
+      url: `${baseUrl}/ambalaj/${createProductSlug(product)}`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,

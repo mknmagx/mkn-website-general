@@ -27,3 +27,28 @@ export function slugifyTr(text) {
       .replace(/^-+|-+$/g, "")
   )
 }
+
+/**
+ * Creates a unique product slug by combining name, size/ml information and product code
+ * @param {Object} product - Product object with name, size and code properties
+ * @returns {string} - Unique product slug
+ */
+export function createProductSlug(product) {
+  if (!product || !product.name) return ""
+  
+  let slug = slugifyTr(product.name)
+  
+  // Add size/ML information to make the slug unique
+  if (product.size) {
+    const sizeSlug = slugifyTr(product.size)
+    slug = `${slug}-${sizeSlug}`
+  }
+  
+  // Add product code to ensure uniqueness
+  if (product.code) {
+    const codeSlug = slugifyTr(product.code)
+    slug = `${slug}-${codeSlug}`
+  }
+  
+  return slug
+}
