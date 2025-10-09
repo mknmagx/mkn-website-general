@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   Pill,
   CheckCircle,
@@ -42,19 +42,19 @@ export const metadata = {
   keywords:
     "gıda takviyesi fason üretim, gıda takviyesi fason üretici, HACCP gıda takviyesi, ISO 22000 gıda üretim, OEM gıda takviyesi, ODM gıda takviyesi, private label gıda takviyesi, kapsül fason üretim, tablet fason üretim, sıvı gıda takviyesi üretim, vitamin fason üretim, mineral fason üretim, probiyotik fason üretim, protein tozu fason üretim, spor beslenme fason üretim, fonksiyonel gıda üretimi, tarım bakanlığı onaylı üretim, gıda takviyesi formülasyon",
   alternates: {
-    canonical: "https://mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
+    canonical: "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
   },
   openGraph: {
     title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKNGROUP",
     description:
       "Türkiye'nin lider gıda takviyesi fason üretim firması. HACCP ISO 22000 sertifikalı 12.000 m² tesislerde kapsül, tablet, sıvı ve toz formda gıda takviyesi üretimi. 500+ formülasyon deneyimi, Tarım Bakanlığı onaylı üretim.",
-    url: "https://mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
+    url: "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
     siteName: "MKNGROUP",
     locale: "tr_TR",
     type: "website",
     images: [
       {
-        url: "https://mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg",
+        url: "https://www.mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg",
         width: 1200,
         height: 630,
         alt: "MKNGROUP Gıda Takviyesi Fason Üretim Tesisleri",
@@ -65,7 +65,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKNGROUP",
     description: "Türkiye'nin en büyük gıda takviyesi fason üretim tesisi. HACCP ISO 22000 sertifikalı tesislerde profesyonel gıda takviyesi üretimi.",
-    images: ["https://mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg"],
+    images: ["https://www.mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg"],
   },
   robots: {
     index: true,
@@ -90,8 +90,8 @@ export default function GidaTakviyesiFasonUretimPage() {
     provider: {
       "@type": "Organization",
       name: "MKNGROUP",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+90-XXX-XXX-XXXX",
@@ -134,15 +134,15 @@ export default function GidaTakviyesiFasonUretimPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Fason Üretim",
-      url: "https://mkngroup.com.tr/fason-uretim",
+      url: "https://www.mkngroup.com.tr/fason-uretim",
     },
     {
       name: "Gıda Takviyesi Fason Üretim",
-      url: "https://mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
+      url: "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
     },
   ];
 

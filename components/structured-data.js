@@ -9,17 +9,17 @@ export function OrganizationSchema() {
     alternateName: ["MKN GROUP", "MKN Grup"],
     description:
       "Türkiye'nin önde gelen fason üretim şirketi. ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, profesyonel e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     logo: {
       "@type": "ImageObject",
-      url: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       width: 400,
       height: 200,
     },
     image: [
-      "https://mkngroup.com.tr/og-image.png",
-      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
-      "https://mkngroup.com.tr/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
+      "https://www.mkngroup.com.tr/og-image.png",
+      "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+      "https://www.mkngroup.com.tr/optimized/modern-pharmaceutical-manufacturing-facility-with-.webp",
     ],
     telephone: site.phone,
     email: site.email,
@@ -246,12 +246,12 @@ export function LocalBusinessSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "@id": "https://mkngroup.com.tr/#organization",
+    "@id": "https://www.mkngroup.com.tr/#organization",
     name: "MKNGROUP",
     alternateName: "MKN GROUP",
     description:
       "Türkiye'nin önde gelen fason üretim ve operasyon çözümleri şirketi",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     telephone: site.phone,
     email: site.email,
     address: {
@@ -302,7 +302,7 @@ export function WebsiteSchema() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "MKNGROUP",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     description:
       "Fason üretim, kozmetik ambalaj çözümleri ve operasyon yönetimi hizmetleri",
     publisher: {
@@ -313,7 +313,7 @@ export function WebsiteSchema() {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://mkngroup.com.tr/search?q={search_term_string}",
+        urlTemplate: "https://www.mkngroup.com.tr/search?q={search_term_string}",
       },
       "query-input": "required name=search_term_string",
     },
@@ -361,7 +361,7 @@ export function ServiceSchema({ service }) {
     provider: {
       "@type": "Organization",
       name: "MKNGROUP",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     areaServed: {
       "@type": "Country",
@@ -394,7 +394,7 @@ export function ProductSchema({ product }) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "@id": `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+    "@id": `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
     name: product.name,
     description:
       product.description ||
@@ -407,8 +407,8 @@ export function ProductSchema({ product }) {
     manufacturer: {
       "@type": "Organization",
       name: "MKN Group",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       address: {
         "@type": "PostalAddress",
         streetAddress: "Akçaburgaz Mah, 3026 Sk, No:5",
@@ -491,18 +491,18 @@ export function ProductSchema({ product }) {
     ],
     potentialAction: {
       "@type": "Order",
-      target: "https://mkngroup.com.tr/iletisim",
+      target: "https://www.mkngroup.com.tr/iletisim",
     },
     offers: {
       "@type": "Offer",
-      url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+      url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
       priceCurrency: "TRY",
       price: "0.00",
       availability: "https://schema.org/InStock",
       seller: {
         "@type": "Organization",
         name: "MKN Group",
-        url: "https://mkngroup.com.tr",
+        url: "https://www.mkngroup.com.tr",
       },
     },
     isRelatedTo: {
@@ -531,11 +531,11 @@ export function ProductCatalogSchema({ products, category }) {
   const schema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "@id": "https://mkngroup.com.tr/ambalaj",
+    "@id": "https://www.mkngroup.com.tr/ambalaj",
     name: "Kozmetik Ambalaj Ürünleri Kataloğu | MKN Group",
     description:
       "MKN Group'un geniş kozmetik ambalaj koleksiyonu. Parfüm şişeleri, krem kavanozları, pompalı şişeler ve premium kalitede ambalaj çözümleri.",
-    url: "https://mkngroup.com.tr/ambalaj",
+    url: "https://www.mkngroup.com.tr/ambalaj",
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: products?.length || 0,
@@ -545,7 +545,7 @@ export function ProductCatalogSchema({ products, category }) {
           position: index + 1,
           item: {
             "@type": "Product",
-            "@id": `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            "@id": `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
             name: product.name,
             description:
               product.description ||
@@ -559,14 +559,14 @@ export function ProductCatalogSchema({ products, category }) {
             sku: product.code,
             offers: {
               "@type": "Offer",
-              url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+              url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
               priceCurrency: "TRY",
               price: "0.00",
               availability: "https://schema.org/InStock",
               seller: {
                 "@type": "Organization",
                 name: "MKN Group",
-                url: "https://mkngroup.com.tr",
+                url: "https://www.mkngroup.com.tr",
               },
             },
           },
@@ -579,21 +579,21 @@ export function ProductCatalogSchema({ products, category }) {
           "@type": "ListItem",
           position: 1,
           name: "Ana Sayfa",
-          item: "https://mkngroup.com.tr",
+          item: "https://www.mkngroup.com.tr",
         },
         {
           "@type": "ListItem",
           position: 2,
           name: "Ambalaj Ürünleri",
-          item: "https://mkngroup.com.tr/ambalaj",
+          item: "https://www.mkngroup.com.tr/ambalaj",
         },
       ],
     },
     provider: {
       "@type": "Organization",
       name: "MKN Group",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       description:
         "Türkiye'nin önde gelen kozmetik ambalaj ve fason üretim şirketi",
     },
@@ -630,12 +630,12 @@ export function WebPageSchema({ title, description, url, breadcrumbs }) {
     url: url,
     isPartOf: {
       "@type": "WebSite",
-      "@id": "https://mkngroup.com.tr/#website",
+      "@id": "https://www.mkngroup.com.tr/#website",
       name: "MKN Group",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://mkngroup.com.tr/ambalaj?search={search_term_string}",
+        target: "https://www.mkngroup.com.tr/ambalaj?search={search_term_string}",
         "query-input": "required name=search_term_string",
       },
     },
@@ -653,13 +653,13 @@ export function WebPageSchema({ title, description, url, breadcrumbs }) {
     mainEntity: {
       "@type": "Organization",
       name: "MKN Group",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     publisher: {
       "@type": "Organization",
       name: "MKN Group",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
     },
     dateModified: new Date().toISOString(),
     inLanguage: "tr",
@@ -679,15 +679,15 @@ export function ManufacturerSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer"],
-    "@id": "https://mkngroup.com.tr/#manufacturer",
+    "@id": "https://www.mkngroup.com.tr/#manufacturer",
     name: "MKN Group",
     alternateName: ["MKNGROUP", "MKN Grup"],
     description:
       "ISO sertifikalı kozmetik üretimi ve premium ambalaj çözümleri sunan Türkiye'nin önde gelen fason üretim şirketi",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     logo: {
       "@type": "ImageObject",
-      url: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       width: 400,
       height: 200,
     },
@@ -769,7 +769,7 @@ export function AmbalajFAQSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": "https://mkngroup.com.tr/ambalaj#faq",
+    "@id": "https://www.mkngroup.com.tr/ambalaj#faq",
     mainEntity: [
       {
         "@type": "Question",

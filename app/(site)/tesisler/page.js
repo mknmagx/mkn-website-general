@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -66,7 +66,7 @@ export const metadata = {
     "teknoloji donanımlı tesis",
     "kalite kontrol laboratuvarı",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://mkngroup.com.tr" }],
+  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
   creator: "MKNGROUP",
   publisher: "MKNGROUP",
   category: "Manufacturing Facilities",
@@ -78,23 +78,23 @@ export const metadata = {
     "max-video-preview": -1,
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/tesisler",
+    canonical: "https://www.mkngroup.com.tr/tesisler",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr/tesisler",
-      "en-US": "https://mkngroup.com.tr/en/facilities",
+      "tr-TR": "https://www.mkngroup.com.tr/tesisler",
+      "en-US": "https://www.mkngroup.com.tr/en/facilities",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr/tesisler",
+    url: "https://www.mkngroup.com.tr/tesisler",
     siteName: "MKNGROUP",
     title: "ISO Sertifikalı Üretim Tesislerimiz | MKNGROUP",
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. Contract manufacturing çözümleri.",
     images: [
       {
-        url: "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+        url: "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
         alt: "MKNGROUP ISO Sertifikalı Modern Üretim Tesisleri",
@@ -110,7 +110,7 @@ export const metadata = {
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Contract manufacturing ve fason üretim çözümleri.",
     images: [
-      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+      "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
     ],
   },
 };
@@ -123,8 +123,8 @@ export default function TesislerPage() {
     name: "MKNGROUP",
     description:
       "ISO sertifikalı üretim tesisleri ile fason üretim, contract manufacturing ve OEM/ODM hizmetleri",
-    url: "https://mkngroup.com.tr/tesisler",
-    logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+    url: "https://www.mkngroup.com.tr/tesisler",
+    logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
     address: {
       "@type": "PostalAddress",
       addressLocality: "İstanbul",

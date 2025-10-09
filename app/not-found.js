@@ -63,7 +63,7 @@ export default function NotFound() {
       <SEOHead
         title="Sayfa Bulunamadı (404) | MKN Group"
         description="Aradığınız sayfa bulunamadı. MKN Group ana sayfasına dönün ve hizmetlerimizi keşfedin."
-        canonical="https://mkngroup.com.tr"
+        canonical="https://www.mkngroup.com.tr"
         noindex={true}
       />
 

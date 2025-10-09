@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import Link from "next/link";
 import {
   MapPin,
@@ -53,7 +53,7 @@ export const metadata = {
     "mkngroup adres",
     "mkngroup email",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://mkngroup.com.tr" }],
+  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
   creator: "MKNGROUP",
   publisher: "MKNGROUP",
   category: "Contact Information",
@@ -69,23 +69,23 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/iletisim",
+    canonical: "https://www.mkngroup.com.tr/iletisim",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr/iletisim",
-      "en-US": "https://mkngroup.com.tr/en/contact",
+      "tr-TR": "https://www.mkngroup.com.tr/iletisim",
+      "en-US": "https://www.mkngroup.com.tr/en/contact",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr/iletisim",
+    url: "https://www.mkngroup.com.tr/iletisim",
     siteName: "MKNGROUP",
     title: "İletişim | MKNGROUP Contract Manufacturing",
     description:
       "MKNGROUP ile iletişime geçin. ISO sertifikalı tesislerde contract manufacturing hizmetleri için uzman ekibimizle görüşün. Ücretsiz danışmanlık ve hızlı teklif.",
     images: [
       {
-        url: "https://mkngroup.com.tr/mkngroup-contact-manufacturing-facility.png",
+        url: "https://www.mkngroup.com.tr/mkngroup-contact-manufacturing-facility.png",
         width: 1200,
         height: 630,
         alt: "MKNGROUP Contract Manufacturing İletişim",
@@ -101,7 +101,7 @@ export const metadata = {
     description:
       "ISO sertifikalı tesislerde contract manufacturing. Ücretsiz danışmanlık için iletişime geçin.",
     images: [
-      "https://mkngroup.com.tr/mkngroup-contact-manufacturing-facility.png",
+      "https://www.mkngroup.com.tr/mkngroup-contact-manufacturing-facility.png",
     ],
   },
 };
@@ -114,8 +114,8 @@ export default function ContactPage() {
     mainEntity: {
       "@type": "Organization",
       name: "MKNGROUP",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+90 531 494 25 94",

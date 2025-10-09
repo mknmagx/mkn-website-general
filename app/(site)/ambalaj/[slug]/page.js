@@ -47,7 +47,7 @@ export async function generateMetadata({ params }) {
   const { product } = productData;
   const title = `${product.name} | MKN Group Ambalaj`;
   const description = `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`;
-  const canonical = `https://mkngroup.com.tr/ambalaj/${slug}`;
+  const canonical = `https://www.mkngroup.com.tr/ambalaj/${slug}`;
   const ogImage = getCloudinaryUrl(product.images?.[0]);
 
   return {
@@ -67,7 +67,7 @@ export async function generateMetadata({ params }) {
     authors: [{ name: "MKN Group" }],
     creator: "MKN Group",
     publisher: "MKN Group",
-    metadataBase: new URL("https://mkngroup.com.tr"),
+    metadataBase: new URL("https://www.mkngroup.com.tr"),
     alternates: {
       canonical,
     },
@@ -130,36 +130,36 @@ export default async function ProductDetailPage({ params }) {
       <ProductSchema product={product} />
       <BreadcrumbSchema
         items={[
-          { name: "Ana Sayfa", url: "https://mkngroup.com.tr" },
-          { name: "Ambalaj", url: "https://mkngroup.com.tr/ambalaj" },
+          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
+          { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
           {
             name: product.category,
-            url: `https://mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
+            url: `https://www.mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
               product.category
             )}`,
           },
           {
             name: product.name,
-            url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
           },
         ]}
       />
       <WebPageSchema
         title={`${product.name} | MKN Group Ambalaj`}
         description={`${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`}
-        url={`https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`}
+        url={`https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`}
         breadcrumbs={[
-          { name: "Ana Sayfa", url: "https://mkngroup.com.tr" },
-          { name: "Ambalaj", url: "https://mkngroup.com.tr/ambalaj" },
+          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
+          { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
           {
             name: product.category,
-            url: `https://mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
+            url: `https://www.mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
               product.category
             )}`,
           },
           {
             name: product.name,
-            url: `https://mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
           },
         ]}
       />

@@ -33,7 +33,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata = {
-  metadataBase: new URL("https://mkngroup.com.tr"),
+  metadataBase: new URL("https://www.mkngroup.com.tr"),
   title: {
     default:
       "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri | Türkiye",
@@ -68,7 +68,7 @@ export const metadata = {
     "3PL hizmetleri",
     "fulfilment hizmetleri",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://mkngroup.com.tr" }],
+  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
   creator: "MKNGROUP",
   publisher: "MKNGROUP",
   formatDetection: {
@@ -80,15 +80,15 @@ export const metadata = {
   classification: "Business",
   referrer: "origin-when-cross-origin",
   alternates: {
-    canonical: "https://mkngroup.com.tr",
+    canonical: "https://www.mkngroup.com.tr",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr",
+      "tr-TR": "https://www.mkngroup.com.tr",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     siteName: "MKNGROUP",
     title: "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
     description:
@@ -149,7 +149,7 @@ export const metadata = {
     google: "placeholder-google-verification-code",
     yandex: "placeholder-yandex-verification-code",
     other: {
-      me: ["mailto:info@mkngroup.com.tr", "https://mkngroup.com.tr"],
+      me: ["mailto:info@mkngroup.com.tr", "https://www.mkngroup.com.tr"],
     },
   },
 };

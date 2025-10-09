@@ -111,7 +111,7 @@ export const metadata = {
     "türkiye contract manufacturing",
     "güvenilir üretim partneri",
   ],
-  authors: [{ name: "MKN GROUP", url: "https://mkngroup.com.tr" }],
+  authors: [{ name: "MKN GROUP", url: "https://www.mkngroup.com.tr" }],
   creator: "MKN GROUP",
   publisher: "MKN GROUP",
   category: "Manufacturing",
@@ -124,23 +124,23 @@ export const metadata = {
     "max-video-preview": -1,
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr",
+    canonical: "https://www.mkngroup.com.tr",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr",
-      "en-US": "https://mkngroup.com.tr/en",
+      "tr-TR": "https://www.mkngroup.com.tr",
+      "en-US": "https://www.mkngroup.com.tr/en",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr",
+    url: "https://www.mkngroup.com.tr",
     siteName: "MKN GROUP",
     title: "MKN GROUP - Türkiye'nin Güvenilir Fason Üretim Partneri",
     description:
       "🏭 6+ yıl deneyim, 1000+ başarılı proje! ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama. İstanbul'dan Türkiye'ye hizmet veriyoruz.",
     images: [
       {
-        url: "https://mkngroup.com.tr/og-image.png",
+        url: "https://www.mkngroup.com.tr/og-image.png",
         width: 1200,
         height: 630,
         alt: "MKN GROUP - ISO Sertifikalı Fason Üretim ve Operasyon Çözümleri",
@@ -155,7 +155,7 @@ export const metadata = {
     title: "MKN GROUP - Türkiye'nin Güvenilir Fason Üretim Partneri",
     description:
       "🏭 6+ yıl deneyim, 1000+ başarılı proje! ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama.",
-    images: ["https://mkngroup.com.tr/og-image.png"],
+    images: ["https://www.mkngroup.com.tr/og-image.png"],
   },
   verification: {
     google: "placeholder-google-verification-code",
@@ -176,7 +176,7 @@ export default function HomePage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
   ];
 

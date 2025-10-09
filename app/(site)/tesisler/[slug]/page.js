@@ -87,7 +87,7 @@
 //     title: `${facility.name} | MKNGROUP`,
 //     description: facility.description,
 //     alternates: {
-//       canonical: `https://mkngroup.com.tr/tesisler/${params.slug}`,
+//       canonical: `https://www.mkngroup.com.tr/tesisler/${params.slug}`,
 //     },
 //   }
 // }
@@ -111,7 +111,7 @@
 //       streetAddress: facility.address,
 //     },
 //     telephone: facility.phone,
-//     url: `https://mkngroup.com.tr/tesisler/${params.slug}`,
+//     url: `https://www.mkngroup.com.tr/tesisler/${params.slug}`,
 //     parentOrganization: {
 //       "@type": "Organization",
 //       name: "MKNGROUP",

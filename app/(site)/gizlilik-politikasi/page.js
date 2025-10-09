@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
       <SEOHead
         title="Gizlilik Politikası | MKN Group"
         description="MKN Group kişisel verilerin korunması ve gizlilik politikası"
-        canonical="https://mkngroup.com.tr/gizlilik-politikasi"
+        canonical="https://www.mkngroup.com.tr/gizlilik-politikasi"
       />
 
       <div className="py-16 lg:py-24">

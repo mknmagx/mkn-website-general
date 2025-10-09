@@ -42,7 +42,7 @@ export async function generateMetadata({ params }) {
       authors: [post.author],
       images: [
         {
-          url: post.image || "/og-blog-default.png",
+          url: post.image || "/og-image.png",
           width: 1200,
           height: 630,
           alt: post.title,
@@ -53,10 +53,10 @@ export async function generateMetadata({ params }) {
       card: "summary_large_image",
       title: post.title,
       description: post.excerpt,
-      images: [post.image || "/og-blog-default.png"],
+      images: [post.image || "/og-image.png"],
     },
     alternates: {
-      canonical: `https://mkngroup.com.tr/blog/${post.slug}`,
+      canonical: `https://www.mkngroup.com.tr/blog/${post.slug}`,
     },
   };
 }
@@ -81,7 +81,7 @@ export default async function BlogPostPage({ params }) {
       <SEOHead
         title={`${post.title} | MKN Group Blog`}
         description={post.metaDescription || post.excerpt}
-        canonical={`https://mkngroup.com.tr/blog/${post.slug}`}
+        canonical={`https://www.mkngroup.com.tr/blog/${post.slug}`}
       />
 
       {/* Structured Data for Article */}
@@ -93,25 +93,25 @@ export default async function BlogPostPage({ params }) {
             "@type": "Article",
             headline: post.title,
             description: post.excerpt,
-            image: `https://mkngroup.com.tr${post.image}`,
+            image: `https://www.mkngroup.com.tr${post.image}`,
             author: {
               "@type": "Organization",
               name: post.author,
-              url: "https://mkngroup.com.tr",
+              url: "https://www.mkngroup.com.tr",
             },
             publisher: {
               "@type": "Organization",
               name: "MKN Group",
               logo: {
                 "@type": "ImageObject",
-                url: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+                url: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
               },
             },
             datePublished: post.publishedAt,
             dateModified: post.updatedAt,
             mainEntityOfPage: {
               "@type": "WebPage",
-              "@id": `https://mkngroup.com.tr/blog/${post.slug}`,
+              "@id": `https://www.mkngroup.com.tr/blog/${post.slug}`,
             },
             articleSection: post.category,
             keywords: post.tags.join(", "),
@@ -184,7 +184,7 @@ export default async function BlogPostPage({ params }) {
               <ShareButton
                 title={post.title}
                 description={post.excerpt}
-                url={`https://mkngroup.com.tr/blog/${post.slug}`}
+                url={`https://www.mkngroup.com.tr/blog/${post.slug}`}
                 image={post.image}
                 variant="outline"
                 size="sm"

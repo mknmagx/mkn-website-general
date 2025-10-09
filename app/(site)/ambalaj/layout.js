@@ -3,7 +3,7 @@ export const metadata = {
   description:
     "Şişe, kavanoz, tüp, pompa, damlalık, airless ve daha fazlası – stok ve siparişe özel ambalaj seçenekleri.",
   alternates: {
-    canonical: "https://mkngroup.com.tr/ambalaj",
+    canonical: "https://www.mkngroup.com.tr/ambalaj",
   },
 }
 

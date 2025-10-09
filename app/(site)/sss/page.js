@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   HelpCircle,
   Phone,
@@ -168,10 +168,10 @@ export const metadata = {
     title: "Sıkça Sorulan Sorular | MKN Group",
     description: "MKN Group hakkında merak ettiğiniz tüm soruların yanıtlarını burada bulabilirsiniz.",
     type: "website",
-    url: "https://mkngroup.com.tr/sss",
+    url: "https://www.mkngroup.com.tr/sss",
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/sss",
+    canonical: "https://www.mkngroup.com.tr/sss",
   },
 };
 

@@ -17,7 +17,7 @@ export function SEOHead({
       <meta property="og:type" content={ogType} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
-      <meta property="og:image" content={`https://mkngroup.com.tr${ogImage}`} />
+      <meta property="og:image" content={`https://www.mkngroup.com.tr${ogImage}`} />
       <meta property="og:url" content={canonical} />
       <meta property="og:site_name" content="MKNGROUP" />
       <meta property="og:locale" content="tr_TR" />
@@ -28,7 +28,7 @@ export function SEOHead({
       <meta name="twitter:description" content={description} />
       <meta
         name="twitter:image"
-        content={`https://mkngroup.com.tr${ogImage}`}
+        content={`https://www.mkngroup.com.tr${ogImage}`}
       />
 
       {/* Canonical URL */}

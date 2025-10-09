@@ -27,7 +27,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "mkngroup.com.tr",
+        hostname: "www.mkngroup.com.tr",
         port: "",
         pathname: "/**",
       },

@@ -12,7 +12,7 @@ export default function TermsOfServicePage() {
       <SEOHead
         title="Kullanım Koşulları | MKN Group"
         description="MKN Group web sitesi kullanım koşulları ve kuralları"
-        canonical="https://mkngroup.com.tr/kullanim-kosullari"
+        canonical="https://www.mkngroup.com.tr/kullanim-kosullari"
       />
 
       <div className="py-16 lg:py-24">

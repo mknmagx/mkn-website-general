@@ -19,13 +19,13 @@ export default function robots() {
         ],
         crawlDelay: 1,
       },
-      // Google Bot için özel kurallar
+
       {
         userAgent: "Googlebot",
         allow: ["/", "/images/", "/css/", "/js/"],
         disallow: ["/api/", "/admin/", "/_next/"],
       },
-      // Bing Bot için özel kurallar
+
       {
         userAgent: "Bingbot",
         allow: ["/", "/images/", "/css/", "/js/"],

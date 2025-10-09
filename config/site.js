@@ -1,6 +1,6 @@
 export const site = {
   name: "MKN GROUP",
-  domain: "mkngroup.com.tr",
+  domain: "www.mkngroup.com.tr",
   phone: "+90 531 494 25 94",
   email: "info@mkngroup.com.tr",
   address: "Akçaburgaz Mah, 3026 Sk, No:5, İstanbul, Türkiye",

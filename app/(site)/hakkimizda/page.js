@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Award,
   Target,
@@ -210,7 +210,7 @@ export const metadata = {
     "eco friendly manufacturing",
     "responsible manufacturing",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://mkngroup.com.tr" }],
+  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
   creator: "MKNGROUP",
   publisher: "MKNGROUP",
   category: "Contract Manufacturing Company",
@@ -226,16 +226,16 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/hakkimizda",
+    canonical: "https://www.mkngroup.com.tr/hakkimizda",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr/hakkimizda",
-      "en-US": "https://mkngroup.com.tr/en/about",
+      "tr-TR": "https://www.mkngroup.com.tr/hakkimizda",
+      "en-US": "https://www.mkngroup.com.tr/en/about",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr/hakkimizda",
+    url: "https://www.mkngroup.com.tr/hakkimizda",
     siteName: "MKNGROUP",
     title:
       "MKNGROUP Hakkında | Türkiye'nin Önde Gelen Contract Manufacturing Şirketi",
@@ -243,7 +243,7 @@ export const metadata = {
       "🏭 2019'dan beri güvenilir fason üretim partneri. 10.600m² ISO sertifikalı tesislerde 360° çözüm. Kozmetik, gıda takviyesi, temizlik ürünleri contract manufacturing.",
     images: [
       {
-        url: "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+        url: "https://www.mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
         width: 1200,
         height: 630,
         alt: "MKNGROUP ISO Sertifikalı Modern Üretim Tesisleri - İstanbul",
@@ -259,7 +259,7 @@ export const metadata = {
     description:
       "🏭 6+ yıllık deneyim, 10.600m² ISO sertifikalı tesisler, 360° çözümler. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi.",
     images: [
-      "https://mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
+      "https://www.mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
     ],
   },
 };
@@ -273,8 +273,8 @@ export default function HakkimizdaPage() {
     alternateName: ["MKN GROUP", "MKN Grup", "mkngroup", "MKN GROUP Turkey"],
     description:
       "Türkiye'nin en büyük contract manufacturing ve fason üretim şirketi. 10.600m² ISO sertifikalı tesislerde aylık 3.8+ milyon ünite üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri üretimi + 360° entegre çözümler: ambalaj, e-ticaret, depolama, lojistik, dijital pazarlama.",
-    url: "https://mkngroup.com.tr",
-    logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+    url: "https://www.mkngroup.com.tr",
+    logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
     foundingDate: "2019",
     foundingLocation: {
       "@type": "Place",
@@ -309,7 +309,7 @@ export default function HakkimizdaPage() {
       },
     ],
     sameAs: [
-      "https://mkngroup.com.tr",
+      "https://www.mkngroup.com.tr",
       "https://asparilac.com",
       "https://www.fomex.com.tr",
       "https://www.linkedin.com/company/mkn-group-official/",
@@ -504,22 +504,22 @@ export default function HakkimizdaPage() {
       "@type": "Brand",
       name: "MKNGROUP",
       description: "Türkiye'nin contract manufacturing lideri",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
     },
     potentialAction: [
       {
         "@type": "ContactAction",
-        target: "https://mkngroup.com.tr/iletisim",
+        target: "https://www.mkngroup.com.tr/iletisim",
         name: "İletişime Geçin",
       },
       {
         "@type": "ViewAction",
-        target: "https://mkngroup.com.tr/tesisler",
+        target: "https://www.mkngroup.com.tr/tesisler",
         name: "Tesisleri Görüntüle",
       },
       {
         "@type": "QuoteAction",
-        target: "https://mkngroup.com.tr/teklif",
+        target: "https://www.mkngroup.com.tr/teklif",
         name: "Ücretsiz Teklif Al",
       },
     ],
@@ -528,11 +528,11 @@ export default function HakkimizdaPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Hakkımızda",
-      url: "https://mkngroup.com.tr/hakkimizda",
+      url: "https://www.mkngroup.com.tr/hakkimizda",
     },
   ];
 

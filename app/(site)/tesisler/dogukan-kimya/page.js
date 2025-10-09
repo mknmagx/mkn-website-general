@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -111,7 +111,7 @@ export const metadata = {
     "hızlı teslimat",
   ],
   alternates: {
-    canonical: "https://mkngroup.com.tr/tesisler/dogukan-kimya",
+    canonical: "https://www.mkngroup.com.tr/tesisler/dogukan-kimya",
   },
   robots: {
     index: true,
@@ -129,11 +129,11 @@ export const metadata = {
       "Doğukan Kimya | Fomex Markası ISO Sertifikalı Temizlik Ürünleri ve Islak Mendil Üretim Tesisi",
     description:
       "🧽 5000m² ISO ve GMP sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
-    url: "https://mkngroup.com.tr/tesisler/dogukan-kimya",
+    url: "https://www.mkngroup.com.tr/tesisler/dogukan-kimya",
     siteName: "MKNGROUP",
     images: [
       {
-        url: "https://mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
+        url: "https://www.mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
         width: 1200,
         height: 630,
         alt: "Doğukan Kimya ISO Sertifikalı Modern Temizlik Ürünleri Üretim Tesisi - İstanbul",
@@ -150,7 +150,7 @@ export const metadata = {
     description:
       "🧽 5000m² ISO sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
     images: [
-      "https://mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
+      "https://www.mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
     ],
   },
 };
@@ -166,7 +166,7 @@ export default function DogukanKimyaPage() {
       "ISO ve GMP sertifikalı ıslak mendil, köpük sabun, temizlik ürünleri, kozmetik ve biyosidal ürün üretim tesisi",
     url: "https://www.fomex.com.tr",
     sameAs: [
-      "https://mkngroup.com.tr/tesisler/dogukan-kimya",
+      "https://www.mkngroup.com.tr/tesisler/dogukan-kimya",
       "https://www.fomex.com.tr",
       "https://dogukankimya.com",
     ],

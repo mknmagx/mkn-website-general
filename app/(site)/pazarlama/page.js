@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -29,13 +29,13 @@ export const metadata = {
   keywords:
     "dijital pazarlama uzmanı, e-ticaret pazarlaması, meta ads uzmanı, facebook instagram reklamları, influencer marketing ajansı, pazaryeri reklamcılığı, amazon reklamları, trendyol reklamları, google ads uzmanı, marka büyütme stratejileri, sosyal medya pazarlaması, performans pazarlaması, dijital reklam ajansı",
   alternates: {
-    canonical: "https://mkngroup.com.tr/pazarlama",
+    canonical: "https://www.mkngroup.com.tr/pazarlama",
   },
   openGraph: {
     title: "Dijital Pazarlama & E-Ticaret Uzmanı | MKNGROUP",
     description:
       "Markanızı sıfırdan zirveye taşıyan dijital pazarlama uzmanları. Meta Ads, influencer marketing, pazaryeri reklamcılığı ve e-ticaret pazarlaması.",
-    url: "https://mkngroup.com.tr/pazarlama",
+    url: "https://www.mkngroup.com.tr/pazarlama",
     siteName: "MKNGROUP",
     locale: "tr_TR",
     type: "website",
@@ -71,11 +71,11 @@ export default function PazarlamaPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Pazarlama & Reklam",
-      url: "https://mkngroup.com.tr/pazarlama",
+      url: "https://www.mkngroup.com.tr/pazarlama",
     },
   ];
 

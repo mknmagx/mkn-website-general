@@ -1,4 +1,4 @@
-import { TabsContent } from "@/components/ui/tabs";
+﻿import { TabsContent } from "@/components/ui/tabs";
 import { TabsTrigger } from "@/components/ui/tabs";
 import { TabsList } from "@/components/ui/tabs";
 import { Tabs } from "@/components/ui/tabs";
@@ -35,20 +35,20 @@ export const metadata = {
   keywords:
     "fason üretim, kozmetik fason üretim, gıda takviyesi üretim, temizlik ürünleri fason üretim, GMP sertifikalı üretim, OEM ODM üretim, contract manufacturing, fason üretim firması, kozmetik üretim hizmetleri, private label üretim, fason üretici, İstanbul fason üretim, şampuan fason üretim, krem fason üretim, serum fason üretim, tablet fason üretim, kapsül fason üretim, sıvı sabun fason üretim, deterjan fason üretim, yüzey temizleyici fason üretim, ISO 22716, HACCP sertifikalı, Türkiye fason üretim, mevzuat uyumlu üretim",
   alternates: {
-    canonical: "https://mkngroup.com.tr/fason-uretim",
+    canonical: "https://www.mkngroup.com.tr/fason-uretim",
   },
   openGraph: {
     title:
       "Fason Üretim Hizmetleri | GMP Sertifikalı Kozmetik & Gıda Takviyesi Üretimi | MKNGROUP",
     description:
       "Türkiye'nin lider fason üretim firması MKNGROUP. GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 10.600m² üretim alanı, 1000+ başarılı proje. OEM/ODM ve private label hizmetleri.",
-    url: "https://mkngroup.com.tr/fason-uretim",
+    url: "https://www.mkngroup.com.tr/fason-uretim",
     siteName: "MKNGROUP",
     locale: "tr_TR",
     type: "website",
     images: [
       {
-        url: "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+        url: "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
         alt: "MKNGROUP GMP Sertifikalı Fason Üretim Tesisi - Modern Üretim Hatları",
@@ -61,7 +61,7 @@ export const metadata = {
     description:
       "GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 1000+ başarılı proje.",
     images: [
-      "https://mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
+      "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
     ],
   },
   robots: {
@@ -94,7 +94,7 @@ export default function FasonUretimPage() {
     provider: {
       "@type": "Organization",
       name: "MKNGROUP",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
       address: {
         "@type": "PostalAddress",
         addressLocality: "İstanbul",
@@ -156,11 +156,11 @@ export default function FasonUretimPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Fason Üretim",
-      url: "https://mkngroup.com.tr/fason-uretim",
+      url: "https://www.mkngroup.com.tr/fason-uretim",
     },
   ];
 

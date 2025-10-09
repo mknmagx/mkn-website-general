@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+﻿import { Metadata } from "next";
 import { Suspense } from "react";
 import { SEOHead } from "@/components/seo-head";
 import BlogClientWrapper from "@/components/blog-client-wrapper";
@@ -63,17 +63,17 @@ export async function generateMetadata({ searchParams }) {
       type: "website",
       url:
         selectedCategory !== "all"
-          ? `https://mkngroup.com.tr/blog?category=${selectedCategory}`
+          ? `https://www.mkngroup.com.tr/blog?category=${selectedCategory}`
           : searchTerm
-          ? `https://mkngroup.com.tr/blog?search=${encodeURIComponent(
+          ? `https://www.mkngroup.com.tr/blog?search=${encodeURIComponent(
               searchTerm
             )}`
-          : "https://mkngroup.com.tr/blog",
+          : "https://www.mkngroup.com.tr/blog",
       siteName: "MKN Group",
       locale: "tr_TR",
       images: [
         {
-          url: "https://mkngroup.com.tr/og-blog-main.png",
+          url: "https://www.mkngroup.com.tr/og-image.png",
           width: 1200,
           height: 630,
           alt: "MKN Group Blog - Fason Üretim Uzmanları",
@@ -104,24 +104,24 @@ export async function generateMetadata({ searchParams }) {
     alternates: {
       canonical:
         selectedCategory !== "all"
-          ? `https://mkngroup.com.tr/blog?category=${selectedCategory}`
+          ? `https://www.mkngroup.com.tr/blog?category=${selectedCategory}`
           : searchTerm
-          ? `https://mkngroup.com.tr/blog?search=${encodeURIComponent(
+          ? `https://www.mkngroup.com.tr/blog?search=${encodeURIComponent(
               searchTerm
             )}`
-          : "https://mkngroup.com.tr/blog",
+          : "https://www.mkngroup.com.tr/blog",
       languages: {
         "tr-TR":
           selectedCategory !== "all"
-            ? `https://mkngroup.com.tr/blog?category=${selectedCategory}`
+            ? `https://www.mkngroup.com.tr/blog?category=${selectedCategory}`
             : searchTerm
-            ? `https://mkngroup.com.tr/blog?search=${encodeURIComponent(
+            ? `https://www.mkngroup.com.tr/blog?search=${encodeURIComponent(
                 searchTerm
               )}`
-            : "https://mkngroup.com.tr/blog",
+            : "https://www.mkngroup.com.tr/blog",
       },
     },
-    authors: [{ name: "MKN Group", url: "https://mkngroup.com.tr" }],
+    authors: [{ name: "MKN Group", url: "https://www.mkngroup.com.tr" }],
     creator: "MKN Group",
     publisher: "MKN Group",
     category: "Manufacturing Blog",
@@ -153,7 +153,7 @@ export default async function BlogPage({ searchParams }) {
       <SEOHead
         title="Blog | MKN Group - Türkiye'nin Önde Gelen Fason Üretim Uzmanları"
         description="Kozmetik fason üretim, ambalaj inovasyonları ve e-ticaret operasyonları konularında uzman görüşleri. Endüstri trendleri, best practices ve profesyonel rehberler."
-        canonical="https://mkngroup.com.tr/blog"
+        canonical="https://www.mkngroup.com.tr/blog"
       />
 
       {/* Enhanced Structured Data with Real-time Content */}
@@ -166,15 +166,15 @@ export default async function BlogPage({ searchParams }) {
             name: "MKN Group Blog",
             description:
               "Kozmetik fason üretim, ambalaj çözümleri ve e-ticaret operasyonları hakkında uzman görüşleri",
-            url: "https://mkngroup.com.tr/blog",
+            url: "https://www.mkngroup.com.tr/blog",
             inLanguage: "tr-TR",
             publisher: {
               "@type": "Organization",
               name: "MKN Group",
-              url: "https://mkngroup.com.tr",
+              url: "https://www.mkngroup.com.tr",
               logo: {
                 "@type": "ImageObject",
-                url: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+                url: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
                 width: 400,
                 height: 200,
               },
@@ -186,37 +186,37 @@ export default async function BlogPage({ searchParams }) {
             },
             mainEntityOfPage: {
               "@type": "WebPage",
-              "@id": "https://mkngroup.com.tr/blog",
+              "@id": "https://www.mkngroup.com.tr/blog",
             },
             blogPost: allPosts.slice(0, 10).map((post) => ({
               "@type": "BlogPosting",
               headline: post.title,
               description: post.excerpt,
-              url: `https://mkngroup.com.tr/blog/${post.slug}`,
+              url: `https://www.mkngroup.com.tr/blog/${post.slug}`,
               datePublished: post.publishedAt,
               dateModified: post.updatedAt || post.publishedAt,
               author: {
                 "@type": "Organization",
                 name: post.author || "MKN Group",
-                url: "https://mkngroup.com.tr",
+                url: "https://www.mkngroup.com.tr",
               },
               publisher: {
                 "@type": "Organization",
                 name: "MKN Group",
                 logo: {
                   "@type": "ImageObject",
-                  url: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+                  url: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
                 },
               },
               image: {
                 "@type": "ImageObject",
-                url: `https://mkngroup.com.tr${post.image}`,
+                url: `https://www.mkngroup.com.tr${post.image}`,
                 width: 1200,
                 height: 630,
               },
               mainEntityOfPage: {
                 "@type": "WebPage",
-                "@id": `https://mkngroup.com.tr/blog/${post.slug}`,
+                "@id": `https://www.mkngroup.com.tr/blog/${post.slug}`,
               },
               articleSection: post.category || "Manufacturing",
               keywords:
@@ -251,13 +251,13 @@ export default async function BlogPage({ searchParams }) {
             "@context": "https://schema.org",
             "@type": "WebSite",
             name: "MKN Group",
-            url: "https://mkngroup.com.tr",
+            url: "https://www.mkngroup.com.tr",
             potentialAction: {
               "@type": "SearchAction",
               target: {
                 "@type": "EntryPoint",
                 urlTemplate:
-                  "https://mkngroup.com.tr/blog?search={search_term_string}",
+                  "https://www.mkngroup.com.tr/blog?search={search_term_string}",
               },
               "query-input": "required name=search_term_string",
             },
@@ -277,13 +277,13 @@ export default async function BlogPage({ searchParams }) {
                 "@type": "ListItem",
                 position: 1,
                 name: "Ana Sayfa",
-                item: "https://mkngroup.com.tr",
+                item: "https://www.mkngroup.com.tr",
               },
               {
                 "@type": "ListItem",
                 position: 2,
                 name: "Blog",
-                item: "https://mkngroup.com.tr/blog",
+                item: "https://www.mkngroup.com.tr/blog",
               },
               ...(selectedCategory !== "all"
                 ? [
@@ -291,7 +291,7 @@ export default async function BlogPage({ searchParams }) {
                       "@type": "ListItem",
                       position: 3,
                       name: selectedCategory,
-                      item: `https://mkngroup.com.tr/blog?category=${selectedCategory}`,
+                      item: `https://www.mkngroup.com.tr/blog?category=${selectedCategory}`,
                     },
                   ]
                 : []),
@@ -446,7 +446,7 @@ export default async function BlogPage({ searchParams }) {
         rel="alternate"
         type="application/rss+xml"
         title="MKN Group Blog RSS Feed"
-        href="https://mkngroup.com.tr/blog/rss.xml"
+        href="https://www.mkngroup.com.tr/blog/rss.xml"
       />
 
       {/* Add JSON-LD for Local Business if applicable */}
@@ -459,7 +459,7 @@ export default async function BlogPage({ searchParams }) {
             name: "MKN Group",
             description:
               "Türkiye'nin önde gelen kozmetik fason üretim ve contract manufacturing uzmanı",
-            url: "https://mkngroup.com.tr",
+            url: "https://www.mkngroup.com.tr",
             telephone: "+90-XXX-XXX-XXXX", // Gerçek telefon numarasını ekleyin
             address: {
               "@type": "PostalAddress",

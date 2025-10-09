@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import {
   Warehouse,
@@ -44,11 +44,11 @@ export const metadata = {
     title: "E-ticaret Operasyon & Fulfillment Hizmetleri - MKNGROUP",
     description:
       "İstanbul'da profesyonel e-ticaret operasyon hizmetleri. E-ticaret işletmeleri için sipariş fulfillment, stok yönetimi ve kargo entegrasyonu.",
-    url: "https://mkngroup.com.tr/e-ticaret",
+    url: "https://www.mkngroup.com.tr/e-ticaret",
     siteName: "MKN GROUP",
     images: [
       {
-        url: "https://mkngroup.com.tr/e-ticaret-og.jpg",
+        url: "https://www.mkngroup.com.tr/e-ticaret-og.jpg",
         width: 1200,
         height: 630,
         alt: "MKNGROUP E-ticaret Operasyon Hizmetleri",
@@ -62,10 +62,10 @@ export const metadata = {
     title: "E-ticaret Operasyon Hizmetleri | MKNGROUP",
     description:
       "Profesyonel 3PL depo hizmetleri ile e-ticaret operasyonlarınızı optimize edin.",
-    images: ["https://mkngroup.com.tr/e-ticaret-og.jpg"],
+    images: ["https://www.mkngroup.com.tr/e-ticaret-og.jpg"],
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/e-ticaret",
+    canonical: "https://www.mkngroup.com.tr/e-ticaret",
   },
   robots: {
     index: true,
@@ -107,11 +107,11 @@ export default function EticaretPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "E-ticaret Operasyon",
-      url: "https://mkngroup.com.tr/e-ticaret",
+      url: "https://www.mkngroup.com.tr/e-ticaret",
     },
   ];
 

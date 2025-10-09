@@ -1,4 +1,4 @@
-import {
+﻿import {
   ServiceSchema,
   BreadcrumbSchema,
   ProductCatalogSchema,
@@ -20,12 +20,12 @@ export const metadata = {
     description:
       "Premium kalitede kozmetik ambalaj ürünleri. Geniş ürün yelpazesi, hızlı teslimat ve uygun fiyatlarla.",
     type: "website",
-    url: "https://mkngroup.com.tr/ambalaj",
+    url: "https://www.mkngroup.com.tr/ambalaj",
     siteName: "MKN Group",
     locale: "tr_TR",
     images: [
       {
-        url: "https://mkngroup.com.tr/og-image.png",
+        url: "https://www.mkngroup.com.tr/og-image.png",
         width: 1200,
         height: 630,
         alt: "MKN Group Kozmetik Ambalaj Ürünleri",
@@ -48,7 +48,7 @@ export const metadata = {
     description:
       "Premium kalitede kozmetik ambalaj ürünleri. Geniş ürün yelpazesi, hızlı teslimat ve uygun fiyatlarla.",
     images: {
-      url: "https://mkngroup.com.tr/og-image.png",
+      url: "https://www.mkngroup.com.tr/og-image.png",
       alt: "MKN Group Kozmetik Ambalaj Ürünleri",
     },
   },
@@ -66,9 +66,9 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/ambalaj",
+    canonical: "https://www.mkngroup.com.tr/ambalaj",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr/ambalaj",
+      "tr-TR": "https://www.mkngroup.com.tr/ambalaj",
     },
   },
   category: "business",
@@ -93,18 +93,18 @@ export default function AmbalajPage() {
       />
       <BreadcrumbSchema
         items={[
-          { name: "Ana Sayfa", url: "https://mkngroup.com.tr" },
-          { name: "Ambalaj Ürünleri", url: "https://mkngroup.com.tr/ambalaj" },
+          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
+          { name: "Ambalaj Ürünleri", url: "https://www.mkngroup.com.tr/ambalaj" },
         ]}
       />
       <ProductCatalogSchema products={products} category="Kozmetik Ambalaj" />
       <WebPageSchema
         title="Kozmetik Ambalaj Ürünleri | MKN Group - Premium Kalite Ambalajlar"
         description="MKN Group'un geniş kozmetik ambalaj koleksiyonu. Parfüm şişeleri, krem kavanozları, pompalı şişeler ve daha fazlası. Yüksek kalite, uygun fiyat."
-        url="https://mkngroup.com.tr/ambalaj"
+        url="https://www.mkngroup.com.tr/ambalaj"
         breadcrumbs={[
-          { name: "Ana Sayfa", url: "https://mkngroup.com.tr" },
-          { name: "Ambalaj Ürünleri", url: "https://mkngroup.com.tr/ambalaj" },
+          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
+          { name: "Ambalaj Ürünleri", url: "https://www.mkngroup.com.tr/ambalaj" },
         ]}
       />
       <ManufacturerSchema />

@@ -46,19 +46,19 @@ export const metadata = {
   keywords:
     "profesyonel tasarım stüdyosu, 3d modelleme uzmanı, marka kimliği tasarımı, logo tasarım ajansı, web site tasarım şirketi, ürün fotoğrafçılığı, katalog tasarım hizmeti, etiket tasarımı, ambalaj tasarımı, kreatif ajans, tasarım danışmanlığı, görsel kimlik, kurumsal tasarım, e-ticaret görselleri, pazarlama materyalleri, reklam tasarımı, sosyal medya tasarımı, baskı tasarımı, dijital tasarım çözümleri, inovatif tasarım, modern tasarım ajansı, mkngroup tasarım",
   alternates: {
-    canonical: "https://mkngroup.com.tr/tasarim",
+    canonical: "https://www.mkngroup.com.tr/tasarim",
   },
   openGraph: {
     title: "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP",
     description:
       "✨ Türkiye'nin en inovatif tasarım stüdyosu! Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz. 3D modelleme, marka kimliği ve daha fazlası...",
-    url: "https://mkngroup.com.tr/tasarim",
+    url: "https://www.mkngroup.com.tr/tasarim",
     siteName: "MKNGROUP Design Studio",
     locale: "tr_TR",
     type: "website",
     images: [
       {
-        url: "https://mkngroup.com.tr/og-tasarim.jpg",
+        url: "https://www.mkngroup.com.tr/og-image.png",
         width: 1200,
         height: 630,
         alt: "MKNGROUP Profesyonel Tasarım Hizmetleri",
@@ -70,7 +70,7 @@ export const metadata = {
     title: "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP",
     description:
       "✨ Türkiye'nin en inovatif tasarım stüdyosu! Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz.",
-    images: ["https://mkngroup.com.tr/og-tasarim.jpg"],
+    images: ["https://www.mkngroup.com.tr/og-image.png"],
   },
   robots: {
     index: true,
@@ -99,7 +99,7 @@ export default function TasarimPage() {
     provider: {
       "@type": "Organization",
       name: "MKNGROUP Design Studio",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     areaServed: "Turkey",
     category: "Creative Design Services",
@@ -108,11 +108,11 @@ export default function TasarimPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Tasarım Stüdyosu",
-      url: "https://mkngroup.com.tr/tasarim",
+      url: "https://www.mkngroup.com.tr/tasarim",
     },
   ];
 

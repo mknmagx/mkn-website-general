@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Search, Home, FileX } from "lucide-react";
@@ -10,7 +10,7 @@ export default function BlogNotFound() {
       <SEOHead
         title="Blog Yazısı Bulunamadı | MKN Group"
         description="Aradığınız blog yazısı bulunamadı. MKN Group blog sayfasına dönün ve diğer yazılarımızı keşfedin."
-        canonical="https://mkngroup.com.tr/blog"
+        canonical="https://www.mkngroup.com.tr/blog"
       />
 
       {/* Navigation */}

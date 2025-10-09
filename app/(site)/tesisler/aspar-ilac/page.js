@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -96,16 +96,16 @@ export const metadata = {
     "max-video-preview": -1,
   },
   alternates: {
-    canonical: "https://mkngroup.com.tr/tesisler/aspar-ilac",
+    canonical: "https://www.mkngroup.com.tr/tesisler/aspar-ilac",
     languages: {
-      "tr-TR": "https://mkngroup.com.tr/tesisler/aspar-ilac",
-      "en-US": "https://mkngroup.com.tr/en/facilities/aspar-pharmaceutical",
+      "tr-TR": "https://www.mkngroup.com.tr/tesisler/aspar-ilac",
+      "en-US": "https://www.mkngroup.com.tr/en/facilities/aspar-pharmaceutical",
     },
   },
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    url: "https://mkngroup.com.tr/tesisler/aspar-ilac",
+    url: "https://www.mkngroup.com.tr/tesisler/aspar-ilac",
     siteName: "MKNGROUP",
     title:
       "Aspar İlaç | GMP Sertifikalı Gıda Takviyesi ve Dermokozmetik Üretim Tesisi",
@@ -113,7 +113,7 @@ export const metadata = {
       "🏭 Aspar İlaç: 5600m² GMP sertifikalı tesisimizde gıda takviyesi, dermokozmetik fason üretimi. 15+ yıl deneyim, 2M+ aylık kapasite. İstanbul Beylikdüzü.",
     images: [
       {
-        url: "https://mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
+        url: "https://www.mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
         width: 1200,
         height: 630,
         alt: "Aspar İlaç GMP Sertifikalı Modern Üretim Tesisi - İstanbul",
@@ -130,7 +130,7 @@ export const metadata = {
     description:
       "🏭 5600m² GMP sertifikalı tesisimizde gıda takviyesi, dermokozmetik fason üretimi. 15+ yıl deneyim, İstanbul.",
     images: [
-      "https://mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
+      "https://www.mkngroup.com.tr/modern-pharmaceutical-manufacturing-facility-with-.png",
     ],
   },
 };
@@ -146,7 +146,7 @@ export default function AsparIlacPage() {
       "GMP ve ISO sertifikalı gıda takviyesi, dermokozmetik ve bitkisel ürün fason üretim tesisi",
     url: "https://asparilac.com",
     sameAs: [
-      "https://mkngroup.com.tr/tesisler/aspar-ilac",
+      "https://www.mkngroup.com.tr/tesisler/aspar-ilac",
       "https://asparilac.com",
     ],
     logo: "https://asparilac.com/assets/asparlogo_original.jpg",

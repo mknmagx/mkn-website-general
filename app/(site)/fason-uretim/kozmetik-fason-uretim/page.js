@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   Beaker,
   CheckCircle,
@@ -45,20 +45,20 @@ export const metadata = {
   keywords:
     "kozmetik fason üretim, kozmetik fason üretici, GMP kozmetik üretim, ISO 22716 kozmetik, OEM kozmetik üretim, ODM kozmetik üretim, private label kozmetik, halal kozmetik üretimi, krem fason üretim, serum fason üretim, şampuan fason üretim, cilt bakımı fason üretim, makyaj fason üretim, kozmetik formülasyon, kozmetik ar-ge, kozmetik kalite kontrol, CPNP kozmetik, türkiye kozmetik üretici",
   alternates: {
-    canonical: "https://mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
+    canonical: "https://www.mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
   },
   openGraph: {
     title:
       "Kozmetik Fason Üretim | GMP Sertifikalı Kozmetik Üretici | MKNGROUP",
     description:
       "Türkiye'nin lider kozmetik fason üretim firması. ISO 22716 GMP sertifikalı 5.600 m² tesislerde krem, serum, şampuan ve tüm kozmetik ürün grupları için OEM/ODM hizmetleri. 1000+ formülasyon deneyimi, halal sertifikalı üretim.",
-    url: "https://mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
+    url: "https://www.mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
     siteName: "MKNGROUP",
     locale: "tr_TR",
     type: "website",
     images: [
       {
-        url: "https://mkngroup.com.tr/kozmetik-fason-uretim-og.jpg",
+        url: "https://www.mkngroup.com.tr/kozmetik-fason-uretim-og.jpg",
         width: 1200,
         height: 630,
         alt: "MKNGROUP Kozmetik Fason Üretim Tesisleri",
@@ -70,7 +70,7 @@ export const metadata = {
     title: "Kozmetik Fason Üretim | GMP Sertifikalı | MKNGROUP",
     description:
       "Türkiye'nin en büyük kozmetik fason üretim tesisi. ISO 22716 GMP sertifikalı tesislerde profesyonel kozmetik üretimi.",
-    images: ["https://mkngroup.com.tr/kozmetik-fason-uretim-og.jpg"],
+    images: ["https://www.mkngroup.com.tr/kozmetik-fason-uretim-og.jpg"],
   },
   robots: {
     index: true,
@@ -95,8 +95,8 @@ export default function KozmetikFasonUretimPage() {
     provider: {
       "@type": "Organization",
       name: "MKNGROUP",
-      url: "https://mkngroup.com.tr",
-      logo: "https://mkngroup.com.tr/MKN-GROUP-LOGO.png",
+      url: "https://www.mkngroup.com.tr",
+      logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+90-XXX-XXX-XXXX",
@@ -139,15 +139,15 @@ export default function KozmetikFasonUretimPage() {
   const breadcrumbItems = [
     {
       name: "Ana Sayfa",
-      url: "https://mkngroup.com.tr",
+      url: "https://www.mkngroup.com.tr",
     },
     {
       name: "Fason Üretim",
-      url: "https://mkngroup.com.tr/fason-uretim",
+      url: "https://www.mkngroup.com.tr/fason-uretim",
     },
     {
       name: "Kozmetik Fason Üretim",
-      url: "https://mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
+      url: "https://www.mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
     },
   ];
 
