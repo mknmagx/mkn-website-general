@@ -7,10 +7,8 @@ export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
   const currentDate = new Date();
 
-  // Blog postlarını Firestore'dan al
   const blogPosts = await getAllBlogPosts();
 
-  // Ana sayfalar ve öncelik sıralaması
   const mainRoutes = [
     { route: "", priority: 1.0, changeFreq: "daily" },
     { route: "/fason-uretim", priority: 0.9, changeFreq: "weekly" },
@@ -42,7 +40,6 @@ export default async function sitemap() {
     { route: "/teklif", priority: 0.8, changeFreq: "monthly" },
   ];
 
-  // Ana sayfa URL'lerini oluştur
   const staticUrls = mainRoutes.map((item) => {
     return {
       url: `${baseUrl}${item.route}`,
@@ -52,7 +49,6 @@ export default async function sitemap() {
     };
   });
 
-  // Ürün URL'lerini oluştur
   const productUrls = products.map((product) => {
     return {
       url: `${baseUrl}/ambalaj/${createProductSlug(product)}`,
@@ -62,7 +58,6 @@ export default async function sitemap() {
     };
   });
 
-  // Blog yazı URL'lerini oluştur
   const blogUrls = blogPosts.map((post) => {
     return {
       url: `${baseUrl}/blog/${post.slug}`,
@@ -72,6 +67,5 @@ export default async function sitemap() {
     };
   });
 
-  // Tüm URL'leri birleştir
   return [...staticUrls, ...productUrls, ...blogUrls];
 }
