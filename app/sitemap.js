@@ -42,28 +42,8 @@ export default async function sitemap() {
     { route: "/teklif", priority: 0.8, changeFreq: "monthly" },
   ];
 
-  // Ambalaj kategorileri ve öncelikleri
-  const categoryRoutes = [
-    {
-      route: "/ambalaj/disc-top-kapaklar",
-      priority: 0.7,
-      changeFreq: "weekly",
-    },
-    { route: "/ambalaj/krem-pompalar", priority: 0.7, changeFreq: "weekly" },
-    {
-      route: "/ambalaj/parmak-losyon-pompalari",
-      priority: 0.7,
-      changeFreq: "weekly",
-    },
-    { route: "/ambalaj/losyon-pompalari", priority: 0.7, changeFreq: "weekly" },
-    { route: "/ambalaj/sprey-pompalar", priority: 0.7, changeFreq: "weekly" },
-    { route: "/ambalaj/kopuk-pompalar", priority: 0.7, changeFreq: "weekly" },
-    { route: "/ambalaj/aseton-kapaklari", priority: 0.7, changeFreq: "weekly" },
-    { route: "/ambalaj/airless-siseler", priority: 0.7, changeFreq: "weekly" },
-  ];
-
-  // Ana sayfa ve kategori URL'lerini oluştur
-  const staticUrls = [...mainRoutes, ...categoryRoutes].map((item) => {
+  // Ana sayfa URL'lerini oluştur
+  const staticUrls = mainRoutes.map((item) => {
     return {
       url: `${baseUrl}${item.route}`,
       lastModified: currentDate,
