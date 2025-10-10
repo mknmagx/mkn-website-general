@@ -3,18 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
-  Filter,
   X,
   ChevronDown,
   ChevronUp,
-  Check,
   Sliders,
-  Tag,
   Package,
-  Droplets,
-  ShoppingBag,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
@@ -22,27 +18,11 @@ import {
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   Dialog,
   DialogContent,
@@ -57,8 +37,6 @@ import {
   PaginationEllipsis,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
 import { products, product_catalog } from "@/data/products-catalog";
 import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
@@ -70,7 +48,10 @@ const getCloudinaryUrl = (imageName) => {
 };
 
 export default function AmbalajClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState({
     category: [],
@@ -110,6 +91,32 @@ export default function AmbalajClient() {
   useEffect(() => {
     filterProducts();
   }, [searchQuery, activeFilters, activeCategory]);
+
+  // URL query parameters effect
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+    const searchParam = searchParams.get("search");
+
+    if (categoryParam && categoryParam !== activeCategory) {
+      setActiveCategory(categoryParam);
+      // Sync with filter panel
+      if (categoryParam !== "all") {
+        setActiveFilters((prev) => ({
+          ...prev,
+          category: [categoryParam],
+        }));
+      } else {
+        setActiveFilters((prev) => ({
+          ...prev,
+          category: [],
+        }));
+      }
+    }
+
+    if (searchParam && searchParam !== searchQuery) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setIsPageLoaded(true);
@@ -209,6 +216,48 @@ export default function AmbalajClient() {
     });
     setSearchQuery("");
     setActiveCategory("all");
+    updateURL("all", "");
+  };
+
+  // URL update function
+  const updateURL = (category, search) => {
+    const params = new URLSearchParams();
+    if (category && category !== "all") {
+      params.set("category", category);
+    }
+    if (search && search.trim()) {
+      params.set("search", search);
+    }
+
+    const newURL = params.toString() ? `?${params.toString()}` : "/ambalaj";
+    router.push(newURL, { scroll: false });
+  };
+
+  // Synchronized category change function
+  const handleCategoryChange = (category) => {
+    setCurrentPage(1);
+    setActiveCategory(category);
+
+    // Sync with filter panel
+    if (category === "all") {
+      setActiveFilters((prev) => ({
+        ...prev,
+        category: [],
+      }));
+    } else {
+      setActiveFilters((prev) => ({
+        ...prev,
+        category: [category],
+      }));
+    }
+
+    updateURL(category, searchQuery);
+  };
+
+  // Enhanced search query handler
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    updateURL(activeCategory, value);
   };
 
   const handleQuickView = (product) => {
@@ -265,8 +314,17 @@ export default function AmbalajClient() {
                 >
                   <input
                     type="checkbox"
-                    checked={activeFilters.category.includes(category)}
-                    onChange={() => toggleFilter("category", category)}
+                    checked={
+                      activeCategory === category ||
+                      activeFilters.category.includes(category)
+                    }
+                    onChange={() => {
+                      if (activeCategory === category) {
+                        handleCategoryChange("all");
+                      } else {
+                        handleCategoryChange(category);
+                      }
+                    }}
                     className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
                   />
                   <span className="text-sm dark:text-gray-300">{category}</span>
@@ -582,62 +640,6 @@ export default function AmbalajClient() {
         </div>
       </section>
 
-      {/* Search Section */}
-      <section className="py-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-center">
-            {/* Search */}
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
-              <Input
-                type="text"
-                placeholder="Ürün ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Category Tabs */}
-      <section
-        className={`py-6 border-b border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm transition-all duration-1000 delay-300 ${
-          isContentVisible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-8"
-        }`}
-      >
-        <div className="container mx-auto px-4">
-          <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-            <TabsList className="w-full justify-start overflow-x-auto dark:bg-gray-700">
-              <TabsTrigger
-                value="all"
-                className="dark:data-[state=active]:bg-gray-600 dark:text-gray-300"
-              >
-                Tüm Ürünler ({products.length})
-              </TabsTrigger>
-              {allCategories.map((category) => {
-                const count = products.filter(
-                  (product) => product.category === category
-                ).length;
-                return (
-                  <TabsTrigger
-                    key={category}
-                    value={category}
-                    className="dark:data-[state=active]:bg-gray-600 dark:text-gray-300"
-                  >
-                    {category} ({count})
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </Tabs>
-        </div>
-      </section>
-
-      {/* Products Grid */}
       {/* Products Section */}
       <section
         id="katalog"
@@ -677,6 +679,76 @@ export default function AmbalajClient() {
 
             {/* Ürün listesi - Sağ taraf */}
             <div className="lg:w-3/4 w-full">
+              {/* Enhanced Search Section */}
+              <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl border border-blue-100 dark:border-gray-600 shadow-sm">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                      <Search className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Ürün Arama
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Kozmetik ambalaj ürünleri arasında arama yapın
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                    <Input
+                      type="text"
+                      placeholder="Ürün adı, kategori veya kod ile arama yapın..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="pl-12 pr-4 py-3 text-base bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white dark:placeholder-gray-400"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => handleSearchChange("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Chips */}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleCategoryChange("all")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        activeCategory === "all"
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      Tümü ({products.length})
+                    </button>
+                    {allCategories.map((category) => {
+                      const count = products.filter(
+                        (product) => product.category === category
+                      ).length;
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => handleCategoryChange(category)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                            activeCategory === category
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                          }`}
+                        >
+                          {category} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
                 <p className="text-sm text-muted-foreground dark:text-gray-400">
                   {currentProducts.length > 0

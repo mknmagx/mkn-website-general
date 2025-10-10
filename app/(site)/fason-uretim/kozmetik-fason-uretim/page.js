@@ -14,17 +14,12 @@ import {
   Eye,
   Clock,
   Calculator,
-  FileText,
-  Users,
-  Target,
   Microscope,
   Factory,
   TrendingUp,
   Globe,
   Star,
   HelpCircle,
-  Plus,
-  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +34,7 @@ import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
   title:
-    "Kozmetik Fason Üretim | GMP Sertifikalı Kozmetik Üretici | ISO 22716 | MKNGROUP",
+    "Kozmetik Fason Üretim | GMP Sertifikalı Kozmetik Üretici | ISO 22716 | MKN GROUP",
   description:
     "Türkiye'nin en büyük kozmetik fason üretim tesisi. Krem, serum, şampuan, cilt bakımı ürünleri ISO 22716 GMP sertifikalı tesislerde üretiliyor. OEM/ODM kozmetik fason üretim, özel formülasyon, private label, halal kozmetik üretimi. 1000+ formülasyon deneyimi.",
   keywords:
@@ -49,11 +44,11 @@ export const metadata = {
   },
   openGraph: {
     title:
-      "Kozmetik Fason Üretim | GMP Sertifikalı Kozmetik Üretici | MKNGROUP",
+      "Kozmetik Fason Üretim | GMP Sertifikalı Kozmetik Üretici | MKN GROUP",
     description:
       "Türkiye'nin lider kozmetik fason üretim firması. ISO 22716 GMP sertifikalı 5.600 m² tesislerde krem, serum, şampuan ve tüm kozmetik ürün grupları için OEM/ODM hizmetleri. 1000+ formülasyon deneyimi, halal sertifikalı üretim.",
     url: "https://www.mkngroup.com.tr/fason-uretim/kozmetik-fason-uretim",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     locale: "tr_TR",
     type: "website",
     images: [
@@ -61,13 +56,13 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/kozmetik-fason-uretim-og.jpg",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP Kozmetik Fason Üretim Tesisleri",
+        alt: "MKN GROUP Kozmetik Fason Üretim Tesisleri",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kozmetik Fason Üretim | GMP Sertifikalı | MKNGROUP",
+    title: "Kozmetik Fason Üretim | GMP Sertifikalı | MKN GROUP",
     description:
       "Türkiye'nin en büyük kozmetik fason üretim tesisi. ISO 22716 GMP sertifikalı tesislerde profesyonel kozmetik üretimi.",
     images: ["https://www.mkngroup.com.tr/kozmetik-fason-uretim-og.jpg"],
@@ -94,12 +89,12 @@ export default function KozmetikFasonUretimPage() {
     category: "Cosmetic Contract Manufacturing",
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
       logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
-        telephone: "+90-XXX-XXX-XXXX",
+        telephone: "+90 536 592 30 35",
         contactType: "Customer Service",
         areaServed: "TR",
         availableLanguage: ["Turkish", "English"],
@@ -376,7 +371,7 @@ export default function KozmetikFasonUretimPage() {
               </h2>
               <div className="max-w-5xl mx-auto">
                 <p className="text-xl text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                  <strong>MKNGROUP</strong>, 6+ yıllık deneyimi ve ISO 22716 GMP
+                  <strong>MKN GROUP</strong>, 6+ yıllık deneyimi ve ISO 22716 GMP
                   sertifikalı 5.600 m² üretim tesisleriyle Türkiye'nin lider
                   kozmetik fason üretim firmasıdır. Krem, serum, şampuan, cilt
                   bakımı ve makyaj ürünleri olmak üzere tüm kozmetik
@@ -446,7 +441,7 @@ export default function KozmetikFasonUretimPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-                  Neden MKNGROUP Kozmetik Fason Üretim?
+                  Neden MKN GROUP Kozmetik Fason Üretim?
                 </h3>
                 <div className="space-y-4">
                   {advantages.map((advantage, index) => (
@@ -693,8 +688,8 @@ export default function KozmetikFasonUretimPage() {
                 Kozmetik Fason Üretim Teknik Kapasitelerimiz
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                5.600 m² kapalı alanda, son teknoloji ekipmanlarla günlük
-                30.000 adet ürün üretim kapasitesi
+                5.600 m² kapalı alanda, son teknoloji ekipmanlarla günlük 30.000
+                adet ürün üretim kapasitesi
               </p>
             </div>
 

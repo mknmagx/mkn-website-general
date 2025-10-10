@@ -21,10 +21,10 @@ export const SubmissionSuccess = ({ onClose, result }) => {
           <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
         </div>
         <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Teklif Talebiniz Başarıyla Gönderildi!
+          Mesajınız Başarıyla Gönderildi!
         </h3>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Talebiniz alındı ve uzman ekibimiz değerlendirmeye aldı. En kısa
+          Mesajınız alındı ve uzman ekibimiz değerlendirmeye aldı. En kısa
           sürede size dönüş yapacağız.
         </p>
       </div>
@@ -32,9 +32,8 @@ export const SubmissionSuccess = ({ onClose, result }) => {
       <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
         <Clock className="h-4 w-4 text-green-600" />
         <AlertDescription className="text-green-800 dark:text-green-200">
-          <strong>Süreç Hakkında:</strong> Teklif hazırlama süremiz genellikle
-          24-48 saat arasındadır. Karmaşık projeler için bu süre 72 saat kadar
-          çıkabilir.
+          <strong>Süreç Hakkında:</strong> Mesaj değerlendirme süremiz genellikle
+          2-24 saat arasındadır. Acil durumlarda daha hızlı dönüş sağlayabiliriz.
         </AlertDescription>
       </Alert>
 
@@ -53,10 +52,10 @@ export const SubmissionSuccess = ({ onClose, result }) => {
             </div>
             <div>
               <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                Talep Değerlendirme
+                Mesaj Değerlendirme
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Uzman ekibimiz talebinizi detaylı olarak inceliyor.
+                Uzman ekibimiz mesajınızı detaylı olarak inceliyor.
               </p>
             </div>
           </div>
@@ -69,10 +68,10 @@ export const SubmissionSuccess = ({ onClose, result }) => {
             </div>
             <div>
               <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                Teklif Hazırlama
+                Yanıt Hazırlama
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Size özel detaylı teklif ve fiyat hesaplaması yapılıyor.
+                Size özel detaylı yanıt ve çözüm önerileri hazırlanıyor.
               </p>
             </div>
           </div>
@@ -88,7 +87,7 @@ export const SubmissionSuccess = ({ onClose, result }) => {
                 Size Ulaşıyoruz
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                E-posta ve telefon ile size detaylı teklifi sunuyoruz.
+                E-posta ve telefon ile size detaylı yanıtı sunuyoruz.
               </p>
             </div>
           </div>
@@ -122,10 +121,10 @@ export const SubmissionSuccess = ({ onClose, result }) => {
           Ana Sayfaya Dön
         </Button>
         <Button
-          onClick={() => (window.location.href = "/fason-uretim")}
+          onClick={() => (window.location.href = "/hizmetlerimiz")}
           className="flex-1"
         >
-          Fason Üretim Hakkında
+          Hizmetlerimiz Hakkında
         </Button>
       </div>
 
@@ -157,7 +156,7 @@ export const SubmissionError = ({ onRetry, onClose, result }) => {
           Gönderim Başarısız
         </h3>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Teklif talebiniz gönderilirken bir hata oluştu. Lütfen tekrar deneyin.
+          Mesajınız gönderilirken bir hata oluştu. Lütfen tekrar deneyin.
         </p>
       </div>
 
@@ -239,10 +238,10 @@ export const SubmissionLoading = () => {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
       <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-        Teklif Talebiniz Gönderiliyor...
+        Mesajınız Gönderiliyor...
       </h3>
       <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Lütfen bekleyin, talebiniz işleniyor.
+        Lütfen bekleyin, mesajınız işleniyor.
       </p>
 
       <div className="space-y-2">
@@ -257,11 +256,36 @@ export const SubmissionLoading = () => {
   );
 };
 
-// Default export for backwards compatibility
-const SubmissionStatus = {
-  SubmissionSuccess,
-  SubmissionError,
-  SubmissionLoading,
+/**
+ * Ana SubmissionStatus komponenti
+ * Form gönderim durumuna göre uygun modal'ı gösterir
+ */
+export const SubmissionStatusModal = ({ 
+  isSubmitting, 
+  isSuccess, 
+  isError, 
+  submitResult, 
+  onClose, 
+  onRetry 
+}) => {
+  if (!isSubmitting && !isSuccess && !isError) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          {isSubmitting && <SubmissionLoading />}
+          {isSuccess && <SubmissionSuccess onClose={onClose} result={submitResult} />}
+          {isError && <SubmissionError onRetry={onRetry} onClose={onClose} result={submitResult} />}
+        </div>
+      </div>
+    </div>
+  );
 };
+
+// Default export for backwards compatibility
+const SubmissionStatus = SubmissionStatusModal;
 
 export default SubmissionStatus;

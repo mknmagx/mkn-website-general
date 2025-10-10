@@ -37,21 +37,21 @@ import { Badge } from "@/components/ui/badge";
 import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
-  title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKNGROUP",
+  title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKN GROUP",
   description:
     "Türkiye'nin en büyük temizlik ürünleri fason üretim tesisi. Sıvı sabun, deterjan, yüzey temizleyici, endüstriyel temizlik ürünleri ISO 14001 çevre dostu tesislerde üretiliyor. OEM/ODM temizlik ürünleri, private label deterjan, çevre dostu formülasyonlar. 300+ formülasyon deneyimi.",
   keywords:
     "temizlik ürünleri fason üretim, temizlik ürünleri fason üretici, ISO 14001 temizlik üretim, OEM temizlik ürünleri, ODM deterjan üretim, private label temizlik ürünleri, sıvı sabun fason üretim, deterjan fason üretim, yüzey temizleyici üretim, endüstriyel temizlik fason üretim, çevre dostu temizlik ürünleri, ekolojik deterjan üretimi, organik sabun fason üretim, antibakteriyel sabun üretimi, temizlik ürünleri formülasyon",
   alternates: {
     canonical:
-      "https://www.mkngroup.com.tr/fason-uretim/temizlik-bakim-fason-uretim",
+      "https://www.mkngroup.com.tr/fason-uretim/temizlik-urunleri-fason-uretim",
   },
   openGraph: {
-    title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKNGROUP",
+    title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKN GROUP",
     description:
       "Türkiye'nin lider temizlik ürünleri fason üretim firması. ISO 14001 çevre dostu 10.000 m² tesislerde sıvı sabun, deterjan, yüzey temizleyici üretimi. 300+ formülasyon deneyimi, çevre dostu üretim.",
-    url: "https://www.mkngroup.com.tr/fason-uretim/temizlik-bakim-fason-uretim",
-    siteName: "MKNGROUP",
+    url: "https://www.mkngroup.com.tr/fason-uretim/temizlik-urunleri-fason-uretim",
+    siteName: "MKN GROUP",
     locale: "tr_TR",
     type: "website",
     images: [
@@ -59,16 +59,18 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/temizlik-urunleri-fason-uretim-og.jpg",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP Temizlik Ürünleri Fason Üretim Tesisleri",
+        alt: "MKN GROUP Temizlik Ürünleri Fason Üretim Tesisleri",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKNGROUP",
+    title: "Temizlik Ürünleri Fason Üretim | ISO 14001 Çevre Dostu | MKN GROUP",
     description:
       "Türkiye'nin en büyük temizlik ürünleri fason üretim tesisi. ISO 14001 çevre dostu tesislerde profesyonel temizlik ürünleri üretimi.",
-    images: ["https://www.mkngroup.com.tr/temizlik-urunleri-fason-uretim-og.jpg"],
+    images: [
+      "https://www.mkngroup.com.tr/temizlik-urunleri-fason-uretim-og.jpg",
+    ],
   },
   robots: {
     index: true,
@@ -92,12 +94,12 @@ export default function TemizlikBakimFasonUretimPage() {
     category: "Cleaning Products Contract Manufacturing",
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
       logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
-        telephone: "+90-XXX-XXX-XXXX",
+        telephone: "+90 531 494 25 94",
         contactType: "Customer Service",
         areaServed: "TR",
         availableLanguage: ["Turkish", "English"],
@@ -348,7 +350,7 @@ export default function TemizlikBakimFasonUretimPage() {
               </h2>
               <div className="max-w-5xl mx-auto">
                 <p className="text-xl text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                  <strong>MKNGROUP</strong>, 6+ yıllık deneyimi ve ISO 14001
+                  <strong>MKN GROUP</strong>, 6+ yıllık deneyimi ve ISO 14001
                   çevre dostu sertifikalı 10.000 m² üretim tesisleriyle
                   Türkiye'nin lider temizlik ürünleri fason üretim firmasıdır.
                   Sıvı sabun, deterjan, yüzey temizleyici ve endüstriyel
@@ -418,7 +420,7 @@ export default function TemizlikBakimFasonUretimPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-                  Neden MKNGROUP Temizlik Ürünleri Fason Üretim?
+                  Neden MKN GROUP Temizlik Ürünleri Fason Üretim?
                 </h3>
                 <div className="space-y-4">
                   {advantages.map((advantage, index) => (

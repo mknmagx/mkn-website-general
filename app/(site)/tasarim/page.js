@@ -40,20 +40,20 @@ import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
   title:
-    "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP - 3D Modelleme, Marka Kimliği, Dijital Tasarım Çözümleri",
+    "🎨 Profesyonel Tasarım Stüdyosu | MKN GROUP - 3D Modelleme, Marka Kimliği, Dijital Tasarım Çözümleri",
   description:
     "✨ Türkiye'nin en inovatif tasarım stüdyosu! 3D modelleme, marka kimliği, web tasarım, ürün görselleri ve katalog tasarımı. Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz. %100 müşteri memnuniyeti garantili.",
   keywords:
-    "profesyonel tasarım stüdyosu, 3d modelleme uzmanı, marka kimliği tasarımı, logo tasarım ajansı, web site tasarım şirketi, ürün fotoğrafçılığı, katalog tasarım hizmeti, etiket tasarımı, ambalaj tasarımı, kreatif ajans, tasarım danışmanlığı, görsel kimlik, kurumsal tasarım, e-ticaret görselleri, pazarlama materyalleri, reklam tasarımı, sosyal medya tasarımı, baskı tasarımı, dijital tasarım çözümleri, inovatif tasarım, modern tasarım ajansı, mkngroup tasarım",
+    "profesyonel tasarım stüdyosu, 3d modelleme uzmanı, marka kimliği tasarımı, logo tasarım ajansı, web site tasarım şirketi, ürün fotoğrafçılığı, katalog tasarım hizmeti, etiket tasarımı, ambalaj tasarımı, kreatif ajans, tasarım danışmanlığı, görsel kimlik, kurumsal tasarım, e-ticaret görselleri, pazarlama materyalleri, reklam tasarımı, sosyal medya tasarımı, baskı tasarımı, dijital tasarım çözümleri, inovatif tasarım, modern tasarım ajansı, mkn group tasarım",
   alternates: {
     canonical: "https://www.mkngroup.com.tr/tasarim",
   },
   openGraph: {
-    title: "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP",
+    title: "🎨 Profesyonel Tasarım Stüdyosu | MKN GROUP",
     description:
       "✨ Türkiye'nin en inovatif tasarım stüdyosu! Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz. 3D modelleme, marka kimliği ve daha fazlası...",
     url: "https://www.mkngroup.com.tr/tasarim",
-    siteName: "MKNGROUP Design Studio",
+    siteName: "MKN GROUP Design Studio",
     locale: "tr_TR",
     type: "website",
     images: [
@@ -61,13 +61,13 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP Profesyonel Tasarım Hizmetleri",
+        alt: "MKN GROUP Profesyonel Tasarım Hizmetleri",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "🎨 Profesyonel Tasarım Stüdyosu | MKNGROUP",
+    title: "🎨 Profesyonel Tasarım Stüdyosu | MKN GROUP",
     description:
       "✨ Türkiye'nin en inovatif tasarım stüdyosu! Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz.",
     images: ["https://www.mkngroup.com.tr/og-image.png"],
@@ -95,10 +95,10 @@ export default function TasarimPage() {
     "@type": "Service",
     name: "Profesyonel Tasarım Stüdyosu Hizmetleri",
     description:
-      "MKNGROUP olarak Türkiye'nin en yenilikçi tasarım stüdyosuyuz. 3D modelleme, marka kimliği, web tasarım, ürün görselleri ve tüm kreatif ihtiyaçlarınız için tek durak çözüm merkezi. Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz.",
+      "MKN GROUP olarak Türkiye'nin en yenilikçi tasarım stüdyosuyuz. 3D modelleme, marka kimliği, web tasarım, ürün görselleri ve tüm kreatif ihtiyaçlarınız için tek durak çözüm merkezi. Hayalinizdeki tasarımları gerçeğe dönüştürüyoruz.",
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP Design Studio",
+      name: "MKN GROUP Design Studio",
       url: "https://www.mkngroup.com.tr",
     },
     areaServed: "Turkey",

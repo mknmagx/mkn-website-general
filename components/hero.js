@@ -18,7 +18,7 @@ export default function Hero() {
       className="relative overflow-hidden bg-gradient-to-br from-background via-card to-primary/5 py-24 lg:py-40"
       itemScope
       itemType="https://schema.org/Organization"
-      aria-label="MKNGROUP Ana Bölüm"
+      aria-label="MKN GROUP Ana Bölüm"
     >
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <div className="absolute top-20 right-20 w-72 h-72 bg-gradient-primary rounded-full blur-3xl opacity-20 animate-pulse"></div>
@@ -179,7 +179,7 @@ export default function Hero() {
             <div
               className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto"
               role="region"
-              aria-label="MKNGROUP İstatistikleri"
+              aria-label="MKN GROUP İstatistikleri"
             >
               <article className="group hover-lift bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 hover:border-primary/20 transition-all duration-300">
                 <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -247,7 +247,7 @@ export default function Hero() {
 //           {/* Subtitle */}
 //           <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty leading-relaxed">
 //             Kozmetik üretimi, gıda takviyesi, temizlik & bakım; kozmetik ambalaj tedariki; depo-kargo ve e-ticaret
-//             operasyon yönetimi; pazarlama & reklam desteği – hepsi <span className="font-montserrat font-semibold">MKNGROUP</span> çatısı altında.
+//             operasyon yönetimi; pazarlama & reklam desteği – hepsi <span className="font-montserrat font-semibold">MKN GROUP</span> çatısı altında.
 //           </p>
 
 //           {/* CTA Buttons */}

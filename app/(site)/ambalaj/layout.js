@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Kozmetik Ambalaj Çözümleri | MKNGROUP",
+  title: "Kozmetik Ambalaj Çözümleri | MKN GROUP",
   description:
     "Şişe, kavanoz, tüp, pompa, damlalık, airless ve daha fazlası – stok ve siparişe özel ambalaj seçenekleri.",
   alternates: {

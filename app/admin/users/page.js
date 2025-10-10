@@ -14,8 +14,8 @@ import {
   deleteUser,
   updateUser,
   USER_ROLES,
-  ROLE_LEVELS,
 } from "../../../lib/services/admin-user-service";
+import { ROLE_LEVELS } from "../../../lib/services/admin-permissions-service";
 import { createUserWithAdmin } from "../../../lib/services/admin-user-api";
 import { useAdminAuth } from "../../../hooks/use-admin-auth";
 import { useAdminLogger } from "../../../hooks/use-admin-logger";
@@ -87,11 +87,10 @@ export default function UsersPage() {
 
     setLoading(true);
     try {
-      // Kullanıcı listesi görüntüleme logla
-      await logger.logRead('users', null, 'Kullanıcı listesi görüntülendi');
-      
+      await logger.logRead("users", null, "Kullanıcı listesi görüntülendi");
+
       const usersResult = await getAllUsers(currentUserPermissions);
-      const statsResult = hasPermission("canViewAnalytics")
+      const statsResult = hasPermission("analytics.view")
         ? await getUserStats(currentUserPermissions)
         : null;
 
@@ -105,9 +104,8 @@ export default function UsersPage() {
         setStats(statsResult.stats);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
-      await logger.logErrorAction('user_list_load_failed', error);
-      
+      await logger.logErrorAction("user_list_load_failed", error);
+
       toast({
         title: "Hata",
         description:
@@ -121,24 +119,24 @@ export default function UsersPage() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const targetUser = users.find(u => u.id === userId);
+      const targetUser = users.find((u) => u.id === userId);
       const oldRole = targetUser?.role;
-      
+
       const result = await updateUserRole(
         userId,
         newRole,
         permissions,
         userRole
       );
-      
+
       if (result.success) {
         await logger.logUserAction(
-          'user_role_changed',
+          "user_role_changed",
           userId,
           `Kullanıcı rolü ${oldRole} → ${newRole} olarak değiştirildi`,
           { oldRole, newRole, targetUserEmail: targetUser?.email }
         );
-        
+
         await loadData();
         toast({
           title: "Başarılı",
@@ -148,8 +146,11 @@ export default function UsersPage() {
         throw new Error(result.error);
       }
     } catch (error) {
-      await logger.logErrorAction('user_role_change_failed', error, { userId, newRole });
-      
+      await logger.logErrorAction("user_role_change_failed", error, {
+        userId,
+        newRole,
+      });
+
       toast({
         title: "Hata",
         description: error.message,
@@ -160,21 +161,21 @@ export default function UsersPage() {
 
   const handleStatusToggle = async (userId, currentStatus) => {
     try {
-      const targetUser = users.find(u => u.id === userId);
-      
+      const targetUser = users.find((u) => u.id === userId);
+
       await toggleUserStatus(userId, !currentStatus, currentUser?.role);
-      
+
       await logger.logUserAction(
-        currentStatus ? 'user_deactivated' : 'user_activated',
+        currentStatus ? "user_deactivated" : "user_activated",
         userId,
-        `Kullanıcı ${currentStatus ? 'deaktifleştirildi' : 'aktifleştirildi'}`,
-        { 
-          oldStatus: currentStatus, 
+        `Kullanıcı ${currentStatus ? "deaktifleştirildi" : "aktifleştirildi"}`,
+        {
+          oldStatus: currentStatus,
           newStatus: !currentStatus,
-          targetUserEmail: targetUser?.email 
+          targetUserEmail: targetUser?.email,
         }
       );
-      
+
       await loadData();
       toast({
         title: "Başarılı",
@@ -183,8 +184,11 @@ export default function UsersPage() {
         }.`,
       });
     } catch (error) {
-      await logger.logErrorAction('user_status_toggle_failed', error, { userId, currentStatus });
-      
+      await logger.logErrorAction("user_status_toggle_failed", error, {
+        userId,
+        currentStatus,
+      });
+
       toast({
         title: "Hata",
         description: error.message,
@@ -199,28 +203,28 @@ export default function UsersPage() {
     }
 
     try {
-      const targetUser = users.find(u => u.id === userId);
-      
+      const targetUser = users.find((u) => u.id === userId);
+
       await deleteUser(userId, currentUser?.role);
-      
+
       await logger.logUserAction(
-        'user_deleted',
+        "user_deleted",
         userId,
         `Kullanıcı kalıcı olarak silindi`,
-        { 
+        {
           targetUserEmail: targetUser?.email,
-          targetUserRole: targetUser?.role
+          targetUserRole: targetUser?.role,
         }
       );
-      
+
       await loadData();
       toast({
         title: "Başarılı",
         description: "Kullanıcı silindi.",
       });
     } catch (error) {
-      await logger.logErrorAction('user_delete_failed', error, { userId });
-      
+      await logger.logErrorAction("user_delete_failed", error, { userId });
+
       toast({
         title: "Hata",
         description: error.message,
@@ -232,26 +236,25 @@ export default function UsersPage() {
   const handleCreateUser = async (userData) => {
     try {
       const result = await createUserWithAdmin(userData, currentUser?.role);
-      
+
       if (result.success) {
         await logger.logUserAction(
-          'user_created',
+          "user_created",
           result.userId,
           `Yeni kullanıcı oluşturuldu: ${userData.email}`,
-          { 
+          {
             newUserEmail: userData.email,
             newUserRole: userData.role,
-            newUserName: userData.displayName
+            newUserName: userData.displayName,
           }
         );
-        
+
         setShowCreateModal(false);
-        
-        // Şifre modalını göster
+
         setGeneratedPassword(result.generatedPassword);
         setNewUserEmail(userData.email);
         setShowPasswordModal(true);
-        
+
         toast({
           title: "Başarılı",
           description: "Yeni kullanıcı oluşturuldu.",
@@ -260,8 +263,10 @@ export default function UsersPage() {
         throw new Error(result.error);
       }
     } catch (error) {
-      await logger.logErrorAction('user_create_failed', error, { email: userData.email });
-      
+      await logger.logErrorAction("user_create_failed", error, {
+        email: userData.email,
+      });
+
       toast({
         title: "Hata",
         description: error.message,
@@ -273,9 +278,9 @@ export default function UsersPage() {
   const handleViewUser = async (user) => {
     setViewingUser(user);
     setShowViewModal(true);
-    
+
     await logger.logRead(
-      'user',
+      "user",
       user.id,
       `Kullanıcı detayları görüntülendi: ${user.email}`,
       { viewedUserEmail: user.email, viewedUserRole: user.role }
@@ -285,9 +290,9 @@ export default function UsersPage() {
   const handleEditUser = async (user) => {
     setEditingUser(user);
     setShowEditModal(true);
-    
+
     await logger.logRead(
-      'user',
+      "user",
       user.id,
       `Kullanıcı düzenleme ekranı açıldı: ${user.email}`,
       { editTargetEmail: user.email, editTargetRole: user.role }
@@ -297,24 +302,24 @@ export default function UsersPage() {
   const handleUpdateUser = async (userData) => {
     try {
       const oldUserData = editingUser;
-      
+
       await updateUser(editingUser.id, userData, currentUser?.role);
-      
+
       await logger.logUserAction(
-        'user_updated',
+        "user_updated",
         editingUser.id,
         `Kullanıcı bilgileri güncellendi: ${editingUser.email}`,
-        { 
+        {
           targetUserEmail: editingUser.email,
           updatedFields: userData,
           oldData: {
             displayName: oldUserData.displayName,
             role: oldUserData.role,
-            isActive: oldUserData.isActive
-          }
+            isActive: oldUserData.isActive,
+          },
         }
       );
-      
+
       await loadData();
       setShowEditModal(false);
       setEditingUser(null);
@@ -323,11 +328,11 @@ export default function UsersPage() {
         description: "Kullanıcı bilgileri güncellendi.",
       });
     } catch (error) {
-      await logger.logErrorAction('user_update_failed', error, { 
+      await logger.logErrorAction("user_update_failed", error, {
         userId: editingUser?.id,
-        userData 
+        userData,
       });
-      
+
       toast({
         title: "Hata",
         description: error.message,
@@ -336,7 +341,6 @@ export default function UsersPage() {
     }
   };
 
-  // Filtreleme ve sıralama
   const filteredUsers = users
     .filter((user) => {
       const matchesSearch =
@@ -856,7 +860,6 @@ export default function UsersPage() {
             setShowPasswordModal(false);
             setGeneratedPassword("");
             setNewUserEmail("");
-            // Modal kapandıktan sonra kullanıcı listesini güncelle
             loadData();
           }}
         />
@@ -889,10 +892,8 @@ export default function UsersPage() {
   );
 }
 
-// Yeni Kullanıcı Oluşturma Modal'ı
 function CreateUserModal({ onClose, onCreate, currentUserRole }) {
   const [formData, setFormData] = useState({
-    // Temel Bilgiler
     email: "",
     displayName: "",
     firstName: "",
@@ -900,7 +901,6 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
     phoneNumber: "",
     role: USER_ROLES.USER,
 
-    // Şirket Bilgileri
     company: {
       name: "MKN Group",
       division: "ambalaj",
@@ -910,7 +910,6 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
       branch: "istanbul-merkez",
     },
 
-    // Performans Hedefleri
     performance: {
       salesTarget: 50000,
       customerSatisfaction: 4.0,
@@ -931,13 +930,11 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
     setLoading(true);
 
     try {
-      // displayName'i otomatik oluştur eğer boşsa
       const processedData = {
         ...formData,
         displayName:
           formData.displayName ||
           `${formData.firstName} ${formData.lastName}`.trim(),
-        // Boş alanları temizle
         company: {
           ...formData.company,
           employeeId:
@@ -948,7 +945,7 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
 
       await onCreate(processedData);
     } catch (error) {
-      console.error("Error creating user:", error);
+      // Error handling without console spam
     } finally {
       setLoading(false);
     }
@@ -1503,7 +1500,6 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
   );
 }
 
-// Kullanıcı Görüntüleme Modal'ı
 function ViewUserModal({ user, onClose }) {
   const [activeTab, setActiveTab] = useState("basic");
 
@@ -1923,7 +1919,6 @@ function ViewUserModal({ user, onClose }) {
   );
 }
 
-// Kullanıcı Düzenleme Modal'ı
 function EditUserModal({ user, onClose, onUpdate, currentUserRole }) {
   const [formData, setFormData] = useState({
     displayName: user.displayName || "",
@@ -1959,7 +1954,7 @@ function EditUserModal({ user, onClose, onUpdate, currentUserRole }) {
     try {
       await onUpdate(formData);
     } catch (error) {
-      console.error("Error updating user:", error);
+      // Error handling without console spam
     } finally {
       setLoading(false);
     }
@@ -2319,7 +2314,6 @@ function EditUserModal({ user, onClose, onUpdate, currentUserRole }) {
   );
 }
 
-// Şifre Gösterim Modal Komponenti
 function PasswordDisplayModal({ email, password, onClose }) {
   const [copied, setCopied] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -2332,7 +2326,7 @@ function PasswordDisplayModal({ email, password, onClose }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     } catch (err) {
-      console.error('Panoya kopyalanamadı:', err);
+      // Copy error handling
     }
   };
 
@@ -2343,7 +2337,7 @@ function PasswordDisplayModal({ email, password, onClose }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     } catch (err) {
-      console.error('Panoya kopyalanamadı:', err);
+      // Copy error handling
     }
   };
 
@@ -2365,7 +2359,8 @@ function PasswordDisplayModal({ email, password, onClose }) {
               Şifre Bilgisini Kaydettiniz mi?
             </h3>
             <p className="text-gray-600 mb-6">
-              Bu şifre bir daha gösterilmeyecektir. Lütfen güvenli bir yerde kaydettiğinizden emin olun.
+              Bu şifre bir daha gösterilmeyecektir. Lütfen güvenli bir yerde
+              kaydettiğinizden emin olun.
             </p>
             <div className="flex gap-3">
               <button
@@ -2388,21 +2383,19 @@ function PasswordDisplayModal({ email, password, onClose }) {
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={(e) => {
-        // Dış tıklama ile kapanmayı engelle
         e.stopPropagation();
       }}
       onKeyDown={(e) => {
-        // ESC tuşu ile kapanmayı engelle
-        if (e.key === 'Escape') {
+        if (e.key === "Escape") {
           e.preventDefault();
           handleCloseAttempt();
         }
       }}
     >
-      <div 
+      <div
         className="bg-white rounded-lg max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
@@ -2417,8 +2410,18 @@ function PasswordDisplayModal({ email, password, onClose }) {
             className="text-gray-400 hover:text-gray-600 transition-colors"
             title="Modalı Kapat"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -2429,9 +2432,12 @@ function PasswordDisplayModal({ email, password, onClose }) {
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
               <div>
-                <h4 className="font-medium text-yellow-800">Önemli Güvenlik Bilgisi</h4>
+                <h4 className="font-medium text-yellow-800">
+                  Önemli Güvenlik Bilgisi
+                </h4>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Bu şifre yalnızca burada gösterilmektedir. Lütfen güvenli bir yerde saklayın ve kullanıcıya iletebilirsiniz.
+                  Bu şifre yalnızca burada gösterilmektedir. Lütfen güvenli bir
+                  yerde saklayın ve kullanıcıya iletebilirsiniz.
                 </p>
               </div>
             </div>
@@ -2468,15 +2474,29 @@ function PasswordDisplayModal({ email, password, onClose }) {
                   className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
                   title={showPassword ? "Şifreyi Gizle" : "Şifreyi Göster"}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
                 <button
                   onClick={handleCopyPassword}
                   className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
                   title="Şifreyi Kopyala"
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 </button>
               </div>
@@ -2484,12 +2504,20 @@ function PasswordDisplayModal({ email, password, onClose }) {
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-800 mb-2">Kullanıcı Bilgileri:</h4>
+            <h4 className="font-medium text-blue-800 mb-2">
+              Kullanıcı Bilgileri:
+            </h4>
             <ul className="text-sm text-blue-700 space-y-1">
               <li>• Kullanıcı hesabı başarıyla oluşturulmuştur</li>
-              <li>• Bu bilgileri güvenli bir şekilde kullanıcıya iletebilirsiniz</li>
-              <li>• Kullanıcı isterse hesap ayarlarından şifresini değiştirebilir</li>
-              <li>• Giriş yapmak için email ve yukarıdaki şifreyi kullanmalıdır</li>
+              <li>
+                • Bu bilgileri güvenli bir şekilde kullanıcıya iletebilirsiniz
+              </li>
+              <li>
+                • Kullanıcı isterse hesap ayarlarından şifresini değiştirebilir
+              </li>
+              <li>
+                • Giriş yapmak için email ve yukarıdaki şifreyi kullanmalıdır
+              </li>
             </ul>
           </div>
         </div>
@@ -2500,8 +2528,18 @@ function PasswordDisplayModal({ email, password, onClose }) {
             onClick={handleCopyAll}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              />
             </svg>
             {copied ? "Kopyalandı!" : "Tüm Bilgileri Kopyala"}
           </button>

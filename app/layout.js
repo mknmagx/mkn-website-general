@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import PWAInstallBanner from "@/components/pwa-install-banner";
 import PWAWrapper from "@/components/pwa-wrapper";
 import { Toaster } from "sonner";
+import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,11 +37,11 @@ export const metadata = {
   metadataBase: new URL("https://www.mkngroup.com.tr"),
   title: {
     default:
-      "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri | Türkiye",
-    template: "%s | MKNGROUP",
+      "MKN GROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri | Türkiye",
+    template: "%s | MKN GROUP",
   },
   description:
-    "🏭 Türkiye'nin lider fason üretim şirketi MKNGROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri. ✨ 6+ yıl deneyim, 1000+ başarılı proje.",
+    "🏭 Türkiye'nin lider fason üretim şirketi MKN GROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri. ✨ 6+ yıl deneyim, 1000+ başarılı proje.",
   keywords: [
     "fason üretim",
     "kozmetik fason üretim",
@@ -49,7 +50,7 @@ export const metadata = {
     "e-ticaret operasyon",
     "e-ticaret operasyon",
     "dijital pazarlama",
-    "MKNGROUP",
+    "MKN GROUP",
     "istanbul fason üretim",
     "türkiye kozmetik üretimi",
     "sertifikalı üretim",
@@ -68,9 +69,9 @@ export const metadata = {
     "3PL hizmetleri",
     "fulfilment hizmetleri",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
-  creator: "MKNGROUP",
-  publisher: "MKNGROUP",
+  authors: [{ name: "MKN GROUP", url: "https://www.mkngroup.com.tr" }],
+  creator: "MKN GROUP",
+  publisher: "MKN GROUP",
   formatDetection: {
     email: false,
     address: false,
@@ -89,16 +90,16 @@ export const metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://www.mkngroup.com.tr",
-    siteName: "MKNGROUP",
-    title: "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
+    siteName: "MKN GROUP",
+    title: "MKN GROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
     description:
-      "Türkiye'nin önde gelen fason üretim şirketi MKNGROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
+      "Türkiye'nin önde gelen fason üretim şirketi MKN GROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP - Fason Üretim ve Operasyon Çözümleri",
+        alt: "MKN GROUP - Fason Üretim ve Operasyon Çözümleri",
         type: "image/png",
       },
     ],
@@ -107,9 +108,9 @@ export const metadata = {
     card: "summary_large_image",
     site: "@mkngroup_x",
     creator: "@mkngroup_x",
-    title: "MKNGROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
+    title: "MKN GROUP - Fason Üretim, Ambalaj ve Operasyon Çözümleri",
     description:
-      "Türkiye'nin önde gelen fason üretim şirketi MKNGROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
+      "Türkiye'nin önde gelen fason üretim şirketi MKN GROUP: ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
     images: ["/og-image.png"],
   },
   robots: {
@@ -236,6 +237,7 @@ export default function RootLayout({ children }) {
                 visibleToasts={4}
                 closeButton={true}
               />
+              <ShadcnToaster />
             </PWAWrapper>
           </ThemeProvider>
         </Suspense>

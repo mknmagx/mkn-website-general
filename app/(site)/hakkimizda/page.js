@@ -53,12 +53,12 @@ import FacilityBanner from "@/components/facility-banner";
 
 export const metadata = {
   title:
-    "MKNGROUP | Türkiye'nin En Büyük Contract Manufacturing ve Entegre Üretim Şirketi | 360° Çözüm Ortağı",
+    "MKN GROUP | Türkiye'nin En Büyük Contract Manufacturing ve Entegre Üretim Şirketi | 360° Çözüm Ortağı",
   description:
-    "🏭 MKNGROUP: Türkiye'nin #1 contract manufacturing lideri. 10.600m² ISO sertifikalı tesislerde 3.8+ milyon ünite/ay üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi + 360° entegre çözümler: ambalaj, e-ticaret operasyonları, depolama, lojistik, dijital pazarlama. 2019'dan beri 1000+ başarılı proje, 200+ marka ortağı. OEM/ODM, private label, formülasyon geliştirme uzmanı.",
+    "🏭 MKN GROUP: Türkiye'nin #1 contract manufacturing lideri. 10.600m² ISO sertifikalı tesislerde 3.8+ milyon ünite/ay üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi + 360° entegre çözümler: ambalaj, e-ticaret operasyonları, depolama, lojistik, dijital pazarlama. 2019'dan beri 1000+ başarılı proje, 200+ marka ortağı. OEM/ODM, private label, formülasyon geliştirme uzmanı.",
   keywords: [
     // Ana kurumsal kimlik
-    "MKNGROUP",
+    "MKN GROUP",
     "MKN GROUP turkey",
     "mkngroup contract manufacturing",
     "türkiye en büyük fason üretim şirketi",
@@ -210,9 +210,9 @@ export const metadata = {
     "eco friendly manufacturing",
     "responsible manufacturing",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
-  creator: "MKNGROUP",
-  publisher: "MKNGROUP",
+  authors: [{ name: "MKN GROUP", url: "https://www.mkngroup.com.tr" }],
+  creator: "MKN GROUP",
+  publisher: "MKN GROUP",
   category: "Contract Manufacturing Company",
   robots: {
     index: true,
@@ -236,9 +236,9 @@ export const metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://www.mkngroup.com.tr/hakkimizda",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     title:
-      "MKNGROUP Hakkında | Türkiye'nin Önde Gelen Contract Manufacturing Şirketi",
+      "MKN GROUP Hakkında | Türkiye'nin Önde Gelen Contract Manufacturing Şirketi",
     description:
       "🏭 2019'dan beri güvenilir fason üretim partneri. 10.600m² ISO sertifikalı tesislerde 360° çözüm. Kozmetik, gıda takviyesi, temizlik ürünleri contract manufacturing.",
     images: [
@@ -246,7 +246,7 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/modern-manufacturing-facility-with-advanced-equipm.png",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP ISO Sertifikalı Modern Üretim Tesisleri - İstanbul",
+        alt: "MKN GROUP ISO Sertifikalı Modern Üretim Tesisleri - İstanbul",
         type: "image/png",
       },
     ],
@@ -255,7 +255,7 @@ export const metadata = {
     card: "summary_large_image",
     site: "@mkngroup_x",
     creator: "@mkngroup_x",
-    title: "MKNGROUP | Türkiye'nin Contract Manufacturing Lideri",
+    title: "MKN GROUP | Türkiye'nin Contract Manufacturing Lideri",
     description:
       "🏭 6+ yıllık deneyim, 10.600m² ISO sertifikalı tesisler, 360° çözümler. Kozmetik, gıda takviyesi, temizlik ürünleri fason üretimi.",
     images: [
@@ -265,11 +265,11 @@ export const metadata = {
 };
 
 export default function HakkimizdaPage() {
-  // Structured Data for MKNGROUP
+  // Structured Data for MKN GROUP
   const structuredData = {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer", "Corporation"],
-    name: "MKNGROUP",
+    name: "MKN GROUP",
     alternateName: ["MKN GROUP", "MKN Grup", "mkngroup", "MKN GROUP Turkey"],
     description:
       "Türkiye'nin en büyük contract manufacturing ve fason üretim şirketi. 10.600m² ISO sertifikalı tesislerde aylık 3.8+ milyon ünite üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri üretimi + 360° entegre çözümler: ambalaj, e-ticaret, depolama, lojistik, dijital pazarlama.",
@@ -502,7 +502,7 @@ export default function HakkimizdaPage() {
     ],
     brand: {
       "@type": "Brand",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       description: "Türkiye'nin contract manufacturing lideri",
       logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
     },
@@ -541,7 +541,7 @@ export default function HakkimizdaPage() {
       year: "2019",
       title: "Şirket Kuruluşu",
       description:
-        "MKNGROUP kozmetik ambalaj tedariki ile faaliyetlerine başladı. Sektör ihtiyaçlarını analiz ederek bütünleşik hizmet modelinin temellerini attık.",
+        "MKN GROUP kozmetik ambalaj tedariki ile faaliyetlerine başladı. Sektör ihtiyaçlarını analiz ederek bütünleşik hizmet modelinin temellerini attık.",
     },
     {
       year: "2020",
@@ -872,7 +872,7 @@ export default function HakkimizdaPage() {
                 <div className="space-y-6 text-lg leading-relaxed">
                   <p className="text-foreground font-medium">
                     <span className="font-montserrat font-bold text-primary">
-                      MKNGROUP
+                      MKN GROUP
                     </span>
                     , 2019 yılında kozmetik sektöründeki{" "}
                     <strong>ambalaj tedarik zinciri sorunlarını çözmek</strong>{" "}
@@ -957,7 +957,7 @@ export default function HakkimizdaPage() {
                     <div className="relative group overflow-hidden rounded-2xl">
                       <Image
                         src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
-                        alt="MKNGROUP 10.600m² Üretim Tesisi"
+                        alt="MKN GROUP 10.600m² Üretim Tesisi"
                         width={400}
                         height={300}
                         className="rounded-2xl shadow-xl group-hover:scale-105 transition-transform duration-300"

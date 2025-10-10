@@ -1,5 +1,4 @@
-﻿import React from "react";
-import Link from "next/link";
+﻿import Link from "next/link";
 import {
   MapPin,
   Phone,
@@ -28,11 +27,11 @@ import ContactForm from "@/components/contact-form";
 // SEO Metadata and Structured Data
 export const metadata = {
   title:
-    "İletişim | MKNGROUP - Contract Manufacturing ve Fason Üretim İletişim Bilgileri",
+    "İletişim | MKN GROUP - Contract Manufacturing ve Fason Üretim İletişim Bilgileri",
   description:
-    "MKNGROUP ile iletişime geçin. Kozmetik, gıda takviyesi ve temizlik ürünleri contract manufacturing hizmetleri için uzman ekibimizle görüşün. 7/24 destek, ücretsiz danışmanlık.",
+    "MKN GROUP ile iletişime geçin. Kozmetik, gıda takviyesi ve temizlik ürünleri contract manufacturing hizmetleri için uzman ekibimizle görüşün. 7/24 destek, ücretsiz danışmanlık.",
   keywords: [
-    "MKNGROUP iletişim",
+    "MKN GROUP iletişim",
     "contract manufacturing iletişim",
     "fason üretim iletişim",
     "üretim hizmetleri iletişim",
@@ -53,9 +52,9 @@ export const metadata = {
     "mkngroup adres",
     "mkngroup email",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
-  creator: "MKNGROUP",
-  publisher: "MKNGROUP",
+  authors: [{ name: "MKN GROUP", url: "https://www.mkngroup.com.tr" }],
+  creator: "MKN GROUP",
+  publisher: "MKN GROUP",
   category: "Contact Information",
   robots: {
     index: true,
@@ -79,16 +78,16 @@ export const metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://www.mkngroup.com.tr/iletisim",
-    siteName: "MKNGROUP",
-    title: "İletişim | MKNGROUP Contract Manufacturing",
+    siteName: "MKN GROUP",
+    title: "İletişim | MKN GROUP Contract Manufacturing",
     description:
-      "MKNGROUP ile iletişime geçin. ISO sertifikalı tesislerde contract manufacturing hizmetleri için uzman ekibimizle görüşün. Ücretsiz danışmanlık ve hızlı teklif.",
+      "MKN GROUP ile iletişime geçin. ISO sertifikalı tesislerde contract manufacturing hizmetleri için uzman ekibimizle görüşün. Ücretsiz danışmanlık ve hızlı teklif.",
     images: [
       {
         url: "https://www.mkngroup.com.tr/mkngroup-contact-manufacturing-facility.png",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP Contract Manufacturing İletişim",
+        alt: "MKN GROUP Contract Manufacturing İletişim",
         type: "image/png",
       },
     ],
@@ -97,7 +96,7 @@ export const metadata = {
     card: "summary_large_image",
     site: "@mkngroup_x",
     creator: "@mkngroup_x",
-    title: "İletişim | MKNGROUP Contract Manufacturing",
+    title: "İletişim | MKN GROUP Contract Manufacturing",
     description:
       "ISO sertifikalı tesislerde contract manufacturing. Ücretsiz danışmanlık için iletişime geçin.",
     images: [
@@ -113,7 +112,7 @@ export default function ContactPage() {
     "@type": "ContactPage",
     mainEntity: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
       logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {

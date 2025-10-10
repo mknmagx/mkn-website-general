@@ -1,5 +1,4 @@
-﻿import { Metadata } from "next";
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import { SEOHead } from "@/components/seo-head";
 import BlogClientWrapper from "@/components/blog-client-wrapper";
 import {
@@ -460,14 +459,14 @@ export default async function BlogPage({ searchParams }) {
             description:
               "Türkiye'nin önde gelen kozmetik fason üretim ve contract manufacturing uzmanı",
             url: "https://www.mkngroup.com.tr",
-            telephone: "+90-XXX-XXX-XXXX", // Gerçek telefon numarasını ekleyin
+            telephone: "+90 531 494 25 94", // MKN Group telefon numarası
             address: {
               "@type": "PostalAddress",
               addressCountry: "TR",
               addressLocality: "İstanbul", // Gerçek şehri ekleyin
               addressRegion: "İstanbul",
-              postalCode: "XXXXX", // Gerçek posta kodunu ekleyin
-              streetAddress: "XXXXX", // Gerçek adresi ekleyin
+              postalCode: "34522", // Esenyurt posta kodu
+              streetAddress: "Akçaburgaz Mah, 3026 Sk, No:5", // Gerçek adres
             },
             geo: {
               "@type": "GeoCoordinates",

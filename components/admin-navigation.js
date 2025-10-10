@@ -27,7 +27,6 @@ export default function AdminNavigation() {
   const { hasPermission, hasRole, hasAnyRole } = usePermissions();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Role badge renkleri
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case "super_admin":
@@ -41,7 +40,6 @@ export default function AdminNavigation() {
     }
   };
 
-  // Role display isimleri
   const getRoleDisplayName = (role) => {
     switch (role) {
       case "super_admin":
@@ -55,7 +53,6 @@ export default function AdminNavigation() {
     }
   };
 
-  // Navigation items with permission checks
   const getAllNavigationItems = () => [
     {
       name: "Dashboard",
@@ -70,14 +67,14 @@ export default function AdminNavigation() {
       icon: Building2,
       current: pathname.startsWith("/admin/companies"),
       show:
-        hasPermission("companies.view") || hasPermission("canManageCompanies"),
+        hasPermission("companies.view"),
     },
     {
       name: "Quote İstekleri",
       href: "/admin/quotes",
       icon: FileText,
       current: pathname === "/admin/quotes",
-      show: hasPermission("quotes.view") || hasPermission("canViewAllQuotes"),
+      show: hasPermission("quotes.view"),
     },
     {
       name: "İletişim Mesajları",
@@ -85,21 +82,21 @@ export default function AdminNavigation() {
       icon: MessageSquare,
       current: pathname === "/admin/contacts",
       show:
-        hasPermission("contacts.view") || hasPermission("canViewAllContacts"),
+        hasPermission("contacts.view"),
     },
     {
       name: "Blog Yönetimi",
       href: "/admin/blog",
       icon: Edit3,
       current: pathname.startsWith("/admin/blog"),
-      show: hasPermission("blog.read") || hasPermission("canManageBlog"),
+      show: hasPermission("blog.read"),
     },
     {
       name: "Kullanıcı Yönetimi",
       href: "/admin/users",
       icon: Users,
       current: pathname.startsWith("/admin/users"),
-      show: hasPermission("users.view") || hasPermission("canManageUsers"),
+      show: hasPermission("users.view"),
     },
     {
       name: "Admin Yönetimi",
@@ -107,7 +104,7 @@ export default function AdminNavigation() {
       icon: UserCheck,
       current: pathname.startsWith("/admin/admins"),
       show:
-        hasPermission("users.manage_roles") || hasPermission("canManageAdmins"),
+        hasPermission("users.manage_roles"),
     },
     {
       name: "Yetki Yönetimi",
@@ -124,25 +121,24 @@ export default function AdminNavigation() {
       href: "/admin/logs",
       icon: Activity,
       current: pathname.startsWith("/admin/logs"),
-      show: true, // Tüm admin kullanıcıları logları görebilir
+      show: hasPermission("system.logs"), // Sadece system.logs yetkisi olanlar görebilir
     },
     {
       name: "Sistem Ayarları",
       href: "/admin/settings",
       icon: Settings,
       current: pathname.startsWith("/admin/settings"),
-      show: hasPermission("canModifySettings"),
+      show: hasPermission("system.settings"),
     },
   ];
 
-  // Sadece gösterilmesi gereken navigation items
   const navigationItems = getAllNavigationItems().filter((item) => item.show);
 
   const handleSignOut = async () => {
     try {
       await signOut();
     } catch (error) {
-      console.error("Sign out error:", error);
+      // Sign out error handling
     }
   };
 

@@ -32,6 +32,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useContactSubmission } from "@/hooks/use-contact-submission";
 import SubmissionStatus from "@/components/submission-status";
+import { useToast } from "@/hooks/use-toast";
 
 const services = [
   {
@@ -67,6 +68,7 @@ const services = [
 ];
 
 export default function ContactForm() {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -128,17 +130,42 @@ export default function ContactForm() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    await submitForm(formData);
-
-    if (isSuccess) {
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        service: "",
-        product: "",
-        message: "",
+    try {
+      const result = await submitForm(formData);
+      
+      if (result.success) {
+        // Toast mesajı göster
+        toast({
+          title: "✅ Mesaj Gönderildi!",
+          description: "Mesajınız başarıyla alındı. En kısa sürede size dönüş yapacağız.",
+          duration: 5000,
+        });
+        
+        // Form'u temizle
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          company: "",
+          service: "",
+          product: "",
+          message: "",
+        });
+      } else {
+        // Hata toast'ı göster
+        toast({
+          title: "❌ Gönderim Başarısız",
+          description: result.message || "Mesajınız gönderilirken bir hata oluştu.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Beklenmeyen Hata",
+        description: "Bir hata oluştu. Lütfen tekrar deneyin.",
+        variant: "destructive",
+        duration: 5000,
       });
     }
   };

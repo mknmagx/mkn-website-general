@@ -86,7 +86,7 @@ export const metadata = {
     },
   ],
   creator: "Aspar İlaç",
-  publisher: "MKNGROUP",
+  publisher: "MKN GROUP",
   category: "Manufacturing",
   robots: {
     index: true,
@@ -106,7 +106,7 @@ export const metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://www.mkngroup.com.tr/tesisler/aspar-ilac",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     title:
       "Aspar İlaç | GMP Sertifikalı Gıda Takviyesi ve Dermokozmetik Üretim Tesisi",
     description:
@@ -160,7 +160,7 @@ export default function AsparIlacPage() {
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+90-XXX-XXX-XXXX",
+      telephone: "+90 536 592 30 35",
       contactType: "Customer Service",
       areaServed: "TR",
       availableLanguage: ["Turkish", "English"],

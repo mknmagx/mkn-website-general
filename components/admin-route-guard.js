@@ -19,31 +19,26 @@ export const AdminRouteGuard = ({
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // Public routes that don't require authentication
   const publicRoutes = ["/admin/login"];
 
   useEffect(() => {
     if (loading) return;
 
-    // Allow access to public routes without authentication
     if (publicRoutes.includes(pathname)) {
       setIsAuthorized(true);
       return;
     }
 
-    // Kullanıcı giriş yapmamışsa login sayfasına yönlendir
     if (!user || !isAdmin) {
       router.push(fallbackPath);
       return;
     }
 
-    // Route erişim kontrolü
     if (!canAccessRoute(pathname)) {
       router.push("/admin/dashboard");
       return;
     }
 
-    // Gerekli permission kontrolü
     if (requiredPermissions.length > 0) {
       const hasAllPermissions = requiredPermissions.every(
         (permission) => permissions && permissions[permission] === true
@@ -68,7 +63,6 @@ export const AdminRouteGuard = ({
     fallbackPath,
   ]);
 
-  // Loading durumunda spinner göster
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -77,7 +71,6 @@ export const AdminRouteGuard = ({
     );
   }
 
-  // Yetkilendirme başarısızsa boş döndür (router redirect işlemi devam ediyor)
   if (!isAuthorized) {
     return null;
   }
@@ -85,37 +78,21 @@ export const AdminRouteGuard = ({
   return children;
 };
 
-/**
- * Permission-based component wrapper
- * Belirli bir permission'a sahip olmayan kullanıcılar için fallback içerik gösterir
- */
 export const PermissionGuard = ({
   children,
   requiredPermission,
   fallback = null,
   showMessage = true,
 }) => {
-  const { permissions, user, userRole } = useAdminAuth();
+  const { permissions, user, userRole, hasPermission } = useAdminAuth();
 
   // Super admin kontrolü - super admin her şeye erişebilir
   const isSuperAdmin =
     userRole === "super_admin" || user?.role === "super_admin";
 
-  const hasPermission =
-    isSuperAdmin || (permissions && permissions[requiredPermission] === true);
+  const permissionCheck = hasPermission(requiredPermission);
 
-  // Debug bilgisi
-  console.log("PermissionGuard Debug:", {
-    requiredPermission,
-    permissions,
-    hasPermission,
-    isSuperAdmin,
-    userRole,
-    userRoleFromUser: user?.role,
-    userEmail: user?.email,
-  });
-
-  if (!hasPermission) {
+  if (!permissionCheck) {
     if (fallback) {
       return fallback;
     }
@@ -211,65 +188,10 @@ export const RoleGuard = ({
  * Custom hook for permission checks
  */
 export const usePermissions = () => {
-  const { permissions, user } = useAdminAuth();
+  const { permissions, user, hasPermission: authHasPermission } = useAdminAuth();
 
   const hasPermission = (permissionKey) => {
-    // Yeni detaylı yetki sistemi kontrolü
-    if (permissions && typeof permissions === "object") {
-      // Eski sistem uyumluluğu
-      if (permissions[permissionKey] === true) {
-        return true;
-      }
-
-      // Yeni sistem - rol bazında yetkiler
-      if (user?.role) {
-        const rolePermissions = permissions.rolePermissions || [];
-        if (rolePermissions.includes(permissionKey)) {
-          return true;
-        }
-      }
-
-      // Bireysel yetki kontrolü
-      const userPermissions = permissions.userPermissions || [];
-      if (userPermissions.includes(permissionKey)) {
-        return true;
-      }
-    }
-
-    // Süper admin her şeyi yapabilir
-    if (user?.role === "super_admin") {
-      return true;
-    }
-
-    // Eski sistem uyumluluğu için basit mapping
-    const oldPermissionMapping = {
-      "users.view": "canManageUsers",
-      "users.create": "canManageUsers",
-      "users.edit": "canManageUsers",
-      "users.delete": "canManageUsers",
-      "users.manage_roles": "canManageAdmins",
-      "users.manage_permissions": "canManageAdmins",
-      "contacts.view": "canViewAllContacts",
-      "contacts.update": "canViewAllContacts",
-      "contacts.delete": "canViewAllContacts",
-      "quotes.view": "canViewAllQuotes",
-      "companies.view": "canManageCompanies",
-      "companies.create": "canManageCompanies",
-      "companies.edit": "canManageCompanies",
-      "system.settings": "canModifySettings",
-      "analytics.view": "canViewAnalytics",
-    };
-
-    const oldPermissionKey = oldPermissionMapping[permissionKey];
-    if (
-      oldPermissionKey &&
-      permissions &&
-      permissions[oldPermissionKey] === true
-    ) {
-      return true;
-    }
-
-    return false;
+    return authHasPermission ? authHasPermission(permissionKey) : false;
   };
 
   const hasRole = (role) => {

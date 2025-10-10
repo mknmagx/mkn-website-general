@@ -23,7 +23,7 @@ import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
   title:
-    "Dijital Pazarlama & E-Ticaret Uzmanı | MKNGROUP - Meta Ads, Influencer Marketing, Pazaryeri Reklamcılığı",
+    "Dijital Pazarlama & E-Ticaret Uzmanı | MKN GROUP - Meta Ads, Influencer Marketing, Pazaryeri Reklamcılığı",
   description:
     "Markanızı sıfırdan zirveye taşıyan dijital pazarlama uzmanları. E-ticaret pazarlaması, Meta Ads yönetimi, influencer marketing, Amazon & Trendyol pazaryeri reklamcılığı, Google Ads optimizasyonu. Garantili ROI ve satış artışı.",
   keywords:
@@ -32,17 +32,17 @@ export const metadata = {
     canonical: "https://www.mkngroup.com.tr/pazarlama",
   },
   openGraph: {
-    title: "Dijital Pazarlama & E-Ticaret Uzmanı | MKNGROUP",
+    title: "Dijital Pazarlama & E-Ticaret Uzmanı | MKN GROUP",
     description:
       "Markanızı sıfırdan zirveye taşıyan dijital pazarlama uzmanları. Meta Ads, influencer marketing, pazaryeri reklamcılığı ve e-ticaret pazarlaması.",
     url: "https://www.mkngroup.com.tr/pazarlama",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     locale: "tr_TR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dijital Pazarlama & E-Ticaret Uzmanı | MKNGROUP",
+    title: "Dijital Pazarlama & E-Ticaret Uzmanı | MKN GROUP",
     description:
       "Markanızı sıfırdan zirveye taşıyan dijital pazarlama uzmanları.",
   },
@@ -63,7 +63,7 @@ export default function PazarlamaPage() {
   const serviceData = {
     name: "Dijital Pazarlama & E-Ticaret Uzmanı",
     description:
-      "MKNGROUP olarak markanızı sıfırdan zirveye taşıyan kapsamlı dijital pazarlama hizmetleri sunuyoruz. E-ticaret pazarlaması, Meta Ads (Facebook & Instagram) yönetimi, influencer marketing kampanyaları, Amazon & Trendyol pazaryeri reklamcılığı, Google Ads optimizasyonu ve sosyal medya büyütme stratejileri ile garantili ROI ve satış artışı sağlıyoruz.",
+      "MKN GROUP olarak markanızı sıfırdan zirveye taşıyan kapsamlı dijital pazarlama hizmetleri sunuyoruz. E-ticaret pazarlaması, Meta Ads (Facebook & Instagram) yönetimi, influencer marketing kampanyaları, Amazon & Trendyol pazaryeri reklamcılığı, Google Ads optimizasyonu ve sosyal medya büyütme stratejileri ile garantili ROI ve satış artışı sağlıyoruz.",
     type: "Digital Marketing",
     category: "E-commerce & Performance Marketing",
   };
@@ -432,7 +432,7 @@ export default function PazarlamaPage() {
               Markanızı Sıfırdan Zirveye Taşıyan Stratejiler
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed mb-8">
-              MKNGROUP olarak,{" "}
+              MKN GROUP olarak,{" "}
               <strong className="text-foreground">
                 her markanın dijital dünyada başarıya ulaşabileceğine
               </strong>{" "}
@@ -648,7 +648,7 @@ export default function PazarlamaPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-6">
-              Neden MKNGROUP Dijital Pazarlama?
+              Neden MKN GROUP Dijital Pazarlama?
             </h2>
             <p className="text-xl text-blue-100 dark:text-blue-200 max-w-4xl mx-auto">
               Markanızın dijital dönüşümünde güvenilir ortağınız. Performance
@@ -762,7 +762,7 @@ export default function PazarlamaPage() {
                 {" "}
                 %98 müşteri memnuniyet oranı
               </strong>{" "}
-              ile MKNGROUP, dijital pazarlama alanında Türkiye'nin lider
+              ile MKN GROUP, dijital pazarlama alanında Türkiye'nin lider
               ajanslarından biri.
               <strong className="text-foreground">
                 {" "}

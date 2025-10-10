@@ -18,22 +18,6 @@ const AboutSection = lazy(() =>
     default: module.AboutSection,
   }))
 );
-const CTASection = lazy(() =>
-  import("@/components/cta-section").then((module) => ({
-    default: module.CTASection,
-  }))
-);
-const ManufacturingSection = lazy(() =>
-  import("@/components/manufacturing-section").then((module) => ({
-    default: module.ManufacturingSection,
-  }))
-);
-const PackagingSection = lazy(() =>
-  import("@/components/packaging-section").then((module) => ({
-    default: module.PackagingSection,
-  }))
-);
-
 const CosmeticManufacturingSection = lazy(() =>
   import("@/components/cosmetic-manufacturing-section").then((module) => ({
     default: module.CosmeticManufacturingSection,
@@ -47,11 +31,6 @@ const PackagingCatalogSection = lazy(() =>
 const EcommerceOperationSection = lazy(() =>
   import("@/components/ecommerce-operation-section").then((module) => ({
     default: module.EcommerceOperationSection,
-  }))
-);
-const CustomerTestimonialsSection = lazy(() =>
-  import("@/components/customer-testimonials-section").then((module) => ({
-    default: module.CustomerTestimonialsSection,
   }))
 );
 const SimpleFAQSection = lazy(() =>
@@ -248,7 +227,6 @@ export default function HomePage() {
             <ContactLocationSection />
           </Suspense>
         </section>
-        {/* <CTASection /> */}
       </div>
     </>
   );

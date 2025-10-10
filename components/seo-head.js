@@ -19,7 +19,7 @@ export function SEOHead({
       <meta property="og:description" content={description} />
       <meta property="og:image" content={`https://www.mkngroup.com.tr${ogImage}`} />
       <meta property="og:url" content={canonical} />
-      <meta property="og:site_name" content="MKNGROUP" />
+      <meta property="og:site_name" content="MKN GROUP" />
       <meta property="og:locale" content="tr_TR" />
 
       {/* Twitter Card */}

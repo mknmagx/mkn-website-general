@@ -79,12 +79,6 @@ export default function AdminBlogPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
 
-  // Debug: permissions'ı console'da göster
-  useEffect(() => {
-    console.log("Blog sayfası permissions:", permissions);
-    console.log("blog.read yetkisi:", permissions?.['blog.read']);
-  }, [permissions]);
-
   // Veri yükleme
   useEffect(() => {
     loadData();

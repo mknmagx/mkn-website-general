@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Head from "next/head";
-import Link from "next/link";
 import { site } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,9 +58,9 @@ function TeklifStructuredData() {
   const quoteFormSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Ücretsiz Teklif Alın - MKNGROUP",
+    name: "Ücretsiz Teklif Alın - MKN GROUP",
     description:
-      "MKNGROUP'tan fason üretim, ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri için ücretsiz teklif alın.",
+      "MKN GROUP'tan fason üretim, ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri için ücretsiz teklif alın.",
     url: "https://www.mkngroup.com.tr/teklif",
     mainEntity: {
       "@type": "Service",
@@ -70,7 +69,7 @@ function TeklifStructuredData() {
         "Fason üretim, ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri için profesyonel teklif hazırlama",
       provider: {
         "@type": "Organization",
-        name: "MKNGROUP",
+        name: "MKN GROUP",
         url: "https://www.mkngroup.com.tr",
         logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       },
@@ -148,34 +147,34 @@ function TeklifSEO() {
       {/* Basic Meta Tags */}
       <title>
         Ücretsiz Teklif Alın | Fason Üretim, Ambalaj ve Operasyon Çözümleri |
-        MKNGROUP
+        MKN GROUP
       </title>
       <meta
         name="description"
-        content="🎯 MKNGROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri için detaylı fiyat teklifi. ⚡ 24 saat içinde yanıt, ücretsiz danışmanlık."
+        content="🎯 MKN GROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları ve dijital pazarlama hizmetleri için detaylı fiyat teklifi. ⚡ 24 saat içinde yanıt, ücretsiz danışmanlık."
       />
       <meta
         name="keywords"
-        content="ücretsiz teklif al, fason üretim teklif, kozmetik üretim teklif, ambalaj teklif, fiyat teklifi, contract manufacturing quote, kozmetik fason üretim fiyat, e-ticaret operasyon teklif, dijital pazarlama teklif, private label teklif, OEM üretim teklif, istanbul fason üretim teklif, ISO sertifikalı üretim teklif, hızlı teklif alma, 24 saat teklif, MKNGROUP teklif"
+        content="ücretsiz teklif al, fason üretim teklif, kozmetik üretim teklif, ambalaj teklif, fiyat teklifi, contract manufacturing quote, kozmetik fason üretim fiyat, e-ticaret operasyon teklif, dijital pazarlama teklif, private label teklif, OEM üretim teklif, istanbul fason üretim teklif, ISO sertifikalı üretim teklif, hızlı teklif alma, 24 saat teklif, MKN GROUP teklif"
       />
       <meta name="robots" content="index, follow" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
       <meta name="language" content="Turkish" />
-      <meta name="author" content="MKNGROUP" />
+      <meta name="author" content="MKN GROUP" />
 
       {/* Open Graph Meta Tags */}
       <meta property="og:type" content="website" />
       <meta
         property="og:title"
-        content="Ücretsiz Teklif Alın | MKNGROUP Fason Üretim ve Operasyon Çözümleri"
+        content="Ücretsiz Teklif Alın | MKN GROUP Fason Üretim ve Operasyon Çözümleri"
       />
       <meta
         property="og:description"
-        content="MKNGROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları için detaylı fiyat teklifi. 24 saat içinde yanıt."
+        content="MKN GROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları için detaylı fiyat teklifi. 24 saat içinde yanıt."
       />
       <meta property="og:url" content="https://www.mkngroup.com.tr/teklif" />
-      <meta property="og:site_name" content="MKNGROUP" />
+      <meta property="og:site_name" content="MKN GROUP" />
       <meta property="og:locale" content="tr_TR" />
       <meta
         property="og:image"
@@ -186,31 +185,31 @@ function TeklifSEO() {
       <meta property="og:image:height" content="630" />
       <meta
         property="og:image:alt"
-        content="MKNGROUP Ücretsiz Teklif Formu - Fason Üretim ve Operasyon Çözümleri"
+        content="MKN GROUP Ücretsiz Teklif Formu - Fason Üretim ve Operasyon Çözümleri"
       />
 
       {/* Twitter Card Meta Tags */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta
         name="twitter:title"
-        content="Ücretsiz Teklif Alın | MKNGROUP Fason Üretim ve Operasyon Çözümleri"
+        content="Ücretsiz Teklif Alın | MKN GROUP Fason Üretim ve Operasyon Çözümleri"
       />
       <meta
         name="twitter:description"
-        content="MKNGROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları için detaylı fiyat teklifi. 24 saat içinde yanıt."
+        content="MKN GROUP'tan ücretsiz teklif alın! Fason üretim, ambalaj çözümleri, e-ticaret operasyonları için detaylı fiyat teklifi. 24 saat içinde yanıt."
       />
       <meta
         name="twitter:image"
         content="https://www.mkngroup.com.tr/og-image.png"
       />
-      <meta name="twitter:image:alt" content="MKNGROUP Ücretsiz Teklif Formu" />
+      <meta name="twitter:image:alt" content="MKN GROUP Ücretsiz Teklif Formu" />
       <meta name="twitter:site" content="@mkngroup_x" />
       <meta name="twitter:creator" content="@mkngroup_x" />
 
       {/* Additional Meta Tags */}
       <meta name="theme-color" content="#2563eb" />
       <meta name="msapplication-TileColor" content="#2563eb" />
-      <meta name="application-name" content="MKNGROUP" />
+      <meta name="application-name" content="MKN GROUP" />
 
       {/* Canonical URL */}
       <link rel="canonical" href="https://www.mkngroup.com.tr/teklif" />
@@ -726,10 +725,7 @@ export default function TeklifPage() {
   };
 
   const nextStep = () => {
-    console.log("nextStep called, currentStep:", currentStep);
-    console.log("formData:", formData);
     const isValid = validateStep(currentStep);
-    console.log("Validation result:", isValid);
     if (isValid) {
       if (currentStep === 3) {
         // 3. adımdan 4. adıma geçerken validation yap ama submit etme
@@ -766,24 +762,19 @@ export default function TeklifPage() {
     if (isSubmitting) return; // Çift tıklamayı engelle
 
     try {
-      console.log("Starting form submission with data:", formData);
       setShowSubmissionModal(true); // Modal'ı göster
       const result = await submitForm(formData);
-      console.log("Submission result:", result);
 
       if (result.success) {
         // Başarılı gönderim - modal açık kalır, success component gösterilir
-        console.log("Form successfully submitted:", result);
       } else {
         // Hata durumu - modal açık kalır, error component gösterilir
-        console.error("Form submission failed:", result);
 
         // Eğer validation hataları varsa, kullanıcıyı ilgili adıma yönlendir
         if (result.errors) {
           setErrors(result.errors);
           // İlk hatanın bulunduğu adımı belirle
           const errorFields = Object.keys(result.errors);
-          console.log("Error fields:", errorFields);
           if (
             errorFields.some((field) =>
               ["firstName", "lastName", "email", "phone", "company"].includes(
@@ -816,7 +807,7 @@ export default function TeklifPage() {
         }
       }
     } catch (error) {
-      console.error("Unexpected error during form submission:", error);
+      // Error logging silently handled by submission hook
     }
   };
 

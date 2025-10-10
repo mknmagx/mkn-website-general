@@ -8,6 +8,7 @@ import { validateAndSubmitContact } from "../lib/services/contact-service";
 export const useContactSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
 
   /**
    * Form verilerini submit eder
@@ -17,6 +18,7 @@ export const useContactSubmission = () => {
   const submitForm = async (formData) => {
     setIsSubmitting(true);
     setSubmitResult(null);
+    setShowSubmissionModal(true);
 
     try {
       const result = await validateAndSubmitContact(formData);
@@ -36,6 +38,23 @@ export const useContactSubmission = () => {
   };
 
   /**
+   * Modal'ı kapatır
+   */
+  const handleCloseModal = () => {
+    setShowSubmissionModal(false);
+    setSubmitResult(null);
+  };
+
+  /**
+   * Form tekrar gönderilmesi için state'i sıfırlar
+   */
+  const handleRetrySubmission = () => {
+    setShowSubmissionModal(false);
+    setSubmitResult(null);
+    setIsSubmitting(false);
+  };
+
+  /**
    * Submit sonucunu temizler
    */
   const clearResult = () => {
@@ -48,6 +67,7 @@ export const useContactSubmission = () => {
   const resetSubmission = () => {
     setIsSubmitting(false);
     setSubmitResult(null);
+    setShowSubmissionModal(false);
   };
 
   return {
@@ -56,6 +76,9 @@ export const useContactSubmission = () => {
     submitForm,
     clearResult,
     resetSubmission,
+    showSubmissionModal,
+    handleCloseModal,
+    handleRetrySubmission,
     // Derived states
     isSuccess: submitResult?.success === true,
     isError: submitResult?.success === false,

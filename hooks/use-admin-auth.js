@@ -25,7 +25,6 @@ export const AdminAuthProvider = ({ children }) => {
     const unsubscribe = onAdminAuthStateChanged((authData) => {
       if (!mounted) return;
 
-      console.log("Auth state changed:", authData?.user?.email || "No user");
       clearTimeout(loadingTimeout);
 
       if (authData) {
@@ -63,6 +62,17 @@ export const AdminAuthProvider = ({ children }) => {
   };
 
   const hasPermission = (permissionKey) => {
+    // Super admin her şeye erişebilir
+    if (user?.role === "super_admin" || user?.role === "admin") {
+      return true;
+    }
+
+    // Array-based permission sistem için kontrol
+    if (Array.isArray(permissions)) {
+      return permissions.includes(permissionKey);
+    }
+
+    // Object-based (eski sistem) için fallback
     return permissions && permissions[permissionKey] === true;
   };
 
@@ -107,7 +117,6 @@ export const AdminAuthProvider = ({ children }) => {
   );
 };
 
-// Admin Auth Hook
 export const useAdminAuth = () => {
   const context = useContext(AdminAuthContext);
   if (!context) {
@@ -117,7 +126,6 @@ export const useAdminAuth = () => {
   return context;
 };
 
-// Admin Login Hook
 export const useAdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);

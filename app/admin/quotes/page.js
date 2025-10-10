@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import {
+  PermissionGuard,
+  usePermissions,
+} from "../../../components/admin-route-guard";
 import {
   getQuotes,
   updateQuoteStatus,
@@ -66,6 +69,7 @@ const PRIORITY_CONFIG = {
 };
 
 export default function QuotesPage() {
+  const { hasPermission } = usePermissions();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,6 +83,10 @@ export default function QuotesPage() {
     responded: 0,
     closed: 0,
   });
+
+  const canView = hasPermission("quotes.view");
+  const canEdit = hasPermission("quotes.edit");
+  const canDelete = hasPermission("quotes.delete");
 
   useEffect(() => {
     loadQuotes();
@@ -97,7 +105,7 @@ export default function QuotesPage() {
         setQuotes(result.quotes);
       }
     } catch (error) {
-      console.error("Error loading quotes:", error);
+      // Error handling without console spam
     } finally {
       setLoading(false);
     }
@@ -110,7 +118,7 @@ export default function QuotesPage() {
         setStats(result.stats);
       }
     } catch (error) {
-      console.error("Error loading stats:", error);
+      // Error handling without console spam
     }
   };
 
@@ -127,7 +135,7 @@ export default function QuotesPage() {
         setQuotes(result.quotes);
       }
     } catch (error) {
-      console.error("Error searching quotes:", error);
+      // Error handling without console spam
     } finally {
       setLoading(false);
     }
@@ -141,7 +149,7 @@ export default function QuotesPage() {
         await loadStats();
       }
     } catch (error) {
-      console.error("Error updating status:", error);
+      // Error handling without console spam
     }
   };
 
@@ -152,7 +160,7 @@ export default function QuotesPage() {
         await loadQuotes();
       }
     } catch (error) {
-      console.error("Error updating priority:", error);
+      // Error handling without console spam
     }
   };
 
@@ -165,7 +173,7 @@ export default function QuotesPage() {
           await loadStats();
         }
       } catch (error) {
-        console.error("Error deleting quote:", error);
+        // Error handling without console spam
       }
     }
   };
@@ -274,10 +282,8 @@ export default function QuotesPage() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => {
-                console.log("Eye button clicked, quote:", quote);
                 setSelectedQuote(quote);
                 setShowQuoteModal(true);
-                console.log("Modal state set to true");
               }}
               className="text-blue-600 hover:text-blue-900 p-1 rounded"
               title="Görüntüle"
@@ -308,11 +314,8 @@ export default function QuotesPage() {
   };
 
   const QuoteModal = ({ quote, isOpen, onClose }) => {
-    console.log("QuoteModal render:", { isOpen, quote: quote?.id });
-
     if (!isOpen || !quote) return null;
 
-    // ESC tuşu ile kapatma
     useEffect(() => {
       const handleEsc = (event) => {
         if (event.keyCode === 27) {
@@ -322,7 +325,7 @@ export default function QuotesPage() {
 
       if (isOpen) {
         document.addEventListener("keydown", handleEsc, false);
-        document.body.style.overflow = "hidden"; // Arka planın scroll'ını engelle
+        document.body.style.overflow = "hidden";
       }
 
       return () => {
@@ -485,7 +488,8 @@ export default function QuotesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <PermissionGuard requiredPermission="quotes.view">
+      <div className="space-y-6">
       <div className="space-y-6">
         {/* İstatistikler */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
@@ -641,6 +645,7 @@ export default function QuotesPage() {
           setSelectedQuote(null);
         }}
       />
-    </div>
+      </div>
+    </PermissionGuard>
   );
 }

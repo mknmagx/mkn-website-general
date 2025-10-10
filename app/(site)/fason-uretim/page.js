@@ -1,7 +1,4 @@
-﻿import { TabsContent } from "@/components/ui/tabs";
-import { TabsTrigger } from "@/components/ui/tabs";
-import { TabsList } from "@/components/ui/tabs";
-import { Tabs } from "@/components/ui/tabs";
+﻿import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import {
   Beaker,
@@ -29,9 +26,9 @@ import FacilityBanner from "@/components/facility-banner";
 
 export const metadata = {
   title:
-    "Fason Üretim Hizmetleri | GMP Sertifikalı Kozmetik, Gıda Takviyesi ve Temizlik Ürünleri Üretimi | MKNGROUP",
+    "Fason Üretim Hizmetleri | GMP Sertifikalı Kozmetik, Gıda Takviyesi ve Temizlik Ürünleri Üretimi | MKN GROUP",
   description:
-    "Türkiye'nin önde gelen fason üretim firması MKNGROUP ile GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 10.600m² üretim alanı, 1000+ başarılı proje. OEM/ODM hizmetleri, private label üretim ve contract manufacturing çözümleri.",
+    "Türkiye'nin önde gelen fason üretim firması MKN GROUP ile GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 10.600m² üretim alanı, 1000+ başarılı proje. OEM/ODM hizmetleri, private label üretim ve contract manufacturing çözümleri.",
   keywords:
     "fason üretim, kozmetik fason üretim, gıda takviyesi üretim, temizlik ürünleri fason üretim, GMP sertifikalı üretim, OEM ODM üretim, contract manufacturing, fason üretim firması, kozmetik üretim hizmetleri, private label üretim, fason üretici, İstanbul fason üretim, şampuan fason üretim, krem fason üretim, serum fason üretim, tablet fason üretim, kapsül fason üretim, sıvı sabun fason üretim, deterjan fason üretim, yüzey temizleyici fason üretim, ISO 22716, HACCP sertifikalı, Türkiye fason üretim, mevzuat uyumlu üretim",
   alternates: {
@@ -39,11 +36,11 @@ export const metadata = {
   },
   openGraph: {
     title:
-      "Fason Üretim Hizmetleri | GMP Sertifikalı Kozmetik & Gıda Takviyesi Üretimi | MKNGROUP",
+      "Fason Üretim Hizmetleri | GMP Sertifikalı Kozmetik & Gıda Takviyesi Üretimi | MKN GROUP",
     description:
-      "Türkiye'nin lider fason üretim firması MKNGROUP. GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 10.600m² üretim alanı, 1000+ başarılı proje. OEM/ODM ve private label hizmetleri.",
+      "Türkiye'nin lider fason üretim firması MKN GROUP. GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 10.600m² üretim alanı, 1000+ başarılı proje. OEM/ODM ve private label hizmetleri.",
     url: "https://www.mkngroup.com.tr/fason-uretim",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     locale: "tr_TR",
     type: "website",
     images: [
@@ -51,13 +48,13 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP GMP Sertifikalı Fason Üretim Tesisi - Modern Üretim Hatları",
+        alt: "MKN GROUP GMP Sertifikalı Fason Üretim Tesisi - Modern Üretim Hatları",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fason Üretim Hizmetleri | GMP Sertifikalı Üretim | MKNGROUP",
+    title: "Fason Üretim Hizmetleri | GMP Sertifikalı Üretim | MKN GROUP",
     description:
       "GMP sertifikalı tesislerde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. 6+ yıllık deneyim, 1000+ başarılı proje.",
     images: [
@@ -93,7 +90,7 @@ export default function FasonUretimPage() {
     ],
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
       address: {
         "@type": "PostalAddress",
@@ -262,12 +259,12 @@ export default function FasonUretimPage() {
     {
       question: "Fason üretim nedir ve hangi avantajları sağlar?",
       answer:
-        "Fason üretim, markaların kendi ürünlerini üretim tesisine sahip olmadan ürettirmesi hizmetidir. MKNGROUP'ta GMP sertifikalı tesislerimizde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi yapıyoruz. Bu sayede yatırım maliyetlerini düşürür, kaliteli üretim alır ve hızla pazara çıkabilirsiniz.",
+        "Fason üretim, markaların kendi ürünlerini üretim tesisine sahip olmadan ürettirmesi hizmetidir. MKN GROUP'ta GMP sertifikalı tesislerimizde kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi yapıyoruz. Bu sayede yatırım maliyetlerini düşürür, kaliteli üretim alır ve hızla pazara çıkabilirsiniz.",
     },
     {
       question: "GMP sertifikalı fason üretim neden önemlidir?",
       answer:
-        "GMP (İyi Üretim Uygulamaları) sertifikası, üretimin uluslararası kalite standartlarında yapıldığını garanti eder. MKNGROUP'un GMP sertifikalı tesislerinde üretilen ürünler, hem yerel hem de uluslararası pazarlarda kabul görür ve kalite güvencesi sunar.",
+        "GMP (İyi Üretim Uygulamaları) sertifikası, üretimin uluslararası kalite standartlarında yapıldığını garanti eder. MKN GROUP'un GMP sertifikalı tesislerinde üretilen ürünler, hem yerel hem de uluslararası pazarlarda kabul görür ve kalite güvencesi sunar.",
     },
     {
       question: "Hangi ürünlerin fason üretimini yapıyorsunuz?",
@@ -277,12 +274,12 @@ export default function FasonUretimPage() {
     {
       question: "Fason üretim sürecinde numune geliştirme ne kadar sürer?",
       answer:
-        "MKNGROUP'ta hızlı numune geliştirme sürecimiz sayesinde 7 gün içinde fason üretim numunesi hazırlayıp müşteri onayına sunuyoruz. Bu süreç, formülasyon geliştirme ve kalite kontrol testlerini içerir.",
+        "MKN GROUP'ta hızlı numune geliştirme sürecimiz sayesinde 7 gün içinde fason üretim numunesi hazırlayıp müşteri onayına sunuyoruz. Bu süreç, formülasyon geliştirme ve kalite kontrol testlerini içerir.",
     },
     {
       question: "Private label fason üretim hizmeti nedir?",
       answer:
-        "Private label fason üretim, kendi markanız altında ürün üretimi yapmanızı sağlar. MKNGROUP olarak formülasyondan ambalajlamaya kadar tüm süreçleri yönetir, markanızın etiketiyle ürünlerinizi hazırlayıp teslim ederiz.",
+        "Private label fason üretim, kendi markanız altında ürün üretimi yapmanızı sağlar. MKN GROUP olarak formülasyondan ambalajlamaya kadar tüm süreçleri yönetir, markanızın etiketiyle ürünlerinizi hazırlayıp teslim ederiz.",
     },
     {
       question: "Minimum fason üretim miktarları nelerdir?",
@@ -315,7 +312,7 @@ export default function FasonUretimPage() {
           className="absolute inset-0 bg-[url('/optimized/modern-manufacturing-facility-with-advanced-equipm.webp')] bg-cover bg-center opacity-20"
           aria-hidden="true"
           role="img"
-          aria-label="MKNGROUP GMP Sertifikalı Modern Fason Üretim Tesisi"
+          aria-label="MKN GROUP GMP Sertifikalı Modern Fason Üretim Tesisi"
         ></div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -341,7 +338,7 @@ export default function FasonUretimPage() {
                 <Link
                   href="/teklif"
                   className="flex items-center"
-                  title="Teklif Al - MKNGROUP"
+                  title="Teklif Al - MKN GROUP"
                 >
                   Teklif Al
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -354,7 +351,7 @@ export default function FasonUretimPage() {
               >
                 <Link
                   href="/tesisler"
-                  title="MKNGROUP Üretim Tesisleri - GMP Sertifikalı Fason Üretim"
+                  title="MKN GROUP Üretim Tesisleri - GMP Sertifikalı Fason Üretim"
                 >
                   Üretim Tesislerimizi İncele
                 </Link>
@@ -433,7 +430,7 @@ export default function FasonUretimPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div>
                   <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-                    Neden MKNGROUP Fason Üretim Tercihi?
+                    Neden MKN GROUP Fason Üretim Tercihi?
                   </h3>
                   <div className="space-y-4">
                     <div className="flex items-start space-x-4">
@@ -499,7 +496,7 @@ export default function FasonUretimPage() {
                     <Button className="bg-white text-blue-600 hover:bg-blue-50 font-semibold">
                       <Link
                         href="/iletisim?service=fason-uretim-danismanlik"
-                        title="Ücretsiz Fason Üretim Danışmanlığı - MKNGROUP"
+                        title="Ücretsiz Fason Üretim Danışmanlığı - MKN GROUP"
                       >
                         Hemen Başla
                       </Link>
@@ -563,7 +560,7 @@ export default function FasonUretimPage() {
                       <Link
                         href={area.link}
                         className="flex items-center justify-center"
-                        title={`${area.title} Detayları - MKNGROUP`}
+                        title={`${area.title} Detayları - MKN GROUP`}
                       >
                         Detayları İncele
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -724,7 +721,7 @@ export default function FasonUretimPage() {
                 <Link
                   href="/teklif"
                   className="flex items-center"
-                  title="Teklif Al - MKNGROUP"
+                  title="Teklif Al - MKN GROUP"
                 >
                   Teklif Al
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -735,7 +732,7 @@ export default function FasonUretimPage() {
                 variant="outline"
                 className="border-white text-white hover:bg-white hover:text-blue-600 font-semibold px-8 py-4 text-lg transition-all duration-300 bg-transparent"
               >
-                <Link href="/tesisler" title="MKNGROUP Üretim Tesisleri Gezisi">
+                <Link href="/tesisler" title="MKN GROUP Üretim Tesisleri Gezisi">
                   Üretim Tesislerimizi Gez
                 </Link>
               </Button>
@@ -804,7 +801,7 @@ export default function FasonUretimPage() {
                   </div>
 
                   <Button size="lg" asChild className="w-full sm:w-auto">
-                    <Link href="/teklif" title="Teklif Al - MKNGROUP">
+                    <Link href="/teklif" title="Teklif Al - MKN GROUP">
                       Teklif Alın
                     </Link>
                   </Button>
@@ -893,7 +890,7 @@ export default function FasonUretimPage() {
                   </div>
 
                   <Button size="lg" asChild className="w-full sm:w-auto">
-                    <Link href="/teklif" title="Teklif Al - MKNGROUP">
+                    <Link href="/teklif" title="Teklif Al - MKN GROUP">
                       Teklif Alın
                     </Link>
                   </Button>
@@ -981,7 +978,7 @@ export default function FasonUretimPage() {
                   </div>
 
                   <Button size="lg" asChild className="w-full sm:w-auto">
-                    <Link href="/teklif" title="Teklif Al - MKNGROUP">
+                    <Link href="/teklif" title="Teklif Al - MKN GROUP">
                       Teklif Alın
                     </Link>
                   </Button>

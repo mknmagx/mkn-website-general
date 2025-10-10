@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
+import { createProductSlug } from "@/utils/slugify-tr";
 
 const getCloudinaryUrl = (imageName) => {
   if (!imageName) return null;
@@ -56,7 +56,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
 
   const handleWhatsAppContact = () => {
     const whatsappNumber = "905314942594";
-    let message = `Merhaba MKNGROUP! 👋\n\n`;
+    let message = `Merhaba MKN GROUP! 👋\n\n`;
     message += `Aşağıdaki ürün hakkında bilgi almak istiyorum:\n\n`;
     message += `📦 *Ürün:* ${product.name}${
       product.size ? ` - ${product.size}` : ""
@@ -110,8 +110,6 @@ export default function ProductDetailClient({ product, relatedProducts }) {
         throw new Error("Web Share API not available, showing modal");
       }
     } catch (error) {
-      console.log("Showing share modal:", error.message);
-
       const shareUrl = encodeURIComponent(window.location.href);
       const shareTitle = encodeURIComponent(
         `${product.name}${

@@ -5,7 +5,7 @@ export function OrganizationSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer"],
-    name: "MKNGROUP",
+    name: "MKN GROUP",
     alternateName: ["MKN GROUP", "MKN Grup"],
     description:
       "Türkiye'nin önde gelen fason üretim şirketi. ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, profesyonel e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
@@ -67,7 +67,7 @@ export function OrganizationSchema() {
     },
     hasOfferCatalog: {
       "@type": "OfferCatalog",
-      name: "MKNGROUP Hizmet Kataloğu",
+      name: "MKN GROUP Hizmet Kataloğu",
       itemListElement: [
         {
           "@type": "Offer",
@@ -183,10 +183,10 @@ export function FAQSchema() {
     mainEntity: [
       {
         "@type": "Question",
-        name: "MKNGROUP hangi sektörlerde fason üretim hizmeti sunuyor?",
+        name: "MKN GROUP hangi sektörlerde fason üretim hizmeti sunuyor?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "MKNGROUP kozmetik ürünler, temizlik ve bakım ürünleri, gıda takviyeleri olmak üzere 3 ana sektörde ISO sertifikalı fason üretim hizmeti sunmaktadır. Özellikle cilt bakım ürünleri, saç bakım ürünleri, ev temizlik ürünleri ve besin destekleri alanında uzmanlaşmıştır.",
+          text: "MKN GROUP kozmetik ürünler, temizlik ve bakım ürünleri, gıda takviyeleri olmak üzere 3 ana sektörde ISO sertifikalı fason üretim hizmeti sunmaktadır. Özellikle cilt bakım ürünleri, saç bakım ürünleri, ev temizlik ürünleri ve besin destekleri alanında uzmanlaşmıştır.",
         },
       },
       {
@@ -247,7 +247,7 @@ export function LocalBusinessSchema() {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     "@id": "https://www.mkngroup.com.tr/#organization",
-    name: "MKNGROUP",
+    name: "MKN GROUP",
     alternateName: "MKN GROUP",
     description:
       "Türkiye'nin önde gelen fason üretim ve operasyon çözümleri şirketi",
@@ -301,13 +301,13 @@ export function WebsiteSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "MKNGROUP",
+    name: "MKN GROUP",
     url: "https://www.mkngroup.com.tr",
     description:
       "Fason üretim, kozmetik ambalaj çözümleri ve operasyon yönetimi hizmetleri",
     publisher: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
     },
     potentialAction: {
       "@type": "SearchAction",
@@ -360,7 +360,7 @@ export function ServiceSchema({ service }) {
     description: service.description,
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
     },
     areaServed: {
@@ -681,7 +681,7 @@ export function ManufacturerSchema() {
     "@type": ["Organization", "Manufacturer"],
     "@id": "https://www.mkngroup.com.tr/#manufacturer",
     name: "MKN Group",
-    alternateName: ["MKNGROUP", "MKN Grup"],
+    alternateName: ["MKN GROUP", "MKN Grup"],
     description:
       "ISO sertifikalı kozmetik üretimi ve premium ambalaj çözümleri sunan Türkiye'nin önde gelen fason üretim şirketi",
     url: "https://www.mkngroup.com.tr",

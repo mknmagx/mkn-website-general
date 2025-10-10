@@ -36,20 +36,22 @@ import { Badge } from "@/components/ui/badge";
 import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
-  title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | ISO 22000 | MKNGROUP",
+  title:
+    "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | ISO 22000 | MKN GROUP",
   description:
     "Türkiye'nin en büyük gıda takviyesi fason üretim tesisi. Kapsül, tablet, sıvı ve toz formda HACCP ISO 22000 sertifikalı tesislerde üretim. Vitamin, mineral, probiyotik, protein tozu fason üretimi. OEM/ODM hizmetleri, private label gıda takviyesi, Tarım Bakanlığı onaylı mevzuat uyumlu üretim.",
   keywords:
     "gıda takviyesi fason üretim, gıda takviyesi fason üretici, HACCP gıda takviyesi, ISO 22000 gıda üretim, OEM gıda takviyesi, ODM gıda takviyesi, private label gıda takviyesi, kapsül fason üretim, tablet fason üretim, sıvı gıda takviyesi üretim, vitamin fason üretim, mineral fason üretim, probiyotik fason üretim, protein tozu fason üretim, spor beslenme fason üretim, fonksiyonel gıda üretimi, tarım bakanlığı onaylı üretim, gıda takviyesi formülasyon",
   alternates: {
-    canonical: "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
+    canonical:
+      "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
   },
   openGraph: {
-    title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKNGROUP",
+    title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKN GROUP",
     description:
       "Türkiye'nin lider gıda takviyesi fason üretim firması. HACCP ISO 22000 sertifikalı 12.000 m² tesislerde kapsül, tablet, sıvı ve toz formda gıda takviyesi üretimi. 500+ formülasyon deneyimi, Tarım Bakanlığı onaylı üretim.",
     url: "https://www.mkngroup.com.tr/fason-uretim/gida-takviyesi-fason-uretim",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     locale: "tr_TR",
     type: "website",
     images: [
@@ -57,14 +59,15 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP Gıda Takviyesi Fason Üretim Tesisleri",
+        alt: "MKN GROUP Gıda Takviyesi Fason Üretim Tesisleri",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKNGROUP",
-    description: "Türkiye'nin en büyük gıda takviyesi fason üretim tesisi. HACCP ISO 22000 sertifikalı tesislerde profesyonel gıda takviyesi üretimi.",
+    title: "Gıda Takviyesi Fason Üretim | HACCP Sertifikalı | MKN GROUP",
+    description:
+      "Türkiye'nin en büyük gıda takviyesi fason üretim tesisi. HACCP ISO 22000 sertifikalı tesislerde profesyonel gıda takviyesi üretimi.",
     images: ["https://www.mkngroup.com.tr/gida-takviyesi-fason-uretim-og.jpg"],
   },
   robots: {
@@ -89,16 +92,16 @@ export default function GidaTakviyesiFasonUretimPage() {
     category: "Food Supplement Contract Manufacturing",
     provider: {
       "@type": "Organization",
-      name: "MKNGROUP",
+      name: "MKN GROUP",
       url: "https://www.mkngroup.com.tr",
       logo: "https://www.mkngroup.com.tr/MKN-GROUP-LOGO.png",
       contactPoint: {
         "@type": "ContactPoint",
-        telephone: "+90-XXX-XXX-XXXX",
+        telephone: "+90 531 494 25 94",
         contactType: "Customer Service",
         areaServed: "TR",
-        availableLanguage: ["Turkish", "English"]
-      }
+        availableLanguage: ["Turkish", "English"],
+      },
     },
     areaServed: ["Turkey", "Europe", "Middle East"],
     serviceType: "Food Supplement Contract Manufacturing",
@@ -110,25 +113,25 @@ export default function GidaTakviyesiFasonUretimPage() {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "OEM Gıda Takviyesi Üretim"
-          }
-        },
-        {
-          "@type": "Offer",
-          itemOffered: {
-            "@type": "Service", 
-            name: "ODM Gıda Takviyesi Üretim"
-          }
+            name: "OEM Gıda Takviyesi Üretim",
+          },
         },
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Private Label Gıda Takviyesi"
-          }
-        }
-      ]
-    }
+            name: "ODM Gıda Takviyesi Üretim",
+          },
+        },
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Private Label Gıda Takviyesi",
+          },
+        },
+      ],
+    },
   };
 
   const breadcrumbItems = [
@@ -258,33 +261,33 @@ export default function GidaTakviyesiFasonUretimPage() {
       name: "HACCP Sertifikası",
       description: "Gıda Güvenliği Kritik Kontrol Noktaları",
     },
-    { 
-      name: "ISO 22000", 
-      description: "Gıda Güvenliği Yönetim Sistemi" 
+    {
+      name: "ISO 22000",
+      description: "Gıda Güvenliği Yönetim Sistemi",
     },
-    { 
-      name: "GMP Sertifikası", 
-      description: "İyi Üretim Uygulamaları" 
+    {
+      name: "GMP Sertifikası",
+      description: "İyi Üretim Uygulamaları",
     },
-    { 
-      name: "Halal Sertifikası", 
-      description: "Helal Gıda Üretim Belgesi" 
+    {
+      name: "Halal Sertifikası",
+      description: "Helal Gıda Üretim Belgesi",
     },
     {
       name: "Tarım Bakanlığı",
-      description: "Gıda İşletme Ruhsatı"
+      description: "Gıda İşletme Ruhsatı",
     },
     {
       name: "FDA Registration",
-      description: "ABD Gıda ve İlaç Dairesi Kaydı"
+      description: "ABD Gıda ve İlaç Dairesi Kaydı",
     },
     {
       name: "CE Marking",
-      description: "Avrupa Uygunluk Beyanı"
+      description: "Avrupa Uygunluk Beyanı",
     },
     {
       name: "ISO 9001",
-      description: "Kalite Yönetim Sistemi"
+      description: "Kalite Yönetim Sistemi",
     },
   ];
 
@@ -327,23 +330,24 @@ export default function GidaTakviyesiFasonUretimPage() {
               HACCP ISO 22000 Sertifikalı Gıda Takviyesi Fason Üretim
             </Badge>
             <h1 className="text-5xl sm:text-6xl font-bold mb-6 text-balance animate-fade-in">
-              HACCP Sertifikalı<br />
+              HACCP Sertifikalı
+              <br />
               Gıda Takviyesi Fason Üretim
             </h1>
             <p className="text-xl text-green-100 dark:text-green-200 mb-8 text-pretty leading-relaxed">
-              Türkiye'nin en büyük gıda takviyesi fason üretim tesisinde kapsül, tablet, sıvı ve toz formda 
-              <strong> günlük 100.000 adet üretim kapasitesi</strong>. 500+ formülasyon deneyimi, Tarım Bakanlığı onaylı mevzuat uyumlu üretim,
-              private label, OEM/ODM hizmetleri ile markanızı global pazara taşıyın.
+              Türkiye'nin en büyük gıda takviyesi fason üretim tesisinde kapsül,
+              tablet, sıvı ve toz formda
+              <strong> günlük 100.000 adet üretim kapasitesi</strong>. 500+
+              formülasyon deneyimi, Tarım Bakanlığı onaylı mevzuat uyumlu
+              üretim, private label, OEM/ODM hizmetleri ile markanızı global
+              pazara taşıyın.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
                 className="bg-white text-green-600 hover:bg-green-50 dark:bg-slate-100 dark:text-green-700 dark:hover:bg-slate-200 font-semibold px-8 py-3 transition-all duration-300 transform hover:scale-105"
               >
-                <Link
-                  href="/teklif"
-                  className="flex items-center"
-                >
+                <Link href="/teklif" className="flex items-center">
                   Gıda Takviyesi Fason Üretim Teklifi Al
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -370,12 +374,22 @@ export default function GidaTakviyesiFasonUretimPage() {
               </h2>
               <div className="max-w-5xl mx-auto">
                 <p className="text-xl text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                  <strong>MKNGROUP</strong>, 6+ yıllık deneyimi ve HACCP ISO 22000 sertifikalı 12.000 m² üretim tesisleriyle Türkiye'nin lider gıda takviyesi fason üretim firmasıdır. 
-                  Kapsül, tablet, sıvı ve toz formda vitamin, mineral, probiyotik, protein tozu olmak üzere tüm gıda takviyesi kategorilerinde <strong>günlük 100.000 adet üretim kapasitesi</strong> ile hizmet veriyoruz.
+                  <strong>MKN GROUP</strong>, 6+ yıllık deneyimi ve HACCP ISO
+                  22000 sertifikalı 12.000 m² üretim tesisleriyle Türkiye'nin
+                  lider gıda takviyesi fason üretim firmasıdır. Kapsül, tablet,
+                  sıvı ve toz formda vitamin, mineral, probiyotik, protein tozu
+                  olmak üzere tüm gıda takviyesi kategorilerinde{" "}
+                  <strong>günlük 100.000 adet üretim kapasitesi</strong> ile
+                  hizmet veriyoruz.
                 </p>
                 <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                  500+ formülasyon deneyimimiz, 6 kişilik Ar-Ge ekibimiz ve 20+ kalite kontrol noktamız ile <strong>private label</strong>, <strong>OEM</strong> ve <strong>ODM</strong> gıda takviyesi fason üretim hizmetlerinde sektörün standardını belirlemekteyiz. 
-                  Tarım Bakanlığı onaylı mevzuat uyumlu üretim, spor beslenme ürünleri ve fonksiyonel gıda üretim kapasitemizle markanızın global büyümesini destekliyoruz.
+                  500+ formülasyon deneyimimiz, 6 kişilik Ar-Ge ekibimiz ve 20+
+                  kalite kontrol noktamız ile <strong>private label</strong>,{" "}
+                  <strong>OEM</strong> ve <strong>ODM</strong> gıda takviyesi
+                  fason üretim hizmetlerinde sektörün standardını
+                  belirlemekteyiz. Tarım Bakanlığı onaylı mevzuat uyumlu üretim,
+                  spor beslenme ürünleri ve fonksiyonel gıda üretim
+                  kapasitemizle markanızın global büyümesini destekliyoruz.
                 </p>
               </div>
             </div>
@@ -430,7 +444,7 @@ export default function GidaTakviyesiFasonUretimPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-                  Neden MKNGROUP Gıda Takviyesi Fason Üretim?
+                  Neden MKN GROUP Gıda Takviyesi Fason Üretim?
                 </h3>
                 <div className="space-y-4">
                   {advantages.map((advantage, index) => (
@@ -653,10 +667,7 @@ export default function GidaTakviyesiFasonUretimPage() {
                 size="lg"
                 className="bg-white text-green-600 hover:bg-green-50 dark:bg-slate-100 dark:text-green-700 dark:hover:bg-slate-200 font-semibold px-8 py-4 text-lg transition-all duration-300 transform hover:scale-105"
               >
-                <Link
-                  href="/teklif"
-                  className="flex items-center"
-                >
+                <Link href="/teklif" className="flex items-center">
                   Gıda Takviyesi Fason Üretim Teklifi Al
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -682,7 +693,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                 Gıda Takviyesi Fason Üretim Teknik Kapasitelerimiz
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                12.000 m² kapalı alanda, son teknoloji ekipmanlarla günlük 100.000 adet ürün üretim kapasitesi
+                12.000 m² kapalı alanda, son teknoloji ekipmanlarla günlük
+                100.000 adet ürün üretim kapasitesi
               </p>
             </div>
 
@@ -699,20 +711,36 @@ export default function GidaTakviyesiFasonUretimPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Günlük Kapasite:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">100.000 adet</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Günlük Kapasite:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        100.000 adet
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Minimum Üretim:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">5.000 adet</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Minimum Üretim:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        5.000 adet
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Tesis Büyüklüğü:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">12.000 m²</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Tesis Büyüklüğü:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        12.000 m²
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Üretim Hatları:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">8 adet</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Üretim Hatları:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        8 adet
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -730,20 +758,36 @@ export default function GidaTakviyesiFasonUretimPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Formülasyon Uzmanı:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">6 kişi</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Formülasyon Uzmanı:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        6 kişi
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Test Ekipmanı:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">20+ cihaz</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Test Ekipmanı:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        20+ cihaz
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Numune Süresi:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">5-10 gün</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Numune Süresi:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        5-10 gün
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Revizyon:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">Ücretsiz</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Revizyon:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        Ücretsiz
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -761,20 +805,36 @@ export default function GidaTakviyesiFasonUretimPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Numune:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">5-10 gün</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Numune:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        5-10 gün
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Seri Üretim:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">20-30 gün</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Seri Üretim:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        20-30 gün
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Acil Üretim:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">10-15 gün</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Acil Üretim:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        10-15 gün
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Kargo:</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">1-3 gün</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Kargo:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        1-3 gün
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -784,7 +844,9 @@ export default function GidaTakviyesiFasonUretimPage() {
             <div className="bg-gradient-to-r from-green-600 to-blue-700 dark:from-green-700 dark:to-blue-800 rounded-2xl p-8 text-white">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 <div>
-                  <h3 className="text-2xl font-bold mb-4">Gıda Takviyesi Fason Üretim Maliyet Avantajları</h3>
+                  <h3 className="text-2xl font-bold mb-4">
+                    Gıda Takviyesi Fason Üretim Maliyet Avantajları
+                  </h3>
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3">
                       <CheckCircle className="h-5 w-5 text-green-200" />
@@ -827,7 +889,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                 Gıda Takviyesi Fason Üretim Uzmanlık Alanlarımız
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                Her gıda takviyesi kategorisinde derin uzmanlık ve özelleşmiş üretim teknolojileri
+                Her gıda takviyesi kategorisinde derin uzmanlık ve özelleşmiş
+                üretim teknolojileri
               </p>
             </div>
 
@@ -842,7 +905,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Probiyotik Formülasyonları
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Canlı probiyotik kültürler ile bağırsak sağlığını destekleyen gıda takviyesi formülasyonları
+                      Canlı probiyotik kültürler ile bağırsak sağlığını
+                      destekleyen gıda takviyesi formülasyonları
                     </p>
                   </div>
                   <div className="border-l-4 border-blue-500 pl-6">
@@ -850,7 +914,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Spor Beslenme Ürünleri
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Protein, aminoasit, kreatin ve performans artırıcı spor beslenme ürünleri
+                      Protein, aminoasit, kreatin ve performans artırıcı spor
+                      beslenme ürünleri
                     </p>
                   </div>
                   <div className="border-l-4 border-purple-500 pl-6">
@@ -858,7 +923,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Fonksiyonel Gıda Takviyesi
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Omega-3, CoQ10, curcumin gibi fonksiyonel bileşenlerle özel formülasyonlar
+                      Omega-3, CoQ10, curcumin gibi fonksiyonel bileşenlerle
+                      özel formülasyonlar
                     </p>
                   </div>
                 </div>
@@ -874,7 +940,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Enterik Kaplama Teknolojisi
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Mide asidine dayanıklı özel kaplama ile aktif madde korunması
+                      Mide asidine dayanıklı özel kaplama ile aktif madde
+                      korunması
                     </p>
                   </div>
                   <div className="border-l-4 border-red-500 pl-6">
@@ -882,7 +949,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Yavaş Salınım Teknolojisi
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Kontrollü salınım ile uzun süreli etki sağlayan tablet teknolojileri
+                      Kontrollü salınım ile uzun süreli etki sağlayan tablet
+                      teknolojileri
                     </p>
                   </div>
                   <div className="border-l-4 border-teal-500 pl-6">
@@ -890,7 +958,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                       Mikroenkapsülasyon
                     </h4>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Hassas aktif maddelerin mikroenkapsülasyonu ile stabilite artırımı
+                      Hassas aktif maddelerin mikroenkapsülasyonu ile stabilite
+                      artırımı
                     </p>
                   </div>
                 </div>
@@ -903,10 +972,11 @@ export default function GidaTakviyesiFasonUretimPage() {
                   Gıda Takviyesi Fason Üretim Kalite Kontrol Süreçleri
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                  Her üretim aşamasında 20+ kalite kontrol noktası ile %100 güvenli ürünler
+                  Her üretim aşamasında 20+ kalite kontrol noktası ile %100
+                  güvenli ürünler
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
                   <div className="bg-green-100 dark:bg-green-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -956,46 +1026,64 @@ export default function GidaTakviyesiFasonUretimPage() {
                 Gıda Takviyesi Fason Üretim Hakkında Sıkça Sorulan Sorular
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-300">
-                Gıda takviyesi fason üretim süreciyle ilgili merak ettiğiniz her şey
+                Gıda takviyesi fason üretim süreciyle ilgili merak ettiğiniz her
+                şey
               </p>
             </div>
 
             <div className="space-y-6">
               {[
                 {
-                  question: "Minimum gıda takviyesi fason üretim miktarı nedir?",
-                  answer: "Ürün tipine göre değişmekle birlikte, minimum 5.000 adet üretim yapabiliyoruz. Kapsül ve tablet ürünlerde 5.000 adet, sıvı formlarda 3.000 adet minimum üretim miktarımızdır."
+                  question:
+                    "Minimum gıda takviyesi fason üretim miktarı nedir?",
+                  answer:
+                    "Ürün tipine göre değişmekle birlikte, minimum 5.000 adet üretim yapabiliyoruz. Kapsül ve tablet ürünlerde 5.000 adet, sıvı formlarda 3.000 adet minimum üretim miktarımızdır.",
                 },
                 {
                   question: "Gıda takviyesi fason üretim süresi ne kadar?",
-                  answer: "Numune onayından sonra seri üretime geçiş 20-30 gün arasında tamamlanır. Acil durumlar için 10-15 günde teslimat yapabiliyoruz. Formülasyon geliştirme süreci dahil olmak üzere toplam süre 35-45 gündür."
+                  answer:
+                    "Numune onayından sonra seri üretime geçiş 20-30 gün arasında tamamlanır. Acil durumlar için 10-15 günde teslimat yapabiliyoruz. Formülasyon geliştirme süreci dahil olmak üzere toplam süre 35-45 gündür.",
                 },
                 {
                   question: "Hangi gıda takviyesi sertifikalarına sahipsiniz?",
-                  answer: "HACCP, ISO 22000, Tarım Bakanlığı Gıda İşletme Belgesi, GMP, Halal sertifikalarına sahibiz. Ayrıca ihracat için FDA, CE marking ve ülkeye özel sertifikasyon desteği sağlıyoruz."
+                  answer:
+                    "HACCP, ISO 22000, Tarım Bakanlığı Gıda İşletme Belgesi, GMP, Halal sertifikalarına sahibiz. Ayrıca ihracat için FDA, CE marking ve ülkeye özel sertifikasyon desteği sağlıyoruz.",
                 },
                 {
-                  question: "Private label gıda takviyesi üretimi yapıyor musunuz?",
-                  answer: "Evet, private label gıda takviyesi üretimi ana hizmetlerimizden biridir. Kendi markanız için formülasyon geliştirme, ambalaj tasarımı, etiket tasarımı dahil olmak üzere A'dan Z'ye hizmet veriyoruz."
+                  question:
+                    "Private label gıda takviyesi üretimi yapıyor musunuz?",
+                  answer:
+                    "Evet, private label gıda takviyesi üretimi ana hizmetlerimizden biridir. Kendi markanız için formülasyon geliştirme, ambalaj tasarımı, etiket tasarımı dahil olmak üzere A'dan Z'ye hizmet veriyoruz.",
                 },
                 {
-                  question: "Gıda takviyesi fason üretim maliyeti nasıl hesaplanır?",
-                  answer: "Maliyet; ürün tipi, formülasyon karmaşıklığı, ambalaj türü, üretim miktarı ve hammadde kalitesine göre belirlenir. Vitamin-mineral karışımları, probiyotik ürünler ve spor beslenme ürünleri için farklı fiyatlandırma uygulanır."
+                  question:
+                    "Gıda takviyesi fason üretim maliyeti nasıl hesaplanır?",
+                  answer:
+                    "Maliyet; ürün tipi, formülasyon karmaşıklığı, ambalaj türü, üretim miktarı ve hammadde kalitesine göre belirlenir. Vitamin-mineral karışımları, probiyotik ürünler ve spor beslenme ürünleri için farklı fiyatlandırma uygulanır.",
                 },
                 {
-                  question: "Organik gıda takviyesi üretimi yapabiliyor musunuz?",
-                  answer: "Evet, sertifikalı organik ham maddeler kullanarak organik gıda takviyesi üretimi yapıyoruz. Organik sertifikasyon süreçlerinde de tam destek sağlıyoruz."
+                  question:
+                    "Organik gıda takviyesi üretimi yapabiliyor musunuz?",
+                  answer:
+                    "Evet, sertifikalı organik ham maddeler kullanarak organik gıda takviyesi üretimi yapıyoruz. Organik sertifikasyon süreçlerinde de tam destek sağlıyoruz.",
                 },
                 {
-                  question: "Gıda takviyesi fason üretimde kalite garantisi var mı?",
-                  answer: "Tüm ürünlerimiz için HACCP ve ISO 22000 standartlarında kalite garantisi veriyoruz. Üretim sürecinde 20+ kalite kontrol noktası bulunmaktadır ve nihai ürünler için tam analiz raporu sunuyoruz."
+                  question:
+                    "Gıda takviyesi fason üretimde kalite garantisi var mı?",
+                  answer:
+                    "Tüm ürünlerimiz için HACCP ve ISO 22000 standartlarında kalite garantisi veriyoruz. Üretim sürecinde 20+ kalite kontrol noktası bulunmaktadır ve nihai ürünler için tam analiz raporu sunuyoruz.",
                 },
                 {
-                  question: "İhracat için gıda takviyesi üretimi yapıyor musunuz?",
-                  answer: "Evet, ihracat standartlarında gıda takviyesi üretimi yapıyoruz. AB, ABD, Orta Doğu ve Afrika ülkeleri için gerekli sertifikasyon ve dokümantasyon desteği sağlıyoruz."
-                }
+                  question:
+                    "İhracat için gıda takviyesi üretimi yapıyor musunuz?",
+                  answer:
+                    "Evet, ihracat standartlarında gıda takviyesi üretimi yapıyoruz. AB, ABD, Orta Doğu ve Afrika ülkeleri için gerekli sertifikasyon ve dokümantasyon desteği sağlıyoruz.",
+                },
               ].map((faq, index) => (
-                <Card key={index} className="border-0 shadow-lg dark:shadow-slate-800/50 bg-white dark:bg-slate-800">
+                <Card
+                  key={index}
+                  className="border-0 shadow-lg dark:shadow-slate-800/50 bg-white dark:bg-slate-800"
+                >
                   <CardHeader className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 pr-4">
@@ -1049,7 +1137,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    3 ay içinde 25+ protein ve performans ürünü geliştirerek spor beslenme pazarında güçlü konuma geldi.
+                    3 ay içinde 25+ protein ve performans ürünü geliştirerek
+                    spor beslenme pazarında güçlü konuma geldi.
                   </p>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Ürün Kategorisi:</span>
@@ -1073,7 +1162,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Özel probiyotik formülasyonları ile Avrupa pazarına başarılı giriş ve 10 ülkeye ihracat.
+                    Özel probiyotik formülasyonları ile Avrupa pazarına başarılı
+                    giriş ve 10 ülkeye ihracat.
                   </p>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Ürün Kategorisi:</span>
@@ -1097,7 +1187,8 @@ export default function GidaTakviyesiFasonUretimPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Çocuk vitaminleri serisi ile aile segmentinde lider konuma geldi ve %400 satış artışı elde etti.
+                    Çocuk vitaminleri serisi ile aile segmentinde lider konuma
+                    geldi ve %400 satış artışı elde etti.
                   </p>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Ürün Kategorisi:</span>
@@ -1116,12 +1207,11 @@ export default function GidaTakviyesiFasonUretimPage() {
                 Siz de Başarı Hikayenizi Yazın
               </h3>
               <p className="text-green-100 dark:text-green-200 mb-6 max-w-2xl mx-auto">
-                Gıda takviyesi fason üretim hizmetlerimizle markanızı büyütün ve pazarda fark yaratın.
+                Gıda takviyesi fason üretim hizmetlerimizle markanızı büyütün ve
+                pazarda fark yaratın.
               </p>
               <Button className="bg-white text-green-600 hover:bg-green-50 dark:bg-slate-100 dark:text-green-700 dark:hover:bg-slate-200 font-semibold px-8 py-3">
-                <Link href="/teklif">
-                  Projenizi Başlatalım
-                </Link>
+                <Link href="/teklif">Projenizi Başlatalım</Link>
               </Button>
             </div>
           </div>

@@ -11,8 +11,8 @@ import {
   toggleUserStatus,
   deleteUser,
   USER_ROLES,
-  ROLE_LEVELS,
 } from "../../../../lib/services/admin-user-service";
+import { ROLE_LEVELS } from "../../../../lib/services/admin-permissions-service";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import { useToast } from "../../../../hooks/use-toast";
 import {
@@ -68,7 +68,6 @@ export default function UserDetailPage() {
         isActive: userData.isActive !== false,
       });
     } catch (error) {
-      console.error("Error loading user:", error);
       toast({
         title: "Hata",
         description: "Kullanıcı bilgileri yüklenirken hata oluştu.",

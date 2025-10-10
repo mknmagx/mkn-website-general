@@ -22,7 +22,7 @@ import {
 import { ServiceSchema, BreadcrumbSchema } from "@/components/structured-data";
 
 export const metadata = {
-  title: "E-ticaret Operasyon & Fulfillment Hizmetleri | MKNGROUP",
+  title: "E-ticaret Operasyon & Fulfillment Hizmetleri | MKN GROUP",
   description:
     "E-ticaret operasyon hizmetleri, depo yönetimi, sipariş fulfillment, stok takibi ve kargo entegrasyonu. İstanbul'da WMS uyumlu 3PL hizmetleri ile aylık 50K+ sipariş kapasitesi.",
   keywords: [
@@ -41,7 +41,7 @@ export const metadata = {
     "fulfillment merkezi",
   ].join(", "),
   openGraph: {
-    title: "E-ticaret Operasyon & Fulfillment Hizmetleri - MKNGROUP",
+    title: "E-ticaret Operasyon & Fulfillment Hizmetleri - MKN GROUP",
     description:
       "İstanbul'da profesyonel e-ticaret operasyon hizmetleri. E-ticaret işletmeleri için sipariş fulfillment, stok yönetimi ve kargo entegrasyonu.",
     url: "https://www.mkngroup.com.tr/e-ticaret",
@@ -51,7 +51,7 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/e-ticaret-og.jpg",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP E-ticaret Operasyon Hizmetleri",
+        alt: "MKN GROUP E-ticaret Operasyon Hizmetleri",
       },
     ],
     locale: "tr_TR",
@@ -59,7 +59,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "E-ticaret Operasyon Hizmetleri | MKNGROUP",
+    title: "E-ticaret Operasyon Hizmetleri | MKN GROUP",
     description:
       "Profesyonel 3PL depo hizmetleri ile e-ticaret operasyonlarınızı optimize edin.",
     images: ["https://www.mkngroup.com.tr/e-ticaret-og.jpg"],
@@ -416,7 +416,7 @@ export default function EticaretPage() {
 
               <Card className="p-8 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
                 <h3 className="text-2xl font-bold mb-6 text-green-800 dark:text-green-300 flex items-center">
-                  ✅ MKNGROUP Çözümleri
+                  ✅ MKN GROUP Çözümleri
                 </h3>
                 <ul className="space-y-3 text-green-700 dark:text-green-300">
                   <li>• %40'a kadar maliyet tasarrufu sağlıyoruz</li>
@@ -1050,7 +1050,7 @@ export default function EticaretPage() {
               <strong className="text-white">
                 100+ e-ticaret firmasının güvendiği
               </strong>{" "}
-              MKNGROUP ile operasyonel maliyetlerinizi %40'a kadar düşürün,
+              MKN GROUP ile operasyonel maliyetlerinizi %40'a kadar düşürün,
               müşteri memnuniyetinizi artırın.
               <strong className="text-white">
                 İlk ay ücretsiz deneme

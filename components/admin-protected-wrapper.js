@@ -31,15 +31,10 @@ export default function AdminProtectedWrapper({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // Navigasyon loglaması
   useAdminNavigation();
 
   useEffect(() => {
-    console.log("useEffect triggered:", { loading, isAdmin, pathname });
-
-    // Loading bitince ve admin değilse, login sayfasına değilse yönlendir
     if (!loading && !isAdmin && !pathname?.includes("/admin/login")) {
-      console.log("Redirecting to login page");
       router.push("/admin/login");
     }
   }, [isAdmin, loading, router, pathname]);
@@ -71,7 +66,6 @@ export default function AdminProtectedWrapper({
     return null;
   }
 
-  // Kullanıcı rol seviyesini kontrol et
   const getRoleLevel = (role) => {
     const roleLevels = {
       super_admin: 4,
@@ -82,7 +76,7 @@ export default function AdminProtectedWrapper({
     return roleLevels[role] || 0;
   };
 
-  const canAccessUserManagement = getRoleLevel(user?.role) >= 3; // Admin ve üstü
+  const canAccessUserManagement = getRoleLevel(user?.role) >= 3;
 
   const navigationItems = [
     {

@@ -121,7 +121,6 @@ export default function ContactsPage() {
         },
       }));
     } catch (error) {
-      console.error("Error loading contacts:", error);
       toast({
         title: "Hata",
         description: "İletişimler yüklenirken bir hata oluştu.",
@@ -150,9 +149,8 @@ export default function ContactsPage() {
           title: "Başarılı",
           description: "İletişim başarıyla silindi.",
         });
-        loadContacts(); // Listeyi yenile
+        loadContacts();
       } catch (error) {
-        console.error("Error deleting contact:", error);
         toast({
           title: "Hata",
           description: "İletişim silinirken bir hata oluştu.",
@@ -179,9 +177,8 @@ export default function ContactsPage() {
         title: "Başarılı",
         description: "İletişim durumu güncellendi.",
       });
-      loadContacts(); // Listeyi yenile
+      loadContacts();
     } catch (error) {
-      console.error("Error updating contact status:", error);
       toast({
         title: "Hata",
         description: "Durum güncellenirken bir hata oluştu.",
@@ -207,9 +204,8 @@ export default function ContactsPage() {
         title: "Başarılı",
         description: "İletişim önceliği güncellendi.",
       });
-      loadContacts(); // Listeyi yenile
+      loadContacts();
     } catch (error) {
-      console.error("Error updating contact priority:", error);
       toast({
         title: "Hata",
         description: "Öncelik güncellenirken bir hata oluştu.",
@@ -536,7 +532,7 @@ export default function ContactsPage() {
                           )}
                         </div>
                         <p className="text-gray-600 text-sm line-clamp-2">
-                          {contact.message}
+                          {contact.message || "Mesaj bulunamadı"}
                         </p>
                       </div>
                     </td>
@@ -561,9 +557,17 @@ export default function ContactsPage() {
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-1" />
                         {contact.createdAt
-                          ? new Date(contact.createdAt).toLocaleDateString(
-                              "tr-TR"
-                            )
+                          ? (() => {
+                              try {
+                                const date = contact.createdAt.toDate
+                                  ? contact.createdAt.toDate()
+                                  : new Date(contact.createdAt);
+                                return date.toLocaleDateString("tr-TR");
+                              } catch (error) {
+                                console.error("Date format error:", error);
+                                return "Geçersiz tarih";
+                              }
+                            })()
                           : "-"}
                       </div>
                     </td>
@@ -646,7 +650,18 @@ function ViewContactModal({ contact, onClose }) {
                 İletişim Mesajı
               </h3>
               <p className="text-sm text-gray-500">
-                {contact.createdAt.toLocaleString("tr-TR")}
+                {(() => {
+                  try {
+                    if (!contact.createdAt) return "Tarih bilinmiyor";
+                    const date = contact.createdAt.toDate
+                      ? contact.createdAt.toDate()
+                      : new Date(contact.createdAt);
+                    return date.toLocaleString("tr-TR");
+                  } catch (error) {
+                    console.error("Date format error:", error);
+                    return "Geçersiz tarih";
+                  }
+                })()}
               </p>
             </div>
           </div>
@@ -747,7 +762,7 @@ function ViewContactModal({ contact, onClose }) {
             </label>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                {contact.message}
+                {contact.message || "Mesaj bulunamadı"}
               </p>
             </div>
           </div>

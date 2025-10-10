@@ -42,7 +42,7 @@ export function WhyMKNGroup() {
             variant="outline"
             className="mb-4 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
           >
-            Neden <span className="font-montserrat font-semibold">MKNGROUP</span>?
+            Neden <span className="font-montserrat font-semibold">MKN GROUP</span>?
           </Badge>
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
             Markanızı Geleceğe Taşıyan{" "}

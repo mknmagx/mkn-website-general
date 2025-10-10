@@ -5,7 +5,7 @@ import { createProductSlug } from "@/utils/slugify-tr";
 
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
-  const currentDate = new Date();
+  const currentDate = new Date("2025-10-10");
 
   const blogPosts = await getAllBlogPosts();
 
@@ -38,6 +38,21 @@ export default async function sitemap() {
     { route: "/hakkimizda", priority: 0.7, changeFreq: "monthly" },
     { route: "/iletisim", priority: 0.9, changeFreq: "monthly" },
     { route: "/teklif", priority: 0.8, changeFreq: "monthly" },
+    {
+      route: "/sss",
+      priority: 0.7,
+      changeFreq: "monthly",
+    },
+    {
+      route: "/kullanim-kosullari",
+      priority: 0.5,
+      changeFreq: "yearly",
+    },
+    {
+      route: "/gizlilik-politikasi",
+      priority: 0.5,
+      changeFreq: "yearly",
+    },
   ];
 
   const staticUrls = mainRoutes.map((item) => {
@@ -52,7 +67,7 @@ export default async function sitemap() {
   const productUrls = products.map((product) => {
     return {
       url: `${baseUrl}/ambalaj/${createProductSlug(product)}`,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.6,
     };

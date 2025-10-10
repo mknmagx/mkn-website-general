@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
   title:
-    "Üretim Tesislerimiz | ISO Sertifikalı Fason Üretim Tesisleri | MKNGROUP",
+    "Üretim Tesislerimiz | ISO Sertifikalı Fason Üretim Tesisleri | MKN GROUP",
   description:
     "🏭 ISO 22716 GMP sertifikalı modern üretim tesislerimiz: 10.600m² toplam üretim alanı. Contract manufacturing, OEM/ODM hizmetleri. Aylık 3.8+ milyon ünite üretim kapasitesi. Türkiye'nin güvenilir fason üretim partneri.",
   keywords: [
@@ -66,9 +66,9 @@ export const metadata = {
     "teknoloji donanımlı tesis",
     "kalite kontrol laboratuvarı",
   ],
-  authors: [{ name: "MKNGROUP", url: "https://www.mkngroup.com.tr" }],
-  creator: "MKNGROUP",
-  publisher: "MKNGROUP",
+  authors: [{ name: "MKN GROUP", url: "https://www.mkngroup.com.tr" }],
+  creator: "MKN GROUP",
+  publisher: "MKN GROUP",
   category: "Manufacturing Facilities",
   robots: {
     index: true,
@@ -88,8 +88,8 @@ export const metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://www.mkngroup.com.tr/tesisler",
-    siteName: "MKNGROUP",
-    title: "ISO Sertifikalı Üretim Tesislerimiz | MKNGROUP",
+    siteName: "MKN GROUP",
+    title: "ISO Sertifikalı Üretim Tesislerimiz | MKN GROUP",
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Kozmetik, gıda takviyesi ve temizlik ürünleri fason üretimi. Contract manufacturing çözümleri.",
     images: [
@@ -97,7 +97,7 @@ export const metadata = {
         url: "https://www.mkngroup.com.tr/optimized/modern-manufacturing-facility-with-advanced-equipm.webp",
         width: 1200,
         height: 630,
-        alt: "MKNGROUP ISO Sertifikalı Modern Üretim Tesisleri",
+        alt: "MKN GROUP ISO Sertifikalı Modern Üretim Tesisleri",
         type: "image/webp",
       },
     ],
@@ -106,7 +106,7 @@ export const metadata = {
     card: "summary_large_image",
     site: "@mkngroup_x",
     creator: "@mkngroup_x",
-    title: "ISO Sertifikalı Üretim Tesislerimiz | MKNGROUP",
+    title: "ISO Sertifikalı Üretim Tesislerimiz | MKN GROUP",
     description:
       "🏭 10.600m² toplam alan, ISO 22716 GMP sertifikalı modern üretim tesisleri. Contract manufacturing ve fason üretim çözümleri.",
     images: [
@@ -120,7 +120,7 @@ export default function TesislerPage() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "MKNGROUP",
+    name: "MKN GROUP",
     description:
       "ISO sertifikalı üretim tesisleri ile fason üretim, contract manufacturing ve OEM/ODM hizmetleri",
     url: "https://www.mkngroup.com.tr/tesisler",
@@ -163,7 +163,7 @@ export default function TesislerPage() {
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+90-XXX-XXX-XXXX",
+      telephone: "+90 531 494 25 94",
       contactType: "Customer Service",
       areaServed: "TR",
       availableLanguage: ["Turkish", "English"],
@@ -380,7 +380,7 @@ export default function TesislerPage() {
             <div className="hidden lg:block relative rounded-xl overflow-hidden shadow-2xl dark:shadow-slate-800/50">
               <Image
                 src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
-                alt="MKNGROUP ISO Sertifikalı Modern Üretim Tesisi - Contract Manufacturing"
+                alt="MKN GROUP ISO Sertifikalı Modern Üretim Tesisi - Contract Manufacturing"
                 width={600}
                 height={400}
                 className="w-full h-auto object-cover"
@@ -411,7 +411,7 @@ export default function TesislerPage() {
               Contract Manufacturing Mükemmelliğimiz
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-              <span className="font-montserrat font-semibold">MKNGROUP</span>{" "}
+              <span className="font-montserrat font-semibold">MKN GROUP</span>{" "}
               olarak, iki özel{" "}
               <strong>contract manufacturing tesisimizde</strong> farklı
               sektörlere yönelik kapsamlı{" "}
@@ -726,7 +726,7 @@ export default function TesislerPage() {
               Sektör Odaklı Contract Manufacturing Hizmetlerimiz
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
-              <strong>MKNGROUP</strong> olarak, kozmetik, gıda takviyesi ve
+              <strong>MKN GROUP</strong> olarak, kozmetik, gıda takviyesi ve
               temizlik ürünleri sektörlerinde uzmanlaşmış{" "}
               <strong>contract manufacturing</strong> çözümleri sunuyoruz.
               <strong>OEM/ODM</strong> üretimden <strong>private label</strong>{" "}
@@ -1081,7 +1081,7 @@ export default function TesislerPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-              Neden MKNGROUP Contract Manufacturing?
+              Neden MKN GROUP Contract Manufacturing?
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
               <strong>6+ yıllık sektör deneyimimiz</strong>,{" "}
@@ -1191,7 +1191,7 @@ export default function TesislerPage() {
                 </div>
               </div>
               <blockquote className="text-lg text-gray-700 dark:text-gray-300 italic mb-4">
-                "MKNGROUP'un contract manufacturing hizmetleri sayesinde markami
+                "MKN GROUP'un contract manufacturing hizmetleri sayesinde markami
                 başarıyla büyüttüm. ISO sertifikalı kalite standartları, hızlı
                 teslimat ve profesyonel yaklaşımları ile güvenilir bir partner."
               </blockquote>
@@ -1253,7 +1253,7 @@ export default function TesislerPage() {
                 <Link
                   href="/teklif?service=uretim"
                   className="flex items-center"
-                  title="Contract Manufacturing Teklif Al - MKNGROUP"
+                  title="Contract Manufacturing Teklif Al - MKN GROUP"
                 >
                   Hemen Teklif Al
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -1266,7 +1266,7 @@ export default function TesislerPage() {
               >
                 <Link
                   href="/iletisim?service=uretim"
-                  title="MKNGROUP Contract Manufacturing İletişim"
+                  title="MKN GROUP Contract Manufacturing İletişim"
                 >
                   Danışmanlık Alın
                 </Link>

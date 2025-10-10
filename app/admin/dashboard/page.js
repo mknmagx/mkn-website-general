@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAdminAuth } from '../../../hooks/use-admin-auth';
+import { useAdminSync } from '../../../hooks/use-admin-sync';
 import { PermissionGuard, RoleGuard, usePermissions } from '../../../components/admin-route-guard';
 import { getQuoteStats } from '../../../lib/services/admin-quote-service';
 import { getContactStats } from '../../../lib/services/admin-contact-service';
@@ -24,13 +25,21 @@ import {
   Mail,
   Phone,
   DollarSign,
-  Edit3
+  Edit3,
+  RefreshCw,
+  Shield
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
   const { user, permissions, userRole, loading: authLoading } = useAdminAuth();
   const { hasPermission } = usePermissions();
+  const { 
+    isSyncing, 
+    lastSyncResult, 
+    validateSystemConsistency, 
+    clearSyncStatus 
+  } = useAdminSync();
   
   const [quoteStats, setQuoteStats] = useState({
     total: 0,
@@ -97,89 +106,80 @@ export default function AdminDashboard() {
     try {
       const promises = [];
       
-      // Quote stats - tüm admin rollerine açık
-      if (hasPermission("canViewAllQuotes")) {
+      if (hasPermission("quotes.view")) {
         promises.push(getQuoteStats());
       }
       
-      // Contact stats - tüm admin rollerine açık  
-      if (hasPermission("canViewAllContacts")) {
+      if (hasPermission("contacts.view")) {
         promises.push(getContactStats());
       }
       
-      // User stats - sadece yetki sahibi kullanıcılar için
-      if (hasPermission("canViewAnalytics")) {
+      if (hasPermission("analytics.view") || hasPermission("users.view")) {
         promises.push(getUserStats(permissions));
       }
 
-      // Company stats - firma yönetimi yetkisi olanlar için
-      if (hasPermission("canManageCompanies")) {
+      if (hasPermission("companies.view")) {
         promises.push(CompanyService.getCompanyStats());
       }
 
-      // Log stats - tüm admin kullanıcıları görebilir
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       promises.push(getLogStats(today.toISOString(), null));
 
-      // Blog stats - blog yönetimi yetkisi olanlar için
-      if (hasPermission("blog.read") || hasPermission("canManageBlog")) {
+      if (hasPermission("blog.read")) {
         promises.push(getBlogStats());
       }
 
       const results = await Promise.all(promises);
       let resultIndex = 0;
 
-      if (hasPermission("canViewAllQuotes")) {
+      if (hasPermission("quotes.view")) {
         const quoteResult = results[resultIndex++];
         if (quoteResult.success) {
           setQuoteStats(quoteResult.stats);
         }
       }
 
-      if (hasPermission("canViewAllContacts")) {
+      if (hasPermission("contacts.view")) {
         const contactResult = results[resultIndex++];
         if (contactResult.success) {
           setContactStats(contactResult.stats);
         }
       }
 
-      if (hasPermission("canViewAnalytics")) {
+      if (hasPermission("analytics.view") || hasPermission("users.view")) {
         const userResult = results[resultIndex++];
         if (userResult.success) {
           setUserStats(userResult.stats);
         }
       }
 
-      // Company stats - firma yönetimi yetkisi olanlar için
-      if (hasPermission("canManageCompanies")) {
+      if (hasPermission("companies.view")) {
         const companyResult = results[resultIndex++];
         if (companyResult.success) {
           setCompanyStats(companyResult.stats);
         }
       }
 
-      // Log stats her zaman yükle
       const logResult = results[resultIndex++];
       if (logResult.success) {
         const stats = logResult.stats;
         setLogStats({
           totalLogs: stats.totalLogs || 0,
-          todayLogs: stats.totalLogs || 0, // Today için ayrı hesaplanabilir
+          todayLogs: stats.totalLogs || 0,
           errors: stats.levels?.error || 0,
           warnings: stats.levels?.warning || 0,
         });
       }
 
-      // Blog stats - blog yönetimi yetkisi olanlar için
-      if (hasPermission("blog.read") || hasPermission("canManageBlog")) {
+      if (hasPermission("blog.read")) {
         const blogResult = results[resultIndex++];
         if (blogResult) {
           setBlogStats(blogResult);
         }
       }
     } catch (error) {
-      console.error('Error loading stats:', error);
+      // Error is handled silently to prevent console spam
     } finally {
       setLoading(false);
     }
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
       {/* Ana İstatistikler - Role-based */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Quote Stats - Tüm admin rollerine görünür */}
-        <PermissionGuard requiredPermission="canViewAllQuotes">
+        <PermissionGuard requiredPermission="quotes.view">
           <StatCard
             title="Quote İstekleri"
             value={quoteStats.total}
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
         </PermissionGuard>
 
         {/* Contact Stats - Tüm admin rollerine görünür */}
-        <PermissionGuard requiredPermission="canViewAllContacts">
+        <PermissionGuard requiredPermission="contacts.view">
           <StatCard
             title="İletişim Mesajları"
             value={contactStats.total}
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
         </PermissionGuard>
 
         {/* User Stats - Sadece user management yetkisi olanlar */}
-        <PermissionGuard requiredPermission="canViewAnalytics">
+        <PermissionGuard requiredPermission="users.view">
           <StatCard
             title="Sistem Kullanıcıları"
             value={userStats.total}
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
       </PermissionGuard>
 
       {/* Firma İstatistikleri - Sadece company management yetkisi olanlar */}
-      <PermissionGuard requiredPermission="canManageCompanies">
+      <PermissionGuard requiredPermission="companies.view">
         <div className="mt-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Firma Yönetimi</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -471,6 +471,68 @@ export default function AdminDashboard() {
         </div>
       </PermissionGuard>
 
+      {/* Sistem Durumu Kontrolü - Sadece Super Admin için */}
+      <RoleGuard allowedRoles={['super_admin']}>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900 flex items-center">
+              <Shield className="h-5 w-5 mr-2 text-blue-600" />
+              Sistem Tutarlılığı
+            </h2>
+            <button
+              onClick={validateSystemConsistency}
+              disabled={isSyncing}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Kontrol Ediliyor...' : 'Tutarlılığı Kontrol Et'}
+            </button>
+          </div>
+          
+          {lastSyncResult && (
+            <div className={`p-4 rounded-lg ${
+              lastSyncResult.success 
+                ? 'bg-green-50 border border-green-200' 
+                : 'bg-red-50 border border-red-200'
+            }`}>
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  {lastSyncResult.success ? (
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-red-400" />
+                  )}
+                </div>
+                <div className="ml-3">
+                  <p className={`text-sm font-medium ${
+                    lastSyncResult.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {lastSyncResult.message}
+                  </p>
+                  {lastSyncResult.success && (lastSyncResult.fixedUsers > 0 || lastSyncResult.fixedRoles > 0) && (
+                    <p className="text-sm text-green-700 mt-1">
+                      Düzeltilen: {lastSyncResult.fixedUsers} kullanıcı, {lastSyncResult.fixedRoles} rol
+                    </p>
+                  )}
+                </div>
+                <div className="ml-auto pl-3">
+                  <button
+                    onClick={clearSyncStatus}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="text-sm text-gray-500 mt-4">
+            Bu kontrol, kullanıcı izinlerinin rolleriyle uyumlu olduğunu doğrular ve otomatik olarak düzeltir.
+          </div>
+        </div>
+      </RoleGuard>
+
       {/* Özet Bilgiler */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Sistem Özeti</h2>
@@ -485,7 +547,7 @@ export default function AdminDashboard() {
           </div>
           
           {/* Company özet bilgileri - sadece yetki sahibi kullanıcılar için */}
-          <PermissionGuard requiredPermission="canManageCompanies">
+          <PermissionGuard requiredPermission="companies.view">
             <div className="text-center">
               <div className="text-2xl font-bold text-indigo-600">{companyStats.active}</div>
               <div className="text-sm text-gray-500">Aktif Firma</div>

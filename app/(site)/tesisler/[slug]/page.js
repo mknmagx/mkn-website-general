@@ -79,12 +79,12 @@
 
 //   if (!facility) {
 //     return {
-//       title: "Tesis Bulunamadı | MKNGROUP",
+//       title: "Tesis Bulunamadı | MKN GROUP",
 //     }
 //   }
 
 //   return {
-//     title: `${facility.name} | MKNGROUP`,
+//     title: `${facility.name} | MKN GROUP`,
 //     description: facility.description,
 //     alternates: {
 //       canonical: `https://www.mkngroup.com.tr/tesisler/${params.slug}`,
@@ -114,7 +114,7 @@
 //     url: `https://www.mkngroup.com.tr/tesisler/${params.slug}`,
 //     parentOrganization: {
 //       "@type": "Organization",
-//       name: "MKNGROUP",
+//       name: "MKN GROUP",
 //     },
 //   }
 

@@ -130,7 +130,7 @@ export const metadata = {
     description:
       "🧽 5000m² ISO ve GMP sertifikalı tesisimizde köpük sabun, ıslak mendil, temizlik ürünleri fason üretimi. İstanbul.",
     url: "https://www.mkngroup.com.tr/tesisler/dogukan-kimya",
-    siteName: "MKNGROUP",
+    siteName: "MKN GROUP",
     images: [
       {
         url: "https://www.mkngroup.com.tr/optimized/modern-chemical-manufacturing-facility-with-large-.webp",
