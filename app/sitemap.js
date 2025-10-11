@@ -5,7 +5,7 @@ import { createProductSlug } from "@/utils/slugify-tr";
 
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
-  const currentDate = new Date("2025-10-10");
+  const currentDate = new Date("2025-10-11");
 
   const blogPosts = await getAllBlogPosts();
 

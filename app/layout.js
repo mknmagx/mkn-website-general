@@ -141,14 +141,12 @@ export const metadata = {
   },
   manifest: "/site.webmanifest",
   other: {
-    "google-site-verification": "placeholder-google-verification-code",
-    "yandex-verification": "placeholder-yandex-verification-code",
-    "msvalidate.01": "placeholder-bing-verification-code",
-    "facebook-domain-verification": "placeholder-facebook-verification-code",
+    "yandex-verification": "10738437cc124bf9",
+    "msvalidate.01": "CC65A73AF2E478C1F192007C7CF4A0EE",
   },
   verification: {
-    google: "placeholder-google-verification-code",
-    yandex: "placeholder-yandex-verification-code",
+    yandex: "10738437cc124bf9",
+    microsoft: "CC65A73AF2E478C1F192007C7CF4A0EE",
     other: {
       me: ["mailto:info@mkngroup.com.tr", "https://www.mkngroup.com.tr"],
     },
@@ -194,7 +192,6 @@ export default function RootLayout({ children }) {
         />
 
         {/* PWA Manifest and Icons */}
-        <link rel="manifest" href="/site.webmanifest" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

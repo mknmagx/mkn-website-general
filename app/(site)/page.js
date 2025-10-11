@@ -137,10 +137,9 @@ export const metadata = {
     images: ["https://www.mkngroup.com.tr/og-image.png"],
   },
   verification: {
-    google: "placeholder-google-verification-code",
-    yandex: "placeholder-yandex-verification-code",
+    yandex: "10738437cc124bf9",
     other: {
-      "msvalidate.01": "placeholder-bing-verification-code",
+      "msvalidate.01": "CC65A73AF2E478C1F192007C7CF4A0EE",
     },
   },
   other: {
