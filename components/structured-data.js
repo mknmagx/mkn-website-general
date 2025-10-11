@@ -313,7 +313,8 @@ export function WebsiteSchema() {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://www.mkngroup.com.tr/search?q={search_term_string}",
+        urlTemplate:
+          "https://www.mkngroup.com.tr/search?q={search_term_string}",
       },
       "query-input": "required name=search_term_string",
     },
@@ -509,6 +510,27 @@ export function ProductSchema({ product }) {
       "@type": "ProductGroup",
       name: product.category,
       description: `${product.category} ürün grubu - MKN Group kozmetik ambalaj koleksiyonu`,
+      hasVariant: [
+        {
+          "@type": "Product",
+          name: product.name,
+          sku: product.code,
+          offers: {
+            "@type": "Offer",
+            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+              product
+            )}`,
+            priceCurrency: "TRY",
+            price: "0.00",
+            availability: "https://schema.org/InStock",
+            seller: {
+              "@type": "Organization",
+              name: "MKN Group",
+              url: "https://www.mkngroup.com.tr",
+            },
+          },
+        },
+      ],
     },
   };
 
@@ -545,7 +567,9 @@ export function ProductCatalogSchema({ products, category }) {
           position: index + 1,
           item: {
             "@type": "Product",
-            "@id": `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            "@id": `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+              product
+            )}`,
             name: product.name,
             description:
               product.description ||
@@ -559,7 +583,9 @@ export function ProductCatalogSchema({ products, category }) {
             sku: product.code,
             offers: {
               "@type": "Offer",
-              url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+              url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+                product
+              )}`,
               priceCurrency: "TRY",
               price: "0.00",
               availability: "https://schema.org/InStock",
@@ -635,7 +661,8 @@ export function WebPageSchema({ title, description, url, breadcrumbs }) {
       url: "https://www.mkngroup.com.tr",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://www.mkngroup.com.tr/ambalaj?search={search_term_string}",
+        target:
+          "https://www.mkngroup.com.tr/ambalaj?search={search_term_string}",
         "query-input": "required name=search_term_string",
       },
     },

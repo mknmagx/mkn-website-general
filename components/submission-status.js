@@ -32,8 +32,9 @@ export const SubmissionSuccess = ({ onClose, result }) => {
       <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
         <Clock className="h-4 w-4 text-green-600" />
         <AlertDescription className="text-green-800 dark:text-green-200">
-          <strong>Süreç Hakkında:</strong> Mesaj değerlendirme süremiz genellikle
-          2-24 saat arasındadır. Acil durumlarda daha hızlı dönüş sağlayabiliriz.
+          <strong>Süreç Hakkında:</strong> Mesaj değerlendirme süremiz
+          genellikle 2-24 saat arasındadır. Acil durumlarda daha hızlı dönüş
+          sağlayabiliriz.
         </AlertDescription>
       </Alert>
 
@@ -120,11 +121,8 @@ export const SubmissionSuccess = ({ onClose, result }) => {
         <Button onClick={onClose} className="flex-1" variant="outline">
           Ana Sayfaya Dön
         </Button>
-        <Button
-          onClick={() => (window.location.href = "/hizmetlerimiz")}
-          className="flex-1"
-        >
-          Hizmetlerimiz Hakkında
+        <Button onClick={() => (window.location.href = "/")} className="flex-1">
+          Hizmetlerimizi Keşfedin
         </Button>
       </div>
 
@@ -260,13 +258,13 @@ export const SubmissionLoading = () => {
  * Ana SubmissionStatus komponenti
  * Form gönderim durumuna göre uygun modal'ı gösterir
  */
-export const SubmissionStatusModal = ({ 
-  isSubmitting, 
-  isSuccess, 
-  isError, 
-  submitResult, 
-  onClose, 
-  onRetry 
+export const SubmissionStatusModal = ({
+  isSubmitting,
+  isSuccess,
+  isError,
+  submitResult,
+  onClose,
+  onRetry,
 }) => {
   if (!isSubmitting && !isSuccess && !isError) {
     return null;
@@ -277,8 +275,16 @@ export const SubmissionStatusModal = ({
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {isSubmitting && <SubmissionLoading />}
-          {isSuccess && <SubmissionSuccess onClose={onClose} result={submitResult} />}
-          {isError && <SubmissionError onRetry={onRetry} onClose={onClose} result={submitResult} />}
+          {isSuccess && (
+            <SubmissionSuccess onClose={onClose} result={submitResult} />
+          )}
+          {isError && (
+            <SubmissionError
+              onRetry={onRetry}
+              onClose={onClose}
+              result={submitResult}
+            />
+          )}
         </div>
       </div>
     </div>
