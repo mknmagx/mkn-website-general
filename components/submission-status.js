@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  */
 export const SubmissionSuccess = ({ onClose, result }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-3">
       <div className="text-center">
         <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
           <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
