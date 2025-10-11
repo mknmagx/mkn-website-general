@@ -506,32 +506,6 @@ export function ProductSchema({ product }) {
         url: "https://www.mkngroup.com.tr",
       },
     },
-    isRelatedTo: {
-      "@type": "ProductGroup",
-      name: product.category,
-      description: `${product.category} ürün grubu - MKN Group kozmetik ambalaj koleksiyonu`,
-      hasVariant: [
-        {
-          "@type": "Product",
-          name: product.name,
-          sku: product.code,
-          offers: {
-            "@type": "Offer",
-            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
-              product
-            )}`,
-            priceCurrency: "TRY",
-            price: "0.00",
-            availability: "https://schema.org/InStock",
-            seller: {
-              "@type": "Organization",
-              name: "MKN Group",
-              url: "https://www.mkngroup.com.tr",
-            },
-          },
-        },
-      ],
-    },
   };
 
   return (
