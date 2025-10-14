@@ -4,7 +4,7 @@
  * @returns {string} - ASCII slug
  */
 export function slugifyTr(text) {
-  if (!text) return ""
+  if (!text) return "";
 
   return (
     text
@@ -25,7 +25,7 @@ export function slugifyTr(text) {
       .replace(/-+/g, "-")
       // Remove leading/trailing hyphens
       .replace(/^-+|-+$/g, "")
-  )
+  );
 }
 
 /**
@@ -34,21 +34,25 @@ export function slugifyTr(text) {
  * @returns {string} - Unique product slug
  */
 export function createProductSlug(product) {
-  if (!product || !product.name) return ""
-  
-  let slug = slugifyTr(product.name)
-  
-  // Add size/ML information to make the slug unique
-  if (product.size) {
-    const sizeSlug = slugifyTr(product.size)
-    slug = `${slug}-${sizeSlug}`
+  if (!product || !product.name) return "";
+
+  let slug = slugifyTr(product.name);
+
+  const size = product.specifications?.size || product.size;
+  if (size) {
+    const sizeFormatted = size
+      .toString()
+      .toLowerCase()
+      .replace(/[\/\s]/g, "")
+      .replace(/ml/g, "-ml");
+    slug = `${slug}-${sizeFormatted}`;
   }
-  
-  // Add product code to ensure uniqueness
-  if (product.code) {
-    const codeSlug = slugifyTr(product.code)
-    slug = `${slug}-${codeSlug}`
+
+  const code = product.specifications?.code || product.code;
+  if (code) {
+    const codeSlug = slugifyTr(code);
+    slug = `${slug}-${codeSlug}`;
   }
-  
-  return slug
+
+  return slug;
 }

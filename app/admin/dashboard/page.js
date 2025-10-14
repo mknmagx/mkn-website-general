@@ -1,16 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAdminAuth } from '../../../hooks/use-admin-auth';
-import { useAdminSync } from '../../../hooks/use-admin-sync';
-import { PermissionGuard, RoleGuard, usePermissions } from '../../../components/admin-route-guard';
-import { getQuoteStats } from '../../../lib/services/admin-quote-service';
-import { getContactStats } from '../../../lib/services/admin-contact-service';
-import { getUserStats } from '../../../lib/services/admin-user-service';
-import { getLogStats } from '../../../lib/services/admin-log-service';
-import { getBlogStats } from '../../../lib/services/blog-service';
-import { CompanyService } from '../../../lib/services/company-service';
-import { 
+import { useState, useEffect } from "react";
+import { useAdminAuth } from "../../../hooks/use-admin-auth";
+import { useAdminSync } from "../../../hooks/use-admin-sync";
+import {
+  PermissionGuard,
+  RoleGuard,
+  usePermissions,
+} from "../../../components/admin-route-guard";
+import { getQuoteStats } from "../../../lib/services/admin-quote-service";
+import { getContactStats } from "../../../lib/services/admin-contact-service";
+import { getUserStats } from "../../../lib/services/admin-user-service";
+import { getLogStats } from "../../../lib/services/admin-log-service";
+import { getBlogStats } from "../../../lib/services/blog-service";
+import { CompanyService } from "../../../lib/services/company-service";
+import {
   BarChart3,
   FileText,
   MessageSquare,
@@ -27,34 +31,34 @@ import {
   DollarSign,
   Edit3,
   RefreshCw,
-  Shield
-} from 'lucide-react';
-import Link from 'next/link';
+  Shield,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function AdminDashboard() {
   const { user, permissions, userRole, loading: authLoading } = useAdminAuth();
   const { hasPermission } = usePermissions();
-  const { 
-    isSyncing, 
-    lastSyncResult, 
-    validateSystemConsistency, 
-    clearSyncStatus 
+  const {
+    isSyncing,
+    lastSyncResult,
+    validateSystemConsistency,
+    clearSyncStatus,
   } = useAdminSync();
-  
+
   const [quoteStats, setQuoteStats] = useState({
     total: 0,
     new: 0,
     inProgress: 0,
     responded: 0,
-    closed: 0
+    closed: 0,
   });
-  
+
   const [contactStats, setContactStats] = useState({
     total: 0,
     new: 0,
     inProgress: 0,
     responded: 0,
-    closed: 0
+    closed: 0,
   });
 
   const [userStats, setUserStats] = useState({
@@ -64,7 +68,7 @@ export default function AdminDashboard() {
     superAdmins: 0,
     admins: 0,
     moderators: 0,
-    users: 0
+    users: 0,
   });
 
   const [companyStats, setCompanyStats] = useState({
@@ -76,21 +80,21 @@ export default function AdminDashboard() {
     highPriority: 0,
     mediumPriority: 0,
     lowPriority: 0,
-    monthlyRevenue: 0
+    monthlyRevenue: 0,
   });
 
   const [logStats, setLogStats] = useState({
     totalLogs: 0,
     todayLogs: 0,
     errors: 0,
-    warnings: 0
+    warnings: 0,
   });
 
   const [blogStats, setBlogStats] = useState({
     totalPosts: 0,
     totalCategories: 0,
     featuredPosts: 0,
-    publishedThisMonth: 0
+    publishedThisMonth: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -103,89 +107,157 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     setLoading(true);
-    try {
-      const promises = [];
-      
-      if (hasPermission("quotes.view")) {
-        promises.push(getQuoteStats());
-      }
-      
-      if (hasPermission("contacts.view")) {
-        promises.push(getContactStats());
-      }
-      
-      if (hasPermission("analytics.view") || hasPermission("users.view")) {
-        promises.push(getUserStats(permissions));
-      }
+    
+    // Her bir stats çağrısını ayrı ayrı güvenli bir şekilde yap
+    await loadStatsIndividually();
+    
+    setLoading(false);
+  };
 
-      if (hasPermission("companies.view")) {
-        promises.push(CompanyService.getCompanyStats());
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      promises.push(getLogStats(today.toISOString(), null));
-
-      if (hasPermission("blog.read")) {
-        promises.push(getBlogStats());
-      }
-
-      const results = await Promise.all(promises);
-      let resultIndex = 0;
-
-      if (hasPermission("quotes.view")) {
-        const quoteResult = results[resultIndex++];
-        if (quoteResult.success) {
+  const loadStatsIndividually = async () => {
+    // Quote Stats - güvenli çağrı
+    if (hasPermission("quotes.view")) {
+      try {
+        const quoteResult = await getQuoteStats();
+        if (quoteResult && quoteResult.success) {
           setQuoteStats(quoteResult.stats);
         }
-      }
-
-      if (hasPermission("contacts.view")) {
-        const contactResult = results[resultIndex++];
-        if (contactResult.success) {
-          setContactStats(contactResult.stats);
-        }
-      }
-
-      if (hasPermission("analytics.view") || hasPermission("users.view")) {
-        const userResult = results[resultIndex++];
-        if (userResult.success) {
-          setUserStats(userResult.stats);
-        }
-      }
-
-      if (hasPermission("companies.view")) {
-        const companyResult = results[resultIndex++];
-        if (companyResult.success) {
-          setCompanyStats(companyResult.stats);
-        }
-      }
-
-      const logResult = results[resultIndex++];
-      if (logResult.success) {
-        const stats = logResult.stats;
-        setLogStats({
-          totalLogs: stats.totalLogs || 0,
-          todayLogs: stats.totalLogs || 0,
-          errors: stats.levels?.error || 0,
-          warnings: stats.levels?.warning || 0,
+      } catch (error) {
+        console.warn("Quote stats fetch failed:", error.message);
+        setQuoteStats({
+          total: 0,
+          new: 0,
+          inProgress: 0,
+          responded: 0,
+          closed: 0,
         });
       }
+    }
 
-      if (hasPermission("blog.read")) {
-        const blogResult = results[resultIndex++];
+    // Contact Stats - güvenli çağrı  
+    if (hasPermission("contacts.view")) {
+      try {
+        const contactResult = await getContactStats();
+        if (contactResult && contactResult.success) {
+          setContactStats(contactResult.stats);
+        }
+      } catch (error) {
+        console.warn("Contact stats fetch failed:", error.message);
+        setContactStats({
+          total: 0,
+          new: 0,
+          inProgress: 0,
+          responded: 0,
+          closed: 0,
+        });
+      }
+    }
+
+    // User Stats - güvenli çağrı
+    if (hasPermission("analytics.view") || hasPermission("users.view")) {
+      try {
+        const userResult = await getUserStats(permissions);
+        if (userResult && userResult.success) {
+          setUserStats(userResult.stats);
+        }
+      } catch (error) {
+        console.warn("User stats fetch failed:", error.message);
+        setUserStats({
+          total: 0,
+          active: 0,
+          inactive: 0,
+          superAdmins: 0,
+          admins: 0,
+          moderators: 0,
+          users: 0,
+        });
+      }
+    }
+
+    // Company Stats - güvenli çağrı
+    if (hasPermission("companies.view")) {
+      try {
+        const companyResult = await CompanyService.getCompanyStats();
+        if (companyResult && companyResult.success) {
+          setCompanyStats(companyResult.stats);
+        }
+      } catch (error) {
+        console.warn("Company stats fetch failed:", error.message);
+        setCompanyStats({
+          total: 0,
+          clients: 0,
+          prospects: 0,
+          active: 0,
+          inactive: 0,
+          highPriority: 0,
+          mediumPriority: 0,
+          lowPriority: 0,
+          monthlyRevenue: 0,
+        });
+      }
+    }
+
+    // Log Stats - sistem izni kontrolü ile
+    if (hasPermission("system.logs")) {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const logResult = await getLogStats(today.toISOString(), null);
+        if (logResult && logResult.success) {
+          const stats = logResult.stats;
+          setLogStats({
+            totalLogs: stats.totalLogs || 0,
+            todayLogs: stats.totalLogs || 0,
+            errors: stats.levels?.error || 0,
+            warnings: stats.levels?.warning || 0,
+          });
+        }
+      } catch (error) {
+        console.warn("Log stats fetch failed (expected if user lacks system.logs permission):", error.message);
+        setLogStats({
+          totalLogs: 0,
+          todayLogs: 0,
+          errors: 0,
+          warnings: 0,
+        });
+      }
+    } else {
+      // system.logs izni olmayan kullanıcılar için varsayılan değerler
+      setLogStats({
+        totalLogs: 0,
+        todayLogs: 0,
+        errors: 0,
+        warnings: 0,
+      });
+    }
+
+    // Blog Stats - güvenli çağrı
+    if (hasPermission("blog.read")) {
+      try {
+        const blogResult = await getBlogStats();
         if (blogResult) {
           setBlogStats(blogResult);
         }
+      } catch (error) {
+        console.warn("Blog stats fetch failed:", error.message);
+        setBlogStats({
+          totalPosts: 0,
+          totalCategories: 0,
+          featuredPosts: 0,
+          publishedThisMonth: 0,
+        });
       }
-    } catch (error) {
-      // Error is handled silently to prevent console spam
-    } finally {
-      setLoading(false);
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, trend, description }) => (
+  const StatCard = ({
+    title,
+    value,
+    icon: Icon,
+    color,
+    trend,
+    description,
+  }) => (
     <div className="bg-white overflow-hidden shadow rounded-lg">
       <div className="p-5">
         <div className="flex items-center">
@@ -194,13 +266,19 @@ export default function AdminDashboard() {
           </div>
           <div className="ml-5 w-0 flex-1">
             <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+              <dt className="text-sm font-medium text-gray-500 truncate">
+                {title}
+              </dt>
               <dd className="flex items-baseline">
-                <div className="text-2xl font-semibold text-gray-900">{value}</div>
+                <div className="text-2xl font-semibold text-gray-900">
+                  {value}
+                </div>
                 {trend && (
-                  <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                    trend.type === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <div
+                    className={`ml-2 flex items-baseline text-sm font-semibold ${
+                      trend.type === "up" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
                     <TrendingUp className="self-center flex-shrink-0 h-4 w-4" />
                     <span className="ml-1">{trend.value}%</span>
                   </div>
@@ -216,7 +294,14 @@ export default function AdminDashboard() {
     </div>
   );
 
-  const QuickActionCard = ({ title, description, icon: Icon, color, href, count }) => (
+  const QuickActionCard = ({
+    title,
+    description,
+    icon: Icon,
+    color,
+    href,
+    count,
+  }) => (
     <a
       href={href}
       className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200"
@@ -231,7 +316,9 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">{description}</p>
             {count !== undefined && (
               <div className="mt-2">
-                <span className="text-2xl font-bold text-gray-900">{count}</span>
+                <span className="text-2xl font-bold text-gray-900">
+                  {count}
+                </span>
                 <span className="text-sm text-gray-500 ml-1">adet</span>
               </div>
             )}
@@ -244,9 +331,9 @@ export default function AdminDashboard() {
   const ActivityItem = ({ type, message, time, status }) => {
     const getIcon = () => {
       switch (type) {
-        case 'quote':
+        case "quote":
           return <FileText className="h-4 w-4 text-blue-500" />;
-        case 'contact':
+        case "contact":
           return <MessageSquare className="h-4 w-4 text-green-500" />;
         default:
           return <Activity className="h-4 w-4 text-gray-500" />;
@@ -255,30 +342,30 @@ export default function AdminDashboard() {
 
     const getStatusColor = () => {
       switch (status) {
-        case 'new':
-          return 'text-blue-600 bg-blue-100';
-        case 'in-progress':
-          return 'text-orange-600 bg-orange-100';
-        case 'responded':
-          return 'text-green-600 bg-green-100';
-        case 'closed':
-          return 'text-gray-600 bg-gray-100';
+        case "new":
+          return "text-blue-600 bg-blue-100";
+        case "in-progress":
+          return "text-orange-600 bg-orange-100";
+        case "responded":
+          return "text-green-600 bg-green-100";
+        case "closed":
+          return "text-gray-600 bg-gray-100";
         default:
-          return 'text-gray-600 bg-gray-100';
+          return "text-gray-600 bg-gray-100";
       }
     };
 
     return (
       <div className="flex items-center space-x-3 py-3">
-        <div className="flex-shrink-0">
-          {getIcon()}
-        </div>
+        <div className="flex-shrink-0">{getIcon()}</div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-gray-900">{message}</p>
           <p className="text-xs text-gray-500">{time}</p>
         </div>
         <div>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}>
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}
+          >
             {status}
           </span>
         </div>
@@ -295,7 +382,11 @@ export default function AdminDashboard() {
   }
 
   const totalRequests = quoteStats.total + contactStats.total;
-  const pendingRequests = quoteStats.new + quoteStats.inProgress + contactStats.new + contactStats.inProgress;
+  const pendingRequests =
+    quoteStats.new +
+    quoteStats.inProgress +
+    contactStats.new +
+    contactStats.inProgress;
 
   return (
     <div className="space-y-6">
@@ -309,9 +400,12 @@ export default function AdminDashboard() {
               </h1>
               <div className="flex items-center mt-2">
                 <span className="text-blue-100">
-                  {userRole === "super_admin" && "Süper Admin olarak giriş yaptınız - Tüm sistem yetkilerine sahipsiniz"}
-                  {userRole === "admin" && "Admin olarak giriş yaptınız - Kullanıcı ve sistem yönetimi yetkileriniz bulunmaktadır"}
-                  {userRole === "moderator" && "Moderatör olarak giriş yaptınız - İçerik yönetimi yetkileriniz bulunmaktadır"}
+                  {userRole === "super_admin" &&
+                    "Süper Admin olarak giriş yaptınız - Tüm sistem yetkilerine sahipsiniz"}
+                  {userRole === "admin" &&
+                    "Admin olarak giriş yaptınız - Kullanıcı ve sistem yönetimi yetkileriniz bulunmaktadır"}
+                  {userRole === "moderator" &&
+                    "Moderatör olarak giriş yaptınız - İçerik yönetimi yetkileriniz bulunmaktadır"}
                 </span>
               </div>
             </div>
@@ -361,7 +455,10 @@ export default function AdminDashboard() {
 
         {/* Blog Stats - Blog yönetimi yetkisi olanlar */}
         <PermissionGuard requiredPermission="blog.read">
-          <Link href="/admin/blog" className="block hover:shadow-lg transition-shadow">
+          <Link
+            href="/admin/blog"
+            className="block hover:shadow-lg transition-shadow"
+          >
             <StatCard
               title="Blog Yazıları"
               value={blogStats.totalPosts}
@@ -372,22 +469,29 @@ export default function AdminDashboard() {
           </Link>
         </PermissionGuard>
 
-        {/* Log Stats - Tüm admin kullanıcılarına görünür */}
-        <Link href="/admin/logs" className="block hover:shadow-lg transition-shadow">
-          <StatCard
-            title="Sistem Logları"
-            value={logStats.totalLogs}
-            icon={Activity}
-            color="text-orange-600"
-            description={`${logStats.errors} hata, ${logStats.warnings} uyarı`}
-          />
-        </Link>
+        {/* Log Stats - system.logs izni olanlar için */}
+        <PermissionGuard requiredPermission="system.logs">
+          <Link
+            href="/admin/logs"
+            className="block hover:shadow-lg transition-shadow"
+          >
+            <StatCard
+              title="Sistem Logları"
+              value={logStats.totalLogs}
+              icon={Activity}
+              color="text-orange-600"
+              description={`${logStats.errors} hata, ${logStats.warnings} uyarı`}
+            />
+          </Link>
+        </PermissionGuard>
       </div>
 
       {/* Blog Yönetimi İstatistikleri - Blog yetkisi olanlar */}
       <PermissionGuard requiredPermission="blog.read">
         <div className="mt-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Blog Yönetimi</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Blog Yönetimi
+          </h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Toplam Yazı"
@@ -424,7 +528,9 @@ export default function AdminDashboard() {
       {/* Firma İstatistikleri - Sadece company management yetkisi olanlar */}
       <PermissionGuard requiredPermission="companies.view">
         <div className="mt-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Firma Yönetimi</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Firma Yönetimi
+          </h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Toplam Firma"
@@ -455,13 +561,15 @@ export default function AdminDashboard() {
               description="Öncelikli takip"
             />
           </div>
-          
+
           {/* Aylık Gelir Kartı */}
           {companyStats.monthlyRevenue > 0 && (
             <div className="mt-4">
               <StatCard
                 title="Aylık Tahmini Gelir"
-                value={`₺${companyStats.monthlyRevenue.toLocaleString('tr-TR')}`}
+                value={`₺${companyStats.monthlyRevenue.toLocaleString(
+                  "tr-TR"
+                )}`}
                 icon={DollarSign}
                 color="text-emerald-600"
                 description="Aktif müşterilerden"
@@ -472,7 +580,7 @@ export default function AdminDashboard() {
       </PermissionGuard>
 
       {/* Sistem Durumu Kontrolü - Sadece Super Admin için */}
-      <RoleGuard allowedRoles={['super_admin']}>
+      <RoleGuard allowedRoles={["super_admin"]}>
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-gray-900 flex items-center">
@@ -484,17 +592,21 @@ export default function AdminDashboard() {
               disabled={isSyncing}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Kontrol Ediliyor...' : 'Tutarlılığı Kontrol Et'}
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`}
+              />
+              {isSyncing ? "Kontrol Ediliyor..." : "Tutarlılığı Kontrol Et"}
             </button>
           </div>
-          
+
           {lastSyncResult && (
-            <div className={`p-4 rounded-lg ${
-              lastSyncResult.success 
-                ? 'bg-green-50 border border-green-200' 
-                : 'bg-red-50 border border-red-200'
-            }`}>
+            <div
+              className={`p-4 rounded-lg ${
+                lastSyncResult.success
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
+              }`}
+            >
               <div className="flex">
                 <div className="flex-shrink-0">
                   {lastSyncResult.success ? (
@@ -504,16 +616,21 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="ml-3">
-                  <p className={`text-sm font-medium ${
-                    lastSyncResult.success ? 'text-green-800' : 'text-red-800'
-                  }`}>
+                  <p
+                    className={`text-sm font-medium ${
+                      lastSyncResult.success ? "text-green-800" : "text-red-800"
+                    }`}
+                  >
                     {lastSyncResult.message}
                   </p>
-                  {lastSyncResult.success && (lastSyncResult.fixedUsers > 0 || lastSyncResult.fixedRoles > 0) && (
-                    <p className="text-sm text-green-700 mt-1">
-                      Düzeltilen: {lastSyncResult.fixedUsers} kullanıcı, {lastSyncResult.fixedRoles} rol
-                    </p>
-                  )}
+                  {lastSyncResult.success &&
+                    (lastSyncResult.fixedUsers > 0 ||
+                      lastSyncResult.fixedRoles > 0) && (
+                      <p className="text-sm text-green-700 mt-1">
+                        Düzeltilen: {lastSyncResult.fixedUsers} kullanıcı,{" "}
+                        {lastSyncResult.fixedRoles} rol
+                      </p>
+                    )}
                 </div>
                 <div className="ml-auto pl-3">
                   <button
@@ -526,9 +643,10 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
-          
+
           <div className="text-sm text-gray-500 mt-4">
-            Bu kontrol, kullanıcı izinlerinin rolleriyle uyumlu olduğunu doğrular ve otomatik olarak düzeltir.
+            Bu kontrol, kullanıcı izinlerinin rolleriyle uyumlu olduğunu
+            doğrular ve otomatik olarak düzeltir.
           </div>
         </div>
       </RoleGuard>
@@ -538,22 +656,30 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-medium text-gray-900 mb-4">Sistem Özeti</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{totalRequests}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {totalRequests}
+            </div>
             <div className="text-sm text-gray-500">Toplam Talep</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{pendingRequests}</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {pendingRequests}
+            </div>
             <div className="text-sm text-gray-500">Bekleyen Toplam</div>
           </div>
-          
+
           {/* Company özet bilgileri - sadece yetki sahibi kullanıcılar için */}
           <PermissionGuard requiredPermission="companies.view">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">{companyStats.active}</div>
+              <div className="text-2xl font-bold text-indigo-600">
+                {companyStats.active}
+              </div>
               <div className="text-sm text-gray-500">Aktif Firma</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-600">{companyStats.inactive}</div>
+              <div className="text-2xl font-bold text-gray-600">
+                {companyStats.inactive}
+              </div>
               <div className="text-sm text-gray-500">Pasif Firma</div>
             </div>
           </PermissionGuard>

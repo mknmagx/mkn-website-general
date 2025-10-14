@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static files');
+        // Service Worker: Caching static files
         return cache.addAll(STATIC_CACHE_URLS);
       })
       .catch((error) => {
@@ -40,7 +40,7 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => {
-        console.log('Service Worker: Activated');
+        // Service Worker: Activated
         return self.clients.claim();
       })
   );
@@ -109,7 +109,8 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'contact-sync') {
     event.waitUntil(
       // Handle offline form submissions
-      console.log('Service Worker: Background sync for contact forms')
+      // Service Worker: Background sync for contact forms
+      Promise.resolve()
     );
   }
 });

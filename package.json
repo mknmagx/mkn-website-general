@@ -1,14 +1,13 @@
 {
-  "name": "my-v0-project",
+  "name": "mkngroup-website",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start",
-    "optimize-images": "node scripts/optimize-images.js",
-    "migrate-blog": "node scripts/migrate-blog-to-firestore.mjs"
+    "start": "next start"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -45,6 +44,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "^4.1.0",

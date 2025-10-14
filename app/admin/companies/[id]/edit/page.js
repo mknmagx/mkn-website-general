@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PermissionGuard } from "../../../../../components/admin-route-guard";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminAuth } from "../../../../../hooks/use-admin-auth";
 import {
@@ -214,7 +215,7 @@ export default function EditCompanyPage() {
     setSaving(true);
 
     try {
-      console.log("Updating company:", formData);
+      // Updating company data
 
       await updateCompany(params.id, formData);
       alert("Firma başarıyla güncellendi!");
@@ -237,7 +238,7 @@ export default function EditCompanyPage() {
     ) {
       setSaving(true);
       try {
-        console.log("Deleting company:", params.id);
+        // Deleting company
 
         const { deleteCompany } = await import(
           "../../../../../lib/services/companies-service"
@@ -258,18 +259,20 @@ export default function EditCompanyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <div className="text-lg text-gray-600">
-                Firma bilgileri yükleniyor...
+      <PermissionGuard requiredPermission="companies.write">
+        <div className="min-h-screen bg-gray-50">
+          <div className="container mx-auto px-4 py-8 max-w-4xl">
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="text-lg text-gray-600">
+                  Firma bilgileri yükleniyor...
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </PermissionGuard>
     );
   }
 
@@ -294,530 +297,551 @@ export default function EditCompanyPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="outline"
-              onClick={() => router.back()}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Geri
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Building2 className="h-8 w-8 text-blue-600" />
-                {formData.name} - Düzenle
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Firma bilgilerini güncelleyin
-              </p>
+    <PermissionGuard requiredPermission="companies.write">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-6">
+              <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Geri
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                  <Building2 className="h-8 w-8 text-blue-600" />
+                  {formData.name} - Düzenle
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  Firma bilgilerini güncelleyin
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={saving}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Sil
+              </Button>
             </div>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={saving}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Sil
-            </Button>
           </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Temel Bilgiler</CardTitle>
-              <CardDescription>
-                Firmanın temel bilgilerini güncelleyin
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Temel Bilgiler</CardTitle>
+                <CardDescription>
+                  Firmanın temel bilgilerini güncelleyin
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Firma Adı *
+                    </label>
+                    <Input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
+                      placeholder="Örn: TechCorp Solutions"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      İş Kolu *
+                    </label>
+                    <select
+                      required
+                      value={formData.businessLine}
+                      onChange={(e) =>
+                        handleInputChange("businessLine", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">İş kolu seçin</option>
+                      {businessLineOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durum
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) =>
+                        handleInputChange("status", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="lead">Potansiyel</option>
+                      <option value="prospect">Potansiyel (Yeni)</option>
+                      <option value="negotiation">Görüşme</option>
+                      <option value="active">Aktif</option>
+                      <option value="client">Müşteri</option>
+                      <option value="paused">Beklemede</option>
+                      <option value="inactive">Pasif</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Öncelik
+                    </label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) =>
+                        handleInputChange("priority", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="low">Düşük</option>
+                      <option value="medium">Orta</option>
+                      <option value="high">Yüksek</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Kuruluş Yılı
+                    </label>
+                    <Input
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      value={formData.foundedYear}
+                      onChange={(e) =>
+                        handleInputChange("foundedYear", e.target.value)
+                      }
+                      placeholder="2020"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Çalışan Sayısı
+                    </label>
+                    <select
+                      value={formData.employees}
+                      onChange={(e) =>
+                        handleInputChange("employees", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Çalışan sayısı seçin</option>
+                      {employeeOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Firma Adı *
+                    Firma Açıklaması
                   </label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Örn: TechCorp Solutions"
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
+                    placeholder="Firma hakkında kısa açıklama..."
+                    rows={3}
                   />
                 </div>
+              </CardContent>
+            </Card>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    İş Kolu *
-                  </label>
-                  <select
-                    required
-                    value={formData.businessLine}
-                    onChange={(e) =>
-                      handleInputChange("businessLine", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">İş kolu seçin</option>
-                    {businessLineOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+            {/* Contact Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>İletişim Bilgileri</CardTitle>
+                <CardDescription>
+                  Firmanın genel iletişim bilgileri
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Phone className="inline h-4 w-4 mr-1" />
+                      Telefon *
+                    </label>
+                    <Input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
+                      placeholder="+90 212 555 0123"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Mail className="inline h-4 w-4 mr-1" />
+                      E-posta *
+                    </label>
+                    <Input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
+                      placeholder="info@firma.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Globe className="inline h-4 w-4 mr-1" />
+                      Website
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) =>
+                        handleInputChange("website", e.target.value)
+                      }
+                      placeholder="https://www.firma.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <DollarSign className="inline h-4 w-4 mr-1" />
+                      Yıllık Ciro
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.revenue}
+                      onChange={(e) =>
+                        handleInputChange("revenue", e.target.value)
+                      }
+                      placeholder="2.5M TL"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Durum
+                    <MapPin className="inline h-4 w-4 mr-1" />
+                    Adres
                   </label>
-                  <select
-                    value={formData.status}
+                  <Textarea
+                    value={formData.address}
                     onChange={(e) =>
-                      handleInputChange("status", e.target.value)
+                      handleInputChange("address", e.target.value)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="lead">Potansiyel</option>
-                    <option value="prospect">Potansiyel (Yeni)</option>
-                    <option value="negotiation">Görüşme</option>
-                    <option value="active">Aktif</option>
-                    <option value="client">Müşteri</option>
-                    <option value="paused">Beklemede</option>
-                    <option value="inactive">Pasif</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Öncelik
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) =>
-                      handleInputChange("priority", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="low">Düşük</option>
-                    <option value="medium">Orta</option>
-                    <option value="high">Yüksek</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kuruluş Yılı
-                  </label>
-                  <Input
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    value={formData.foundedYear}
-                    onChange={(e) =>
-                      handleInputChange("foundedYear", e.target.value)
-                    }
-                    placeholder="2020"
+                    placeholder="Tam adres bilgisi..."
+                    rows={2}
                   />
                 </div>
+              </CardContent>
+            </Card>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Çalışan Sayısı
-                  </label>
-                  <select
-                    value={formData.employees}
-                    onChange={(e) =>
-                      handleInputChange("employees", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Çalışan sayısı seçin</option>
-                    {employeeOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+            {/* Contact Person */}
+            <Card>
+              <CardHeader>
+                <CardTitle>İletişim Kişisi</CardTitle>
+                <CardDescription>
+                  Ana iletişim kurulacak kişinin bilgileri
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Users className="inline h-4 w-4 mr-1" />
+                      İsim Soyisim *
+                    </label>
+                    <Input
+                      type="text"
+                      required
+                      value={formData.contactPerson}
+                      onChange={(e) =>
+                        handleInputChange("contactPerson", e.target.value)
+                      }
+                      placeholder="Ahmet Yılmaz"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pozisyon
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.contactPosition}
+                      onChange={(e) =>
+                        handleInputChange("contactPosition", e.target.value)
+                      }
+                      placeholder="Pazarlama Müdürü"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Phone className="inline h-4 w-4 mr-1" />
+                      Direkt Telefon
+                    </label>
+                    <Input
+                      type="tel"
+                      value={formData.contactPhone}
+                      onChange={(e) =>
+                        handleInputChange("contactPhone", e.target.value)
+                      }
+                      placeholder="+90 532 123 4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Mail className="inline h-4 w-4 mr-1" />
+                      Direkt E-posta
+                    </label>
+                    <Input
+                      type="email"
+                      value={formData.contactEmail}
+                      onChange={(e) =>
+                        handleInputChange("contactEmail", e.target.value)
+                      }
+                      placeholder="ahmet.yilmaz@firma.com"
+                    />
+                  </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Firma Açıklaması
-                </label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    handleInputChange("description", e.target.value)
-                  }
-                  placeholder="Firma hakkında kısa açıklama..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>İletişim Bilgileri</CardTitle>
-              <CardDescription>
-                Firmanın genel iletişim bilgileri
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Phone className="inline h-4 w-4 mr-1" />
-                    Telefon *
-                  </label>
-                  <Input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="+90 212 555 0123"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Mail className="inline h-4 w-4 mr-1" />
-                    E-posta *
-                  </label>
-                  <Input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="info@firma.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Globe className="inline h-4 w-4 mr-1" />
-                    Website
-                  </label>
-                  <Input
-                    type="url"
-                    value={formData.website}
-                    onChange={(e) =>
-                      handleInputChange("website", e.target.value)
-                    }
-                    placeholder="https://www.firma.com"
-                  />
-                </div>
-
+            {/* Business Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>İş Bilgileri</CardTitle>
+                <CardDescription>Bütçe ve hizmet bilgileri</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <DollarSign className="inline h-4 w-4 mr-1" />
-                    Yıllık Ciro
+                    Aylık Bütçe
                   </label>
                   <Input
                     type="text"
-                    value={formData.revenue}
+                    value={formData.monthlyBudget}
                     onChange={(e) =>
-                      handleInputChange("revenue", e.target.value)
+                      handleInputChange("monthlyBudget", e.target.value)
                     }
-                    placeholder="2.5M TL"
+                    placeholder="15.000 TL"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <MapPin className="inline h-4 w-4 mr-1" />
-                  Adres
-                </label>
-                <Textarea
-                  value={formData.address}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  placeholder="Tam adres bilgisi..."
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Person */}
-          <Card>
-            <CardHeader>
-              <CardTitle>İletişim Kişisi</CardTitle>
-              <CardDescription>
-                Ana iletişim kurulacak kişinin bilgileri
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Services */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Users className="inline h-4 w-4 mr-1" />
-                    İsim Soyisim *
+                    Hizmetler
                   </label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.contactPerson}
-                    onChange={(e) =>
-                      handleInputChange("contactPerson", e.target.value)
-                    }
-                    placeholder="Ahmet Yılmaz"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pozisyon
-                  </label>
-                  <Input
-                    type="text"
-                    value={formData.contactPosition}
-                    onChange={(e) =>
-                      handleInputChange("contactPosition", e.target.value)
-                    }
-                    placeholder="Pazarlama Müdürü"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Phone className="inline h-4 w-4 mr-1" />
-                    Direkt Telefon
-                  </label>
-                  <Input
-                    type="tel"
-                    value={formData.contactPhone}
-                    onChange={(e) =>
-                      handleInputChange("contactPhone", e.target.value)
-                    }
-                    placeholder="+90 532 123 4567"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Mail className="inline h-4 w-4 mr-1" />
-                    Direkt E-posta
-                  </label>
-                  <Input
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) =>
-                      handleInputChange("contactEmail", e.target.value)
-                    }
-                    placeholder="ahmet.yilmaz@firma.com"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Business Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>İş Bilgileri</CardTitle>
-              <CardDescription>Bütçe ve hizmet bilgileri</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="inline h-4 w-4 mr-1" />
-                  Aylık Bütçe
-                </label>
-                <Input
-                  type="text"
-                  value={formData.monthlyBudget}
-                  onChange={(e) =>
-                    handleInputChange("monthlyBudget", e.target.value)
-                  }
-                  placeholder="15.000 TL"
-                />
-              </div>
-
-              {/* Services */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hizmetler
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    type="text"
-                    value={newService}
-                    onChange={(e) => setNewService(e.target.value)}
-                    placeholder="Hizmet adı girin..."
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && (e.preventDefault(), addService())
-                    }
-                  />
-                  <Button type="button" onClick={addService} size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(formData.services || []).map((service, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {service}
-                      <button
-                        type="button"
-                        onClick={() => removeService(service)}
-                        className="ml-1 hover:text-red-600"
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      type="text"
+                      value={newService}
+                      onChange={(e) => setNewService(e.target.value)}
+                      placeholder="Hizmet adı girin..."
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && (e.preventDefault(), addService())
+                      }
+                    />
+                    <Button type="button" onClick={addService} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.services || []).map((service, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+                        {service}
+                        <button
+                          type="button"
+                          onClick={() => removeService(service)}
+                          className="ml-1 hover:text-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Etiketler
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    placeholder="Etiket adı girin..."
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && (e.preventDefault(), addTag())
-                    }
-                  />
-                  <Button type="button" onClick={addTag} size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(formData.tags || []).map((tag, index) => (
-                    <Badge
-                      key={index}
-                      className="bg-blue-100 text-blue-800 flex items-center gap-1"
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-red-600"
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Etiketler
+                  </label>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder="Etiket adı girin..."
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && (e.preventDefault(), addTag())
+                      }
+                    />
+                    <Button type="button" onClick={addTag} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(formData.tags || []).map((tag, index) => (
+                      <Badge
+                        key={index}
+                        className="bg-blue-100 text-blue-800 flex items-center gap-1"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="ml-1 hover:text-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Social Media */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sosyal Medya</CardTitle>
+                <CardDescription>
+                  Firmanın sosyal medya hesapları
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      LinkedIn
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.socialMedia.linkedin}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "socialMedia.linkedin",
+                          e.target.value
+                        )
+                      }
+                      placeholder="https://linkedin.com/company/firma"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Instagram
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.socialMedia.instagram}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "socialMedia.instagram",
+                          e.target.value
+                        )
+                      }
+                      placeholder="https://instagram.com/firma"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Facebook
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.socialMedia.facebook}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "socialMedia.facebook",
+                          e.target.value
+                        )
+                      }
+                      placeholder="https://facebook.com/firma"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Twitter
+                    </label>
+                    <Input
+                      type="url"
+                      value={formData.socialMedia.twitter}
+                      onChange={(e) =>
+                        handleInputChange("socialMedia.twitter", e.target.value)
+                      }
+                      placeholder="https://twitter.com/firma"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit Buttons */}
+            <div className="flex items-center justify-between pt-6">
+              <div className="flex items-center gap-4">
+                <Link href={`/admin/companies/${params.id}`}>
+                  <Button type="button" variant="outline">
+                    İptal
+                  </Button>
+                </Link>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Social Media */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Sosyal Medya</CardTitle>
-              <CardDescription>Firmanın sosyal medya hesapları</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    LinkedIn
-                  </label>
-                  <Input
-                    type="url"
-                    value={formData.socialMedia.linkedin}
-                    onChange={(e) =>
-                      handleInputChange("socialMedia.linkedin", e.target.value)
-                    }
-                    placeholder="https://linkedin.com/company/firma"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instagram
-                  </label>
-                  <Input
-                    type="url"
-                    value={formData.socialMedia.instagram}
-                    onChange={(e) =>
-                      handleInputChange("socialMedia.instagram", e.target.value)
-                    }
-                    placeholder="https://instagram.com/firma"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Facebook
-                  </label>
-                  <Input
-                    type="url"
-                    value={formData.socialMedia.facebook}
-                    onChange={(e) =>
-                      handleInputChange("socialMedia.facebook", e.target.value)
-                    }
-                    placeholder="https://facebook.com/firma"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Twitter
-                  </label>
-                  <Input
-                    type="url"
-                    value={formData.socialMedia.twitter}
-                    onChange={(e) =>
-                      handleInputChange("socialMedia.twitter", e.target.value)
-                    }
-                    placeholder="https://twitter.com/firma"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Submit Buttons */}
-          <div className="flex items-center justify-between pt-6">
-            <div className="flex items-center gap-4">
-              <Link href={`/admin/companies/${params.id}`}>
-                <Button type="button" variant="outline">
-                  İptal
-                </Button>
-              </Link>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Değişiklikleri Kaydet
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Kaydediliyor...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Değişiklikleri Kaydet
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </PermissionGuard>
   );
 }

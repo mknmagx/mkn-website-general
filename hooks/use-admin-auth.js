@@ -12,6 +12,7 @@ export const AdminAuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [permissions, setPermissions] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [allowedRoutes, setAllowedRoutes] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -32,11 +33,13 @@ export const AdminAuthProvider = ({ children }) => {
         setIsAdmin(authData.isAdmin);
         setPermissions(authData.permissions);
         setUserRole(authData.user?.role);
+        setAllowedRoutes(authData.allowedRoutes || []);
       } else {
         setUser(null);
         setIsAdmin(false);
         setPermissions(null);
         setUserRole(null);
+        setAllowedRoutes([]);
       }
 
       setLoading(false);
@@ -56,47 +59,32 @@ export const AdminAuthProvider = ({ children }) => {
       setIsAdmin(false);
       setPermissions(null);
       setUserRole(null);
+      setAllowedRoutes([]);
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
 
   const hasPermission = (permissionKey) => {
-    // Super admin her şeye erişebilir
-    if (user?.role === "super_admin" || user?.role === "admin") {
+    if (user?.role === "super_admin") {
       return true;
     }
 
-    // Array-based permission sistem için kontrol
     if (Array.isArray(permissions)) {
       return permissions.includes(permissionKey);
     }
 
-    // Object-based (eski sistem) için fallback
     return permissions && permissions[permissionKey] === true;
   };
 
   const canAccessRoute = (routePath) => {
-    if (!userRole) return false;
+    if (!userRole || !allowedRoutes) return false;
 
-    const roleRoutes = {
-      super_admin: ["*"], // Tüm sayfalara erişim
-      admin: [
-        "/admin/dashboard",
-        "/admin/users",
-        "/admin/companies",
-        "/admin/contacts",
-        "/admin/quotes",
-        "/admin/permissions",
-      ],
-      moderator: ["/admin/dashboard", "/admin/contacts", "/admin/quotes"],
-    };
+    // Super admin her yere erişebilir
+    if (allowedRoutes.includes("*")) return true;
 
-    const allowedRoutes = roleRoutes[userRole] || [];
-    return (
-      allowedRoutes.includes("*") ||
-      allowedRoutes.some((route) => routePath.startsWith(route))
-    );
+    // Database'den gelen allowed routes'u kontrol et
+    return allowedRoutes.some((route) => routePath.startsWith(route));
   };
 
   const value = {
@@ -105,6 +93,7 @@ export const AdminAuthProvider = ({ children }) => {
     loading,
     permissions,
     userRole,
+    allowedRoutes,
     signOut,
     hasPermission,
     canAccessRoute,

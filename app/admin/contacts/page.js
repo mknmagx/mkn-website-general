@@ -320,317 +320,323 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            İletişim Mesajları
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Müşteri iletişim mesajlarını yönetin
-          </p>
+    <PermissionGuard requiredPermission="contacts.view">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              İletişim Mesajları
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Müşteri iletişim mesajlarını yönetin
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* İstatistik Kartları */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* İstatistik Kartları */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <MessageCircle className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Toplam Mesaj
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.total}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Bu Ay</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.thisMonth}
+                </p>
+                <p className="text-xs text-green-600">
+                  +{stats.growthRate}% büyüme
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Clock className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Ort. Yanıt Süresi
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.averageResponseTime}s
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Bekleyen</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.statusCounts[CONTACT_STATUS.NEW]}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filtreler ve Arama */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <MessageCircle className="h-6 w-6 text-blue-600" />
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Arama */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Mesajlarda ara..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Toplam Mesaj</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
+
+            {/* Durum Filtresi */}
+            <select
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Tüm Durumlar</option>
+              <option value={CONTACT_STATUS.NEW}>Yeni</option>
+              <option value={CONTACT_STATUS.IN_PROGRESS}>İşlemde</option>
+              <option value={CONTACT_STATUS.RESPONDED}>Yanıtlandı</option>
+              <option value={CONTACT_STATUS.CLOSED}>Kapatıldı</option>
+            </select>
+
+            {/* Öncelik Filtresi */}
+            <select
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
+              <option value="all">Tüm Öncelikler</option>
+              <option value={CONTACT_PRIORITY.URGENT}>Acil</option>
+              <option value={CONTACT_PRIORITY.HIGH}>Yüksek</option>
+              <option value={CONTACT_PRIORITY.NORMAL}>Normal</option>
+              <option value={CONTACT_PRIORITY.LOW}>Düşük</option>
+            </select>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Bu Ay</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats.thisMonth}
-              </p>
-              <p className="text-xs text-green-600">
-                +{stats.growthRate}% büyüme
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                Ort. Yanıt Süresi
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats.averageResponseTime}s
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-3 bg-red-100 rounded-lg">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Bekleyen</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats.statusCounts[CONTACT_STATUS.NEW]}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtreler ve Arama */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Arama */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Mesajlarda ara..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Durum Filtresi */}
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">Tüm Durumlar</option>
-            <option value={CONTACT_STATUS.NEW}>Yeni</option>
-            <option value={CONTACT_STATUS.IN_PROGRESS}>İşlemde</option>
-            <option value={CONTACT_STATUS.RESPONDED}>Yanıtlandı</option>
-            <option value={CONTACT_STATUS.CLOSED}>Kapatıldı</option>
-          </select>
-
-          {/* Öncelik Filtresi */}
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-          >
-            <option value="all">Tüm Öncelikler</option>
-            <option value={CONTACT_PRIORITY.URGENT}>Acil</option>
-            <option value={CONTACT_PRIORITY.HIGH}>Yüksek</option>
-            <option value={CONTACT_PRIORITY.NORMAL}>Normal</option>
-            <option value={CONTACT_PRIORITY.LOW}>Düşük</option>
-          </select>
-        </div>
-      </div>
-
-      {/* İletişim Mesajları Tablosu */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  İletişim Bilgileri
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mesaj
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Durum
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Öncelik
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tarih
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  İşlemler
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+        {/* İletişim Mesajları Tablosu */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    </div>
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    İletişim Bilgileri
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mesaj
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Durum
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Öncelik
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tarih
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    İşlemler
+                  </th>
                 </tr>
-              ) : contacts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    Henüz mesaj bulunmuyor
-                  </td>
-                </tr>
-              ) : (
-                contacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="h-5 w-5 text-gray-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {contact.name}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <Mail className="h-3 w-3 mr-1" />
-                            {contact.email}
-                          </div>
-                          {contact.phone && (
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {contact.phone}
-                            </div>
-                          )}
-                          {contact.company && (
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Building2 className="h-3 w-3 mr-1" />
-                              {contact.company}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        <div className="font-medium mb-1">
-                          {contact.service && (
-                            <span className="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mr-2">
-                              {contact.service}
-                            </span>
-                          )}
-                          {contact.product && (
-                            <span className="inline-flex px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                              {contact.product}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-600 text-sm line-clamp-2">
-                          {contact.message || "Mesaj bulunamadı"}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getStatusIcon(contact.status)}
-                        <span className="ml-2 text-sm text-gray-900">
-                          {getStatusText(contact.status)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(
-                          contact.priority
-                        )}`}
-                      >
-                        {getPriorityText(contact.priority)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {contact.createdAt
-                          ? (() => {
-                              try {
-                                const date = contact.createdAt.toDate
-                                  ? contact.createdAt.toDate()
-                                  : new Date(contact.createdAt);
-                                return date.toLocaleDateString("tr-TR");
-                              } catch (error) {
-                                console.error("Date format error:", error);
-                                return "Geçersiz tarih";
-                              }
-                            })()
-                          : "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleViewContact(contact)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Görüntüle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        {canUpdate && (
-                          <select
-                            value={contact.status}
-                            onChange={(e) =>
-                              handleStatusChange(contact.id, e.target.value)
-                            }
-                            className="text-xs border border-gray-300 rounded px-2 py-1"
-                            title="Durumu Değiştir"
-                          >
-                            <option value={CONTACT_STATUS.NEW}>Yeni</option>
-                            <option value={CONTACT_STATUS.IN_PROGRESS}>
-                              İşlemde
-                            </option>
-                            <option value={CONTACT_STATUS.RESPONDED}>
-                              Yanıtlandı
-                            </option>
-                            <option value={CONTACT_STATUS.CLOSED}>
-                              Kapatıldı
-                            </option>
-                          </select>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => handleDeleteContact(contact.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Sil"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : contacts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      Henüz mesaj bulunmuyor
+                    </td>
+                  </tr>
+                ) : (
+                  contacts.map((contact) => (
+                    <tr key={contact.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <User className="h-5 w-5 text-gray-600" />
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {contact.name}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center">
+                              <Mail className="h-3 w-3 mr-1" />
+                              {contact.email}
+                            </div>
+                            {contact.phone && (
+                              <div className="text-sm text-gray-500 flex items-center">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {contact.phone}
+                              </div>
+                            )}
+                            {contact.company && (
+                              <div className="text-sm text-gray-500 flex items-center">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {contact.company}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          <div className="font-medium mb-1">
+                            {contact.service && (
+                              <span className="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mr-2">
+                                {contact.service}
+                              </span>
+                            )}
+                            {contact.product && (
+                              <span className="inline-flex px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                {contact.product}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-600 text-sm line-clamp-2">
+                            {contact.message || "Mesaj bulunamadı"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getStatusIcon(contact.status)}
+                          <span className="ml-2 text-sm text-gray-900">
+                            {getStatusText(contact.status)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(
+                            contact.priority
+                          )}`}
+                        >
+                          {getPriorityText(contact.priority)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {contact.createdAt
+                            ? (() => {
+                                try {
+                                  const date = contact.createdAt.toDate
+                                    ? contact.createdAt.toDate()
+                                    : new Date(contact.createdAt);
+                                  return date.toLocaleDateString("tr-TR");
+                                } catch (error) {
+                                  console.error("Date format error:", error);
+                                  return "Geçersiz tarih";
+                                }
+                              })()
+                            : "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewContact(contact)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Görüntüle"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          {canUpdate && (
+                            <select
+                              value={contact.status}
+                              onChange={(e) =>
+                                handleStatusChange(contact.id, e.target.value)
+                              }
+                              className="text-xs border border-gray-300 rounded px-2 py-1"
+                              title="Durumu Değiştir"
+                            >
+                              <option value={CONTACT_STATUS.NEW}>Yeni</option>
+                              <option value={CONTACT_STATUS.IN_PROGRESS}>
+                                İşlemde
+                              </option>
+                              <option value={CONTACT_STATUS.RESPONDED}>
+                                Yanıtlandı
+                              </option>
+                              <option value={CONTACT_STATUS.CLOSED}>
+                                Kapatıldı
+                              </option>
+                            </select>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteContact(contact.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Sil"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Görüntüle Modal */}
-      {showViewModal && viewingContact && (
-        <ViewContactModal
-          contact={viewingContact}
-          onClose={() => {
-            setShowViewModal(false);
-            setViewingContact(null);
-          }}
-        />
-      )}
-    </div>
+        {/* Görüntüle Modal */}
+        {showViewModal && viewingContact && (
+          <ViewContactModal
+            contact={viewingContact}
+            onClose={() => {
+              setShowViewModal(false);
+              setViewingContact(null);
+            }}
+          />
+        )}
+      </div>
+    </PermissionGuard>
   );
 }
 

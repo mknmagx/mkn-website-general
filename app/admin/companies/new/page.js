@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PermissionGuard } from "../../../../components/admin-route-guard";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import { createCompany } from "../../../../lib/services/companies-service";
@@ -101,10 +102,10 @@ export default function NewCompanyPage() {
 
     try {
       // Firestore'a kaydet
-      console.log("Saving company:", formData);
+      // Saving company data
       
       const companyId = await createCompany(formData);
-      console.log("Company created with ID:", companyId);
+      // Company created successfully
 
       // Başarılı mesajı (toast ekleyebilirsiniz)
       alert("Firma başarıyla eklendi!");
@@ -130,7 +131,8 @@ export default function NewCompanyPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <PermissionGuard requiredPermission="companies.write">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-6">
@@ -791,5 +793,6 @@ export default function NewCompanyPage() {
           </div>
         </form>
       </div>
+    </PermissionGuard>
   );
 }

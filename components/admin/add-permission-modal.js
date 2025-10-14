@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useToast } from "../../hooks/use-toast";
 import {
   Plus,
@@ -16,24 +16,66 @@ import {
   AlertCircle,
   Save,
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 
 export default function AddPermissionModal({
   isOpen,
   onClose,
   onPermissionAdded,
   existingPermissions = {},
+  availableCategories = [],
+  categoriesWithMetadata = [],
+  selectedRole = null,
 }) {
   const { toast } = useToast();
+
+  const resetForm = () => {
+    setFormData({
+      key: "",
+      name: "",
+      description: "",
+      category: "general",
+      customCategory: "",
+      customCategoryLabel: "",
+      customIcon: "",
+      customColor: "",
+      isNewCategory: false,
+      addToCurrentRole: false,
+    });
+    setErrors({});
+    setIsSubmitting(false);
+  };
+
   const [formData, setFormData] = useState({
     key: "",
     name: "",
     description: "",
-    category: "users",
+    category: "general",
+    customCategory: "",
+    customCategoryLabel: "",
+    customIcon: "",
+    customColor: "",
+    isNewCategory: false,
+    addToCurrentRole: false,
   });
+
+  // Dinamik icon resolver fonksiyonu
+  const getDynamicIcon = (iconName) => {
+    if (!iconName) return LucideIcons.Key;
+
+    const IconComponent = LucideIcons[iconName];
+
+    if (IconComponent) {
+      return IconComponent;
+    } else {
+      console.warn(`Icon bulunamadı: ${iconName}, Key icon kullanılıyor`);
+      return LucideIcons.Key;
+    }
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const categories = [
+  const defaultCategories = [
     {
       value: "users",
       label: "Kullanıcı Yönetimi",
@@ -84,6 +126,39 @@ export default function AddPermissionModal({
     },
   ];
 
+  // Dinamik kategoriler varsa onları kullan, yoksa minimum default'lar
+  const allCategories =
+    categoriesWithMetadata.length > 0
+      ? categoriesWithMetadata.map((cat) => ({
+          value: cat.value,
+          label: cat.label,
+          icon: getDynamicIcon(cat.icon),
+          color: cat.color,
+        }))
+      : [
+          {
+            value: "general",
+            label: "Genel",
+            icon: Key,
+            color: "text-gray-600 bg-gray-50",
+          },
+        ];
+
+  // Icon string'i component'e çevir
+  function getIconComponent(iconName) {
+    const iconMap = {
+      Users: Users,
+      MessageSquare: MessageSquare,
+      FileText: FileText,
+      Building2: Building2,
+      Edit: Edit,
+      BarChart3: BarChart3,
+      Settings: Settings,
+      Key: Key,
+    };
+    return iconMap[iconName] || Key;
+  }
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -109,29 +184,101 @@ export default function AddPermissionModal({
       newErrors.description = "Açıklama en az 10 karakter olmalıdır";
     }
 
+    // Yeni kategori kontrolü
+    if (formData.isNewCategory) {
+      // Kategori key kontrolü
+      if (!formData.customCategory.trim()) {
+        newErrors.customCategory = "Kategori key gereklidir";
+      } else if (formData.customCategory.trim().length < 2) {
+        newErrors.customCategory = "Kategori key en az 2 karakter olmalıdır";
+      } else if (
+        !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(formData.customCategory.trim())
+      ) {
+        newErrors.customCategory =
+          "Kategori key sadece harf, rakam ve _ içerebilir";
+      }
+
+      // Kategori label kontrolü
+      if (!formData.customCategoryLabel.trim()) {
+        newErrors.customCategoryLabel = "Kategori adı gereklidir";
+      } else if (formData.customCategoryLabel.trim().length < 2) {
+        newErrors.customCategoryLabel =
+          "Kategori adı en az 2 karakter olmalıdır";
+      }
+
+      // Icon kontrolü
+      if (!formData.customIcon.trim()) {
+        newErrors.customIcon = "Icon adı gereklidir";
+      } else {
+        // Icon'un Lucide'da var olup olmadığını kontrol et
+        const IconComponent = LucideIcons[formData.customIcon.trim()];
+        if (!IconComponent) {
+          newErrors.customIcon = "Geçersiz Lucide icon adı";
+        }
+      }
+
+      // Renk kontrolü
+      if (!formData.customColor.trim()) {
+        newErrors.customColor = "Renk seçimi gereklidir";
+      }
+    } else if (!formData.category) {
+      newErrors.category = "Kategori seçimi gereklidir";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Kategori label değiştiğinde key'i otomatik oluştur
+    if (field === "customCategoryLabel" && formData.isNewCategory) {
+      const autoKey = value
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9\s]/g, "") // Özel karakterleri temizle
+        .replace(/\s+/g, "_") // Boşlukları _ ile değiştir
+        .replace(/^_+|_+$/g, ""); // Başta ve sondaki _'leri temizle
+
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+        customCategory: autoKey,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
 
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
 
-    if (field === "category" || field === "name") {
-      const category = field === "category" ? value : formData.category;
-      const name = field === "name" ? value : formData.name;
+    // Kategori değiştiğinde key'i güncelle
+    if (
+      field === "category" ||
+      field === "customCategory" ||
+      field === "name" ||
+      field === "isNewCategory"
+    ) {
+      const currentCategory =
+        field === "isNewCategory" && value
+          ? formData.customCategory
+          : field === "category"
+          ? value
+          : field === "customCategory" && formData.isNewCategory
+          ? value
+          : formData.isNewCategory
+          ? formData.customCategory
+          : formData.category;
 
-      if (category && name) {
-        const actionKey = name
+      const currentName = field === "name" ? value : formData.name;
+
+      if (currentCategory && currentName) {
+        const actionKey = currentName
           .toLowerCase()
           .replace(/[^a-zA-Z0-9]/g, "_")
           .replace(/_+/g, "_")
           .replace(/^_|_$/g, "");
 
-        const generatedKey = `${category}.${actionKey}`;
+        const generatedKey = `${currentCategory}.${actionKey}`;
         setFormData((prev) => ({ ...prev, key: generatedKey }));
       }
     }
@@ -152,29 +299,37 @@ export default function AddPermissionModal({
     setIsSubmitting(true);
 
     try {
+      const finalCategory = formData.isNewCategory
+        ? formData.customCategory.trim()
+        : formData.category;
+
       const newPermission = {
         key: formData.key.trim(),
         name: formData.name.trim(),
         description: formData.description.trim(),
-        category: formData.category,
+        category: finalCategory,
         createdAt: new Date(),
         isCustom: true, // Custom permission olarak işaretle
+        isNewCategory: formData.isNewCategory, // Yeni kategori bilgisi
+        // Yeni kategori ise metadata'ları ekle
+        ...(formData.isNewCategory && {
+          categoryLabel: formData.customCategoryLabel.trim(),
+          icon: formData.customIcon.trim(),
+          color: formData.customColor.trim(),
+        }),
+        addToCurrentRole: formData.addToCurrentRole,
       };
 
       await onPermissionAdded(newPermission);
 
       toast({
         title: "Başarılı",
-        description: "Yeni permission başarıyla eklendi",
+        description: `Yeni permission ${
+          formData.isNewCategory ? "ve kategori" : ""
+        } başarıyla eklendi`,
       });
 
-      setFormData({
-        key: "",
-        name: "",
-        description: "",
-        category: "users",
-      });
-      setErrors({});
+      resetForm();
       onClose();
     } catch (error) {
       toast({
@@ -188,13 +343,7 @@ export default function AddPermissionModal({
   };
 
   const handleClose = () => {
-    setFormData({
-      key: "",
-      name: "",
-      description: "",
-      category: "users",
-    });
-    setErrors({});
+    resetForm();
     onClose();
   };
 
@@ -233,40 +382,243 @@ export default function AddPermissionModal({
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Kategori
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {categories.map((category) => {
-                const IconComponent = category.icon;
-                const isSelected = formData.category === category.value;
 
-                return (
-                  <button
-                    key={category.value}
-                    type="button"
-                    onClick={() =>
-                      handleInputChange("category", category.value)
-                    }
-                    className={`p-3 rounded-lg border transition-all ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-200 hover:border-gray-300 text-gray-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`p-1 rounded ${
-                          isSelected ? category.color : "bg-gray-100"
-                        }`}
-                      >
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-medium">
-                        {category.label}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Kategori Türü Seçimi */}
+            <div className="mb-4 flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="categoryType"
+                  checked={!formData.isNewCategory}
+                  onChange={() => handleInputChange("isNewCategory", false)}
+                  className="mr-2"
+                />
+                <span className="text-sm font-medium">Mevcut Kategori</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="categoryType"
+                  checked={formData.isNewCategory}
+                  onChange={() => handleInputChange("isNewCategory", true)}
+                  className="mr-2"
+                />
+                <span className="text-sm font-medium">
+                  Yeni Kategori Oluştur
+                </span>
+              </label>
             </div>
+
+            {formData.isNewCategory ? (
+              /* Yeni Kategori Input */
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kategori Key *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customCategory}
+                      onChange={(e) =>
+                        handleInputChange("customCategory", e.target.value)
+                      }
+                      placeholder="inventory, marketing, logistics"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                        errors.customCategory
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    {errors.customCategory && (
+                      <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.customCategory}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Teknik isim: küçük harf, rakam ve _
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kategori Adı *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customCategoryLabel}
+                      onChange={(e) =>
+                        handleInputChange("customCategoryLabel", e.target.value)
+                      }
+                      placeholder="Envanter Yönetimi, Pazarlama, Lojistik"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                        errors.customCategoryLabel
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    {errors.customCategoryLabel && (
+                      <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.customCategoryLabel}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Görünen isim: kullanıcı dostu
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Icon (Lucide)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customIcon}
+                      onChange={(e) =>
+                        handleInputChange("customIcon", e.target.value)
+                      }
+                      placeholder="Icon adı (örn: Package, Truck, Store)"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                        errors.customIcon ? "border-red-500" : "border-gray-300"
+                      }`}
+                    />
+                    {errors.customIcon && (
+                      <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.customIcon}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      <a
+                        href="https://lucide.dev/icons/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        Lucide icon listesi
+                      </a>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Renk Sınıfı
+                    </label>
+                    <select
+                      value={formData.customColor}
+                      onChange={(e) =>
+                        handleInputChange("customColor", e.target.value)
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                        errors.customColor
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      <option value="">Renk seç...</option>
+                      <option value="text-blue-600 bg-blue-50">Mavi</option>
+                      <option value="text-green-600 bg-green-50">Yeşil</option>
+                      <option value="text-purple-600 bg-purple-50">Mor</option>
+                      <option value="text-orange-600 bg-orange-50">
+                        Turuncu
+                      </option>
+                      <option value="text-teal-600 bg-teal-50">Teal</option>
+                      <option value="text-pink-600 bg-pink-50">Pembe</option>
+                      <option value="text-red-600 bg-red-50">Kırmızı</option>
+                      <option value="text-indigo-600 bg-indigo-50">
+                        İndigo
+                      </option>
+                      <option value="text-yellow-600 bg-yellow-50">Sarı</option>
+                      <option value="text-gray-600 bg-gray-50">Gri</option>
+                    </select>
+                    {errors.customColor && (
+                      <div className="flex items-center gap-2 mt-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.customColor}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Icon Preview */}
+                {(formData.customIcon || formData.customCategoryLabel) && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Önizleme:</span>
+                    {formData.customIcon &&
+                      React.createElement(getDynamicIcon(formData.customIcon), {
+                        className: `h-5 w-5 ${
+                          formData.customColor || "text-gray-600"
+                        }`,
+                      })}
+                    <span
+                      className={`px-2 py-1 rounded text-sm ${
+                        formData.customColor || "text-gray-600 bg-gray-50"
+                      }`}
+                    >
+                      {formData.customCategoryLabel ||
+                        formData.customCategory ||
+                        "Kategori"}
+                    </span>
+                    {formData.customCategory && (
+                      <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+                        key: {formData.customCategory}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Mevcut Kategoriler */
+              <div className="grid grid-cols-2 gap-3">
+                {allCategories.map((category) => {
+                  const isSelected =
+                    formData.category === category.value &&
+                    !formData.isNewCategory;
+
+                  return (
+                    <button
+                      key={category.value}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange("category", category.value);
+                        handleInputChange("isNewCategory", false);
+                      }}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`p-1 rounded ${
+                            isSelected ? category.color : "bg-gray-100"
+                          }`}
+                        >
+                          {React.createElement(category.icon, {
+                            className: "h-4 w-4",
+                          })}
+                        </div>
+                        <span className="text-sm font-medium">
+                          {category.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {errors.category && (
+              <div className="flex items-center gap-2 mt-2 text-red-600 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                {errors.category}
+              </div>
+            )}
           </div>
 
           {/* Permission Name */}
@@ -340,6 +692,31 @@ export default function AddPermissionModal({
               {formData.description.length}/200 karakter
             </p>
           </div>
+
+          {/* Add to Current Role Option */}
+          {selectedRole && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={formData.addToCurrentRole}
+                  onChange={(e) =>
+                    handleInputChange("addToCurrentRole", e.target.checked)
+                  }
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <div>
+                  <span className="font-medium text-blue-900">
+                    Bu permission'ı "{selectedRole.name}" rolüne ekle
+                  </span>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Permission oluşturulduktan sonra otomatik olarak seçili role
+                    eklenir ve bu role sahip kullanıcılar senkronize edilir.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
 
           {/* Preview */}
           {formData.name && formData.key && formData.description && (

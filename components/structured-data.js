@@ -399,7 +399,7 @@ export function ProductSchema({ product }) {
     name: product.name,
     description:
       product.description ||
-      `${product.name} - Premium kaliteli kozmetik ambalaj ürünü. ${product.category} kategorisinde ${product.material} malzemeden üretilmiştir.`,
+      `${product.name} - Premium kaliteli kozmetik ambalaj ürünü. ${product.category} kategorisinde ${product.specifications?.material || ''} malzemeden üretilmiştir.`,
     image: images,
     brand: {
       "@type": "Brand",
@@ -426,8 +426,8 @@ export function ProductSchema({ product }) {
     sku: product.sku || product.code,
     gtin: product.gtin || product.code,
     mpn: product.code,
-    material: product.material,
-    size: product.size,
+    material: product.specifications?.material,
+    size: product.specifications?.size,
     color: product.colors ? product.colors.join(", ") : product.color,
     weight: product.weight,
     dimensions: product.dimensions,
@@ -437,42 +437,42 @@ export function ProductSchema({ product }) {
         "Cosmetics Industry, Beauty Brands, Private Label Manufacturers",
     },
     additionalProperty: [
-      ...(product.debit
+      ...(product.specifications?.debit
         ? [
             {
               "@type": "PropertyValue",
               name: "Debit/Flow Rate",
-              value: product.debit,
+              value: product.specifications.debit,
               description: "Ürün akış hızı",
             },
           ]
         : []),
-      ...(product.lockType
+      ...(product.specifications?.lockType
         ? [
             {
               "@type": "PropertyValue",
               name: "Lock Type",
-              value: product.lockType,
+              value: product.specifications.lockType,
               description: "Kapak kilit sistemi",
             },
           ]
         : []),
-      ...(product.material
+      ...(product.specifications?.material
         ? [
             {
               "@type": "PropertyValue",
               name: "Material",
-              value: product.material,
+              value: product.specifications.material,
               description: "Üretim materyali",
             },
           ]
         : []),
-      ...(product.size
+      ...(product.specifications?.size
         ? [
             {
               "@type": "PropertyValue",
               name: "Size/Threading",
-              value: product.size,
+              value: product.specifications.size,
               description: "Ürün boyutu/dış çap",
             },
           ]
@@ -818,6 +818,38 @@ export function AmbalajFAQSchema() {
         acceptedAnswer: {
           "@type": "Answer",
           text: "Evet, tüm ambalaj ürünlerimiz ISO 22716 kozmetik GMP standartlarına uygun üretilmektedir. Ayrıca FDA onaylı malzemeler kullanıyor ve CE işaretli ürünler sunuyoruz. Kalite kontrollerimiz düzenli olarak yapılmaktadır.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Fason ambalaj üretimi hizmeti nedir?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Fason ambalaj üretimi, müşterilerimizin kendi marka isimleriyle ambalaj ürünlerini üretmemiz anlamına gelir. Private label hizmetimizle, markanıza özel tasarım ve özelleştirme seçenekleri sunarak rekabet avantajı sağlıyoruz.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Airless ambalajların avantajları nelerdir?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Airless ambalajlar, ürünün hava ile temasını engelleyerek oksidasyonu önler, son damlasına kadar kullanımı sağlar ve raf ömrünü uzatır. Özellikle anti-aging kremler, serumlar ve hassas formüller için idealdir.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Sürdürülebilir ambalaj seçenekleriniz var mı?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Evet, PCR (Post Consumer Recycled) malzemeler, refillable ambalajlar, cam seçenekleri ve geri dönüştürülebilir plastikler sunuyoruz. Çevre dostu ambalaj çözümlerimizle sürdürülebilirlik hedeflerinizi destekliyoruz.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Parfüm şişesi seçenekleriniz nelerdir?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "5ml'den 100ml'ye kadar farklı boyutlarda cam ve kristal parfüm şişeleri üretiyoruz. Sprey, roll-on ve splash kapak seçenekleri ile beraber özel tasarım ve gravür hizmetleri de sunmaktayız.",
         },
       },
     ],

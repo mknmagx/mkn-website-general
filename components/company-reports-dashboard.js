@@ -203,7 +203,7 @@ export default function CompanyReportsDashboard() {
       companies: companies,
     };
     
-    console.log("Excel export data:", data);
+    // Preparing Excel export data
     // TODO: xlsx kütüphanesi ile gerçek export implementasyonu
   };
 

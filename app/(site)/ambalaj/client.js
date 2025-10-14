@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Heart,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -38,19 +39,54 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination";
-import { products, product_catalog } from "@/data/products-catalog";
+import { usePackagingData } from "@/hooks/use-packaging-data";
 import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  parseURLParams,
+  createURLParams,
+  saveScrollPosition,
+  restoreScrollPosition,
+} from "@/utils/ambalaj-state";
 
-const getCloudinaryUrl = (imageName) => {
+const getCloudinaryUrl = (imageName, width = 400, height = 400) => {
   if (!imageName) return null;
-  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_400,h_400,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${imageName}`;
+
+  // Remove .jpg, .png, .webp extensions if they exist
+  const nameWithoutExt = imageName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+
+  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_${width},h_${height},c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${nameWithoutExt}`;
+};
+
+const getProductImageSrc = (imageName) => {
+  if (!imageName) {
+    return "/placeholder-product.jpg";
+  }
+
+  // Try Cloudinary first
+  return getCloudinaryUrl(imageName);
+};
+
+const handleImageError = (e, productName = "") => {
+  if (!e.target.src.includes("placeholder-product.jpg")) {
+    e.target.src = "/placeholder-product.jpg";
+  }
 };
 
 export default function AmbalajClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
+  const hookData = usePackagingData();
+  const {
+    products = [],
+    categories = [],
+    loading: dataLoading = false,
+    error: dataError = null,
+    searchProducts,
+    filterProducts,
+    getFilterOptions,
+  } = hookData || {};
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState({
@@ -59,7 +95,7 @@ export default function AmbalajClient() {
     size: [],
     colors: [],
   });
-  const [productList, setProductList] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -73,50 +109,40 @@ export default function AmbalajClient() {
   const [isHeroVisible, setIsHeroVisible] = useState(false);
   const [isContentVisible, setIsContentVisible] = useState(false);
 
-  const allCategories = [
-    ...new Set(products.map((product) => product.category).filter(Boolean)),
-  ];
-  const allMaterials = [
-    ...new Set(products.map((product) => product.material).filter(Boolean)),
-  ];
-  const allSizes = [
-    ...new Set(products.map((product) => product.size).filter(Boolean)),
-  ];
-  const allColors = [
-    ...new Set(
-      products.flatMap((product) => product.colors || []).filter(Boolean)
-    ),
-  ];
+  const filterOptions = getFilterOptions
+    ? getFilterOptions()
+    : {
+        categories: [],
+        materials: [],
+        sizes: [],
+        colors: [],
+      };
 
   useEffect(() => {
-    filterProducts();
-  }, [searchQuery, activeFilters, activeCategory]);
+    if (!dataLoading && products.length > 0) {
+      applyFilters();
+    }
+  }, [searchQuery, activeFilters, activeCategory, products, dataLoading]);
 
-  // URL query parameters effect
+  // URL'den state'i yükle (sadece ilk yüklemede)
   useEffect(() => {
-    const categoryParam = searchParams.get("category");
-    const searchParam = searchParams.get("search");
+    if (!dataLoading && products.length > 0) {
+      const urlState = parseURLParams(searchParams);
 
-    if (categoryParam && categoryParam !== activeCategory) {
-      setActiveCategory(categoryParam);
-      // Sync with filter panel
-      if (categoryParam !== "all") {
-        setActiveFilters((prev) => ({
-          ...prev,
-          category: [categoryParam],
-        }));
-      } else {
-        setActiveFilters((prev) => ({
-          ...prev,
-          category: [],
-        }));
-      }
-    }
+      setSearchQuery(urlState.search);
+      setActiveCategory(urlState.category);
+      setCurrentPage(urlState.page);
+      setActiveFilters({
+        category: urlState.category !== "all" ? [urlState.category] : [],
+        material: urlState.materials,
+        size: urlState.sizes,
+        colors: urlState.colors,
+      });
 
-    if (searchParam && searchParam !== searchQuery) {
-      setSearchQuery(searchParam);
+      // Scroll pozisyonunu geri yükle
+      restoreScrollPosition();
     }
-  }, [searchParams]);
+  }, [dataLoading, products.length]);
 
   useEffect(() => {
     setIsPageLoaded(true);
@@ -129,20 +155,58 @@ export default function AmbalajClient() {
     };
   }, []);
 
-  const filterProducts = () => {
-    let filtered = [...products];
+  // URL'i güncelle (state değiştiğinde)
+  useEffect(() => {
+    if (!dataLoading && products.length > 0) {
+      const currentState = {
+        search: searchQuery,
+        category: activeCategory,
+        page: currentPage,
+        materials: activeFilters.material || [],
+        sizes: activeFilters.size || [],
+        colors: activeFilters.colors || [],
+      };
 
-    // Search query filter
+      const urlString = createURLParams(currentState);
+      const newUrl = urlString ? `?${urlString}` : "/ambalaj";
+
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [
+    searchQuery,
+    activeCategory,
+    currentPage,
+    activeFilters,
+    dataLoading,
+    products.length,
+  ]);
+
+  const scrollToProductList = () => {
+    const productSection = document.getElementById("katalog");
+    if (productSection) {
+      productSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = products;
+
+    // Apply search
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(query) ||
-          product.category.toLowerCase().includes(query) ||
-          product.code?.toLowerCase().includes(query) ||
-          product.material?.toLowerCase().includes(query) ||
-          product.description?.toLowerCase().includes(query)
-      );
+      filtered = searchProducts
+        ? searchProducts(searchQuery)
+        : products.filter(
+            (product) =>
+              product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              product.category
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+              (product.code &&
+                product.code.toLowerCase().includes(searchQuery.toLowerCase()))
+          );
     }
 
     // Category tab filter
@@ -152,7 +216,7 @@ export default function AmbalajClient() {
       );
     }
 
-    // Apply side filters only when "all" category is selected
+    // Apply advanced filters only when "all" category is selected
     if (activeCategory === "all") {
       // Category filter (side panel)
       if (activeFilters.category.length > 0) {
@@ -162,18 +226,25 @@ export default function AmbalajClient() {
       }
     }
 
+    // Apply other filters on the already filtered products
     // Material filter
     if (activeFilters.material.length > 0) {
       filtered = filtered.filter(
         (product) =>
-          product.material && activeFilters.material.includes(product.material)
+          (product.specifications?.material &&
+            activeFilters.material.includes(product.specifications.material)) ||
+          (product.material &&
+            activeFilters.material.includes(product.material))
       );
     }
 
     // Size filter
     if (activeFilters.size.length > 0) {
       filtered = filtered.filter(
-        (product) => product.size && activeFilters.size.includes(product.size)
+        (product) =>
+          (product.specifications?.size &&
+            activeFilters.size.includes(product.specifications.size)) ||
+          (product.size && activeFilters.size.includes(product.size))
       );
     }
 
@@ -182,29 +253,35 @@ export default function AmbalajClient() {
       filtered = filtered.filter(
         (product) =>
           product.colors &&
-          product.colors.length > 0 &&
           product.colors.some((color) => activeFilters.colors.includes(color))
       );
     }
 
-    setProductList(filtered);
-    setCurrentPage(1);
+    setFilteredProducts(filtered);
+
+    // Only reset page if we're not restoring from URL
+    const pageParam = searchParams.get("page");
+    if (!pageParam) {
+      setCurrentPage(1);
+    }
   };
 
-  const totalProducts = productList.length;
+  const totalProducts = filteredProducts.length;
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
   const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
   const endIndex = startIndex + PRODUCTS_PER_PAGE;
-  const currentProducts = productList.slice(startIndex, endIndex);
+  const currentProducts = filteredProducts.slice(startIndex, endIndex);
 
   const toggleFilter = (type, value) => {
     setCurrentPage(1);
-    setActiveFilters((prev) => ({
-      ...prev,
-      [type]: prev[type].includes(value)
-        ? prev[type].filter((item) => item !== value)
-        : [...prev[type], value],
-    }));
+    const newFilters = {
+      ...activeFilters,
+      [type]: activeFilters[type].includes(value)
+        ? activeFilters[type].filter((item) => item !== value)
+        : [...activeFilters[type], value],
+    };
+    setActiveFilters(newFilters);
+    setCurrentPage(1); // Sayfa resetle
   };
 
   const clearAllFilters = () => {
@@ -216,24 +293,10 @@ export default function AmbalajClient() {
     });
     setSearchQuery("");
     setActiveCategory("all");
-    updateURL("all", "");
+    setCurrentPage(1);
+    router.push("/ambalaj", { scroll: false });
   };
 
-  // URL update function
-  const updateURL = (category, search) => {
-    const params = new URLSearchParams();
-    if (category && category !== "all") {
-      params.set("category", category);
-    }
-    if (search && search.trim()) {
-      params.set("search", search);
-    }
-
-    const newURL = params.toString() ? `?${params.toString()}` : "/ambalaj";
-    router.push(newURL, { scroll: false });
-  };
-
-  // Synchronized category change function
   const handleCategoryChange = (category) => {
     setCurrentPage(1);
     setActiveCategory(category);
@@ -250,14 +313,11 @@ export default function AmbalajClient() {
         category: [category],
       }));
     }
-
-    updateURL(category, searchQuery);
   };
 
-  // Enhanced search query handler
   const handleSearchChange = (value) => {
     setSearchQuery(value);
-    updateURL(activeCategory, value);
+    setCurrentPage(1);
   };
 
   const handleQuickView = (product) => {
@@ -265,13 +325,50 @@ export default function AmbalajClient() {
     setIsQuickViewOpen(true);
   };
 
+  // Function to handle product navigation
+  const handleProductNavigation = (product) => {
+    saveScrollPosition();
+    const productUrl = `/ambalaj/${createProductSlug(
+      product
+    )}?${searchParams.toString()}`;
+    router.push(productUrl);
+  };
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-lg dark:text-white">
+            Ambalaj ürünleri yükleniyor...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+          <p className="text-lg mb-2 dark:text-white">
+            Ürünler yüklenirken hata oluştu
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {dataError}
+          </p>
+          <Button onClick={() => window.location.reload()}>Tekrar Dene</Button>
+        </div>
+      </div>
+    );
+  }
+
   const renderFilters = () => {
-    const categories = [...new Set(products.map((p) => p.category))];
-    const materials = [
-      ...new Set(products.map((p) => p.material).filter(Boolean)),
-    ];
-    const sizes = [...new Set(products.map((p) => p.size).filter(Boolean))];
-    const colors = [...new Set(products.flatMap((p) => p.colors || []))];
+    const categories = filterOptions.categories || [];
+    const materials = filterOptions.materials || [];
+    const sizes = filterOptions.sizes || [];
+    const colors = filterOptions.colors || [];
 
     return (
       <div
@@ -433,13 +530,14 @@ export default function AmbalajClient() {
               <div className="aspect-square rounded-lg overflow-hidden border dark:border-gray-700">
                 <Image
                   src={
-                    getCloudinaryUrl(selectedProduct.images?.[0]) ||
+                    getProductImageSrc(selectedProduct.images?.[0]) ||
                     "/placeholder.jpg"
                   }
                   alt={selectedProduct.name}
                   width={400}
                   height={400}
                   className="w-full h-full object-cover"
+                  onError={(e) => handleImageError(e, selectedProduct.name)}
                 />
               </div>
               {selectedProduct.images && selectedProduct.images.length > 1 && (
@@ -450,11 +548,14 @@ export default function AmbalajClient() {
                       className="flex-shrink-0 w-20 h-20 rounded border dark:border-gray-700 overflow-hidden"
                     >
                       <Image
-                        src={getCloudinaryUrl(image) || "/placeholder.jpg"}
+                        src={getProductImageSrc(image) || "/placeholder.jpg"}
                         alt={`${selectedProduct.name} ${index + 2}`}
                         width={80}
                         height={80}
                         className="w-full h-full object-cover"
+                        onError={(e) =>
+                          handleImageError(e, selectedProduct.name)
+                        }
                       />
                     </div>
                   ))}
@@ -483,43 +584,51 @@ export default function AmbalajClient() {
                       {selectedProduct.category}
                     </span>
                   </div>
-                  {selectedProduct.size && (
+                  {(selectedProduct.specifications?.size ||
+                    selectedProduct.size) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
                         Boyut:
                       </span>
                       <span className="dark:text-white">
-                        {selectedProduct.size}
+                        {selectedProduct.specifications?.size ||
+                          selectedProduct.size}
                       </span>
                     </div>
                   )}
-                  {selectedProduct.material && (
+                  {(selectedProduct.specifications?.material ||
+                    selectedProduct.material) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
                         Materyal:
                       </span>
                       <span className="dark:text-white">
-                        {selectedProduct.material}
+                        {selectedProduct.specifications?.material ||
+                          selectedProduct.material}
                       </span>
                     </div>
                   )}
-                  {selectedProduct.debit && (
+                  {(selectedProduct.specifications?.debit ||
+                    selectedProduct.debit) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
                         Debi:
                       </span>
                       <span className="dark:text-white">
-                        {selectedProduct.debit}
+                        {selectedProduct.specifications?.debit ||
+                          selectedProduct.debit}
                       </span>
                     </div>
                   )}
-                  {selectedProduct.lockType && (
+                  {(selectedProduct.specifications?.lockType ||
+                    selectedProduct.lockType) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
                         Kilit Tipi:
                       </span>
                       <span className="dark:text-white">
-                        {selectedProduct.lockType}
+                        {selectedProduct.specifications?.lockType ||
+                          selectedProduct.lockType}
                       </span>
                     </div>
                   )}
@@ -558,12 +667,10 @@ export default function AmbalajClient() {
 
               <div className="flex gap-3 pt-4">
                 <Button
-                  asChild
+                  onClick={() => handleProductNavigation(selectedProduct)}
                   className="flex-1 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
-                  <Link href={`/ambalaj/${createProductSlug(selectedProduct)}`}>
-                    Detayları Gör
-                  </Link>
+                  Detayları Gör
                 </Button>
                 <Button
                   variant="outline"
@@ -591,7 +698,7 @@ export default function AmbalajClient() {
           <div className="rounded-lg sm:rounded-xl overflow-hidden relative min-h-[400px] md:min-h-[500px]">
             <Image
               src="/optimized/cosmetic-packaging-mockup.webp"
-              alt="Kozmetik Ambalaj Üretim Tesisi"
+              alt="Premium Kozmetik Ambalaj Ürünleri - MKN Group Fason Üretim Tesisi, Parfüm Şişeleri ve Krem Kavanozları"
               width={1600}
               height={500}
               className="absolute inset-0 w-full h-full object-cover"
@@ -604,13 +711,15 @@ export default function AmbalajClient() {
               }`}
             >
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4">
-                Kozmetik Ambalaj Çözümleri
+                Premium Kozmetik Ambalaj Ürünleri | MKN Group Kalite Garantisi
               </h1>
               <p className="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 text-blue-50 dark:text-gray-200">
-                Markanızın değerini yansıtan premium ambalaj ürünleri. Detaylı
-                ürün bilgileri için PDF kataloğumuzu indirin veya aşağıdaki
-                ürünlerimizi inceleyin. Özel tasarım ambalajlar için bizimle
-                iletişime geçin.
+                Markanızın değerini yansıtan premium kalitede kozmetik ambalaj
+                çözümleri. Parfüm şişeleri, krem kavanozları, pompalı şişeler ve
+                airless ambalajlarımızla ürünlerinizi fark yaratan bir sunumla
+                müşterilerinize ulaştırın. Detaylı ürün bilgileri için PDF
+                kataloğumuzu indirin veya aşağıdaki ürünlerimizi inceleyin. Özel
+                tasarım ambalajlar için bizimle iletişime geçin.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button
@@ -727,7 +836,7 @@ export default function AmbalajClient() {
                     >
                       Tümü ({products.length})
                     </button>
-                    {allCategories.map((category) => {
+                    {filterOptions.categories.map((category) => {
                       const count = products.filter(
                         (product) => product.category === category
                       ).length;
@@ -783,11 +892,12 @@ export default function AmbalajClient() {
                         <div className="aspect-square overflow-hidden bg-gray-50 dark:bg-gray-700">
                           {product.images && product.images[0] ? (
                             <Image
-                              src={getCloudinaryUrl(product.images[0])}
+                              src={getProductImageSrc(product.images[0])}
                               alt={product.name}
                               width={400}
                               height={400}
                               className="object-cover w-full h-full hover:scale-105 transition-transform duration-500"
+                              onError={(e) => handleImageError(e, product.name)}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
@@ -851,7 +961,9 @@ export default function AmbalajClient() {
                               variant="secondary"
                               className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-900/50 text-xs"
                             >
-                              {product.size}
+                              {product.specifications?.size ||
+                                product.size ||
+                                "N/A"}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -865,18 +977,14 @@ export default function AmbalajClient() {
                         </div>
                       </CardContent>
                       <CardFooter className="p-3 md:p-4 pt-0">
-                        <Link
-                          href={`/ambalaj/${createProductSlug(product)}`}
-                          className="w-full"
+                        <Button
+                          onClick={() => handleProductNavigation(product)}
+                          className="w-full text-xs h-8 dark:bg-blue-600 dark:hover:bg-blue-700"
+                          variant="default"
                         >
-                          <Button
-                            className="w-full text-xs h-8 dark:bg-blue-600 dark:hover:bg-blue-700"
-                            variant="default"
-                          >
-                            Detaylı İncele
-                            <ArrowRight className="ml-2 h-3 w-3" />
-                          </Button>
-                        </Link>
+                          Detaylı İncele
+                          <ArrowRight className="ml-2 h-3 w-3" />
+                        </Button>
                       </CardFooter>
                     </Card>
                   ))}
@@ -910,9 +1018,13 @@ export default function AmbalajClient() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() =>
-                            currentPage > 1 && setCurrentPage(currentPage - 1)
-                          }
+                          onClick={() => {
+                            if (currentPage > 1) {
+                              const newPage = currentPage - 1;
+                              setCurrentPage(newPage);
+                              scrollToProductList();
+                            }
+                          }}
                           className={`text-xs sm:text-sm ${
                             currentPage === 1
                               ? "pointer-events-none opacity-50"
@@ -964,7 +1076,10 @@ export default function AmbalajClient() {
                               <PaginationEllipsis className="dark:hover:bg-gray-700 dark:border-gray-700 w-6 h-6 sm:w-8 sm:h-8" />
                             ) : (
                               <PaginationLink
-                                onClick={() => setCurrentPage(page)}
+                                onClick={() => {
+                                  setCurrentPage(page);
+                                  scrollToProductList();
+                                }}
                                 isActive={currentPage === page}
                                 className={`cursor-pointer text-xs sm:text-sm w-6 h-6 sm:w-8 sm:h-8 p-0 flex items-center justify-center ${
                                   currentPage === page
@@ -983,10 +1098,13 @@ export default function AmbalajClient() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() =>
-                            currentPage < totalPages &&
-                            setCurrentPage(currentPage + 1)
-                          }
+                          onClick={() => {
+                            if (currentPage < totalPages) {
+                              const newPage = currentPage + 1;
+                              setCurrentPage(newPage);
+                              scrollToProductList();
+                            }
+                          }}
                           className={`text-xs sm:text-sm ${
                             currentPage === totalPages
                               ? "pointer-events-none opacity-50"
@@ -1019,12 +1137,15 @@ export default function AmbalajClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
             <div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-4 dark:text-gray-100">
-                Özel Ambalaj Çözümleri
+                Fason Ambalaj Üretimi ve Özel Tasarım Hizmetleri
               </h2>
               <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 dark:text-gray-300">
-                Markanızı öne çıkaracak özel ambalaj çözümleri için ekibimizle
-                iletişime geçin. Ürün geliştirme aşamasından üretime kadar
-                yanınızdayız.
+                Markanızı öne çıkaracak özel tasarım kozmetik ambalaj çözümleri
+                için deneyimli ekibimizle iletişime geçin. ISO sertifikalı
+                üretim tesislerimizde, ürün geliştirme aşamasından seri üretime
+                kadar her adımda yanınızdayız. Custom ambalaj tasarımları,
+                private label kozmetik packaging ve contract manufacturing
+                hizmetlerimizle işinizi büyütün.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button size="default" asChild className="text-sm sm:text-base">
@@ -1035,7 +1156,7 @@ export default function AmbalajClient() {
             <div className="relative aspect-video rounded-lg sm:rounded-xl overflow-hidden">
               <Image
                 src="/optimized/modern-manufacturing-facility-with-advanced-equipm.webp"
-                alt="Kozmetik Ambalaj Üretim"
+                alt="Modern Kozmetik Ambalaj Üretim Tesisi - İleri Teknoloji Ekipmanları ile Fason Ambalaj Üretimi"
                 width={600}
                 height={400}
                 className="w-full h-full object-cover"

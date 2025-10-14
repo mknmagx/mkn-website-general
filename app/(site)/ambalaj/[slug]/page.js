@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { products } from "@/data/products-catalog";
+import { packagingService } from "@/lib/services/packaging-service";
 import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 import {
   ProductSchema,
@@ -10,29 +10,73 @@ import ProductDetailClient from "./client";
 
 const getCloudinaryUrl = (imageName) => {
   if (!imageName) return null;
-  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_600,h_600,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${imageName}`;
+  // Remove .jpg, .png, .webp extensions if they exist
+  const nameWithoutExt = imageName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_600,h_600,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${nameWithoutExt}`;
 };
 
-// Server-side function to get product data
-async function getProductData(slug) {
-  const product = products.find((p) => createProductSlug(p) === slug);
-
-  if (!product) {
-    return null;
-  }
-
-  // Find related products (same category, different products)
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+function serializeProduct(product) {
+  if (!product) return null;
 
   return {
-    product,
-    relatedProducts,
+    ...product,
+    // Convert Firestore timestamps to ISO strings
+    metadata: product.metadata
+      ? {
+          ...product.metadata,
+          createdAt: product.metadata.createdAt?.toDate?.()
+            ? product.metadata.createdAt.toDate().toISOString()
+            : product.metadata.createdAt,
+          updatedAt: product.metadata.updatedAt?.toDate?.()
+            ? product.metadata.updatedAt.toDate().toISOString()
+            : product.metadata.updatedAt,
+          deletedAt: product.metadata.deletedAt?.toDate?.()
+            ? product.metadata.deletedAt.toDate().toISOString()
+            : product.metadata.deletedAt,
+        }
+      : product.metadata,
+    // Ensure other nested objects are plain
+    specifications: product.specifications
+      ? { ...product.specifications }
+      : product.specifications,
+    seo: product.seo ? { ...product.seo } : product.seo,
+    business: product.business ? { ...product.business } : product.business,
+    customFields: product.customFields
+      ? { ...product.customFields }
+      : product.customFields,
   };
 }
 
-// Generate metadata for SEO
+async function getProductData(slug) {
+  try {
+    // Get all active products from Firestore
+    const allProducts = await packagingService.getAllProducts(); // isActive filtresi kaldırıldı
+
+    // Find the product by slug
+    const product = allProducts.find((p) => {
+      const productSlug = createProductSlug(p);
+      return productSlug === slug;
+    });
+
+    if (!product) {
+      return null;
+    }
+
+    // Find related products (same category, different products)
+    const relatedProducts = allProducts
+      .filter((p) => p.category === product.category && p.id !== product.id)
+      .slice(0, 4);
+
+    return {
+      product: serializeProduct(product),
+      relatedProducts: relatedProducts.map(serializeProduct),
+    };
+  } catch (error) {
+    console.error("Error fetching product data:", error);
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const productData = await getProductData(slug);
@@ -46,7 +90,9 @@ export async function generateMetadata({ params }) {
 
   const { product } = productData;
   const title = `${product.name} | MKN Group Ambalaj`;
-  const description = `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`;
+  const description =
+    product.description ||
+    `${product.name} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`;
   const canonical = `https://www.mkngroup.com.tr/ambalaj/${slug}`;
   const ogImage = getCloudinaryUrl(product.images?.[0]);
 
@@ -58,9 +104,10 @@ export async function generateMetadata({ params }) {
       product.category,
       "ambalaj",
       "MKN Group",
-      product.material,
+      product.specifications?.material,
       "packaging",
       ...(product.features || []),
+      ...(product.seo?.keywords || []),
     ]
       .filter(Boolean)
       .join(", "),
@@ -109,11 +156,19 @@ export async function generateMetadata({ params }) {
   };
 }
 
-// Generate static params for better performance
 export async function generateStaticParams() {
-  return products.slice(0, 50).map((product) => ({
-    slug: createProductSlug(product),
-  }));
+  try {
+    // Get active products from Firestore for static generation
+    const products = await packagingService.getAllProducts({ isActive: true });
+
+    return products.slice(0, 50).map((product) => ({
+      slug: createProductSlug(product),
+    }));
+  } catch (error) {
+    console.error("Error generating static params:", error);
+    // Return empty array as fallback
+    return [];
+  }
 }
 
 export default async function ProductDetailPage({ params }) {
@@ -140,14 +195,18 @@ export default async function ProductDetailPage({ params }) {
           },
           {
             name: product.name,
-            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+              product
+            )}`,
           },
         ]}
       />
       <WebPageSchema
         title={`${product.name} | MKN Group Ambalaj`}
         description={`${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`}
-        url={`https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`}
+        url={`https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+          product
+        )}`}
         breadcrumbs={[
           { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
           { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
@@ -159,7 +218,9 @@ export default async function ProductDetailPage({ params }) {
           },
           {
             name: product.name,
-            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
+            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+              product
+            )}`,
           },
         ]}
       />

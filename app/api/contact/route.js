@@ -42,7 +42,7 @@ export async function POST(request) {
 
       const contactId = await createContact(contactData);
 
-      console.log("Contact saved to Firestore with ID:", contactId);
+      // Contact saved to Firestore successfully
 
       return NextResponse.json(
         {

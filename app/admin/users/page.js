@@ -46,6 +46,8 @@ import {
 export default function UsersPage() {
   const { user, permissions, userRole } = useAdminAuth();
   const { hasPermission } = usePermissions();
+
+
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -409,486 +411,500 @@ export default function UsersPage() {
     );
   }
 
+
   return (
-    <div className="space-y-6">
-      {/* Başlık */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Kullanıcı Yönetimi
-          </h1>
-          <p className="text-gray-600">
-            Sistem kullanıcılarını ve rollerini yönetin
-          </p>
-        </div>
-      </div>
-
-      {/* İstatistikler */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                Toplam Kullanıcı
-              </p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
+    <PermissionGuard requiredPermission="users.view">
+      <div className="space-y-6">
+        {/* Başlık */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Kullanıcı Yönetimi
+            </h1>
+            <p className="text-gray-600">
+              Sistem kullanıcılarını ve rollerini yönetin
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <UserCheck className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                Aktif Kullanıcı
-              </p>
-              <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <UserX className="h-6 w-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Devre Dışı</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats.inactive}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Shield className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Admin</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {(stats.byRole[USER_ROLES.SUPER_ADMIN] || 0) +
-                  (stats.byRole[USER_ROLES.ADMIN] || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Şirket/Bölüm Dağılımı */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            Bölüm Dağılımı
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Ambalaj</span>
-              <span className="text-sm font-medium text-gray-900">
-                {users.filter((u) => u.company?.division === "ambalaj").length}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">E-ticaret</span>
-              <span className="text-sm font-medium text-gray-900">
-                {
-                  users.filter((u) => u.company?.division === "ecommerce")
-                    .length
-                }
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Fason</span>
-              <span className="text-sm font-medium text-gray-900">
-                {users.filter((u) => u.company?.division === "fason").length}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-green-600" />
-            Son Aktivite
-          </h3>
-          <div className="space-y-3">
-            {users
-              .filter((u) => u.lastLoginAt)
-              .sort((a, b) => new Date(b.lastLoginAt) - new Date(a.lastLoginAt))
-              .slice(0, 5)
-              .map((user) => (
-                <div
-                  key={user.id}
-                  className="flex justify-between items-center"
-                >
-                  <span className="text-sm text-gray-600 truncate">
-                    {user.displayName || user.email}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {user.lastLoginAt
-                      ? new Date(user.lastLoginAt).toLocaleDateString("tr-TR")
-                      : "-"}
-                  </span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            Performans Özeti
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Ortalama Performans</span>
-              <span className="text-sm font-medium text-gray-900">
-                {users.length > 0
-                  ? (
-                      users.reduce(
-                        (acc, u) =>
-                          acc + (u.performance?.customerSatisfaction || 0),
-                        0
-                      ) / users.length || 0
-                    ).toFixed(1)
-                  : "0"}
-                /5
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Toplam Satış</span>
-              <span className="text-sm font-medium text-gray-900">
-                ₺
-                {users
-                  .reduce(
-                    (acc, u) => acc + (u.performance?.salesAchieved || 0),
-                    0
-                  )
-                  .toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">
-                Sertifikalı Kullanıcı
-              </span>
-              <span className="text-sm font-medium text-gray-900">
-                {users.filter((u) => u.achievements?.length > 0).length}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtreler ve Arama */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Arama */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Email veya isim ile ara..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        {/* İstatistikler */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Toplam Kullanıcı
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.total}
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Rol Filtresi */}
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-            >
-              <option value="">Tüm Roller</option>
-              <option value={USER_ROLES.SUPER_ADMIN}>Süper Admin</option>
-              <option value={USER_ROLES.ADMIN}>Admin</option>
-              <option value={USER_ROLES.MODERATOR}>Moderatör</option>
-              <option value={USER_ROLES.USER}>Kullanıcı</option>
-            </select>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <UserCheck className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Aktif Kullanıcı
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.active}
+                </p>
+              </div>
+            </div>
+          </div>
 
-            {/* Durum Filtresi */}
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="">Tüm Durumlar</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Devre Dışı</option>
-            </select>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <UserX className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Devre Dışı</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.inactive}
+                </p>
+              </div>
+            </div>
+          </div>
 
-            {/* Yeni Kullanıcı Ekle */}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Yeni Kullanıcı
-            </button>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Shield className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Admin</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(stats.byRole[USER_ROLES.SUPER_ADMIN] || 0) +
+                    (stats.byRole[USER_ROLES.ADMIN] || 0)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Kullanıcı Listesi */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Kullanıcı
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Şirket/Bölüm
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rol
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Durum
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Son Giriş
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  İşlemler
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-gray-500" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                          {user.displayName || "İsimsiz Kullanıcı"}
-                          {user.role === USER_ROLES.SUPER_ADMIN && (
-                            <Crown className="h-4 w-4 text-yellow-500" />
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {user.email}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {user.company?.name || "MKN Group"}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {user.company?.division || "ambalaj"} •{" "}
-                      {user.company?.position || "specialist"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(
-                        user.role
-                      )}`}
-                    >
-                      {getRoleDisplayName(user.role)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.isActive !== false
-                          ? "text-green-800 bg-green-100"
-                          : "text-red-800 bg-red-100"
-                      }`}
-                    >
-                      {user.isActive !== false ? "Aktif" : "Devre Dışı"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.createdAt
-                      ? user.createdAt.toLocaleDateString("tr-TR")
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLoginAt
-                      ? user.lastLoginAt.toLocaleDateString("tr-TR")
-                      : "Hiç"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Görüntüle */}
-                      <button
-                        onClick={() => {
-                          setViewingUser(user);
-                          setShowViewModal(true);
-                        }}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Kullanıcı Detayları"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-
-                      {canEditUser(user) && (
-                        <>
-                          {/* Düzenle */}
-                          <button
-                            onClick={() => {
-                              setEditingUser(user);
-                              setShowEditModal(true);
-                            }}
-                            className="p-1 text-yellow-600 hover:bg-yellow-50 rounded"
-                            title="Kullanıcıyı Düzenle"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-
-                          {/* Rol Değiştir */}
-                          <div className="relative">
-                            <select
-                              className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
-                              value={user.role}
-                              onChange={(e) =>
-                                handleRoleChange(user.id, e.target.value)
-                              }
-                              title="Rol Değiştir"
-                            >
-                              {Object.entries(USER_ROLES).map(
-                                ([key, value]) => {
-                                  if (
-                                    ROLE_LEVELS[currentUser?.role] >
-                                    ROLE_LEVELS[value]
-                                  ) {
-                                    return (
-                                      <option key={value} value={value}>
-                                        {getRoleDisplayName(value)}
-                                      </option>
-                                    );
-                                  }
-                                  return null;
-                                }
-                              )}
-                            </select>
-                          </div>
-
-                          {/* Durum Değiştir */}
-                          <button
-                            onClick={() =>
-                              handleStatusToggle(
-                                user.id,
-                                user.isActive !== false
-                              )
-                            }
-                            className={`p-1 rounded ${
-                              user.isActive !== false
-                                ? "text-red-600 hover:bg-red-50"
-                                : "text-green-600 hover:bg-green-50"
-                            }`}
-                            title={
-                              user.isActive !== false
-                                ? "Devre Dışı Bırak"
-                                : "Aktifleştir"
-                            }
-                          >
-                            {user.isActive !== false ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </>
-                      )}
-
-                      {canDeleteUser(user) && (
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Kullanıcıyı Sil"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                Kullanıcı bulunamadı
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Arama kriterlerinize uygun kullanıcı bulunamadı.
-              </p>
+        {/* Şirket/Bölüm Dağılımı */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              Bölüm Dağılımı
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Ambalaj</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {
+                    users.filter((u) => u.company?.division === "ambalaj")
+                      .length
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">E-ticaret</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {
+                    users.filter((u) => u.company?.division === "ecommerce")
+                      .length
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Fason</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {users.filter((u) => u.company?.division === "fason").length}
+                </span>
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Activity className="h-5 w-5 text-green-600" />
+              Son Aktivite
+            </h3>
+            <div className="space-y-3">
+              {users
+                .filter((u) => u.lastLoginAt)
+                .sort(
+                  (a, b) => new Date(b.lastLoginAt) - new Date(a.lastLoginAt)
+                )
+                .slice(0, 5)
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex justify-between items-center"
+                  >
+                    <span className="text-sm text-gray-600 truncate">
+                      {user.displayName || user.email}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {user.lastLoginAt
+                        ? new Date(user.lastLoginAt).toLocaleDateString("tr-TR")
+                        : "-"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              Performans Özeti
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  Ortalama Performans
+                </span>
+                <span className="text-sm font-medium text-gray-900">
+                  {users.length > 0
+                    ? (
+                        users.reduce(
+                          (acc, u) =>
+                            acc + (u.performance?.customerSatisfaction || 0),
+                          0
+                        ) / users.length || 0
+                      ).toFixed(1)
+                    : "0"}
+                  /5
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Toplam Satış</span>
+                <span className="text-sm font-medium text-gray-900">
+                  ₺
+                  {users
+                    .reduce(
+                      (acc, u) => acc + (u.performance?.salesAchieved || 0),
+                      0
+                    )
+                    .toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  Sertifikalı Kullanıcı
+                </span>
+                <span className="text-sm font-medium text-gray-900">
+                  {users.filter((u) => u.achievements?.length > 0).length}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Filtreler ve Arama */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Arama */}
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Email veya isim ile ara..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Rol Filtresi */}
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+              >
+                <option value="">Tüm Roller</option>
+                <option value={USER_ROLES.SUPER_ADMIN}>Süper Admin</option>
+                <option value={USER_ROLES.ADMIN}>Admin</option>
+                <option value={USER_ROLES.MODERATOR}>Moderatör</option>
+                <option value={USER_ROLES.USER}>Kullanıcı</option>
+              </select>
+
+              {/* Durum Filtresi */}
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="">Tüm Durumlar</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Devre Dışı</option>
+              </select>
+
+              {/* Yeni Kullanıcı Ekle */}
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Yeni Kullanıcı
+              </button>
+            </div>
+          </div>
+
+          {/* Kullanıcı Listesi */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kullanıcı
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Şirket/Bölüm
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rol
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Durum
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Son Giriş
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    İşlemler
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-gray-500" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                            {user.displayName || "İsimsiz Kullanıcı"}
+                            {user.role === USER_ROLES.SUPER_ADMIN && (
+                              <Crown className="h-4 w-4 text-yellow-500" />
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {user.company?.name || "MKN Group"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {user.company?.division || "ambalaj"} •{" "}
+                        {user.company?.position || "specialist"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(
+                          user.role
+                        )}`}
+                      >
+                        {getRoleDisplayName(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.isActive !== false
+                            ? "text-green-800 bg-green-100"
+                            : "text-red-800 bg-red-100"
+                        }`}
+                      >
+                        {user.isActive !== false ? "Aktif" : "Devre Dışı"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.createdAt
+                        ? user.createdAt.toLocaleDateString("tr-TR")
+                        : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.lastLoginAt
+                        ? user.lastLoginAt.toLocaleDateString("tr-TR")
+                        : "Hiç"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Görüntüle */}
+                        <button
+                          onClick={() => {
+                            setViewingUser(user);
+                            setShowViewModal(true);
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Kullanıcı Detayları"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+
+                        {canEditUser(user) && (
+                          <>
+                            {/* Düzenle */}
+                            <button
+                              onClick={() => {
+                                setEditingUser(user);
+                                setShowEditModal(true);
+                              }}
+                              className="p-1 text-yellow-600 hover:bg-yellow-50 rounded"
+                              title="Kullanıcıyı Düzenle"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+
+                            {/* Rol Değiştir */}
+                            <div className="relative">
+                              <select
+                                className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                                value={user.role}
+                                onChange={(e) =>
+                                  handleRoleChange(user.id, e.target.value)
+                                }
+                                title="Rol Değiştir"
+                              >
+                                {Object.entries(USER_ROLES).map(
+                                  ([key, value]) => {
+                                    if (
+                                      ROLE_LEVELS[currentUser?.role] >
+                                      ROLE_LEVELS[value]
+                                    ) {
+                                      return (
+                                        <option key={value} value={value}>
+                                          {getRoleDisplayName(value)}
+                                        </option>
+                                      );
+                                    }
+                                    return null;
+                                  }
+                                )}
+                              </select>
+                            </div>
+
+                            {/* Durum Değiştir */}
+                            <button
+                              onClick={() =>
+                                handleStatusToggle(
+                                  user.id,
+                                  user.isActive !== false
+                                )
+                              }
+                              className={`p-1 rounded ${
+                                user.isActive !== false
+                                  ? "text-red-600 hover:bg-red-50"
+                                  : "text-green-600 hover:bg-green-50"
+                              }`}
+                              title={
+                                user.isActive !== false
+                                  ? "Devre Dışı Bırak"
+                                  : "Aktifleştir"
+                              }
+                            >
+                              {user.isActive !== false ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
+
+                        {canDeleteUser(user) && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            title="Kullanıcıyı Sil"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  Kullanıcı bulunamadı
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Arama kriterlerinize uygun kullanıcı bulunamadı.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Yeni Kullanıcı Modal */}
+        {showCreateModal && (
+          <CreateUserModal
+            onClose={() => setShowCreateModal(false)}
+            onCreate={handleCreateUser}
+            currentUserRole={currentUser?.role}
+          />
+        )}
+
+        {/* Şifre Gösterim Modal */}
+        {showPasswordModal && (
+          <PasswordDisplayModal
+            email={newUserEmail}
+            password={generatedPassword}
+            onClose={() => {
+              setShowPasswordModal(false);
+              setGeneratedPassword("");
+              setNewUserEmail("");
+              loadData();
+            }}
+          />
+        )}
+
+        {/* Kullanıcı Görüntüleme Modal */}
+        {showViewModal && viewingUser && (
+          <ViewUserModal
+            user={viewingUser}
+            onClose={() => {
+              setShowViewModal(false);
+              setViewingUser(null);
+            }}
+          />
+        )}
+
+        {/* Kullanıcı Düzenleme Modal */}
+        {showEditModal && editingUser && (
+          <EditUserModal
+            user={editingUser}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingUser(null);
+            }}
+            onUpdate={handleUpdateUser}
+            currentUserRole={currentUser?.role}
+          />
+        )}
       </div>
-
-      {/* Yeni Kullanıcı Modal */}
-      {showCreateModal && (
-        <CreateUserModal
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateUser}
-          currentUserRole={currentUser?.role}
-        />
-      )}
-
-      {/* Şifre Gösterim Modal */}
-      {showPasswordModal && (
-        <PasswordDisplayModal
-          email={newUserEmail}
-          password={generatedPassword}
-          onClose={() => {
-            setShowPasswordModal(false);
-            setGeneratedPassword("");
-            setNewUserEmail("");
-            loadData();
-          }}
-        />
-      )}
-
-      {/* Kullanıcı Görüntüleme Modal */}
-      {showViewModal && viewingUser && (
-        <ViewUserModal
-          user={viewingUser}
-          onClose={() => {
-            setShowViewModal(false);
-            setViewingUser(null);
-          }}
-        />
-      )}
-
-      {/* Kullanıcı Düzenleme Modal */}
-      {showEditModal && editingUser && (
-        <EditUserModal
-          user={editingUser}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingUser(null);
-          }}
-          onUpdate={handleUpdateUser}
-          currentUserRole={currentUser?.role}
-        />
-      )}
-    </div>
+    </PermissionGuard>
   );
 }
 

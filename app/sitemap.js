@@ -1,13 +1,22 @@
 import { site } from "@/config/site";
-import { products } from "@/data/products-catalog";
+import { packagingService } from "@/lib/services/packaging-service";
 import { getAllBlogPosts } from "@/lib/services/blog-service";
 import { createProductSlug } from "@/utils/slugify-tr";
 
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
-  const currentDate = new Date("2025-10-11");
+  const currentDate = new Date("2025-10-11T00:00:00.000Z");
 
   const blogPosts = await getAllBlogPosts();
+
+  let products = [];
+  try {
+    products = await packagingService.getAllProducts({ isActive: true });
+  } catch (error) {
+    console.error("Error fetching products for sitemap:", error);
+
+    products = [];
+  }
 
   const mainRoutes = [
     { route: "", priority: 1.0, changeFreq: "daily" },

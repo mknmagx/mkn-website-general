@@ -100,8 +100,6 @@ export default function TeklifPage() {
       const result = await submitForm(formData);
 
       if (result.success) {
-        // Başarılı gönderim
-        console.log("Form başarıyla gönderildi");
       } else {
         // Hata durumu
         console.error("Form gönderim hatası:", result.errors);

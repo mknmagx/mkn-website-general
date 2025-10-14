@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,16 +33,96 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createProductSlug } from "@/utils/slugify-tr";
 
-const getCloudinaryUrl = (imageName) => {
+// Teknik özellik anahtarlarını Türkçe'ye çeviren mapping
+const specificationLabels = {
+  material: "Malzeme",
+  size: "Boyut", 
+  debit: "Debi",
+  lockType: "Kilit Tipi",
+  colors: "Renkler",
+  color: "Renk",
+  code: "Ürün Kodu",
+  weight: "Ağırlık",
+  capacity: "Kapasite",
+  dimensions: "Ölçüler",
+  volume: "Hacim",
+  diameter: "Çap",
+  height: "Yükseklik",
+  width: "Genişlik",
+  length: "Uzunluk",
+  thickness: "Kalınlık",
+  temperature: "Sıcaklık",
+  pressure: "Basınç",
+  closure: "Kapak Tipi",
+  thread: "Diş",
+  finish: "Yüzey İşlemi",
+  barrier: "Bariyer",
+  compatibility: "Uyumluluk",
+  certification: "Sertifika",
+  brand: "Marka",
+  model: "Model",
+  type: "Tip",
+  style: "Stil",
+  shape: "Şekil",
+  surface: "Yüzey",
+  texture: "Doku"
+};
+
+// Teknik özellik anahtarını Türkçe'ye çeviren fonksiyon
+const translateSpecKey = (key) => {
+  return specificationLabels[key] || key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+const getCloudinaryUrl = (imageName, width = 600, height = 600) => {
   if (!imageName) return null;
-  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_600,h_600,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${imageName}`;
+  // Remove .jpg, .png, .webp extensions if they exist
+  const nameWithoutExt = imageName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+  return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_${width},h_${height},c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${nameWithoutExt}`;
+};
+
+const getProductImageSrc = (imageName) => {
+  if (!imageName) {
+    return "/placeholder-product.jpg";
+  }
+  return getCloudinaryUrl(imageName);
+};
+
+// Handle image loading errors
+const handleImageError = (e, productName = "") => {
+  if (!e.target.src.includes("placeholder-product.jpg")) {
+    e.target.src = "/placeholder-product.jpg";
+  }
 };
 
 export default function ProductDetailClient({ product, relatedProducts }) {
+  const searchParams = useSearchParams();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Ürün verilerinden teknik özellikleri dinamik olarak oluştur
+  const productSpecifications = React.useMemo(() => {
+    const specs = {};
+    
+    // Mevcut specifications nesnesini ekle
+    if (product.specifications && typeof product.specifications === 'object') {
+      Object.entries(product.specifications).forEach(([key, value]) => {
+        if (value) specs[key] = value;
+      });
+    }
+    
+    // Diğer ürün özelliklerini specifications'a ekle
+    if (product.size && !specs.size) specs.size = product.size;
+    if (product.material && !specs.material) specs.material = product.material;
+    if (product.color && !specs.color) specs.color = product.color;
+    if (product.colors && !specs.colors) specs.colors = Array.isArray(product.colors) ? product.colors.join(', ') : product.colors;
+    if (product.code && !specs.code) specs.code = product.code;
+    if (product.debit && !specs.debit) specs.debit = product.debit;
+    if (product.lockType && !specs.lockType) specs.lockType = product.lockType;
+    
+    return specs;
+  }, [product]);
 
   const handleDownloadCatalog = () => {
     const link = document.createElement("a");
@@ -59,18 +140,20 @@ export default function ProductDetailClient({ product, relatedProducts }) {
     let message = `Merhaba MKN GROUP! 👋\n\n`;
     message += `Aşağıdaki ürün hakkında bilgi almak istiyorum:\n\n`;
     message += `📦 *Ürün:* ${product.name}${
-      product.size ? ` - ${product.size}` : ""
+      product.specifications?.size || product.size
+        ? ` - ${product.specifications?.size || product.size}`
+        : ""
     }\n`;
     message += `📋 *Kategori:* ${product.category}\n`;
 
     if (product.code) {
       message += `🔢 *Ürün Kodu:* ${product.code}\n`;
     }
-    if (product.size) {
-      message += `📏 *Boyut:* ${product.size}\n`;
+    if (productSpecifications.size) {
+      message += `📏 *Boyut:* ${productSpecifications.size}\n`;
     }
-    if (product.material) {
-      message += `🧪 *Malzeme:* ${product.material}\n`;
+    if (productSpecifications.material) {
+      message += `🧪 *Malzeme:* ${productSpecifications.material}\n`;
     }
     if (product.color) {
       message += `🎨 *Renk:* ${product.color}\n`;
@@ -91,11 +174,15 @@ export default function ProductDetailClient({ product, relatedProducts }) {
   };
 
   const handleShare = async () => {
+    const productSize = product.specifications?.size || product.size;
     const shareData = {
       title: `${product.name}${
-        product.size ? ` - ${product.size}` : ""
+        productSize ? ` - ${productSize}` : ""
       } | MKN Group Ambalaj`,
-      text: `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`,
+      text: `${
+        product.description ||
+        `${product.name} - ${product.category} kategorisinde profesyonel ambalaj ürünü`
+      } - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`,
       url: window.location.href,
     };
 
@@ -113,11 +200,14 @@ export default function ProductDetailClient({ product, relatedProducts }) {
       const shareUrl = encodeURIComponent(window.location.href);
       const shareTitle = encodeURIComponent(
         `${product.name}${
-          product.size ? ` - ${product.size}` : ""
+          productSize ? ` - ${productSize}` : ""
         } | MKN Group Ambalaj`
       );
       const shareText = encodeURIComponent(
-        `${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`
+        `${
+          product.description ||
+          `${product.name} - ${product.category} kategorisinde profesyonel ambalaj ürünü`
+        } - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`
       );
 
       const socialOptions = [
@@ -214,23 +304,37 @@ export default function ProductDetailClient({ product, relatedProducts }) {
   const productImages =
     product.images && product.images.length > 0
       ? product.images.map((imageName, index) => ({
-          src: getCloudinaryUrl(imageName),
-          alt: `${product.name}${product.size ? ` - ${product.size}` : ""} - ${
-            index + 1
-          }`,
+          src: getProductImageSrc(imageName),
+          alt: `${product.name}${
+            product.specifications?.size || product.size
+              ? ` - ${product.specifications?.size || product.size}`
+              : ""
+          } - ${index + 1}`,
           caption:
             index === 0
-              ? `${product.name}${product.size ? ` - ${product.size}` : ""}`
+              ? `${product.name}${
+                  product.specifications?.size || product.size
+                    ? ` - ${product.specifications?.size || product.size}`
+                    : ""
+                }`
               : `${product.name}${
-                  product.size ? ` - ${product.size}` : ""
+                  product.specifications?.size || product.size
+                    ? ` - ${product.specifications?.size || product.size}`
+                    : ""
                 } - Görünüm ${index + 1}`,
         }))
       : [
           {
-            src: getCloudinaryUrl("placeholder.jpg"),
-            alt: `${product.name}${product.size ? ` - ${product.size}` : ""}`,
+            src: getProductImageSrc("placeholder.jpg"),
+            alt: `${product.name}${
+              product.specifications?.size || product.size
+                ? ` - ${product.specifications?.size || product.size}`
+                : ""
+            }`,
             caption: `${product.name}${
-              product.size ? ` - ${product.size}` : ""
+              product.specifications?.size || product.size
+                ? ` - ${product.specifications?.size || product.size}`
+                : ""
             }`,
           },
         ];
@@ -249,7 +353,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
             </Link>
             <ChevronRight className="h-4 w-4" />
             <Link
-              href="/ambalaj"
+              href={`/ambalaj?${searchParams.toString()}`}
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               Ambalaj
@@ -257,7 +361,8 @@ export default function ProductDetailClient({ product, relatedProducts }) {
             <ChevronRight className="h-4 w-4" />
             <span className="text-gray-900 dark:text-gray-100 font-medium">
               {product.name}
-              {product.size && ` - ${product.size}`}
+              {(product.specifications?.size || product.size) &&
+                ` - ${product.specifications?.size || product.size}`}
             </span>
           </nav>
         </div>
@@ -266,13 +371,13 @@ export default function ProductDetailClient({ product, relatedProducts }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <div className="mb-6">
-          <button
-            onClick={() => window.history.back()}
+          <Link
+            href={`/ambalaj?${searchParams.toString()}`}
             className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Geri Dön
-          </button>
+            Ürün Listesine Dön
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -287,6 +392,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                 className="object-contain p-4"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 priority
+                onError={(e) => handleImageError(e, product.name)}
               />
 
               {/* Click overlay for modal */}
@@ -354,6 +460,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                     fill
                     className="object-contain"
                     sizes="90vw"
+                    onError={(e) => handleImageError(e, product.name)}
                   />
                 </div>
               </DialogContent>
@@ -379,6 +486,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                         fill
                         className="object-contain p-2"
                         sizes="(max-width: 768px) 25vw, 12vw"
+                        onError={(e) => handleImageError(e, product.name)}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -462,7 +570,7 @@ export default function ProductDetailClient({ product, relatedProducts }) {
             </div>
 
             {/* Product Specifications */}
-            {product.specifications && (
+            {Object.keys(productSpecifications).length > 0 && (
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader>
                   <CardTitle className="flex items-center text-gray-900 dark:text-gray-100">
@@ -472,11 +580,11 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {Object.entries(product.specifications).map(
+                    {Object.entries(productSpecifications).map(
                       ([key, value]) => (
                         <div key={key} className="flex justify-between">
                           <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {key}:
+                            {translateSpecKey(key)}:
                           </span>
                           <span className="text-gray-600 dark:text-gray-400">
                             {value}
@@ -625,16 +733,16 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {product.specifications ? (
+                  {Object.keys(productSpecifications).length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {Object.entries(product.specifications).map(
+                      {Object.entries(productSpecifications).map(
                         ([key, value]) => (
                           <div
                             key={key}
                             className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
                           >
                             <span className="font-medium text-gray-700 dark:text-gray-300">
-                              {key}
+                              {translateSpecKey(key)}
                             </span>
                             <span className="text-gray-600 dark:text-gray-400">
                               {value}
@@ -746,16 +854,19 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                             Özel Kullanım Alanları
                           </h4>
                           <p className="text-gray-600 dark:text-gray-400 mb-4">
-                            Bu ürün, {product.material?.toLowerCase()} malzemesi
-                            ve {product.size} boyutu ile çeşitli endüstriyel ve
-                            ticari uygulamalarda kullanılabilir. Özel
-                            projeleriniz için teknik özellikler ve uyumluluk
-                            bilgileri hakkında detaylı bilgi almak üzere uzman
-                            ekibimizle iletişime geçebilirsiniz.
+                            Bu ürün,{" "}
+                            {productSpecifications.material?.toLowerCase()}{" "}
+                            malzemesi ve{" "}
+                            {productSpecifications.size}{" "}
+                            boyutu ile çeşitli endüstriyel ve ticari
+                            uygulamalarda kullanılabilir. Özel projeleriniz için
+                            teknik özellikler ve uyumluluk bilgileri hakkında
+                            detaylı bilgi almak üzere uzman ekibimizle iletişime
+                            geçebilirsiniz.
                           </p>
                           <div className="flex flex-wrap gap-2">
                             <Badge className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                              {product.material || "Yüksek Kalite"}
+                              {productSpecifications.material || "Yüksek Kalite"}
                             </Badge>
                             <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
                               Güvenli Kullanım
@@ -858,11 +969,11 @@ export default function ProductDetailClient({ product, relatedProducts }) {
                           </span>
                         </div>
                       )}
-                      {relatedProduct.material && (
+                      {(relatedProduct.material || relatedProduct.specifications?.material) && (
                         <div className="flex items-center justify-between">
                           <span>Malzeme:</span>
                           <span className="font-medium">
-                            {relatedProduct.material}
+                            {relatedProduct.material || relatedProduct.specifications?.material}
                           </span>
                         </div>
                       )}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminProtectedWrapper from "../../../../components/admin-protected-wrapper";
+import { PermissionGuard } from "../../../../components/admin-route-guard";
 import {
   getUserById,
   updateUser,
@@ -177,17 +177,17 @@ export default function UserDetailPage() {
 
   if (loading) {
     return (
-      <AdminProtectedWrapper>
+      <PermissionGuard requiredPermission="users.view">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </AdminProtectedWrapper>
+      </PermissionGuard>
     );
   }
 
   if (!user) {
     return (
-      <AdminProtectedWrapper>
+      <PermissionGuard requiredPermission="users.view">
         <div className="p-6">
           <div className="text-center py-12">
             <AlertTriangle className="mx-auto h-12 w-12 text-red-400" />
@@ -205,12 +205,12 @@ export default function UserDetailPage() {
             </Link>
           </div>
         </div>
-      </AdminProtectedWrapper>
+      </PermissionGuard>
     );
   }
 
   return (
-    <AdminProtectedWrapper title="Kullanıcı Detayı">
+    <PermissionGuard requiredPermission="users.view">
       <div className="p-6">
         {/* Başlık ve Navigasyon */}
         <div className="mb-8">
@@ -570,6 +570,6 @@ export default function UserDetailPage() {
           </div>
         </div>
       </div>
-    </AdminProtectedWrapper>
+    </PermissionGuard>
   );
 }
