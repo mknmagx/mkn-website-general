@@ -116,7 +116,7 @@ export default async function BlogPostPage({ params }) {
             articleSection: post.category,
             keywords: post.tags.join(", "),
             wordCount: post.content.split(" ").length,
-            readingTime: `PT${post.readingTime.replace(" dk", "")}M`,
+            readingTime: `PT${typeof post.readingTime === 'string' ? post.readingTime.replace(" dk", "") : post.readingTime}M`,
             inLanguage: "tr-TR",
           }),
         }}
@@ -151,7 +151,7 @@ export default async function BlogPostPage({ params }) {
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                <span>{post.readingTime}</span>
+                <span>{typeof post.readingTime === 'number' ? `${post.readingTime} dk` : post.readingTime}</span>
               </div>
             </div>
 

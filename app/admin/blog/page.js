@@ -65,6 +65,7 @@ import {
   CalendarIcon,
   TrendingUpIcon,
   StarIcon,
+  SparklesIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -157,6 +158,14 @@ export default function AdminBlogPage() {
                 <Link href="/admin/blog/categories">
                   <TagIcon className="mr-2 h-4 w-4" />
                   Kategoriler
+                </Link>
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard requiredPermission="blog.write">
+              <Button asChild variant="outline">
+                <Link href="/admin/blog/ai-generator">
+                  <SparklesIcon className="mr-2 h-4 w-4" />
+                  AI Blog Üretici
                 </Link>
               </Button>
             </PermissionGuard>

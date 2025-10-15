@@ -334,6 +334,21 @@ export default function QuotesPage() {
       };
     }, [isOpen, onClose]);
 
+    const formatValue = (value) => {
+      if (value === null || value === undefined || value === "") return "-";
+      if (Array.isArray(value))
+        return value.length > 0 ? value.join(", ") : "-";
+      return String(value);
+    };
+
+    const formatBooleanValue = (value) => {
+      if (value === null || value === undefined) return "-";
+      if (typeof value === "boolean") return value ? "Evet" : "Hayır";
+      if (value === "new") return "Yeni";
+      if (value === "existing") return "Mevcut";
+      return value;
+    };
+
     return (
       <div
         className="fixed inset-0 z-50 overflow-y-auto"
@@ -348,11 +363,12 @@ export default function QuotesPage() {
         }}
       >
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="relative bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
+          <div className="relative bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Quote Detayları
+                  Quote Detayları - {quote.contactInfo?.firstName}{" "}
+                  {quote.contactInfo?.lastName}
                 </h3>
                 <button
                   onClick={onClose}
@@ -362,112 +378,341 @@ export default function QuotesPage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
                 {/* İletişim Bilgileri */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                    <User className="h-5 w-5 mr-2 text-blue-600" />
                     İletişim Bilgileri
                   </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>
-                        {quote.contactInfo?.firstName}{" "}
-                        {quote.contactInfo?.lastName}
-                      </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Ad:</span>{" "}
+                      {formatValue(quote.contactInfo?.firstName)}
                     </div>
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{quote.contactInfo?.email}</span>
+                    <div>
+                      <span className="font-medium text-gray-700">Soyad:</span>{" "}
+                      {formatValue(quote.contactInfo?.lastName)}
                     </div>
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{quote.contactInfo?.phone}</span>
+                    <div>
+                      <span className="font-medium text-gray-700">Email:</span>{" "}
+                      {formatValue(quote.contactInfo?.email)}
                     </div>
-                    <div className="flex items-center">
-                      <Building className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{quote.contactInfo?.company || "-"}</span>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Telefon:
+                      </span>{" "}
+                      {formatValue(quote.contactInfo?.phone)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Şirket:</span>{" "}
+                      {formatValue(quote.contactInfo?.company)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Pozisyon:
+                      </span>{" "}
+                      {formatValue(quote.contactInfo?.position)}
                     </div>
                   </div>
                 </div>
 
                 {/* Proje Bilgileri */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                    <Building className="h-5 w-5 mr-2 text-blue-600" />
                     Proje Bilgileri
                   </h4>
-                  <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <strong>Hizmet Alanı:</strong>{" "}
-                      {quote.projectInfo?.serviceArea}
+                      <span className="font-medium text-gray-700">
+                        Proje Adı:
+                      </span>{" "}
+                      {formatValue(quote.projectInfo?.projectName)}
                     </div>
                     <div>
-                      <strong>Proje Adı:</strong>{" "}
-                      {quote.projectInfo?.projectName}
+                      <span className="font-medium text-gray-700">
+                        Hizmet Alanı:
+                      </span>{" "}
+                      {formatValue(quote.projectInfo?.serviceArea)}
                     </div>
                     <div>
-                      <strong>Açıklama:</strong>{" "}
-                      {quote.projectInfo?.projectDescription}
+                      <span className="font-medium text-gray-700">
+                        Hizmet Alt Kategorisi:
+                      </span>{" "}
+                      {formatValue(quote.projectInfo?.serviceSubcategory)}
                     </div>
                     <div>
-                      <strong>Hedef Pazar:</strong>{" "}
-                      {quote.projectInfo?.targetMarket || "-"}
+                      <span className="font-medium text-gray-700">
+                        Ürün Kategorisi:
+                      </span>{" "}
+                      {formatValue(quote.projectInfo?.productCategory)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Hedef Pazar:
+                      </span>{" "}
+                      {formatValue(quote.projectInfo?.targetMarket)}
+                    </div>
+                    <div className="md:col-span-2">
+                      <span className="font-medium text-gray-700">
+                        Proje Açıklaması:
+                      </span>
+                      <p className="mt-1 text-gray-600">
+                        {formatValue(quote.projectInfo?.projectDescription)}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Teknik Bilgiler */}
-                <div className="md:col-span-2">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                    <AlertCircle className="h-5 w-5 mr-2 text-green-600" />
                     Teknik Bilgiler
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Mevcut Formül:
+                      </span>{" "}
+                      {formatBooleanValue(quote.technicalInfo?.existingFormula)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Ürün Hacmi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.productVolume)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Miktar:</span>{" "}
+                      {formatValue(quote.technicalInfo?.quantity)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Ürün Tipi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.productType)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Kıvam:</span>{" "}
+                      {formatValue(quote.technicalInfo?.consistency)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Raf Ömrü:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.shelfLife)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Marka Aşaması:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.brandStage)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Bütçe:</span>{" "}
+                      {formatValue(quote.technicalInfo?.budget)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Kampanya Bütçesi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.campaignBudget)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Ambalaj Tipi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.ambalajType)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Ambalaj Malzemesi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.ambalajMaterial)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Ambalaj Boyutu:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.packagingSize)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Mevcut Sipariş Hacmi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.currentOrderVolume)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Hedef Kitle:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.targetAudience)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Zaman Çizelgesi:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.timeline)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Depo İhtiyaçları:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.warehouseNeeds)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Müşteri Hizmetleri İhtiyaçları:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.customerServiceNeeds)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Baskı Gereksinimleri:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.printingRequirements)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        Ambalaj Tipleri:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.packagingType)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        Sertifikalar:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.certificates)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        İçerik İhtiyaçları:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.contentNeeds)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        Entegrasyon İhtiyaçları:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.integrationNeeds)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        Pazarlama Hedefleri:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.marketingGoals)}
+                    </div>
+                    <div className="md:col-span-3">
+                      <span className="font-medium text-gray-700">
+                        Yasal Gereksinimler:
+                      </span>{" "}
+                      {formatValue(quote.technicalInfo?.regulatoryRequirements)}
+                    </div>
+                    {quote.technicalInfo?.formulaDetails && (
+                      <div className="md:col-span-3">
+                        <span className="font-medium text-gray-700">
+                          Formül Detayları:
+                        </span>
+                        <p className="mt-1 text-gray-600">
+                          {quote.technicalInfo.formulaDetails}
+                        </p>
+                      </div>
+                    )}
+                    {quote.technicalInfo?.ingredients && (
+                      <div className="md:col-span-3">
+                        <span className="font-medium text-gray-700">
+                          İçerikler:
+                        </span>
+                        <p className="mt-1 text-gray-600">
+                          {quote.technicalInfo.ingredients}
+                        </p>
+                      </div>
+                    )}
+                    {quote.technicalInfo?.specialRequirements && (
+                      <div className="md:col-span-3">
+                        <span className="font-medium text-gray-700">
+                          Özel Gereksinimler:
+                        </span>
+                        <p className="mt-1 text-gray-600">
+                          {quote.technicalInfo.specialRequirements}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ek Bilgiler */}
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-purple-600" />
+                    Ek Bilgiler
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <strong>Mevcut Formül:</strong>{" "}
-                      {quote.technicalInfo?.existingFormula ? "Evet" : "Hayır"}
+                      <span className="font-medium text-gray-700">
+                        Ek Hizmetler:
+                      </span>{" "}
+                      {formatValue(quote.additionalInfo?.additionalServices)}
                     </div>
                     <div>
-                      <strong>Ürün Hacmi:</strong>{" "}
-                      {quote.technicalInfo?.productVolume || "-"}
+                      <span className="font-medium text-gray-700">
+                        Önceki Deneyim:
+                      </span>{" "}
+                      {formatValue(quote.additionalInfo?.previousExperience)}
                     </div>
-                    <div>
-                      <strong>Ambalaj Tipi:</strong>{" "}
-                      {quote.technicalInfo?.packagingType?.join(", ") || "-"}
-                    </div>
-                    <div>
-                      <strong>Raf Ömrü:</strong>{" "}
-                      {quote.technicalInfo?.shelfLife || "-"}
-                    </div>
+                    {quote.additionalInfo?.notes && (
+                      <div className="md:col-span-2">
+                        <span className="font-medium text-gray-700">
+                          Notlar:
+                        </span>
+                        <p className="mt-1 text-gray-600">
+                          {quote.additionalInfo.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  {quote.technicalInfo?.formulaDetails && (
-                    <div className="mt-4">
-                      <strong>Formül Detayları:</strong>
-                      <p className="mt-1 text-gray-600">
-                        {quote.technicalInfo.formulaDetails}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Meta Bilgiler */}
-                <div className="md:col-span-2 border-t pt-4">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Oluşturulma: {formatDate(quote.createdAt)}
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        Durum:{" "}
+                {/* Metadata */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                    <Calendar className="h-5 w-5 mr-2 text-gray-600" />
+                    Sistem Bilgileri
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Durum:</span>
+                      <span
+                        className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                          (
+                            STATUS_CONFIG[quote.metadata?.status || "new"] ||
+                            STATUS_CONFIG["new"]
+                          ).color
+                        }`}
+                      >
                         {
                           (
                             STATUS_CONFIG[quote.metadata?.status || "new"] ||
                             STATUS_CONFIG["new"]
                           ).label
                         }
-                      </div>
-                      <div>
-                        Öncelik:{" "}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Öncelik:
+                      </span>
+                      <span
+                        className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          (
+                            PRIORITY_CONFIG[
+                              quote.metadata?.priority || "normal"
+                            ] || PRIORITY_CONFIG["normal"]
+                          ).color
+                        }`}
+                      >
                         {
                           (
                             PRIORITY_CONFIG[
@@ -475,8 +720,46 @@ export default function QuotesPage() {
                             ] || PRIORITY_CONFIG["normal"]
                           ).label
                         }
-                      </div>
+                      </span>
                     </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Kaynak:</span>{" "}
+                      {formatValue(quote.metadata?.source)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        IP Adresi:
+                      </span>{" "}
+                      {formatValue(quote.metadata?.ipAddress)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Oluşturulma Tarihi:
+                      </span>{" "}
+                      {formatDate(quote.createdAt)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Güncellenme Tarihi:
+                      </span>{" "}
+                      {formatDate(quote.updatedAt)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Gönderim Tarihi:
+                      </span>{" "}
+                      {formatDate(quote.metadata?.submissionDate)}
+                    </div>
+                    {quote.metadata?.userAgent && (
+                      <div className="md:col-span-2">
+                        <span className="font-medium text-gray-700">
+                          Tarayıcı Bilgisi:
+                        </span>
+                        <p className="mt-1 text-xs text-gray-600 break-all">
+                          {quote.metadata.userAgent}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -490,161 +773,161 @@ export default function QuotesPage() {
   return (
     <PermissionGuard requiredPermission="quotes.view">
       <div className="space-y-6">
-      <div className="space-y-6">
-        {/* İstatistikler */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            title="Toplam Quote"
-            value={stats.total}
-            icon={FileText}
-            color="text-blue-600"
-          />
-          <StatCard
-            title="Yeni"
-            value={stats.new}
-            icon={AlertCircle}
-            color="text-blue-600"
-          />
-          <StatCard
-            title="İşlemde"
-            value={stats.inProgress}
-            icon={Clock}
-            color="text-orange-600"
-          />
-          <StatCard
-            title="Yanıtlandı"
-            value={stats.responded}
-            icon={CheckCircle}
-            color="text-green-600"
-          />
-          <StatCard
-            title="Kapatıldı"
-            value={stats.closed}
-            icon={XCircle}
-            color="text-gray-600"
-          />
-        </div>
+        <div className="space-y-6">
+          {/* İstatistikler */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard
+              title="Toplam Quote"
+              value={stats.total}
+              icon={FileText}
+              color="text-blue-600"
+            />
+            <StatCard
+              title="Yeni"
+              value={stats.new}
+              icon={AlertCircle}
+              color="text-blue-600"
+            />
+            <StatCard
+              title="İşlemde"
+              value={stats.inProgress}
+              icon={Clock}
+              color="text-orange-600"
+            />
+            <StatCard
+              title="Yanıtlandı"
+              value={stats.responded}
+              icon={CheckCircle}
+              color="text-green-600"
+            />
+            <StatCard
+              title="Kapatıldı"
+              value={stats.closed}
+              icon={XCircle}
+              color="text-gray-600"
+            />
+          </div>
 
-        {/* Filtreler ve Arama */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="İsim, email, şirket veya proje adı ile ara..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+          {/* Filtreler ve Arama */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="İsim, email, şirket veya proje adı ile ara..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="block px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">Tüm Durumlar</option>
+                  <option value="new">Yeni</option>
+                  <option value="in-progress">İşlemde</option>
+                  <option value="responded">Yanıtlandı</option>
+                  <option value="closed">Kapatıldı</option>
+                </select>
+                <button
+                  onClick={handleSearch}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Ara
+                </button>
+                <button
+                  onClick={loadQuotes}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Yenile
+                </button>
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="block px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">Tüm Durumlar</option>
-                <option value="new">Yeni</option>
-                <option value="in-progress">İşlemde</option>
-                <option value="responded">Yanıtlandı</option>
-                <option value="closed">Kapatıldı</option>
-              </select>
-              <button
-                onClick={handleSearch}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Ara
-              </button>
-              <button
-                onClick={loadQuotes}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Yenile
-              </button>
+            </div>
+          </div>
+
+          {/* Quote Listesi */}
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                Quote İstekleri ({quotes.length})
+              </h3>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <RefreshCw className="mx-auto h-12 w-12 text-gray-400 animate-spin" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    Yükleniyor...
+                  </h3>
+                </div>
+              ) : quotes.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    Quote bulunamadı
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Henüz quote isteği yok veya arama kriterlerinize uygun sonuç
+                    bulunamadı.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kişi
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Şirket / Proje
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hizmet Alanı
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Durum
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Öncelik
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tarih
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          İşlemler
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {quotes.map((quote) => (
+                        <QuoteRow key={quote.id} quote={quote} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Quote Listesi */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Quote İstekleri ({quotes.length})
-            </h3>
-
-            {loading ? (
-              <div className="text-center py-12">
-                <RefreshCw className="mx-auto h-12 w-12 text-gray-400 animate-spin" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  Yükleniyor...
-                </h3>
-              </div>
-            ) : quotes.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  Quote bulunamadı
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Henüz quote isteği yok veya arama kriterlerinize uygun sonuç
-                  bulunamadı.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Kişi
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Şirket / Proje
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hizmet Alanı
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Durum
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Öncelik
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tarih
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        İşlemler
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {quotes.map((quote) => (
-                      <QuoteRow key={quote.id} quote={quote} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quote Detay Modal */}
-      <QuoteModal
-        quote={selectedQuote}
-        isOpen={showQuoteModal}
-        onClose={() => {
-          setShowQuoteModal(false);
-          setSelectedQuote(null);
-        }}
-      />
+        {/* Quote Detay Modal */}
+        <QuoteModal
+          quote={selectedQuote}
+          isOpen={showQuoteModal}
+          onClose={() => {
+            setShowQuoteModal(false);
+            setSelectedQuote(null);
+          }}
+        />
       </div>
     </PermissionGuard>
   );
