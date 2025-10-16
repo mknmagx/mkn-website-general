@@ -8,25 +8,25 @@ import { PermissionGuard } from "../../../components/admin-route-guard";
 import {
   Shield,
   Users,
-  Settings,
   Key,
-  Eye,
   Trash2,
   Plus,
   Save,
   Lock,
+  Route,
+  Folder,
+  X,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import {
   getAllRoles,
   updateRolePermissions,
+  updateRoleAllowedRoutes,
   getAllPermissions,
   createPermission,
   deletePermission,
-  listPermissionCategories,
   getDynamicCategories,
   createPermissionWithCategory,
-  updatePermissionMetadata,
 } from "../../../lib/services/admin-permissions-service";
 import { syncUsersWithRole } from "../../../lib/services/sync-service";
 
@@ -46,6 +46,7 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddPermissionModal, setShowAddPermissionModal] = useState(false);
+  const [showRoutesModal, setShowRoutesModal] = useState(false);
   const [deletingPermissions, setDeletingPermissions] = useState(new Set());
 
   const hasPermission = (permission) => {
@@ -316,54 +317,6 @@ export default function PermissionsPage() {
     }
   };
 
-  const handleListCategories = async () => {
-    try {
-      // Listing permission categories
-      const result = await listPermissionCategories();
-
-      if (result.success) {
-        toast({
-          title: "Kategoriler Listelendi",
-          description: `${result.data.totalCategories} kategori başarıyla işlendi`,
-        });
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Kategoriler listelenirken hata oluştu: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleInitializeSystem = async () => {
-    try {
-      // Updating permission metadata
-
-      const result = await updatePermissionMetadata();
-
-      if (result.success) {
-        toast({
-          title: "Metadata Güncellendi",
-          description: `${result.updatedCount} permission metadata'sı güncellendi, ${result.skippedCount} atlandı`,
-        });
-
-        // Verileri yenile
-        await loadData();
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Metadata güncellenirken hata oluştu: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDeletePermission = async (permissionKey, permissionData) => {
     if (!canCreatePermissions) {
       toast({
@@ -546,20 +499,6 @@ export default function PermissionsPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={handleInitializeSystem}
-              className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-lg"
-            >
-              <Settings className="h-4 w-4" />
-              Metadata Güncelle
-            </button>
-            <button
-              onClick={handleListCategories}
-              className="inline-flex items-center gap-2 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-lg"
-            >
-              <Eye className="h-4 w-4" />
-              Kategorileri Listele
-            </button>
             {canCreatePermissions && (
               <button
                 onClick={() => setShowAddPermissionModal(true)}
@@ -633,6 +572,19 @@ export default function PermissionsPage() {
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
                           {role.userCount} kullanıcı
+                        </div>
+                        <div className="mt-2 flex gap-1">
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRole(role);
+                              setShowRoutesModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 transition-colors cursor-pointer"
+                          >
+                            <Route className="h-3 w-3" />
+                            Rotalar ({role.allowedRoutes?.length || 0})
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -822,7 +774,218 @@ export default function PermissionsPage() {
           categoriesWithMetadata={categoriesWithMetadata}
           selectedRole={selectedRole}
         />
+
+        {/* Allowed Routes Modal */}
+        <AllowedRoutesModal
+          isOpen={showRoutesModal}
+          onClose={() => setShowRoutesModal(false)}
+          role={selectedRole}
+          onRoutesUpdated={loadData}
+        />
       </div>
     </PermissionGuard>
+  );
+}
+
+// AllowedRoutesModal Component
+function AllowedRoutesModal({ isOpen, onClose, role, onRoutesUpdated }) {
+  const { toast } = useToast();
+  const [routes, setRoutes] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [newRoute, setNewRoute] = useState("");
+
+  useEffect(() => {
+    if (role) {
+      setRoutes(role.allowedRoutes || []);
+    }
+  }, [role]);
+
+  const addRoute = () => {
+    if (!newRoute.trim()) {
+      toast({
+        title: "Hata",
+        description: "Lütfen bir rota seçin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (routes.includes(newRoute)) {
+      toast({
+        title: "Hata",
+        description: "Bu rota zaten ekli.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRoutes((prev) => [...prev, newRoute]);
+    setNewRoute("");
+
+    toast({
+      title: "Rota Eklendi",
+      description: `${newRoute} rotası eklendi.`,
+    });
+  };
+
+  const removeRoute = (routeToRemove) => {
+    setRoutes((prev) => prev.filter((route) => route !== routeToRemove));
+
+    toast({
+      title: "Rota Kaldırıldı",
+      description: `${routeToRemove} rotası kaldırıldı.`,
+    });
+  };
+
+  const saveRoutes = async () => {
+    if (!role) return;
+
+    setSaving(true);
+    try {
+      const result = await updateRoleAllowedRoutes(role.id, routes);
+
+      if (result.success) {
+        toast({
+          title: "Başarılı",
+          description: "Rotalar başarıyla güncellendi.",
+        });
+        onRoutesUpdated();
+        onClose();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Rotalar kaydedilirken hata oluştu: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen || !role) return null;
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100 text-green-600">
+                <Route className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {role.name} - Erişim Rotaları
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Bu rolün erişebileceği admin sayfalarını yönetin
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-96">
+          {/* Add New Route */}
+          <div className="mb-6">
+            <h4 className="font-medium text-gray-900 mb-3">Yeni Rota Ekle</h4>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newRoute}
+                onChange={(e) => setNewRoute(e.target.value)}
+                placeholder="Rota yazın... (örn: /admin/custom-page)"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+              <button
+                onClick={addRoute}
+                disabled={!newRoute.trim()}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Ekle
+              </button>
+            </div>
+          </div>
+
+          {/* Current Routes */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">
+              Mevcut Rotalar ({routes.length})
+            </h4>
+            {routes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Route className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Henüz rota eklenmemiş</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {routes.map((route) => (
+                  <div
+                    key={route}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Route className="h-4 w-4 text-green-600" />
+                      <span className="font-mono text-sm text-gray-700">
+                        {route}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removeRoute(route)}
+                      className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+                      title="Rotayı Kaldır"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            İptal
+          </button>
+          <button
+            onClick={saveRoutes}
+            disabled={saving}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Kaydet
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

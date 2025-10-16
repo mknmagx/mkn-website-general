@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FileText,
   MessageSquare,
+  MessageSquareText,
   Users,
   Building2,
   Settings,
@@ -84,6 +85,14 @@ export default function AdminNavigation() {
       current: pathname === "/admin/contacts",
       show:
         hasPermission("contacts.view"),
+    },
+    {
+      name: "Müşteri Talepleri",
+      href: "/admin/requests",
+      icon: MessageSquareText,
+      current: pathname.startsWith("/admin/requests"),
+      show:
+        hasPermission("requests.view") || hasAnyRole(["admin", "super_admin"]),
     },
     {
       name: "Blog Yönetimi",

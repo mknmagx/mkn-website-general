@@ -101,6 +101,12 @@ export default function AddPermissionModal({
       color: "text-purple-600 bg-purple-50",
     },
     {
+      value: "requests",
+      label: "Müşteri Talepleri",
+      icon: LucideIcons.MessageSquareText,
+      color: "text-cyan-600 bg-cyan-50",
+    },
+    {
       value: "content",
       label: "İçerik Yönetimi",
       icon: Edit,
@@ -126,38 +132,25 @@ export default function AddPermissionModal({
     },
   ];
 
-  // Dinamik kategoriler varsa onları kullan, yoksa minimum default'lar
-  const allCategories =
-    categoriesWithMetadata.length > 0
-      ? categoriesWithMetadata.map((cat) => ({
-          value: cat.value,
-          label: cat.label,
-          icon: getDynamicIcon(cat.icon),
-          color: cat.color,
-        }))
-      : [
-          {
-            value: "general",
-            label: "Genel",
-            icon: Key,
-            color: "text-gray-600 bg-gray-50",
-          },
-        ];
+  const allCategories = (() => {
+    if (categoriesWithMetadata.length > 0) {
+      const dynamicCategories = categoriesWithMetadata.map((cat) => ({
+        value: cat.value,
+        label: cat.label,
+        icon: getDynamicIcon(cat.icon),
+        color: cat.color,
+      }));
 
-  // Icon string'i component'e çevir
-  function getIconComponent(iconName) {
-    const iconMap = {
-      Users: Users,
-      MessageSquare: MessageSquare,
-      FileText: FileText,
-      Building2: Building2,
-      Edit: Edit,
-      BarChart3: BarChart3,
-      Settings: Settings,
-      Key: Key,
-    };
-    return iconMap[iconName] || Key;
-  }
+      const existingValues = new Set(dynamicCategories.map((cat) => cat.value));
+      const missingDefaults = defaultCategories.filter(
+        (cat) => !existingValues.has(cat.value)
+      );
+
+      return [...dynamicCategories, ...missingDefaults];
+    } else {
+      return defaultCategories;
+    }
+  })();
 
   const validateForm = () => {
     const newErrors = {};
@@ -184,9 +177,7 @@ export default function AddPermissionModal({
       newErrors.description = "Açıklama en az 10 karakter olmalıdır";
     }
 
-    // Yeni kategori kontrolü
     if (formData.isNewCategory) {
-      // Kategori key kontrolü
       if (!formData.customCategory.trim()) {
         newErrors.customCategory = "Kategori key gereklidir";
       } else if (formData.customCategory.trim().length < 2) {
@@ -303,20 +294,47 @@ export default function AddPermissionModal({
         ? formData.customCategory.trim()
         : formData.category;
 
+      let categoryLabel = "";
+      let icon = "";
+      let color = "";
+      if (!formData.isNewCategory) {
+        const selectedCat = allCategories.find(
+          (cat) => cat.value === finalCategory
+        );
+        if (selectedCat) {
+          categoryLabel = selectedCat.label;
+          icon =
+            typeof selectedCat.icon === "string"
+              ? selectedCat.icon
+              : selectedCat.icon?.name || "";
+          color = selectedCat.color;
+        }
+        const existingPerm = Object.values(existingPermissions).find(
+          (p) =>
+            p.category === finalCategory && p.categoryLabel && p.icon && p.color
+        );
+        if (existingPerm) {
+          categoryLabel = existingPerm.categoryLabel;
+          icon = existingPerm.icon;
+          color = existingPerm.color;
+        }
+      } else {
+        categoryLabel = formData.customCategoryLabel.trim();
+        icon = formData.customIcon.trim();
+        color = formData.customColor.trim();
+      }
+
       const newPermission = {
         key: formData.key.trim(),
         name: formData.name.trim(),
         description: formData.description.trim(),
         category: finalCategory,
         createdAt: new Date(),
-        isCustom: true, // Custom permission olarak işaretle
-        isNewCategory: formData.isNewCategory, // Yeni kategori bilgisi
-        // Yeni kategori ise metadata'ları ekle
-        ...(formData.isNewCategory && {
-          categoryLabel: formData.customCategoryLabel.trim(),
-          icon: formData.customIcon.trim(),
-          color: formData.customColor.trim(),
-        }),
+        isCustom: true,
+        isNewCategory: formData.isNewCategory,
+        categoryLabel,
+        icon,
+        color,
         addToCurrentRole: formData.addToCurrentRole,
       };
 
