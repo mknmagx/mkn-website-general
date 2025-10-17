@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 
-// Modern Puppeteer tabanlı PDF export sistemi
-const ProformaPDFExport = ({ proforma, companyData, children, fileName }) => {
+// Modern HTML2PDF API tabanlı PDF export sistemi
+const ProformaPDFExport = ({ proforma, companyData, children, fileName, onLoadingStart, onLoadingEnd }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
 
@@ -12,8 +12,9 @@ const ProformaPDFExport = ({ proforma, companyData, children, fileName }) => {
     try {
       setIsGenerating(true);
       setError(null);
-
-      console.log('PDF generation started for proforma:', proforma.proformaNumber);
+      
+      // Parent component'e loading başladığını bildir
+      if (onLoadingStart) onLoadingStart();
 
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
@@ -26,18 +27,13 @@ const ProformaPDFExport = ({ proforma, companyData, children, fileName }) => {
         })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
         throw new Error(`PDF oluşturulamadı: ${response.status} ${errorText}`);
       }
 
       // PDF blob'unu al
       const blob = await response.blob();
-      console.log('PDF blob size:', blob.size);
       
       // Download linkini oluştur
       const url = window.URL.createObjectURL(blob);
@@ -58,6 +54,8 @@ const ProformaPDFExport = ({ proforma, companyData, children, fileName }) => {
       setError(`PDF oluşturulurken bir hata oluştu: ${err.message}`);
     } finally {
       setIsGenerating(false);
+      // Parent component'e loading bittiğini bildir
+      if (onLoadingEnd) onLoadingEnd();
     }
   };
 
@@ -84,7 +82,7 @@ const ProformaPDFExport = ({ proforma, companyData, children, fileName }) => {
     >
       {isGenerating ? (
         <>
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+          <Loader2 className="h-4 w-4 animate-spin" />
           <span>PDF Oluşturuluyor...</span>
         </>
       ) : (

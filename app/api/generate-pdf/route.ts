@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import axios from "axios";
+import fs from "fs";
+import path from "path";
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("PDF generation API called");
-
     const body = await request.json();
-    console.log("Request body received:", {
-      hasProforma: !!body.proforma,
-      proformaNumber: body.proforma?.proformaNumber,
-    });
-
     const { proforma, companyData } = body;
 
     if (!proforma) {
       throw new Error("Proforma data is required");
+    }
+
+    // Logo'yu base64 olarak yükle
+    let logoBase64 = "";
+    try {
+      const logoPath = path.join(process.cwd(), "public", "MKN-GROUP-LOGO.png");
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } catch (error) {
+      console.warn("Logo yüklenemedi, placeholder kullanılacak:", error);
     }
 
     // Güvenli metin formatı
@@ -25,27 +30,29 @@ export async function POST(request: NextRequest) {
       return String(text).trim() || "Belirtilmemiş";
     };
 
-    // Para birimi formatı
+    // Para birimi formatı - Sadece metin kodları
     const formatCurrency = (amount: number, currency = "TRY"): string => {
       const numAmount = Number(amount) || 0;
+      const isNegative = numAmount < 0;
+      const absAmount = Math.abs(numAmount);
 
-      if (currency === "TRY") {
-        return `${numAmount.toLocaleString("tr-TR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} ₺`;
-      }
-
-      const symbols: Record<string, string> = {
-        USD: "$",
-        EUR: "€",
-      };
-
-      const symbol = symbols[currency] || currency;
-      return `${symbol}${numAmount.toLocaleString("tr-TR", {
+      const formattedNumber = absAmount.toLocaleString("tr-TR", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      })}`;
+      });
+
+      // Para birimi kodları - sadece metin
+      const currencyTexts: Record<string, string> = {
+        TRY: "TL",
+        USD: "USD",
+        EUR: "EUR",
+      };
+
+      const currencyText = currencyTexts[currency] || currency;
+      const prefix = isNegative ? "-" : "";
+
+      // Hep aynı format: miktar + boşluk + para birimi kodu
+      return `${prefix}${formattedNumber} ${currencyText}`;
     };
 
     // Tarih formatı
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
             theme: {
               extend: {
                 fontFamily: {
-                  sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'sans-serif']
+                  sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'sans-serif']
                 },
                 colors: {
                   primary: {
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
                     600: '#475569',
                     700: '#334155',
                     800: '#1e293b',
-                    900: '#0f172a'
+                    900: '#475569'
                   }
                 }
               }
@@ -103,24 +110,55 @@ export async function POST(request: NextRequest) {
           }
         </script>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-          .table-stripe:nth-child(even) {
-            background-color: #f8fafc;
+          /* Fallback styles for PDF generation with Turkish character support */
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; 
+            font-size: 14px; 
+            line-height: 1.6; 
+            color: #334155;
           }
-          .print-page {
-            max-width: 210mm;
-            min-height: 297mm;
+          .table-stripe:nth-child(even) { background-color: #f8fafc !important; }
+          .print-page { max-width: 210mm; min-height: 297mm; }
+          
+          /* Color fallbacks - lighter colors */
+          .bg-primary-50 { background-color: #f8fafc !important; }
+          .bg-primary-900 { background-color: #475569 !important; }
+          .bg-white { background-color: #ffffff !important; }
+          .text-primary-900 { color: #334155 !important; }
+          .text-primary-500 { color: #64748b !important; }
+          .text-white { color: #ffffff !important; }
+          .border-primary-200 { border-color: #e2e8f0 !important; }
+          .border-primary-900 { border-color: #64748b !important; }
+          
+          /* Layout fallbacks */
+          .flex { display: flex !important; }
+          .justify-between { justify-content: space-between !important; }
+          .items-center { align-items: center !important; }
+          .items-start { align-items: flex-start !important; }
+          .text-right { text-align: right !important; }
+          .text-center { text-align: center !important; }
+          .font-bold { font-weight: 700 !important; }
+          .font-extrabold { font-weight: 800 !important; }
+          .font-semibold { font-weight: 600 !important; }
+          .uppercase { text-transform: uppercase !important; }
+          
+          /* Turkish character support */
+          .turkish-text {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
           }
         </style>
     </head>
-    <body class="font-sans text-sm text-primary-900 bg-white leading-relaxed">
+    <body class="font-sans text-sm text-primary-900 bg-white leading-relaxed turkish-text">
         <div class="print-page mx-auto bg-white">
             <!-- Header -->
             <div class="flex justify-between items-start p-6 border-b border-primary-200">
                 <div class="flex items-center gap-3 flex-1">
-                    <img src="${
-                      process.env.NEXTAUTH_URL || "http://localhost:3000"
-                    }/MKN-GROUP-LOGO.png" alt="MKN GROUP" class="h-8 w-auto">
+                    ${
+                      logoBase64
+                        ? `<img src="${logoBase64}" alt="MKN GROUP" style="height: 32px; width: auto;" />`
+                        : `<!-- Logo placeholder --><div style="width: 32px; height: 32px; background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">MKN</div>`
+                    }
                     <div class="flex-1">
                         <div class="text-xl font-bold text-primary-900 mb-0.5 tracking-tight">MKN GROUP</div>
                         <div class="text-xs text-primary-500 mb-2 font-medium">Professional Business Solutions</div>
@@ -255,9 +293,11 @@ export async function POST(request: NextRequest) {
                             <td class="px-3 py-2 text-xs border-b border-primary-200 font-semibold text-primary-500 text-right pr-4 bg-primary-50">İndirim (%${
                               proforma.discountRate
                             })</td>
-                            <td class="px-3 py-2 text-xs border-b border-primary-200 font-semibold text-primary-900 text-right bg-white">-${formatCurrency(
-                              (proforma.totalAmount || 0) *
-                                (proforma.discountRate / 100),
+                            <td class="px-3 py-2 text-xs border-b border-primary-200 font-semibold text-primary-900 text-right bg-white">${formatCurrency(
+                              -Math.abs(
+                                (proforma.totalAmount || 0) *
+                                  (proforma.discountRate / 100)
+                              ),
                               proforma.currency
                             )}</td>
                         </tr>
@@ -310,61 +350,6 @@ export async function POST(request: NextRequest) {
                         : ""
                     }
                     ${
-                      proforma.termsConfig &&
-                      Object.keys(proforma.termsConfig).length > 0
-                        ? `<div class="mt-4 pt-3 border-t border-primary-200">
-                            <div class="text-xs text-primary-500 mb-2 font-medium">Şartlar Detayları:</div>
-                            <div class="text-xs text-primary-500 leading-normal">
-                              ${
-                                proforma.termsConfig.validityPeriod
-                                  ? `• Geçerlilik Süresi: ${proforma.termsConfig.validityPeriod} gün<br>`
-                                  : ""
-                              }
-                              ${
-                                proforma.termsConfig.paymentType
-                                  ? `• Ödeme Türü: ${
-                                      proforma.termsConfig.paymentType ===
-                                      "advance"
-                                        ? "%100 Peşin"
-                                        : proforma.termsConfig.paymentType ===
-                                          "partial"
-                                        ? `Kısmi (%${proforma.termsConfig.advancePayment} avans)`
-                                        : proforma.termsConfig.paymentType ===
-                                          "credit"
-                                        ? `${proforma.termsConfig.creditDays} gün vadeli`
-                                        : proforma.termsConfig.paymentType ===
-                                          "cash"
-                                        ? "Nakit"
-                                        : "Belirtilmemiş"
-                                    }<br>`
-                                  : ""
-                              }
-                              ${
-                                proforma.termsConfig.deliveryTime
-                                  ? `• Teslimat: ${
-                                      proforma.termsConfig.deliveryTime.min
-                                    }${
-                                      proforma.termsConfig.deliveryTime.max !==
-                                      proforma.termsConfig.deliveryTime.min
-                                        ? `-${proforma.termsConfig.deliveryTime.max}`
-                                        : ""
-                                    } iş günü<br>`
-                                  : ""
-                              }
-                              ${
-                                proforma.termsConfig.vatIncluded !== undefined
-                                  ? `• KDV: ${
-                                      proforma.termsConfig.vatIncluded
-                                        ? "Dahil"
-                                        : "Hariç"
-                                    }<br>`
-                                  : ""
-                              }
-                            </div>
-                           </div>`
-                        : ""
-                    }
-                    ${
                       proforma.notes
                         ? `<div class="mt-3 pt-3 ${
                             proforma.terms || proforma.termsConfig
@@ -393,80 +378,46 @@ export async function POST(request: NextRequest) {
     </html>
     `;
 
-    // Puppeteer ile PDF oluştur
-    console.log("Starting Puppeteer...");
-
-    let browser = null;
-    let page = null;
-
+    // HTML2PDF API ile PDF oluştur
     try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--no-first-run",
-          "--no-zygote",
-          "--disable-gpu",
-          "--disable-features=VizDisplayCompositor",
-          "--disable-background-timer-throttling",
-          "--disable-backgrounding-occluded-windows",
-          "--disable-renderer-backgrounding",
-        ],
-        timeout: 60000,
-      });
+      const apiKey = process.env.HTML2PDF_API_KEY;
 
-      console.log("Browser launched successfully");
+      if (!apiKey) {
+        throw new Error("HTML2PDF API key not found in environment variables");
+      }
 
-      page = await browser.newPage();
-      console.log("New page created");
-
-      // Page timeout ayarları
-      await page.setDefaultTimeout(30000);
-      await page.setDefaultNavigationTimeout(30000);
-
-      // Modern cihaz emülasyonu
-      await page.setViewport({ width: 1200, height: 800 });
-      console.log("Viewport set");
-
-      await page.setContent(htmlTemplate, {
-        waitUntil: "networkidle0",
-        timeout: 30000,
-      });
-      console.log("HTML content set");
-
-      // Sayfanın tam yüklenmesini bekle
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // PDF oluştur - improved settings
-      const pdf = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "20px",
-          right: "20px",
-          bottom: "20px",
-          left: "20px",
+      const response = await axios.post(
+        "https://api.html2pdf.app/v1/generate",
+        {
+          html: htmlTemplate,
+          apiKey: apiKey,
+          options: {
+            format: "A4",
+            printBackground: true,
+            margin: {
+              top: "20px",
+              right: "20px",
+              bottom: "20px",
+              left: "20px",
+            },
+            displayHeaderFooter: false,
+            preferCSSPageSize: true,
+          },
         },
-        preferCSSPageSize: true,
-        timeout: 30000,
-      });
+        {
+          responseType: "arraybuffer",
+        }
+      );
 
-      console.log("PDF generated, size:", pdf.length);
+      if (response.status !== 200) {
+        console.error("HTML2PDF API error:", response.data);
+        throw new Error(`HTML2PDF API failed: ${response.status}`);
+      }
 
-      // Ensure browser cleanup
-      if (page && !page.isClosed()) {
-        await page.close();
-      }
-      if (browser && browser.isConnected()) {
-        await browser.close();
-      }
-      console.log("Browser closed");
+      const pdfBuffer = response.data;
 
       // PDF'i başarılı şekilde döndür
-      return new NextResponse(Buffer.from(pdf), {
+      return new NextResponse(Buffer.from(pdfBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
@@ -476,18 +427,15 @@ export async function POST(request: NextRequest) {
         },
       });
     } catch (pdfError) {
-      console.error("PDF generation specific error:", pdfError);
+      console.error("HTML2PDF generation error:", pdfError);
 
-      // Cleanup on error
-      try {
-        if (page && !page.isClosed()) {
-          await page.close();
-        }
-        if (browser && browser.isConnected()) {
-          await browser.close();
-        }
-      } catch (cleanupError) {
-        console.error("Cleanup error:", cleanupError);
+      // Axios error handling
+      if (axios.isAxiosError(pdfError)) {
+        console.error("Axios error details:", {
+          status: pdfError.response?.status,
+          statusText: pdfError.response?.statusText,
+          data: pdfError.response?.data,
+        });
       }
 
       throw pdfError;

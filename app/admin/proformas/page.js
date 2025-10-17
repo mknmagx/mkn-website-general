@@ -76,6 +76,7 @@ import {
   DollarSign,
   Calendar,
   Building2,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -91,6 +92,7 @@ export default function ProformasPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedProforma, setSelectedProforma] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [loadingPdfIds, setLoadingPdfIds] = useState(new Set());
 
   // Hooks
   const { proformas, loading, error, refresh } = useProformas({
@@ -178,6 +180,19 @@ export default function ProformasPage() {
         variant: "destructive",
       });
     }
+  };
+
+  // PDF loading durumu yönetimi
+  const handlePdfLoadingStart = (proformaId) => {
+    setLoadingPdfIds(prev => new Set([...prev, proformaId]));
+  };
+
+  const handlePdfLoadingEnd = (proformaId) => {
+    setLoadingPdfIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(proformaId);
+      return newSet;
+    });
   };
 
   if (authLoading) return <div>Yükleniyor...</div>;
@@ -471,10 +486,21 @@ export default function ProformasPage() {
                                 <ProformaPDFExport
                                   proforma={proforma}
                                   fileName={`${proforma.proformaNumber}.pdf`}
+                                  onLoadingStart={() => handlePdfLoadingStart(proforma.id)}
+                                  onLoadingEnd={() => handlePdfLoadingEnd(proforma.id)}
                                 >
                                   <div className="flex items-center text-sm cursor-pointer hover:text-blue-600">
-                                    <Download className="h-4 w-4 mr-2" />
-                                    PDF İndir
+                                    {loadingPdfIds.has(proforma.id) ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        PDF Oluşturuluyor...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        PDF İndir
+                                      </>
+                                    )}
                                   </div>
                                 </ProformaPDFExport>
                               </div>
