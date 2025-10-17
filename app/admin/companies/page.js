@@ -13,6 +13,10 @@ import {
   getCompaniesByStatus,
   getCompaniesByBusinessLine,
 } from "../../../lib/services/companies-service";
+import {
+  getAllCommunications,
+  getCommunicationTypeText,
+} from "../../../lib/services/company-communications";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -30,6 +34,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../components/ui/table";
 import {
   Search,
   Plus,
@@ -61,10 +73,12 @@ export default function CompaniesPage() {
   const { user } = useAdminAuth();
   const { hasPermission } = usePermissions();
   const [companies, setCompanies] = useState([]);
+  const [communications, setCommunications] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBusinessLine, setFilterBusinessLine] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [communicationsLoading, setCommunicationsLoading] = useState(false);
 
   // Permission checks
   const canView = hasPermission("companies.view");
@@ -86,6 +100,31 @@ export default function CompaniesPage() {
     }
   };
 
+  // Tüm iletişim geçmişini yükle
+  const loadAllCommunications = async () => {
+    try {
+      setCommunicationsLoading(true);
+      const communicationsData = await getAllCommunications(200);
+      
+      // İletişim verilerini firma bilgileriyle birleştir
+      const communicationsWithCompany = communicationsData.map(comm => {
+        const company = companies.find(c => c.id === comm.companyId);
+        return {
+          ...comm,
+          companyName: company?.name || 'Bilinmeyen Firma',
+          companyEmail: company?.email || '',
+          companyBusinessLine: company?.businessLine || ''
+        };
+      });
+      
+      setCommunications(communicationsWithCompany);
+    } catch (error) {
+      console.error("Error loading communications:", error);
+    } finally {
+      setCommunicationsLoading(false);
+    }
+  };
+
   // Firma sil
   const handleDeleteCompany = async (companyId) => {
     if (window.confirm("Bu firmayı silmek istediğinizden emin misiniz?")) {
@@ -104,6 +143,13 @@ export default function CompaniesPage() {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  // Firmalar yüklenince iletişim geçmişini yükle
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadAllCommunications();
+    }
+  }, [companies]);
 
   // Arama ve filtreleme
   const handleSearch = async () => {
@@ -320,10 +366,14 @@ export default function CompaniesPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="companies" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="companies" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Firmalar
+            </TabsTrigger>
+            <TabsTrigger value="communications" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              İletişim Geçmişi
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -678,6 +728,221 @@ export default function CompaniesPage() {
                 </p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="communications" className="space-y-6">
+            {/* İletişim Geçmişi Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">
+                        Toplam İletişim
+                      </p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {communications.length}
+                      </p>
+                    </div>
+                    <Phone className="h-6 w-6 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">
+                        Bu Ay
+                      </p>
+                      <p className="text-xl font-bold text-green-600">
+                        {communications.filter(comm => {
+                          const commDate = comm.createdAt?.seconds 
+                            ? new Date(comm.createdAt.seconds * 1000)
+                            : new Date(comm.createdAt);
+                          const thisMonth = new Date();
+                          return commDate.getMonth() === thisMonth.getMonth() && 
+                                 commDate.getFullYear() === thisMonth.getFullYear();
+                        }).length}
+                      </p>
+                    </div>
+                    <Calendar className="h-6 w-6 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">
+                        Aktif Firmalar
+                      </p>
+                      <p className="text-xl font-bold text-purple-600">
+                        {new Set(communications.map(c => c.companyId)).size}
+                      </p>
+                    </div>
+                    <Users className="h-6 w-6 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">
+                        Bu Hafta
+                      </p>
+                      <p className="text-xl font-bold text-orange-600">
+                        {communications.filter(comm => {
+                          const commDate = comm.createdAt?.seconds 
+                            ? new Date(comm.createdAt.seconds * 1000)
+                            : new Date(comm.createdAt);
+                          const oneWeekAgo = new Date();
+                          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                          return commDate >= oneWeekAgo;
+                        }).length}
+                      </p>
+                    </div>
+                    <TrendingUp className="h-6 w-6 text-orange-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* İletişim Geçmişi Tablosu */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="h-5 w-5" />
+                  Tüm İletişim Geçmişi
+                </CardTitle>
+                <CardDescription>
+                  Tüm firmalarla yapılan iletişimlerin kronolojik listesi
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {communicationsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tarih</TableHead>
+                          <TableHead>Firma</TableHead>
+                          <TableHead>İletişim Türü</TableHead>
+                          <TableHead>Konu</TableHead>
+                          <TableHead>İş Kolu</TableHead>
+                          <TableHead>Durum</TableHead>
+                          <TableHead>Aksiyon</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {communications.map((comm, index) => (
+                          <TableRow key={comm.id || index}>
+                            <TableCell className="text-sm text-gray-600">
+                              {comm.createdAt?.seconds 
+                                ? new Date(comm.createdAt.seconds * 1000).toLocaleDateString('tr-TR', {
+                                    day: '2-digit',
+                                    month: '2-digit', 
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : new Date(comm.createdAt).toLocaleDateString('tr-TR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                              }
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {comm.companyName}
+                                </div>
+                                {comm.companyEmail && (
+                                  <div className="text-xs text-gray-500">
+                                    {comm.companyEmail}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs"
+                              >
+                                {getCommunicationTypeText(comm.type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-gray-900 max-w-xs">
+                              <div className="truncate" title={comm.subject}>
+                                {comm.subject || 'Belirtilmemiş'}
+                              </div>
+                              {comm.notes && (
+                                <div className="text-xs text-gray-500 truncate mt-1" title={comm.notes}>
+                                  {comm.notes}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {comm.companyBusinessLine && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs"
+                                >
+                                  {comm.companyBusinessLine === 'ambalaj' ? 'Ambalaj' :
+                                   comm.companyBusinessLine.startsWith('fason') ? 'Fason Üretim' :
+                                   comm.companyBusinessLine.includes('eticaret') ? 'E-ticaret' :
+                                   comm.companyBusinessLine}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={comm.status === 'completed' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {comm.status === 'completed' ? 'Tamamlandı' :
+                                 comm.status === 'scheduled' ? 'Planlandı' :
+                                 comm.status === 'cancelled' ? 'İptal Edildi' :
+                                 comm.status === 'postponed' ? 'Ertelendi' :
+                                 comm.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Link 
+                                href={`/admin/companies/${comm.companyId}`}
+                                className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
+                              >
+                                Firma Detayı
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    
+                    {communications.length === 0 && (
+                      <div className="text-center py-8">
+                        <Phone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">
+                          Henüz iletişim geçmişi bulunmuyor.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="dashboard" className="space-y-6">

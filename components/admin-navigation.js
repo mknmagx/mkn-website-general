@@ -79,6 +79,13 @@ export default function AdminNavigation() {
       show: hasPermission("quotes.view"),
     },
     {
+      name: "Proforma Yönetimi",
+      href: "/admin/proformas",
+      icon: FileText,
+      current: pathname.startsWith("/admin/proformas"),
+      show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]),
+    },
+    {
       name: "İletişim Mesajları",
       href: "/admin/contacts",
       icon: MessageSquare,
