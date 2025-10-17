@@ -413,81 +413,140 @@ export default function RequestsPage() {
           {Object.entries(requestsByStatus).map(([status, statusRequests]) => (
             <TabsContent key={status} value={status} className="space-y-4">
               {requestsLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                      <MessageSquareText className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600" />
+                    </div>
+                    <p className="mt-4 text-gray-600 font-medium">
+                      Talepler yükleniyor...
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Lütfen bekleyin
+                    </p>
+                  </div>
                 </div>
               ) : statusRequests.length > 0 ? (
-                <div className="grid gap-4">
+                <div className="space-y-4">
                   {statusRequests.map((request) => (
                     <Card
                       key={request.id}
-                      className="hover:shadow-md transition-shadow"
+                      className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 hover:border-l-blue-600"
                     >
                       <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          <div className="flex-1 space-y-4">
+                            {/* Header with title and badges */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                              <h3 className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
                                 {request.title}
                               </h3>
-                              <Badge
-                                variant="outline"
-                                className={getStatusColor(request.status)}
-                              >
-                                {getRequestStatusLabel(request.status)}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className={getPriorityColor(request.priority)}
-                              >
-                                {getRequestPriorityLabel(request.priority)}
-                              </Badge>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className={`${getStatusColor(
+                                    request.status
+                                  )} font-medium`}
+                                >
+                                  {getRequestStatusLabel(request.status)}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className={`${getPriorityColor(
+                                    request.priority
+                                  )} font-medium`}
+                                >
+                                  {getRequestPriorityLabel(request.priority)}
+                                </Badge>
+                              </div>
                             </div>
 
-                            <div className="text-sm text-gray-600 mb-2">
-                              <span className="font-medium">
-                                #{request.requestNumber}
-                              </span>{" "}
-                              •
-                              <span className="ml-2">
-                                {getRequestCategoryLabel(request.category)}
-                              </span>
+                            {/* Request info */}
+                            <div className="flex flex-wrap items-center gap-4 text-sm">
+                              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
+                                <span className="font-semibold text-gray-700">
+                                  #{request.requestNumber}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
+                                <span className="text-blue-700 font-medium">
+                                  {getRequestCategoryLabel(request.category)}
+                                </span>
+                              </div>
                             </div>
 
-                            <p className="text-gray-700 mb-3 line-clamp-2">
-                              {request.description}
-                            </p>
+                            {/* Description */}
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <p className="text-gray-700 leading-relaxed line-clamp-3">
+                                {request.description}
+                              </p>
+                            </div>
 
-                            <div className="flex items-center gap-6 text-sm text-gray-500">
+                            {/* Meta information */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
                               {request.companyName && (
-                                <div className="flex items-center gap-1">
-                                  <Building2 className="h-4 w-4" />
-                                  {request.companyName}
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Building2 className="h-4 w-4 text-blue-500" />
+                                  <span className="font-medium">
+                                    {request.companyName}
+                                  </span>
                                 </div>
                               )}
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {formatDate(request.createdAt)}
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Calendar className="h-4 w-4 text-green-500" />
+                                <span>{formatDate(request.createdAt)}</span>
                               </div>
                               {request.estimatedValue > 0 && (
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="h-4 w-4" />
-                                  {formatCurrency(request.estimatedValue)}
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <DollarSign className="h-4 w-4 text-yellow-500" />
+                                  <span className="font-semibold text-green-600">
+                                    {formatCurrency(request.estimatedValue)}
+                                  </span>
+                                </div>
+                              )}
+                              {request.contactEmail && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600 sm:col-span-2 lg:col-span-1">
+                                  <MessageSquareText className="h-4 w-4 text-purple-500" />
+                                  <span className="truncate">
+                                    {request.contactEmail}
+                                  </span>
                                 </div>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 ml-4">
-                            <Link href={`/admin/requests/${request.id}`}>
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4" />
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
+                            <Link
+                              href={`/admin/requests/${request.id}`}
+                              className="flex-1 lg:flex-none"
+                            >
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full hover:bg-blue-50 hover:border-blue-300"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                <span className="hidden sm:inline">
+                                  Görüntüle
+                                </span>
                               </Button>
                             </Link>
                             {canEdit && (
-                              <Link href={`/admin/requests/${request.id}/edit`}>
-                                <Button variant="outline" size="sm">
-                                  <Edit3 className="h-4 w-4" />
+                              <Link
+                                href={`/admin/requests/${request.id}/edit`}
+                                className="flex-1 lg:flex-none"
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full hover:bg-green-50 hover:border-green-300"
+                                >
+                                  <Edit3 className="h-4 w-4 mr-2" />
+                                  <span className="hidden sm:inline">
+                                    Düzenle
+                                  </span>
                                 </Button>
                               </Link>
                             )}
@@ -498,28 +557,51 @@ export default function RequestsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <MessageSquareText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {status === "all"
-                      ? "Henüz talep bulunmuyor"
-                      : `${getRequestStatusLabel(
-                          status
-                        )} durumunda talep bulunmuyor`}
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    {canCreate
-                      ? "Yeni bir talep ekleyerek başlayın."
-                      : "Talepler eklendiğinde burada görünecek."}
-                  </p>
-                  {canCreate && (
-                    <Link href="/admin/requests/new">
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        İlk Talebi Ekle
-                      </Button>
-                    </Link>
-                  )}
+                <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="max-w-md mx-auto">
+                    <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                      <MessageSquareText className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {status === "all"
+                        ? "Henüz talep bulunmuyor"
+                        : `${getRequestStatusLabel(
+                            status
+                          )} durumunda talep bulunmuyor`}
+                    </h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      {status === "all"
+                        ? "Müşterilerinizden gelen talepler burada görünecek. İlk talebi ekleyerek başlayın."
+                        : `Bu durumdaki talepler burada görünecek. Diğer durumları kontrol edebilir veya yeni talep ekleyebilirsiniz.`}
+                    </p>
+                    {canCreate && status === "all" && (
+                      <Link href="/admin/requests/new">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Plus className="h-4 w-4 mr-2" />
+                          İlk Talebi Ekle
+                        </Button>
+                      </Link>
+                    )}
+                    {status !== "all" && (
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveTab("all")}
+                          className="hover:bg-gray-100"
+                        >
+                          Tüm Talepleri Görüntüle
+                        </Button>
+                        {canCreate && (
+                          <Link href="/admin/requests/new">
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Yeni Talep Ekle
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>

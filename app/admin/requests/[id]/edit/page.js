@@ -47,6 +47,7 @@ import {
   Save,
   AlertCircle,
   X,
+  Loader2,
 } from "lucide-react";
 
 export default function RequestEditPage() {
@@ -84,7 +85,35 @@ export default function RequestEditPage() {
 
   useEffect(() => {
     if (request) {
-      setFormData({
+      // Format date for input field (YYYY-MM-DD)
+      const formatDateForInput = (dateValue) => {
+        if (!dateValue) return "";
+
+        // If it's already in string format (YYYY-MM-DD), return as is
+        if (typeof dateValue === "string") {
+          // Validate the string format
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (dateRegex.test(dateValue)) {
+            return dateValue;
+          }
+        }
+
+        // Handle other date formats (Firestore timestamp, Date object)
+        let date;
+        if (dateValue.toDate) {
+          date = dateValue.toDate();
+        } else if (dateValue instanceof Date) {
+          date = dateValue;
+        } else {
+          return "";
+        }
+
+        if (isNaN(date.getTime())) return "";
+
+        return date.toISOString().split("T")[0];
+      };
+
+      const newFormData = {
         title: request.title || "",
         description: request.description || "",
         category: request.category || "",
@@ -96,13 +125,15 @@ export default function RequestEditPage() {
         contactPerson: request.contactPerson || "",
         contactEmail: request.contactEmail || "",
         contactPhone: request.contactPhone || "",
-        estimatedValue: request.estimatedValue || "",
-        actualValue: request.actualValue || "",
-        expectedDelivery: request.expectedDelivery || "",
+        estimatedValue: request.estimatedValue?.toString() || "",
+        actualValue: request.actualValue?.toString() || "",
+        expectedDelivery: formatDateForInput(request.expectedDelivery),
         requirements: request.requirements || "",
         additionalNotes: request.additionalNotes || "",
         assignedTo: request.assignedTo || "",
-      });
+      };
+
+      setFormData(newFormData);
     }
   }, [request]);
 
@@ -156,19 +187,23 @@ export default function RequestEditPage() {
           ...prev,
           companyId,
           companyName: selectedCompany.name,
-          contactPerson: selectedCompany.contactPerson || "",
-          contactEmail: selectedCompany.email || "",
-          contactPhone: selectedCompany.phone || "",
+          // Only update contact info if it's empty, preserve existing data
+          contactPerson:
+            prev.contactPerson || selectedCompany.contactPerson || "",
+          contactEmail: prev.contactEmail || selectedCompany.email || "",
+          contactPhone: prev.contactPhone || selectedCompany.phone || "",
         }));
-      } else {
-        // Handle "new-company" or any other non-existing company ID
+      } else if (companyId === "new-company") {
+        // Only clear company ID, keep existing contact info
         setFormData((prev) => ({
           ...prev,
           companyId: "",
-          companyName: "",
-          contactPerson: "",
-          contactEmail: "",
-          contactPhone: "",
+        }));
+      } else {
+        // For other cases, just update the company ID
+        setFormData((prev) => ({
+          ...prev,
+          companyId,
         }));
       }
     },
@@ -226,7 +261,9 @@ export default function RequestEditPage() {
   );
 
   const handleCategoryChange = useCallback(
-    (value) => handleInputChange("category", value),
+    (value) => {
+      handleInputChange("category", value);
+    },
     [handleInputChange]
   );
   const handlePriorityChange = useCallback(
@@ -357,9 +394,22 @@ export default function RequestEditPage() {
               İptal
             </Button>
           </Link>
-          <Button onClick={handleSubmit} disabled={updating}>
-            <Save className="h-4 w-4 mr-2" />
-            {updating ? "Kaydediliyor..." : "Kaydet"}
+          <Button
+            onClick={handleSubmit}
+            disabled={updating}
+            className="min-w-[120px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Kaydet
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -401,13 +451,21 @@ export default function RequestEditPage() {
               <div>
                 <Label htmlFor="category">Kategori *</Label>
                 <Select
-                  value={formData.category}
+                  key={`category-${formData.category || "empty"}`}
+                  value={formData.category || ""}
                   onValueChange={handleCategoryChange}
                 >
                   <SelectTrigger
                     className={formErrors.category ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Kategori seçin" />
+                    <SelectValue placeholder="Kategori seçin">
+                      {formData.category &&
+                      Object.values(REQUEST_CATEGORIES).includes(
+                        formData.category
+                      )
+                        ? getRequestCategoryLabel(formData.category)
+                        : "Kategori seçin"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(REQUEST_CATEGORIES).map((category) => (
@@ -427,11 +485,17 @@ export default function RequestEditPage() {
               <div>
                 <Label htmlFor="status">Durum</Label>
                 <Select
-                  value={formData.status}
+                  key={`status-${formData.status || "empty"}`}
+                  value={formData.status || ""}
                   onValueChange={handleStatusChange}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Durum seçin">
+                      {formData.status &&
+                      Object.values(REQUEST_STATUS).includes(formData.status)
+                        ? getRequestStatusLabel(formData.status)
+                        : "Durum seçin"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(REQUEST_STATUS).map((status) => (
@@ -446,11 +510,19 @@ export default function RequestEditPage() {
               <div>
                 <Label htmlFor="priority">Öncelik</Label>
                 <Select
-                  value={formData.priority}
+                  key={`priority-${formData.priority || "empty"}`}
+                  value={formData.priority || ""}
                   onValueChange={handlePriorityChange}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Öncelik seçin">
+                      {formData.priority &&
+                      Object.values(REQUEST_PRIORITY).includes(
+                        formData.priority
+                      )
+                        ? getRequestPriorityLabel(formData.priority)
+                        : "Öncelik seçin"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(REQUEST_PRIORITY).map((priority) => (
@@ -465,11 +537,17 @@ export default function RequestEditPage() {
               <div>
                 <Label htmlFor="source">Talep Kaynağı</Label>
                 <Select
-                  value={formData.source}
+                  key={`source-${formData.source || "empty"}`}
+                  value={formData.source || ""}
                   onValueChange={handleSourceChange}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Kaynak seçin">
+                      {formData.source &&
+                      Object.values(REQUEST_SOURCE).includes(formData.source)
+                        ? getRequestSourceLabel(formData.source)
+                        : "Kaynak seçin"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(REQUEST_SOURCE).map((source) => (
@@ -561,13 +639,22 @@ export default function RequestEditPage() {
               <div className="md:col-span-2">
                 <Label htmlFor="company">Firma Seçimi</Label>
                 <Select
-                  value={formData.companyId}
+                  value={formData.companyId || ""}
                   onValueChange={handleCompanyChange}
                 >
                   <SelectTrigger
                     className={formErrors.company ? "border-red-500" : ""}
                   >
-                    <SelectValue placeholder="Mevcut firma seçin veya aşağıda yeni firma adı girin" />
+                    <SelectValue placeholder="Mevcut firma seçin veya aşağıda yeni firma adı girin">
+                      {formData.companyId
+                        ? companies.find((c) => c.id === formData.companyId)
+                            ?.name ||
+                          formData.companyName ||
+                          "Seçili firma bulunamadı"
+                        : formData.companyName
+                        ? formData.companyName
+                        : "Mevcut firma seçin veya aşağıda yeni firma adı girin"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="new-company">Yeni Firma</SelectItem>
@@ -595,7 +682,10 @@ export default function RequestEditPage() {
                   value={formData.companyName}
                   onChange={handleCompanyNameChange}
                   placeholder="Firma adını girin"
-                  disabled={!!formData.companyId}
+                  disabled={
+                    !!formData.companyId &&
+                    companies.find((c) => c.id === formData.companyId)
+                  }
                 />
               </div>
 
