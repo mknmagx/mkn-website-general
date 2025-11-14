@@ -1,0 +1,89 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "shopify_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shopify_customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shopify_returns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shopify_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopifyOrderId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shopify_customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopifyCustomerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "shopify_returns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopifyReturnId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "integrationId",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

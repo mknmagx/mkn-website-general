@@ -11,9 +11,12 @@ import {
   REQUEST_CATEGORIES,
   REQUEST_PRIORITY,
   REQUEST_SOURCE,
+  CATEGORY_FIELDS,
   getRequestCategoryLabel,
   getRequestPriorityLabel,
   getRequestSourceLabel,
+  getCategoryIcon,
+  getCategoryColor,
 } from "../../../../lib/services/request-service";
 
 // UI Components
@@ -37,7 +40,23 @@ import {
 import { Label } from "../../../../components/ui/label";
 
 // Icons
-import { MessageSquareText, ArrowLeft, Save, AlertCircle } from "lucide-react";
+import {
+  MessageSquareText,
+  ArrowLeft,
+  Save,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Info,
+  Droplets,
+  Pill,
+  SprayCanIcon as SprayCan,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  FlaskConical,
+  Users,
+} from "lucide-react";
 
 export default function NewRequestPage() {
   const router = useRouter();
@@ -61,12 +80,348 @@ export default function NewRequestPage() {
     expectedDelivery: "",
     requirements: "",
     additionalNotes: "",
+    categorySpecificData: {},
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   const canCreate =
     hasPermission("requests.create") || hasPermission("admin.all");
+
+  // Kategori değiştiğinde özel alanları sıfırla
+  useEffect(() => {
+    if (formData.category && formData.category !== selectedCategory) {
+      setSelectedCategory(formData.category);
+      setFormData((prev) => ({
+        ...prev,
+        categorySpecificData: {},
+      }));
+    }
+  }, [formData.category, selectedCategory]);
+
+  // Kategori ikonu getir
+  const getCategoryIconComponent = (category) => {
+    const iconMap = {
+      cosmetic_manufacturing: Droplets,
+      supplement_manufacturing: Pill,
+      cleaning_manufacturing: SprayCan,
+      packaging_supply: Package,
+      ecommerce_operations: ShoppingCart,
+      digital_marketing: TrendingUp,
+      formulation_development: FlaskConical,
+      consultation: Users,
+    };
+    const IconComponent = iconMap[category] || MessageSquareText;
+    return <IconComponent className="h-5 w-5" />;
+  };
+
+  // Dinamik form alanları renderer
+  const renderDynamicField = (fieldKey, fieldConfig, parentKey = null) => {
+    const fullKey = parentKey ? `${parentKey}.${fieldKey}` : fieldKey;
+    const value = parentKey
+      ? formData.categorySpecificData[parentKey]?.[fieldKey] || ""
+      : formData.categorySpecificData[fieldKey] || "";
+
+    const updateValue = (newValue) => {
+      if (parentKey) {
+        setFormData((prev) => ({
+          ...prev,
+          categorySpecificData: {
+            ...prev.categorySpecificData,
+            [parentKey]: {
+              ...prev.categorySpecificData[parentKey],
+              [fieldKey]: newValue,
+            },
+          },
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          categorySpecificData: {
+            ...prev.categorySpecificData,
+            [fieldKey]: newValue,
+          },
+        }));
+      }
+    };
+
+    switch (fieldConfig.type) {
+      case "text":
+        return (
+          <div key={fullKey}>
+            <Label htmlFor={fullKey}>
+              {fieldConfig.label} {fieldConfig.required && "*"}
+            </Label>
+            <Input
+              id={fullKey}
+              type="text"
+              value={value}
+              onChange={(e) => updateValue(e.target.value)}
+              placeholder={
+                fieldConfig.placeholder || `${fieldConfig.label} girin`
+              }
+            />
+          </div>
+        );
+
+      case "number":
+        return (
+          <div key={fullKey}>
+            <Label htmlFor={fullKey}>
+              {fieldConfig.label} {fieldConfig.required && "*"}
+            </Label>
+            <Input
+              id={fullKey}
+              type="number"
+              min="0"
+              value={value}
+              onChange={(e) => updateValue(parseInt(e.target.value) || 0)}
+              placeholder={fieldConfig.placeholder || "0"}
+            />
+          </div>
+        );
+
+      case "textarea":
+        return (
+          <div key={fullKey}>
+            <Label htmlFor={fullKey}>
+              {fieldConfig.label} {fieldConfig.required && "*"}
+            </Label>
+            <Textarea
+              id={fullKey}
+              rows={3}
+              value={value}
+              onChange={(e) => updateValue(e.target.value)}
+              placeholder={
+                fieldConfig.placeholder || `${fieldConfig.label} girin`
+              }
+            />
+          </div>
+        );
+
+      case "select":
+        return (
+          <div key={fullKey}>
+            <Label htmlFor={fullKey}>
+              {fieldConfig.label} {fieldConfig.required && "*"}
+            </Label>
+            <Select value={value} onValueChange={updateValue}>
+              <SelectTrigger>
+                <SelectValue placeholder={`${fieldConfig.label} seçin`} />
+              </SelectTrigger>
+              <SelectContent>
+                {fieldConfig.options?.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case "multiselect":
+        const multiValue = Array.isArray(value) ? value : [];
+        return (
+          <div key={fullKey}>
+            <Label>
+              {fieldConfig.label} {fieldConfig.required && "*"}
+            </Label>
+            <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+              {fieldConfig.options?.map((option) => (
+                <label key={option} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={multiValue.includes(option)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        updateValue([...multiValue, option]);
+                      } else {
+                        updateValue(
+                          multiValue.filter((item) => item !== option)
+                        );
+                      }
+                    }}
+                    className="rounded"
+                  />
+                  <span className="text-sm">{option}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "boolean":
+        return (
+          <div key={fullKey}>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={Boolean(value)}
+                onChange={(e) => updateValue(e.target.checked)}
+                className="rounded"
+              />
+              <span>{fieldConfig.label}</span>
+            </label>
+          </div>
+        );
+
+      case "array":
+        const arrayValue = Array.isArray(value) ? value : [{}];
+        return (
+          <div key={fullKey} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-medium">
+                {fieldConfig.label} {fieldConfig.required && "*"}
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => updateValue([...arrayValue, {}])}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Ekle
+              </Button>
+            </div>
+
+            {arrayValue.map((item, index) => (
+              <Card key={index} className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium">
+                    {fieldConfig.label.slice(0, -6)} {index + 1}
+                  </h4>
+                  {arrayValue.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newValue = arrayValue.filter(
+                          (_, i) => i !== index
+                        );
+                        updateValue(newValue);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(fieldConfig.fields).map(
+                    ([subKey, subConfig]) => {
+                      const subValue = item[subKey] || "";
+                      const updateSubValue = (newSubValue) => {
+                        const newArrayValue = [...arrayValue];
+                        newArrayValue[index] = {
+                          ...newArrayValue[index],
+                          [subKey]: newSubValue,
+                        };
+                        updateValue(newArrayValue);
+                      };
+
+                      // Render sub field
+                      switch (subConfig.type) {
+                        case "text":
+                          return (
+                            <div key={`${fieldKey}[${index}].${subKey}`}>
+                              <Label>
+                                {subConfig.label} {subConfig.required && "*"}
+                              </Label>
+                              <Input
+                                type="text"
+                                value={subValue}
+                                onChange={(e) => updateSubValue(e.target.value)}
+                                placeholder={
+                                  subConfig.placeholder ||
+                                  `${subConfig.label} girin`
+                                }
+                              />
+                            </div>
+                          );
+
+                        case "number":
+                          return (
+                            <div key={`${fieldKey}[${index}].${subKey}`}>
+                              <Label>
+                                {subConfig.label} {subConfig.required && "*"}
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={subValue}
+                                onChange={(e) =>
+                                  updateSubValue(parseInt(e.target.value) || 0)
+                                }
+                                placeholder={subConfig.placeholder || "0"}
+                              />
+                            </div>
+                          );
+
+                        case "textarea":
+                          return (
+                            <div
+                              key={`${fieldKey}[${index}].${subKey}`}
+                              className="md:col-span-2"
+                            >
+                              <Label>
+                                {subConfig.label} {subConfig.required && "*"}
+                              </Label>
+                              <Textarea
+                                rows={3}
+                                value={subValue}
+                                onChange={(e) => updateSubValue(e.target.value)}
+                                placeholder={
+                                  subConfig.placeholder ||
+                                  `${subConfig.label} girin`
+                                }
+                              />
+                            </div>
+                          );
+
+                        case "select":
+                          return (
+                            <div key={`${fieldKey}[${index}].${subKey}`}>
+                              <Label>
+                                {subConfig.label} {subConfig.required && "*"}
+                              </Label>
+                              <Select
+                                value={subValue}
+                                onValueChange={updateSubValue}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={`${subConfig.label} seçin`}
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {subConfig.options?.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+
+                        default:
+                          return null;
+                      }
+                    }
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -91,6 +446,23 @@ export default function NewRequestPage() {
       errors.contactEmail = "İletişim e-postası gereklidir";
     } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail)) {
       errors.contactEmail = "Geçerli bir e-posta adresi giriniz";
+    }
+
+    // Kategori özel alanları validasyonu
+    if (formData.category && CATEGORY_FIELDS[formData.category]) {
+      const categoryFields = CATEGORY_FIELDS[formData.category];
+      Object.entries(categoryFields).forEach(([fieldKey, fieldConfig]) => {
+        if (fieldConfig.required) {
+          const value = formData.categorySpecificData[fieldKey];
+          if (
+            !value ||
+            (Array.isArray(value) && value.length === 0) ||
+            (typeof value === "string" && !value.trim())
+          ) {
+            errors[`category_${fieldKey}`] = `${fieldConfig.label} gereklidir`;
+          }
+        }
+      });
     }
 
     setFormErrors(errors);
@@ -263,6 +635,62 @@ export default function NewRequestPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Category Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Hizmet Kategorisi Seçimi</CardTitle>
+            <CardDescription>
+              MKN Group'un sunduğu hizmetlerden talebinize uygun olanı seçin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(REQUEST_CATEGORIES).map(([key, category]) => (
+                <div
+                  key={category}
+                  className={`cursor-pointer border-2 rounded-lg p-4 transition-all hover:shadow-md ${
+                    formData.category === category
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => handleCategoryChange(category)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`p-2 rounded-lg ${getCategoryColor(category)}`}
+                    >
+                      {getCategoryIconComponent(category)}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm text-gray-900">
+                        {getRequestCategoryLabel(category)}
+                      </h4>
+                    </div>
+                    {formData.category === category && (
+                      <div className="text-blue-500">
+                        <svg
+                          className="w-5 h-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {formErrors.category && (
+              <p className="text-red-500 text-sm mt-2">{formErrors.category}</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -284,32 +712,6 @@ export default function NewRequestPage() {
                 {formErrors.title && (
                   <p className="text-red-500 text-sm mt-1">
                     {formErrors.title}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="category">Kategori *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={handleCategoryChange}
-                >
-                  <SelectTrigger
-                    className={formErrors.category ? "border-red-500" : ""}
-                  >
-                    <SelectValue placeholder="Kategori seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(REQUEST_CATEGORIES).map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {getRequestCategoryLabel(category)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.category && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.category}
                   </p>
                 )}
               </div>
@@ -365,6 +767,18 @@ export default function NewRequestPage() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="expectedDelivery">
+                  Beklenen Teslimat Tarihi
+                </Label>
+                <Input
+                  id="expectedDelivery"
+                  type="date"
+                  value={formData.expectedDelivery}
+                  onChange={handleExpectedDeliveryChange}
+                />
+              </div>
+
               <div className="md:col-span-2">
                 <Label htmlFor="description">Talep Açıklaması *</Label>
                 <Textarea
@@ -384,6 +798,35 @@ export default function NewRequestPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Category Specific Fields */}
+        {formData.category && CATEGORY_FIELDS[formData.category] && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {getCategoryIconComponent(formData.category)}
+                {getRequestCategoryLabel(formData.category)} - Özel Alanlar
+              </CardTitle>
+              <CardDescription>
+                Seçtiğiniz kategoriye özel detayları doldurun
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {Object.entries(CATEGORY_FIELDS[formData.category]).map(
+                ([fieldKey, fieldConfig]) => (
+                  <div key={fieldKey}>
+                    {renderDynamicField(fieldKey, fieldConfig)}
+                    {formErrors[`category_${fieldKey}`] && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors[`category_${fieldKey}`]}
+                      </p>
+                    )}
+                  </div>
+                )
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Company & Contact Information */}
         <Card>
@@ -481,25 +924,13 @@ export default function NewRequestPage() {
         {/* Additional Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Ek Detaylar</CardTitle>
+            <CardTitle>Ek Bilgiler</CardTitle>
             <CardDescription>
-              Taleple ilgili ek bilgiler ve gereksinimler
+              İsteğe bağlı ek detaylar ve özel notlar
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
-              <div>
-                <Label htmlFor="expectedDelivery">
-                  Beklenen Teslimat Tarihi
-                </Label>
-                <Input
-                  id="expectedDelivery"
-                  type="date"
-                  value={formData.expectedDelivery}
-                  onChange={handleExpectedDeliveryChange}
-                />
-              </div>
-
               <div>
                 <Label htmlFor="requirements">Özel Gereksinimler</Label>
                 <Textarea
@@ -507,18 +938,20 @@ export default function NewRequestPage() {
                   rows={3}
                   value={formData.requirements}
                   onChange={handleRequirementsChange}
-                  placeholder="Özel sertifikalar, standartlar, teknik özellikler vb."
+                  placeholder="Özel sertifikalar, standartlar, teknik özellikler, compliance gereksinimleri vb."
                 />
               </div>
 
               <div>
-                <Label htmlFor="additionalNotes">Ek Notlar</Label>
+                <Label htmlFor="additionalNotes">
+                  Ek Notlar ve Açıklamalar
+                </Label>
                 <Textarea
                   id="additionalNotes"
                   rows={3}
                   value={formData.additionalNotes}
                   onChange={handleAdditionalNotesChange}
-                  placeholder="Diğer önemli notlar ve açıklamalar..."
+                  placeholder="Projeyle ilgili diğer önemli bilgiler, özel durumlar, tercihler..."
                 />
               </div>
             </div>

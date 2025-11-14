@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from "react";
 
 /**
  * Smart Image Selection Hook
@@ -18,11 +18,11 @@ export function useSmartImageSelection() {
   const searchSmartImages = useCallback(async (options = {}) => {
     const {
       blogTitle,
-      blogContent = '',
+      blogContent = "",
       blogTags = [],
-      searchQuery = '',
+      searchQuery = "",
       maxImages = 20,
-      analysisMode = 'quick'
+      analysisMode = "quick",
     } = options;
 
     // Abort any existing request
@@ -40,10 +40,10 @@ export function useSmartImageSelection() {
     setSearchTerms([]);
 
     try {
-      const response = await fetch('/api/smart-image-selection', {
-        method: 'POST',
+      const response = await fetch("/api/smart-image-selection", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           blogTitle,
@@ -51,20 +51,20 @@ export function useSmartImageSelection() {
           blogTags,
           searchQuery,
           maxImages,
-          analysisMode
+          analysisMode,
         }),
-        signal: abortControllerRef.current.signal
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to search images');
+        throw new Error(errorData.error || "Failed to search images");
       }
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || 'Image search was not successful');
+        throw new Error(data.message || "Image search was not successful");
       }
 
       setImages(data.images || []);
@@ -72,14 +72,12 @@ export function useSmartImageSelection() {
       setSearchTerms(data.searchTerms || []);
 
       return data;
-
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Image search aborted');
+      if (error.name === "AbortError") {
+        // Aborted search - no action needed
         return null;
       }
-      
-      console.error('Smart image selection error:', error);
+
       setError(error.message);
       throw error;
     } finally {
@@ -99,19 +97,21 @@ export function useSmartImageSelection() {
     setSearchTerms([query]);
 
     try {
-      const response = await fetch(`/api/smart-image-selection?q=${encodeURIComponent(query)}&count=${count}`);
-      
+      const response = await fetch(
+        `/api/smart-image-selection?q=${encodeURIComponent(
+          query
+        )}&count=${count}`
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to search images');
+        throw new Error(errorData.error || "Failed to search images");
       }
 
       const data = await response.json();
       setImages(data.images || []);
       return data.images;
-
     } catch (error) {
-      console.error('Image search error:', error);
       setError(error.message);
       throw error;
     } finally {
@@ -141,21 +141,27 @@ export function useSmartImageSelection() {
   /**
    * Select a specific image as the chosen one
    */
-  const selectImage = useCallback((imageId) => {
-    const selectedImage = images.find(img => img.id === imageId);
-    if (selectedImage) {
-      setBestImage(selectedImage);
-      return selectedImage;
-    }
-    return null;
-  }, [images]);
+  const selectImage = useCallback(
+    (imageId) => {
+      const selectedImage = images.find((img) => img.id === imageId);
+      if (selectedImage) {
+        setBestImage(selectedImage);
+        return selectedImage;
+      }
+      return null;
+    },
+    [images]
+  );
 
   /**
    * Get image by ID
    */
-  const getImageById = useCallback((imageId) => {
-    return images.find(img => img.id === imageId) || null;
-  }, [images]);
+  const getImageById = useCallback(
+    (imageId) => {
+      return images.find((img) => img.id === imageId) || null;
+    },
+    [images]
+  );
 
   return {
     // State
@@ -164,20 +170,20 @@ export function useSmartImageSelection() {
     bestImage,
     error,
     searchTerms,
-    
+
     // Actions
     searchSmartImages,
     searchImages,
     cancelSearch,
     clearResults,
     selectImage,
-    
+
     // Helpers
     getImageById,
-    
+
     // Computed values
     hasResults: images.length > 0,
     hasError: !!error,
-    totalImages: images.length
+    totalImages: images.length,
   };
 }

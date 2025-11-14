@@ -116,6 +116,13 @@ export default function AdminNavigation() {
       show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]),
     },
     {
+      name: "E-ticaret Entegrasyonları",
+      href: "/admin/integrations",
+      icon: Settings,
+      current: pathname.startsWith("/admin/integrations"),
+      show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]),
+    },
+    {
       name: "Kullanıcı Yönetimi",
       href: "/admin/users",
       icon: Users,

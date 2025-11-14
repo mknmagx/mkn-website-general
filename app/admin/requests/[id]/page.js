@@ -8,10 +8,13 @@ import { usePermissions } from "../../../../components/admin-route-guard";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import {
   REQUEST_STATUS,
+  CATEGORY_FIELDS,
   getRequestCategoryLabel,
   getRequestStatusLabel,
   getRequestPriorityLabel,
   getRequestSourceLabel,
+  getCategoryColor,
+  getCategoryIcon,
 } from "../../../../lib/services/request-service";
 
 // UI Components
@@ -57,6 +60,16 @@ import {
   Clock,
   User,
   AlertCircle,
+  Droplets,
+  Pill,
+  SprayCanIcon as SprayCan,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  FlaskConical,
+  Users,
+  Star,
+  Zap,
 } from "lucide-react";
 
 export default function RequestDetailPage() {
@@ -80,6 +93,101 @@ export default function RequestDetailPage() {
 
   const canView = hasPermission("requests.view") || hasPermission("admin.all");
   const canEdit = hasPermission("requests.edit") || hasPermission("admin.all");
+
+  // Kategori ikonu getir
+  const getCategoryIconComponent = (category) => {
+    const iconMap = {
+      cosmetic_manufacturing: Droplets,
+      supplement_manufacturing: Pill,
+      cleaning_manufacturing: SprayCan,
+      packaging_supply: Package,
+      ecommerce_operations: ShoppingCart,
+      digital_marketing: TrendingUp,
+      formulation_development: FlaskConical,
+      consultation: Users,
+    };
+    const IconComponent = iconMap[category] || MessageSquareText;
+    return <IconComponent className="h-5 w-5" />;
+  };
+
+  // Kategori özel alanları render et
+  const renderCategorySpecificData = (categoryData, category) => {
+    if (!categoryData || !CATEGORY_FIELDS[category]) return null;
+
+    const categoryConfig = CATEGORY_FIELDS[category];
+
+    return (
+      <div className="space-y-6">
+        {Object.entries(categoryConfig).map(([fieldKey, fieldConfig]) => {
+          const value = categoryData[fieldKey];
+          if (!value) return null;
+
+          return (
+            <div key={fieldKey}>
+              <Label className="text-sm font-medium text-slate-500 mb-2 block">
+                {fieldConfig.label}
+              </Label>
+              {fieldConfig.type === "array" && Array.isArray(value) ? (
+                <div className="space-y-3">
+                  {value.map((item, index) => (
+                    <Card
+                      key={index}
+                      className="p-4 bg-slate-50 border-slate-200"
+                    >
+                      <h4 className="font-medium text-slate-800 mb-3">
+                        {fieldConfig.label.slice(0, -6)} {index + 1}
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(fieldConfig.fields).map(
+                          ([subKey, subConfig]) => {
+                            const subValue = item[subKey];
+                            if (!subValue) return null;
+                            return (
+                              <div
+                                key={subKey}
+                                className="bg-white p-3 rounded-lg"
+                              >
+                                <Label className="text-xs text-slate-500 mb-1 block">
+                                  {subConfig.label}
+                                </Label>
+                                <p className="text-sm text-slate-800 font-medium">
+                                  {subValue}
+                                </p>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : fieldConfig.type === "multiselect" && Array.isArray(value) ? (
+                <div className="flex flex-wrap gap-2">
+                  {value.map((item, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className="bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              ) : fieldConfig.type === "boolean" ? (
+                <Badge variant={value ? "default" : "secondary"}>
+                  {value ? "Evet" : "Hayır"}
+                </Badge>
+              ) : (
+                <p className="text-slate-800 bg-slate-50 p-3 rounded-lg">
+                  {value}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (request && !isEditing) {
@@ -241,27 +349,48 @@ export default function RequestDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin/requests">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="hover:bg-slate-50">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Geri
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <MessageSquareText className="h-8 w-8 text-blue-600" />
-              {request.title}
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="text-gray-600">#{request.requestNumber}</span>
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className={`p-2 rounded-xl ${getCategoryColor(
+                  request.category
+                )}`}
+              >
+                {getCategoryIconComponent(request.category)}
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900 line-clamp-1">
+                {request.title}
+              </h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full">
+                <span className="text-sm font-semibold text-slate-700">
+                  #{request.requestNumber}
+                </span>
+              </div>
               <Badge
                 variant="outline"
-                className={getStatusColor(request.status)}
+                className={`${getStatusColor(
+                  request.status
+                )} border font-medium`}
               >
                 {getRequestStatusLabel(request.status)}
               </Badge>
-              <span className="text-gray-500">
-                {getRequestCategoryLabel(request.category)}
-              </span>
+              <div
+                className={`flex items-center gap-2 px-3 py-1 rounded-full ${getCategoryColor(
+                  request.category
+                )}`}
+              >
+                {getCategoryIconComponent(request.category)}
+                <span className="text-sm font-medium">
+                  {getRequestCategoryLabel(request.category)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -269,23 +398,37 @@ export default function RequestDetailPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             <Link href={`/admin/requests/${params.id}/edit`}>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="hover:bg-blue-50 hover:border-blue-300"
+              >
                 <Edit3 className="h-4 w-4 mr-2" />
                 Tam Düzenle
               </Button>
             </Link>
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  className="hover:bg-slate-50"
+                >
                   İptal
                 </Button>
-                <Button onClick={handleSave}>
+                <Button
+                  onClick={handleSave}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
                   <Save className="h-4 w-4 mr-2" />
                   Kaydet
                 </Button>
               </>
             ) : (
-              <Button onClick={() => setIsEditing(true)} variant="ghost">
+              <Button
+                onClick={() => setIsEditing(true)}
+                variant="ghost"
+                className="hover:bg-slate-50"
+              >
                 <Edit3 className="h-4 w-4 mr-2" />
                 Hızlı Düzenle
               </Button>
@@ -296,44 +439,107 @@ export default function RequestDetailPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-          <TabsTrigger value="details">Detaylar</TabsTrigger>
-          <TabsTrigger value="notes">
+        <TabsList className="grid w-full grid-cols-5 bg-slate-100 p-1 rounded-xl">
+          <TabsTrigger
+            value="overview"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+          >
+            Genel Bakış
+          </TabsTrigger>
+          <TabsTrigger
+            value="category-details"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+          >
+            Kategori Detayları
+          </TabsTrigger>
+          <TabsTrigger
+            value="details"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+          >
+            Sistem Bilgileri
+          </TabsTrigger>
+          <TabsTrigger
+            value="notes"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+          >
             Notlar ({request.notes?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="follow-ups">
+          <TabsTrigger
+            value="follow-ups"
+            className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+          >
             Takip ({request.followUps?.length || 0})
           </TabsTrigger>
-        </TabsList>
-
+        </TabsList>{" "}
+        <TabsContent value="category-details" className="space-y-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {getCategoryIconComponent(request.category)}
+                {getRequestCategoryLabel(request.category)} - Özel Bilgiler
+              </CardTitle>
+              <CardDescription>
+                Bu kategoriye özel olarak girilen detaylar
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {request.categorySpecificData ? (
+                renderCategorySpecificData(
+                  request.categorySpecificData,
+                  request.category
+                )
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="bg-slate-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                    {getCategoryIconComponent(request.category)}
+                  </div>
+                  <p>Bu talep için kategori özel veri bulunmuyor.</p>
+                  <p className="text-sm mt-1">
+                    Talep eski sistemde oluşturulmuş olabilir veya kategori özel
+                    alanlar doldurulmamış olabilir.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Info */}
             <div className="lg:col-span-2 space-y-6">
-              <Card>
+              <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <CardTitle>Talep Bilgileri</CardTitle>
+                  <CardTitle className="text-slate-800">
+                    Talep Bilgileri
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Açıklama</Label>
-                    <p className="text-gray-700 mt-1">{request.description}</p>
+                <CardContent className="space-y-6">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <Label className="text-sm font-medium text-slate-500 mb-2 block">
+                      Açıklama
+                    </Label>
+                    <p className="text-slate-800 leading-relaxed">
+                      {request.description}
+                    </p>
                   </div>
 
                   {request.requirements && (
-                    <div>
-                      <Label>Özel Gereksinimler</Label>
-                      <p className="text-gray-700 mt-1">
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                      <Label className="text-sm font-medium text-blue-600 mb-2 block">
+                        Özel Gereksinimler
+                      </Label>
+                      <p className="text-blue-800 leading-relaxed">
                         {request.requirements}
                       </p>
                     </div>
                   )}
 
                   {request.additionalNotes && (
-                    <div>
-                      <Label>Ek Notlar</Label>
-                      <p className="text-gray-700 mt-1">
+                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                      <Label className="text-sm font-medium text-amber-600 mb-2 block">
+                        Ek Notlar
+                      </Label>
+                      <p className="text-amber-800 leading-relaxed">
                         {request.additionalNotes}
                       </p>
                     </div>
@@ -341,43 +547,63 @@ export default function RequestDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <CardTitle>İletişim Bilgileri</CardTitle>
+                  <CardTitle className="text-slate-800">
+                    İletişim Bilgileri
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <Building2 className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <Label>Firma</Label>
-                        <p className="text-gray-700">{request.companyName}</p>
+                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                      <div className="p-2 bg-slate-100 rounded-lg">
+                        <Building2 className="h-5 w-5 text-slate-600" />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-500">Firma</Label>
+                        <p className="text-slate-800 font-medium">
+                          {request.companyName}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <Label>İletişim Kişisi</Label>
-                        <p className="text-gray-700">
+                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                      <div className="p-2 bg-slate-100 rounded-lg">
+                        <User className="h-5 w-5 text-slate-600" />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-500">
+                          İletişim Kişisi
+                        </Label>
+                        <p className="text-slate-800 font-medium">
                           {request.contactPerson || "-"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <Label>E-posta</Label>
-                        <p className="text-gray-700">{request.contactEmail}</p>
+                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                      <div className="p-2 bg-slate-100 rounded-lg">
+                        <Mail className="h-5 w-5 text-slate-600" />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-500">
+                          E-posta
+                        </Label>
+                        <p className="text-slate-800 font-medium">
+                          {request.contactEmail}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <Label>Telefon</Label>
-                        <p className="text-gray-700">
+                    <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                      <div className="p-2 bg-slate-100 rounded-lg">
+                        <Phone className="h-5 w-5 text-slate-600" />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-500">
+                          Telefon
+                        </Label>
+                        <p className="text-slate-800 font-medium">
                           {request.contactPhone || "-"}
                         </p>
                       </div>
@@ -389,22 +615,24 @@ export default function RequestDetailPage() {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              <Card>
+              <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <CardTitle>Durum & Öncelik</CardTitle>
+                  <CardTitle className="text-slate-800">
+                    Durum & Yönetim
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isEditing ? (
                     <>
                       <div>
-                        <Label>Durum</Label>
+                        <Label className="text-sm text-slate-600">Durum</Label>
                         <Select
                           value={editData.status}
                           onValueChange={(value) =>
                             setEditData((prev) => ({ ...prev, status: value }))
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-white border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -418,7 +646,9 @@ export default function RequestDetailPage() {
                       </div>
 
                       <div>
-                        <Label>Atanan Kişi</Label>
+                        <Label className="text-sm text-slate-600">
+                          Atanan Kişi
+                        </Label>
                         <Input
                           value={editData.assignedTo}
                           onChange={(e) =>
@@ -428,39 +658,50 @@ export default function RequestDetailPage() {
                             }))
                           }
                           placeholder="Atanan kişi"
+                          className="bg-white border-slate-200"
                         />
                       </div>
                     </>
                   ) : (
                     <>
-                      <div>
-                        <Label>Durum</Label>
+                      <div className="bg-slate-50 p-4 rounded-xl">
+                        <Label className="text-xs text-slate-500 mb-2 block">
+                          Durum
+                        </Label>
                         <Badge
                           variant="outline"
-                          className={getStatusColor(request.status)}
+                          className={`${getStatusColor(request.status)} border`}
                         >
                           {getRequestStatusLabel(request.status)}
                         </Badge>
                       </div>
 
-                      <div>
-                        <Label>Öncelik</Label>
-                        <p className="text-gray-700">
+                      <div className="bg-slate-50 p-4 rounded-xl">
+                        <Label className="text-xs text-slate-500 mb-2 block">
+                          Öncelik
+                        </Label>
+                        <p className="text-slate-800 font-medium">
                           {getRequestPriorityLabel(request.priority)}
                         </p>
                       </div>
 
-                      <div>
-                        <Label>Kaynak</Label>
-                        <p className="text-gray-700">
+                      <div className="bg-slate-50 p-4 rounded-xl">
+                        <Label className="text-xs text-slate-500 mb-2 block">
+                          Kaynak
+                        </Label>
+                        <p className="text-slate-800 font-medium">
                           {getRequestSourceLabel(request.source)}
                         </p>
                       </div>
 
                       {request.assignedTo && (
-                        <div>
-                          <Label>Atanan Kişi</Label>
-                          <p className="text-gray-700">{request.assignedTo}</p>
+                        <div className="bg-slate-50 p-4 rounded-xl">
+                          <Label className="text-xs text-slate-500 mb-2 block">
+                            Atanan Kişi
+                          </Label>
+                          <p className="text-slate-800 font-medium">
+                            {request.assignedTo}
+                          </p>
                         </div>
                       )}
                     </>
@@ -468,15 +709,19 @@ export default function RequestDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <CardTitle>Değer & Tarihler</CardTitle>
+                  <CardTitle className="text-slate-800">
+                    Finansal Bilgiler
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isEditing ? (
                     <>
                       <div>
-                        <Label>Tahmini Değer (TL)</Label>
+                        <Label className="text-sm text-slate-600">
+                          Tahmini Değer (TL)
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -488,11 +733,14 @@ export default function RequestDetailPage() {
                               estimatedValue: parseFloat(e.target.value) || 0,
                             }))
                           }
+                          className="bg-white border-slate-200"
                         />
                       </div>
 
                       <div>
-                        <Label>Gerçek Değer (TL)</Label>
+                        <Label className="text-sm text-slate-600">
+                          Gerçek Değer (TL)
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -504,49 +752,66 @@ export default function RequestDetailPage() {
                               actualValue: parseFloat(e.target.value) || 0,
                             }))
                           }
+                          className="bg-white border-slate-200"
                         />
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-3">
-                        <DollarSign className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <Label>Tahmini Değer</Label>
-                          <p className="text-gray-700">
+                      <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                          <DollarSign className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-slate-500">
+                            Tahmini Değer
+                          </Label>
+                          <p className="text-slate-800 font-semibold">
                             {formatCurrency(request.estimatedValue)}
                           </p>
                         </div>
                       </div>
 
                       {request.actualValue > 0 && (
-                        <div className="flex items-center gap-3">
-                          <DollarSign className="h-5 w-5 text-gray-400" />
-                          <div>
-                            <Label>Gerçek Değer</Label>
-                            <p className="text-gray-700">
+                        <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                          <div className="p-2 bg-emerald-100 rounded-lg">
+                            <DollarSign className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs text-slate-500">
+                              Gerçek Değer
+                            </Label>
+                            <p className="text-slate-800 font-semibold">
                               {formatCurrency(request.actualValue)}
                             </p>
                           </div>
                         </div>
                       )}
 
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <Label>Oluşturulma</Label>
-                          <p className="text-gray-700">
+                      <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Calendar className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-slate-500">
+                            Oluşturulma
+                          </Label>
+                          <p className="text-slate-800 font-medium">
                             {formatDate(request.createdAt)}
                           </p>
                         </div>
                       </div>
 
                       {request.expectedDelivery && (
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-gray-400" />
-                          <div>
-                            <Label>Beklenen Teslimat</Label>
-                            <p className="text-gray-700">
+                        <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                          <div className="p-2 bg-violet-100 rounded-lg">
+                            <Clock className="h-5 w-5 text-violet-600" />
+                          </div>
+                          <div className="flex-1">
+                            <Label className="text-xs text-slate-500">
+                              Beklenen Teslimat
+                            </Label>
+                            <p className="text-slate-800 font-medium">
                               {request.expectedDelivery}
                             </p>
                           </div>
@@ -559,7 +824,6 @@ export default function RequestDetailPage() {
             </div>
           </div>
         </TabsContent>
-
         <TabsContent value="details" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Talep Detayları */}
@@ -839,7 +1103,6 @@ export default function RequestDetailPage() {
             </Card>
           </div>
         </TabsContent>
-
         <TabsContent value="notes" className="space-y-6">
           <Card>
             <CardHeader>
@@ -887,7 +1150,6 @@ export default function RequestDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="follow-ups" className="space-y-6">
           <Card>
             <CardHeader>

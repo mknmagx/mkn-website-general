@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminFirestore } from '../../../../lib/firebase-admin';
+import { withAuth } from '../../../../lib/services/api-auth-middleware';
 
 // Güvenli şifre oluşturma fonksiyonu
 function generateSecurePassword() {
@@ -12,7 +13,7 @@ function generateSecurePassword() {
   return password;
 }
 
-export async function POST(request) {
+export const POST = withAuth(async (request) => {
   try {
     // Firebase Admin SDK kontrol et
     if (!adminAuth || !adminFirestore) {
@@ -97,4 +98,4 @@ export async function POST(request) {
       { status: 500 }
     );
   }
-}
+});

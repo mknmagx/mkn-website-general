@@ -16,6 +16,7 @@ import {
   getRequestPriorityLabel,
   getRequestStatusLabel,
   getRequestSourceLabel,
+  getCategoryColor,
   RequestService,
 } from "../../../../../lib/services/request-service";
 
@@ -368,19 +369,34 @@ export default function RequestEditPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href={`/admin/requests/${params.id}`}>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="hover:bg-slate-50">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Geri
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <MessageSquareText className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
+                <MessageSquareText className="h-6 w-6 text-white" />
+              </div>
               Talep Düzenle
             </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="text-gray-600">#{request.requestNumber}</span>
-              <Badge variant="outline">
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full">
+                <span className="text-sm font-semibold text-slate-700">
+                  #{request.requestNumber}
+                </span>
+              </div>
+              <Badge
+                variant="outline"
+                className={`${getCategoryColor(request.category)} border`}
+              >
+                {getRequestCategoryLabel(request.category)}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-slate-200 text-slate-700"
+              >
                 {getRequestStatusLabel(request.status)}
               </Badge>
             </div>
@@ -389,7 +405,7 @@ export default function RequestEditPage() {
 
         <div className="flex items-center gap-2">
           <Link href={`/admin/requests/${params.id}`}>
-            <Button variant="outline">
+            <Button variant="outline" className="hover:bg-slate-50">
               <X className="h-4 w-4 mr-2" />
               İptal
             </Button>
@@ -397,7 +413,7 @@ export default function RequestEditPage() {
           <Button
             onClick={handleSubmit}
             disabled={updating}
-            className="min-w-[120px]"
+            className="min-w-[120px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             {updating ? (
               <>
@@ -422,10 +438,10 @@ export default function RequestEditPage() {
         )}
 
         {/* Basic Information */}
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Temel Bilgiler</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-slate-800">Temel Bilgiler</CardTitle>
+            <CardDescription className="text-slate-600">
               Talebin genel bilgilerini düzenleyin
             </CardDescription>
           </CardHeader>
@@ -627,10 +643,12 @@ export default function RequestEditPage() {
         </Card>
 
         {/* Company & Contact Information */}
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Firma ve İletişim Bilgileri</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-slate-800">
+              Firma ve İletişim Bilgileri
+            </CardTitle>
+            <CardDescription className="text-slate-600">
               Talep sahibi firma ve iletişim detayları
             </CardDescription>
           </CardHeader>
@@ -732,10 +750,12 @@ export default function RequestEditPage() {
         </Card>
 
         {/* Additional Details */}
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Ek Detaylar</CardTitle>
-            <CardDescription>Özel gereksinimler ve ek notlar</CardDescription>
+            <CardTitle className="text-slate-800">Ek Detaylar</CardTitle>
+            <CardDescription className="text-slate-600">
+              Özel gereksinimler ve ek notlar
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
