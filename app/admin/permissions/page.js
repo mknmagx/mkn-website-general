@@ -28,7 +28,7 @@ import {
   getDynamicCategories,
   createPermissionWithCategory,
 } from "../../../lib/services/admin-permissions-service";
-import { syncUsersWithRole } from "../../../lib/services/sync-service";
+import { syncUsersWithRole } from "../../../lib/utils/client-sync";
 
 export default function PermissionsPage() {
   const {

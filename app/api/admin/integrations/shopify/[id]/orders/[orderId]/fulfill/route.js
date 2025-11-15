@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { shopifyService } from '../../../../../../../../lib/services/shopify-integration';
-import { withAuth } from '../../../../../../../../lib/services/api-auth-middleware';
-import logger from '../../../../../../../../lib/utils/logger';
+import { shopifyService } from '@/lib/services/shopify-integration';
+import { withAuth } from '@/lib/services/api-auth-middleware';
+import logger from '@/lib/utils/logger';
 
 // POST - Siparişi fulfill et
 export const POST = withAuth(async (request, { params }) => {
