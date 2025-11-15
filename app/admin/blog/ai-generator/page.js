@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import {
   ArrowLeftIcon,
   SparklesIcon,
   Loader2,
@@ -63,10 +71,117 @@ import {
   Edit,
   Settings,
   CheckCircle,
+  Cpu,
+  Zap,
+  Globe,
+  Clock,
+  BarChart3,
+  Sparkles,
+  Wand2,
+  Bot,
+  Code,
+  ImageIcon,
+  PenTool,
+  Info,
+  Workflow,
+  AlertTriangle,
+  Database,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { SmartImageSelection } from "@/components/smart-image-selection";
+
+// AI Model Configurations - Claude Only
+const AI_MODELS = {
+  "claude-sonnet": {
+    id: "claude-sonnet",
+    name: "Claude Sonnet 4.5",
+    provider: "Anthropic",
+    description: "En akıllı model, karmaşık görevler ve kodlama için ideal",
+    apiId: "claude-sonnet-4-5-20250929",
+    alias: "claude-sonnet-4-5",
+    maxTokens: 4000,
+    versions: ["4.5"],
+    capabilities: [
+      "Karmaşık Analiz",
+      "Yaratıcı Yazım",
+      "Teknik İçerik",
+      "SEO Optimizasyonu",
+    ],
+    color: "bg-gradient-to-r from-purple-500 to-indigo-600",
+    icon: Brain,
+    recommended: false,
+  },
+  "claude-haiku": {
+    id: "claude-haiku",
+    name: "Claude Haiku 4.5",
+    provider: "Anthropic",
+    description: "En hızlı model, yakın-sınır zeka ile optimal performans",
+    apiId: "claude-haiku-4-5-20251001",
+    alias: "claude-haiku-4-5",
+    maxTokens: 3000,
+    versions: ["4.5"],
+    capabilities: [
+      "Hızlı Üretim",
+      "Blog Yazısı",
+      "İçerik Optimizasyonu",
+      "SEO",
+    ],
+    color: "bg-gradient-to-r from-green-500 to-emerald-600",
+    icon: Zap,
+    recommended: true,
+  },
+  "claude-opus": {
+    id: "claude-opus",
+    name: "Claude Opus 4.1",
+    provider: "Anthropic",
+    description: "Özel görevler için istisnai model, detaylı analiz",
+    apiId: "claude-opus-4-1-20250805",
+    alias: "claude-opus-4-1",
+    maxTokens: 3500,
+    versions: ["4.1"],
+    capabilities: ["Detaylı Analiz", "Araştırma", "Profesyonel İçerik"],
+    color: "bg-gradient-to-r from-blue-500 to-cyan-600",
+    icon: Cpu,
+    recommended: false,
+  },
+};
+
+// AI Content Settings
+const AI_CONTENT_SETTINGS = {
+  creativity: {
+    label: "Yaratıcılık Seviyesi",
+    description: "İçeriğin ne kadar yaratıcı ve özgün olacağını belirler",
+    min: 0,
+    max: 100,
+    step: 10,
+    default: 70,
+  },
+  technicality: {
+    label: "Teknik Detay Seviyesi",
+    description: "İçeriğe dahil edilecek teknik bilgi miktarı",
+    min: 0,
+    max: 100,
+    step: 10,
+    default: 60,
+  },
+  seoOptimization: {
+    label: "SEO Optimizasyonu",
+    description: "Anahtar kelime yoğunluğu ve SEO odağı",
+    min: 0,
+    max: 100,
+    step: 10,
+    default: 80,
+  },
+  readability: {
+    label: "Okunabilirlik",
+    description: "Metnin anlaşılabilirlik seviyesi",
+    min: 0,
+    max: 100,
+    step: 10,
+    default: 75,
+  },
+};
 
 // Import servisler
 import {
@@ -87,6 +202,13 @@ import {
   TOPIC_CATEGORIES,
   BLOG_SETTINGS_CONFIG,
 } from "../../../../lib/data/blog-topics";
+import {
+  getAllTitleDatasets,
+  getAvailableTitles,
+  markTitleAsUsed,
+  DEFAULT_TITLE_CATEGORIES,
+} from "../../../../lib/services/blog-title-service";
+import TitleUsageTracker from "../../../../components/admin/title-usage-tracker";
 
 export default function AIBlogGeneratorPage() {
   const router = useRouter();
@@ -95,19 +217,42 @@ export default function AIBlogGeneratorPage() {
   const { toast } = useToast();
 
   // Ana state'ler
-  const [activeTab, setActiveTab] = useState("topics");
+  const [activeTab, setActiveTab] = useState("setup");
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [customTopic, setCustomTopic] = useState("");
+
+  // Firestore Title Management States
+  const [titleDatasets, setTitleDatasets] = useState([]);
+  const [selectedDataset, setSelectedDataset] = useState("");
+  const [availableTitles, setAvailableTitles] = useState([]);
+  const [titlesByCategory, setTitlesByCategory] = useState({});
+  const [useFirestoreTitles, setUseFirestoreTitles] = useState(true);
+  const [loadingTitles, setLoadingTitles] = useState(false);
   const [generatedBlog, setGeneratedBlog] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
 
   // AI improvement modal states
   const [showImproveModal, setShowImproveModal] = useState(false);
   const [improving, setImproving] = useState(false);
+
+  // AI Model Configuration
+  const [selectedModel, setSelectedModel] = useState("claude-haiku");
+  const [selectedVersion, setSelectedVersion] = useState("4.5");
+  const [maxTokens, setMaxTokens] = useState(3000);
+  const [temperature, setTemperature] = useState(0.7);
+
+  // AI Content Settings
+  const [aiSettings, setAiSettings] = useState({
+    creativity: 70,
+    technicality: 60,
+    seoOptimization: 80,
+    readability: 75,
+  });
 
   // Blog ayarları
   const [blogDetails, setBlogDetails] = useState({
@@ -117,6 +262,10 @@ export default function AIBlogGeneratorPage() {
     includeStats: true,
     includeMKNInfo: true,
     includeCallToAction: true,
+    includeImages: true,
+    autoSelectImage: true,
+    includeInfographics: false,
+    multiLanguage: false,
   });
 
   // Düzenleme modunda blog verisi
@@ -154,17 +303,120 @@ export default function AIBlogGeneratorPage() {
     }
   };
 
-  // Mock data test function
+  // Title datasets yükle
+  const loadTitleDatasets = async () => {
+    try {
+      setLoadingTitles(true);
+      const datasets = await getAllTitleDatasets({ activeOnly: true });
+      setTitleDatasets(datasets);
+
+      // İlk aktif dataset'i seç
+      if (datasets.length > 0 && !selectedDataset) {
+        setSelectedDataset(datasets[0].id);
+      }
+    } catch (error) {
+      console.error("Title datasets yüklenirken hata:", error);
+      toast({
+        title: "Hata",
+        description: "Başlık datasets yüklenirken hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTitles(false);
+    }
+  };
+
+  // Seçilen dataset'e göre başlıkları yükle
+  const loadTitlesForDataset = async (datasetId, categoryKey = null) => {
+    if (!datasetId) return;
+
+    try {
+      setLoadingTitles(true);
+      const titles = await getAvailableTitles(datasetId, categoryKey);
+
+      if (categoryKey) {
+        setTitlesByCategory((prev) => ({
+          ...prev,
+          [categoryKey]: titles.filter((t) => t.categoryKey === categoryKey),
+        }));
+      } else {
+        setAvailableTitles(titles);
+
+        // Kategori bazında grupla
+        const grouped = {};
+        titles.forEach((title) => {
+          if (!grouped[title.categoryKey]) {
+            grouped[title.categoryKey] = [];
+          }
+          grouped[title.categoryKey].push(title);
+        });
+        setTitlesByCategory(grouped);
+      }
+    } catch (error) {
+      console.error("Başlıklar yüklenirken hata:", error);
+      toast({
+        title: "Hata",
+        description: "Başlıklar yüklenirken hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTitles(false);
+    }
+  };
+
+  // Başlık kullanıldığını işaretle
+  const handleTitleUsed = async (categoryKey, title, blogData = {}) => {
+    if (!selectedDataset) return;
+
+    try {
+      await markTitleAsUsed(selectedDataset, categoryKey, title, {
+        userId: user?.uid || user?.id,
+        blogPostId: blogData.id,
+        blogSlug: blogData.slug,
+        usageType: "blog_generation",
+        aiModel: selectedModel,
+      });
+
+      // Başlıkları yenile
+      await loadTitlesForDataset(selectedDataset);
+    } catch (error) {
+      console.error("Başlık kullanım kaydı hatası:", error);
+    }
+  };
+
+  // Mock data test function - enhanced
   const loadMockData = () => {
-    setGeneratedBlog(mockGeneratedBlog);
+    const mockData = {
+      ...mockGeneratedBlog,
+      aiModel: selectedModel,
+      aiVersion: selectedVersion,
+      aiSettings: aiSettings,
+      generatedAt: new Date().toISOString(),
+      readingTime: 5,
+      tags: "fason üretim, kozmetik ambalajı, MKN Group, sürdürülebilir ambalaj, plastik şişe",
+      metaDescription:
+        "MKN Group'un fason üretim hizmetleri ve kozmetik ambalaj çözümleri hakkında kapsamlı bilgiler. Profesyonel ambalaj üretim süreçleri.",
+    };
+
+    setGeneratedBlog(mockData);
     setSelectedCategory("ambalaj");
+    setSelectedTopics([
+      "Fason Üretim Avantajları",
+      "Kozmetik Ambalaj Trendleri",
+    ]);
+
+    // Otomatik görsel seçimi test
+    if (blogDetails.autoSelectImage) {
+      handleAutoImageSelection(mockData);
+    }
+
     setActiveTab("preview");
 
     toast({
-      title: "Mock Data Yüklendi",
-      description:
-        "Test verisi başarıyla yüklendi. Önizleme sekmesine geçiliyor.",
+      title: "🎉 Test Verisi Yüklendi!",
+      description: `${AI_MODELS[selectedModel].name} ile test blog verisi başarıyla yüklendi.`,
       variant: "default",
+      duration: 4000,
     });
   };
 
@@ -240,72 +492,152 @@ export default function AIBlogGeneratorPage() {
     });
   };
 
-  // Blog üretme fonksiyonu
+  // Smart generation progress simulation
+  const simulateProgress = () => {
+    setGenerationProgress(0);
+    const interval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 800);
+    return interval;
+  };
+
+  // Enhanced blog generation with progress tracking and title usage
   const generateBlog = async () => {
-    if (selectedTopics.length === 0 && !customTopic.trim()) {
+    if (
+      !useFirestoreTitles &&
+      selectedTopics.length === 0 &&
+      !customTopic.trim()
+    ) {
       toast({
-        title: "Hata",
+        title: "❌ Hata",
         description: "Lütfen en az bir konu seçin veya özel konu girin.",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      const topics =
-        selectedTopics.length > 0 ? selectedTopics : [customTopic.trim()];
-
-      const prompt = AI_PROMPTS.blogGeneration(topics, blogDetails);
-      const response = await generateContent(prompt, {
-        systemPrompt:
-          "You are a professional content writer for MKN Group. Generate high-quality blog content in Turkish that is informative, engaging, and SEO-optimized. Always respond with valid JSON format.",
-        maxTokens: 3000,
-        temperature: 0.7,
+    if (
+      useFirestoreTitles &&
+      selectedTopics.length === 0 &&
+      !customTopic.trim()
+    ) {
+      toast({
+        title: "❌ Hata",
+        description: "Lütfen en az bir başlık seçin veya özel konu girin.",
+        variant: "destructive",
       });
+      return;
+    }
 
-      console.log("AI Response:", response);
+    const progressInterval = simulateProgress();
+
+    try {
+      const topics = selectedTopics.length > 0 ? selectedTopics : [];
+      const allTopics = [...topics];
+      if (customTopic.trim()) {
+        allTopics.push(customTopic.trim());
+      }
+
+      // Enhanced prompt with AI settings
+      const enhancedBlogDetails = {
+        ...blogDetails,
+        aiSettings,
+        model: selectedModel,
+        version: selectedVersion,
+        creativity: aiSettings.creativity / 100,
+        technicality: aiSettings.technicality / 100,
+        seoOptimization: aiSettings.seoOptimization / 100,
+        readability: aiSettings.readability / 100,
+      };
+
+      const prompt = AI_PROMPTS.blogGeneration(allTopics, enhancedBlogDetails);
+
+      const response = await generateContent(prompt, {
+        systemPrompt: `You are a professional content writer for MKN Group. Generate high-quality blog content in Turkish that is informative, engaging, and SEO-optimized. 
+
+Model: ${AI_MODELS[selectedModel].name}
+Creativity Level: ${aiSettings.creativity}%
+Technical Detail: ${aiSettings.technicality}%
+SEO Focus: ${aiSettings.seoOptimization}%
+Readability: ${aiSettings.readability}%
+
+${
+  useFirestoreTitles
+    ? "The user selected titles from our Firestore database. Make sure to incorporate the essence of these titles into the content."
+    : ""
+}
+
+Always respond with valid JSON format.`,
+        maxTokens: maxTokens,
+        temperature: temperature,
+      });
 
       let blogData;
       try {
-        // Use enhanced JSON parser for AI responses
         blogData = parseAiJsonResponse(response);
-
-        // Validate the parsed data
         blogData = validateBlogData(blogData);
       } catch (parseError) {
-        console.error("AI Response parsing error:", parseError);
+        console.error("❌ AI Response parsing error:", parseError);
         console.error("Raw AI Response:", response);
         throw new Error(`AI yanıtı işlenemedi: ${parseError.message}`);
       }
 
-      // Process blog content (AI already provides HTML)
+      // Process blog content with AI settings
       const processedBlog = {
         ...blogData,
         slug: generateSlug(blogData.title),
         readingTime: estimateReadingTime(blogData.content),
-        topics: topics,
+        topics: allTopics,
+        selectedTitles: topics, // Firestore'dan seçilen başlıklar
+        customTopic: customTopic.trim() || null,
+        useFirestoreTitles,
+        selectedDataset,
+        selectedCategory,
+        aiModel: selectedModel,
+        aiVersion: selectedVersion,
+        aiSettings: aiSettings,
+        generatedAt: new Date().toISOString(),
       };
 
-      setGeneratedBlog(processedBlog);
-      setActiveTab("preview");
+      setGenerationProgress(100);
+      clearInterval(progressInterval);
 
-      toast({
-        title: "Blog Oluşturuldu",
-        description:
-          "AI blog yazısını başarıyla oluşturdu. Önizleme sekmesine geçiliyor.",
-        variant: "default",
-      });
+      setTimeout(() => {
+        setGeneratedBlog(processedBlog);
+        setActiveTab("preview");
+
+        toast({
+          title: "🎉 Blog Oluşturuldu!",
+          description: `${
+            AI_MODELS[selectedModel].name
+          } ile blog yazısı başarıyla oluşturuldu.${
+            useFirestoreTitles && selectedTopics.length > 0
+              ? ` ${selectedTopics.length} başlık kullanıldı.`
+              : ""
+          }`,
+          variant: "default",
+          duration: 5000,
+        });
+      }, 500);
     } catch (error) {
-      console.error("Blog üretilirken hata:", error);
+      clearInterval(progressInterval);
+      setGenerationProgress(0);
+      console.error("❌ Blog üretilirken hata:", error);
       toast({
-        title: "Hata",
+        title: "❌ Hata",
         description: `Blog üretilirken hata oluştu: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
-  // Blog kaydetme
+  // Blog kaydetme with title usage tracking
   const handleSaveBlog = async () => {
     try {
       setSaving(true);
@@ -323,7 +655,31 @@ export default function AIBlogGeneratorPage() {
           estimateReadingTime(editableBlog.content),
       };
 
-      await addBlogPost(blogData);
+      const blogPostId = await addBlogPost(blogData);
+
+      // Mark titles as used if they were from Firestore
+      if (
+        generatedBlog?.useFirestoreTitles &&
+        generatedBlog?.selectedTitles &&
+        generatedBlog?.selectedDataset &&
+        generatedBlog?.selectedCategory
+      ) {
+        const titleUsagePromises = generatedBlog.selectedTitles.map((title) =>
+          handleTitleUsed(generatedBlog.selectedCategory, title, {
+            id: blogPostId,
+            slug: editableBlog.slug,
+          })
+        );
+
+        try {
+          await Promise.all(titleUsagePromises);
+          console.log("✅ Title usage tracking completed");
+        } catch (usageError) {
+          console.warn("⚠️ Title usage tracking failed:", usageError);
+          // Don't fail the entire save operation for usage tracking errors
+        }
+      }
+
       setShowSaveDialog(false);
 
       // Formu temizle
@@ -349,7 +705,11 @@ export default function AIBlogGeneratorPage() {
 
       toast({
         title: "Blog Kaydedildi",
-        description: "Blog yazısı başarıyla kaydedildi ve yayınlandı.",
+        description: `Blog yazısı başarıyla kaydedildi ve yayınlandı.${
+          generatedBlog?.useFirestoreTitles
+            ? " Kullanılan başlıklar işaretlendi."
+            : ""
+        }`,
         variant: "default",
       });
 
@@ -368,24 +728,89 @@ export default function AIBlogGeneratorPage() {
 
   // Smart image selection handler
   const handleImageSelect = (image) => {
-    setEditableBlog(prev => ({
+    setEditableBlog((prev) => ({
       ...prev,
       image: image.url,
       imageAlt: image.alt,
-      imageCredit: `© ${image.photographer} - Pexels`
+      imageCredit: `© ${image.photographer} - Pexels`,
     }));
 
     toast({
-      title: "Görsel Seçildi",
+      title: "🎨 Görsel Seçildi",
       description: `"${image.alt}" görseli başarıyla seçildi.`,
       variant: "default",
     });
   };
 
+  // Otomatik görsel seçimi - blog oluşturulduktan sonra çağrılır
+  const handleAutoImageSelection = async (blogData) => {
+    if (!blogDetails.autoSelectImage || !blogData.title) {
+      return;
+    }
+
+    try {
+      // Blog başlığı ve içeriğinden anahtar kelimeler çıkar
+      const searchQuery = blogData.title
+        .toLowerCase()
+        .replace(/[^a-zığüşoçş\s]/gi, "")
+        .split(" ")
+        .filter((word) => word.length > 3)
+        .slice(0, 3)
+        .join(" ");
+
+      // Smart image selection API'sini çağır
+      const response = await fetch("/api/smart-image-selection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          blogTitle: blogData.title,
+          blogContent: blogData.content || "",
+          tags: blogData.tags
+            ? blogData.tags.split(",").map((tag) => tag.trim())
+            : [],
+          searchQuery: searchQuery,
+          autoSelect: true,
+        }),
+      });
+
+      if (response.ok) {
+        const imageData = await response.json();
+        if (imageData.images && imageData.images.length > 0) {
+          // İlk görseli otomatik seç
+          const selectedImage = imageData.images[0];
+          setEditableBlog((prev) => ({
+            ...prev,
+            image: selectedImage.url,
+            imageAlt: selectedImage.alt,
+            imageCredit: `© ${selectedImage.photographer} - Pexels`,
+          }));
+
+          toast({
+            title: "🤖 Otomatik Görsel Seçildi",
+            description: `"${selectedImage.alt}" görseli AI tarafından seçildi.`,
+            variant: "default",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Otomatik görsel seçimi hatası:", error);
+      // Hata durumunda toast gösterme, sessizce devam et
+    }
+  };
+
   // useEffect'ler
   useEffect(() => {
     loadCategories();
+    loadTitleDatasets();
   }, []);
+
+  useEffect(() => {
+    if (selectedDataset) {
+      loadTitlesForDataset(selectedDataset);
+    }
+  }, [selectedDataset]);
 
   useEffect(() => {
     if (user?.name) {
@@ -428,473 +853,1331 @@ export default function AIBlogGeneratorPage() {
   }
 
   return (
-    <PermissionGuard requiredPermission="blog:write">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">AI Blog Generator</h1>
-              <p className="text-gray-600 mt-2">
-                Yapay zeka destekli blog yazısı oluşturun
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={loadMockData}>
-                <FileText className="mr-2 h-4 w-4" />
-                Mock Test
-              </Button>
-              <Link href="/admin/blog">
-                <Button variant="outline">
-                  <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                  Geri Dön
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Ana Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="topics">
-              <Target className="mr-2 h-4 w-4" />
-              Konular
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings className="mr-2 h-4 w-4" />
-              Ayarlar
-            </TabsTrigger>
-            <TabsTrigger value="preview" disabled={!generatedBlog}>
-              <Eye className="mr-2 h-4 w-4" />
-              Önizleme
-            </TabsTrigger>
-            <TabsTrigger value="edit" disabled={!generatedBlog}>
-              <Edit className="mr-2 h-4 w-4" />
-              Düzenle
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Konular Sekmesi */}
-          <TabsContent value="topics" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Konu Seçimi</CardTitle>
-                <CardDescription>
-                  Blog yazısı için konu kategorisi seçin ve istediğiniz konuları
-                  belirleyin
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Konu Kategorisi</Label>
-                  <Select
-                    value={selectedCategory}
-                    onValueChange={setSelectedCategory}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Kategori seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TOPIC_CATEGORIES).map(
-                        ([key, category]) => (
-                          <SelectItem key={key} value={key}>
-                            {category.name}
-                          </SelectItem>
-                        )
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedCategory && (
-                  <div className="space-y-2">
-                    <Label>Önerilen Konular</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {TOPIC_CATEGORIES[selectedCategory].topics.map(
-                        (topic) => (
-                          <div
-                            key={topic}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                              selectedTopics.includes(topic)
-                                ? "bg-primary/10 border-primary"
-                                : "hover:bg-gray-50"
-                            }`}
-                            onClick={() => {
-                              if (selectedTopics.includes(topic)) {
-                                setSelectedTopics(
-                                  selectedTopics.filter((t) => t !== topic)
-                                );
-                              } else {
-                                setSelectedTopics([...selectedTopics, topic]);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <CheckCircle
-                                className={`h-4 w-4 ${
-                                  selectedTopics.includes(topic)
-                                    ? "text-primary"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                              <span className="text-sm">{topic}</span>
-                            </div>
-                          </div>
-                        )
-                      )}
+    <PermissionGuard requiredPermission="blog.write">
+      <TooltipProvider>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+          <div className="container mx-auto px-4 py-8">
+            {/* Modern Header */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl blur opacity-20"></div>
+                    <div className="relative bg-white p-3 rounded-2xl shadow-lg">
+                      <Bot className="h-8 w-8 text-purple-600" />
                     </div>
                   </div>
-                )}
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                      AI Blog Studio
+                    </h1>
+                    <p className="text-gray-600 mt-1 flex items-center">
+                      <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                      Profesyonel blog içerikleri oluşturun
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={loadMockData}
+                    className="hover:bg-purple-50 hover:border-purple-300"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Test Verisi
+                  </Button>
+                  <Link href="/admin/blog">
+                    <Button variant="outline" className="hover:bg-gray-50">
+                      <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                      Geri Dön
+                    </Button>
+                  </Link>
+                </div>
+              </div>
 
-                <Separator />
+              {/* AI Model Status Bar */}
+              {selectedModel && (
+                <div className="mt-4 p-4 bg-white rounded-xl shadow-sm border border-purple-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className={`p-2 rounded-lg ${AI_MODELS[selectedModel].color}`}
+                      >
+                        {(() => {
+                          const IconComponent = AI_MODELS[selectedModel].icon;
+                          return (
+                            <IconComponent className="h-4 w-4 text-white" />
+                          );
+                        })()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {AI_MODELS[selectedModel].name} v{selectedVersion}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {AI_MODELS[selectedModel].provider} • {maxTokens}{" "}
+                          tokens
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-sm text-gray-500">
+                        <span className="font-medium">Yaratıcılık:</span>{" "}
+                        {aiSettings.creativity}%
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        <span className="font-medium">SEO:</span>{" "}
+                        {aiSettings.seoOptimization}%
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-100 text-green-800"
+                      >
+                        <Zap className="h-3 w-3 mr-1" />
+                        Hazır
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customTopic">Özel Konu</Label>
-                  <Textarea
-                    id="customTopic"
-                    placeholder="Kendi konunuzu yazın..."
-                    value={customTopic}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    rows={3}
-                  />
+            {/* Enhanced Tabs */}
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-5 bg-white shadow-lg rounded-xl p-1 mb-8">
+                <TabsTrigger
+                  value="setup"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  AI Ayarları
+                </TabsTrigger>
+                <TabsTrigger
+                  value="topics"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg"
+                >
+                  <Target className="mr-2 h-4 w-4" />
+                  Konular
+                </TabsTrigger>
+                <TabsTrigger
+                  value="content"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg"
+                >
+                  <PenTool className="mr-2 h-4 w-4" />
+                  İçerik Ayarları
+                </TabsTrigger>
+                <TabsTrigger
+                  value="preview"
+                  disabled={!generatedBlog}
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Önizleme
+                </TabsTrigger>
+                <TabsTrigger
+                  value="edit"
+                  disabled={!generatedBlog}
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-lg"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Düzenle
+                </TabsTrigger>
+              </TabsList>
+
+              {/* AI Setup Sekmesi */}
+              <TabsContent value="setup" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* AI Model Selection */}
+                  <Card className="border-purple-200 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-purple-700">
+                        <Cpu className="mr-2 h-5 w-5" />
+                        AI Model Seçimi
+                      </CardTitle>
+                      <CardDescription>
+                        Blog üretimi için kullanılacak AI modelini seçin
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {Object.values(AI_MODELS).map((model) => (
+                        <div
+                          key={model.id}
+                          className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                            selectedModel === model.id
+                              ? "border-purple-500 bg-purple-50 shadow-md scale-[1.02]"
+                              : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
+                          }`}
+                          onClick={() => {
+                            setSelectedModel(model.id);
+                            setSelectedVersion(model.versions[0]);
+                            setMaxTokens(model.maxTokens);
+                          }}
+                        >
+                          {model.recommended && (
+                            <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Önerilen
+                            </Badge>
+                          )}
+                          <div className="flex items-start space-x-3">
+                            <div className={`p-2 rounded-lg ${model.color}`}>
+                              {(() => {
+                                const IconComponent = model.icon;
+                                return (
+                                  <IconComponent className="h-5 w-5 text-white" />
+                                );
+                              })()}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-semibold text-gray-900">
+                                  {model.name}
+                                </h3>
+                                <Badge variant="outline" className="text-xs">
+                                  {model.provider}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {model.description}
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {model.capabilities.map((cap, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {cap}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            {selectedModel === model.id && (
+                              <CheckCircle className="h-6 w-6 text-purple-500 flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Model Versiyonu */}
+                      {selectedModel && (
+                        <div className="space-y-2 pt-4 border-t">
+                          <Label>Model Versiyonu</Label>
+                          <Select
+                            value={selectedVersion}
+                            onValueChange={setSelectedVersion}
+                          >
+                            <SelectTrigger className="border-purple-200 focus:border-purple-500">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AI_MODELS[selectedModel].versions.map(
+                                (version) => (
+                                  <SelectItem key={version} value={version}>
+                                    {AI_MODELS[selectedModel].name} v{version}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* AI Parameters */}
+                  <Card className="border-blue-200 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-blue-700">
+                        <Settings className="mr-2 h-5 w-5" />
+                        AI Parametreleri
+                      </CardTitle>
+                      <CardDescription>
+                        Model parametrelerini özelleştirin
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-2">
+                        <Label className="flex items-center">
+                          Maksimum Token Sayısı
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-4 w-4 ml-2 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Üretilecek içeriğin maksimum uzunluğunu belirler
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </Label>
+                        <Slider
+                          value={[maxTokens]}
+                          onValueChange={(value) => setMaxTokens(value[0])}
+                          max={
+                            selectedModel
+                              ? AI_MODELS[selectedModel].maxTokens
+                              : 4000
+                          }
+                          min={1000}
+                          step={100}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>1,000</span>
+                          <span className="font-medium">{maxTokens}</span>
+                          <span>
+                            {selectedModel
+                              ? AI_MODELS[selectedModel].maxTokens
+                              : 4000}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="flex items-center">
+                          Temperature (Yaratıcılık)
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-4 w-4 ml-2 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                0.1 = Tutarlı ve mantıklı
+                                <br />
+                                0.9 = Yaratıcı ve çeşitli
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </Label>
+                        <Slider
+                          value={[temperature]}
+                          onValueChange={(value) => setTemperature(value[0])}
+                          max={1}
+                          min={0.1}
+                          step={0.1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>0.1</span>
+                          <span className="font-medium">{temperature}</span>
+                          <span>1.0</span>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* AI Content Settings */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-gray-900 flex items-center">
+                          <Wand2 className="mr-2 h-4 w-4" />
+                          İçerik Ayarları
+                        </h4>
+
+                        {Object.entries(AI_CONTENT_SETTINGS).map(
+                          ([key, setting]) => (
+                            <div key={key} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="flex items-center text-sm">
+                                  {setting.label}
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-3 w-3 ml-2 text-gray-400" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{setting.description}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </Label>
+                                <Badge variant="outline" className="text-xs">
+                                  {aiSettings[key]}%
+                                </Badge>
+                              </div>
+                              <Slider
+                                value={[aiSettings[key]]}
+                                onValueChange={(value) =>
+                                  setAiSettings((prev) => ({
+                                    ...prev,
+                                    [key]: value[0],
+                                  }))
+                                }
+                                max={setting.max}
+                                min={setting.min}
+                                step={setting.step}
+                                className="w-full"
+                              />
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                <div className="flex justify-between">
-                  <div className="text-sm text-gray-500">
-                    {selectedTopics.length > 0 || customTopic.trim()
-                      ? `${selectedTopics.length} konu seçildi${
-                          customTopic.trim() ? " + özel konu" : ""
-                        }`
-                      : "Hiç konu seçilmedi"}
-                  </div>
+                <div className="flex justify-end">
                   <Button
-                    onClick={() => setActiveTab("settings")}
-                    disabled={
-                      selectedTopics.length === 0 && !customTopic.trim()
-                    }
+                    onClick={() => setActiveTab("topics")}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
                   >
                     Devam Et
                     <Lightbulb className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Ayarlar Sekmesi */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Blog Ayarları</CardTitle>
-                <CardDescription>
-                  Blog yazısının tonu, uzunluğu ve özelliklerini belirleyin
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Yazım Tonu</Label>
-                    <Select
-                      value={blogDetails.tone}
-                      onValueChange={(value) =>
-                        setBlogDetails({ ...blogDetails, tone: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BLOG_SETTINGS_CONFIG.tones.map((tone) => (
-                          <SelectItem key={tone.value} value={tone.value}>
-                            <div>
-                              <div className="font-medium">{tone.label}</div>
-                              <div className="text-xs text-gray-500">
-                                {tone.description}
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>İçerik Uzunluğu</Label>
-                    <Select
-                      value={blogDetails.length}
-                      onValueChange={(value) =>
-                        setBlogDetails({ ...blogDetails, length: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BLOG_SETTINGS_CONFIG.lengths.map((length) => (
-                          <SelectItem key={length.value} value={length.value}>
-                            <div>
-                              <div className="font-medium">{length.label}</div>
-                              <div className="text-xs text-gray-500">
-                                {length.description}
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="targetKeywords">
-                    Hedef Anahtar Kelimeler
-                  </Label>
-                  <Input
-                    id="targetKeywords"
-                    placeholder="Örn: fason üretim, kozmetik, MKN Group"
-                    value={blogDetails.targetKeywords}
-                    onChange={(e) =>
-                      setBlogDetails({
-                        ...blogDetails,
-                        targetKeywords: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <Label>İçerik Özellikleri</Label>
-                  {BLOG_SETTINGS_CONFIG.features.map((feature) => (
-                    <div
-                      key={feature.key}
-                      className="flex items-center justify-between"
-                    >
-                      <div>
-                        <div className="font-medium">{feature.label}</div>
-                        <div className="text-sm text-gray-500">
-                          {feature.description}
+              </TabsContent>
+              {/* Konular Sekmesi - Firestore Integration */}
+              <TabsContent value="topics" className="space-y-6">
+                <Card className="border-green-200 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-green-700">
+                      <Target className="mr-2 h-5 w-5" />
+                      Konu Seçimi & Başlık Yönetimi
+                    </CardTitle>
+                    <CardDescription>
+                      Firestore'dan başlık seçin veya özel konu girin.
+                      Kullanılan başlıklar işaretlenir.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Title Source Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex-1">
+                          <Label className="text-base font-medium text-blue-900">
+                            Başlık Kaynağı
+                          </Label>
+                          <p className="text-sm text-blue-700">
+                            Firestore'dan hazır başlıkları kullan veya özel konu
+                            gir
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-blue-700">
+                            Özel Konu
+                          </span>
+                          <Switch
+                            checked={useFirestoreTitles}
+                            onCheckedChange={setUseFirestoreTitles}
+                          />
+                          <span className="text-sm text-blue-700">
+                            Firestore
+                          </span>
                         </div>
                       </div>
-                      <Switch
-                        checked={blogDetails[feature.key]}
-                        onCheckedChange={(checked) =>
-                          setBlogDetails({
-                            ...blogDetails,
-                            [feature.key]: checked,
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
 
-                <div className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={() => setActiveTab("topics")}
-                  >
-                    Geri
-                  </Button>
-                  <Button onClick={generateBlog} disabled={aiLoading}>
-                    {aiLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Üretiliyor...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="mr-2 h-4 w-4" />
-                        Blog Üret
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Önizleme Sekmesi */}
-          <TabsContent value="preview" className="space-y-6">
-            {generatedBlog && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Blog Önizlemesi</CardTitle>
-                  <CardDescription>
-                    Üretilen blog yazısını inceleyin ve gerekirse düzenleyin
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {generatedBlog.readingTime || 0}
-                      </div>
-                      <div className="text-sm text-blue-600">Dakika Okuma</div>
-                    </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
-                        {generatedBlog.content?.split(" ").length || 0}
-                      </div>
-                      <div className="text-sm text-green-600">Kelime</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {generatedBlog.tags?.split(",").length || 0}
-                      </div>
-                      <div className="text-sm text-purple-600">Etiket</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">Başlık</h3>
-                      <p className="text-gray-700">{generatedBlog.title}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold">Özet</h3>
-                      <p className="text-gray-700">{generatedBlog.excerpt}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold">Etiketler</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {generatedBlog.tags?.split(",").map((tag, index) => (
-                          <Badge key={index} variant="secondary">
-                            {tag.trim()}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        İçerik Önizlemesi
-                      </h3>
-                      <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
-                        <pre className="whitespace-pre-wrap text-sm">
-                          {generatedBlog.content?.substring(0, 1000)}
-                          {generatedBlog.content?.length > 1000 && "..."}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => setActiveTab("settings")}
-                    >
-                      Ayarlara Dön
-                    </Button>
-                    <Button onClick={() => setActiveTab("edit")}>
-                      Düzenle
-                      <Edit className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Düzenleme Sekmesi */}
-          <TabsContent value="edit" className="space-y-6">
-            {generatedBlog && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Blog Düzenleme</CardTitle>
-                  <CardDescription>
-                    Blog içeriğini ihtiyaçlarınıza göre düzenleyin
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editTitle">Başlık</Label>
-                      <Input
-                        id="editTitle"
-                        value={editableBlog.title}
-                        onChange={(e) => {
-                          const newTitle = e.target.value;
-                          setEditableBlog({
-                            ...editableBlog,
-                            title: newTitle,
-                            slug: generateSlug(newTitle),
-                          });
-                        }}
-                      />
-                      <p className="text-xs text-gray-500">
-                        {editableBlog.title?.length || 0}/60 karakter (SEO için
-                        ideal)
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editSlug">Slug</Label>
-                      <Input
-                        id="editSlug"
-                        value={editableBlog.slug}
-                        onChange={(e) =>
-                          setEditableBlog({
-                            ...editableBlog,
-                            slug: e.target.value,
-                          })
-                        }
-                      />
-                      <p className="text-xs text-gray-500">
-                        URL dostu format (otomatik oluşturulur)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="editExcerpt">Özet</Label>
-                    <Textarea
-                      id="editExcerpt"
-                      value={editableBlog.excerpt}
-                      onChange={(e) =>
-                        setEditableBlog({
-                          ...editableBlog,
-                          excerpt: e.target.value,
-                        })
-                      }
-                      rows={3}
-                      placeholder="Blog yazısının kısa özeti (200-250 karakter önerilir)"
-                    />
-                    <p className="text-xs text-gray-500">
-                      {editableBlog.excerpt?.length || 0}/250 karakter
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="editContent">İçerik</Label>
-                      <div className="flex items-center gap-2">
-                        {/* View Mode Toggle */}
-                        <div className="flex rounded-md border">
-                          <Button
-                            variant={editViewMode === "html" ? "default" : "ghost"}
-                            size="sm"
-                            onClick={() => setEditViewMode("html")}
-                            className="rounded-r-none border-r"
+                      {/* Dataset Selection */}
+                      {useFirestoreTitles && (
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">
+                            Title Dataset
+                          </Label>
+                          <Select
+                            value={selectedDataset}
+                            onValueChange={setSelectedDataset}
                           >
-                            HTML
-                          </Button>
-                          <Button
-                            variant={editViewMode === "markdown" ? "default" : "ghost"}
-                            size="sm"
-                            onClick={() => setEditViewMode("markdown")}
-                            className="rounded-l-none"
-                          >
-                            Markdown
-                          </Button>
+                            <SelectTrigger className="border-green-200 focus:border-green-500">
+                              <SelectValue placeholder="Dataset seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {titleDatasets.map((dataset) => (
+                                <SelectItem key={dataset.id} value={dataset.id}>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <span>{dataset.name}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {dataset.totalTitles -
+                                        (dataset.usedTitles || 0)}{" "}
+                                      kalan
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {titleDatasets.length === 0 && (
+                            <p className="text-sm text-amber-600">
+                              ⚠️ Aktif title dataset bulunamadı. Yeni dataset
+                              oluşturmak için Title Yönetimi'ni kullanın.
+                            </p>
+                          )}
                         </div>
-                        
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        {useFirestoreTitles ? (
+                          <>
+                            <div className="space-y-2">
+                              <Label className="text-base font-medium">
+                                Konu Kategorisi
+                              </Label>
+                              <Select
+                                value={selectedCategory}
+                                onValueChange={(value) => {
+                                  setSelectedCategory(value);
+                                  setSelectedTopics([]); // Reset selections
+                                }}
+                              >
+                                <SelectTrigger className="border-green-200 focus:border-green-500">
+                                  <SelectValue placeholder="Kategori seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DEFAULT_TITLE_CATEGORIES.map((category) => (
+                                    <SelectItem
+                                      key={category.key}
+                                      value={category.key}
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <span>{category.icon}</span>
+                                        <span>{category.name}</span>
+                                        {titlesByCategory[category.key] && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                          >
+                                            {
+                                              titlesByCategory[category.key]
+                                                .length
+                                            }{" "}
+                                            başlık
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {selectedCategory &&
+                              selectedDataset &&
+                              titlesByCategory[selectedCategory] && (
+                                <div className="space-y-3">
+                                  <Label className="text-base font-medium flex items-center justify-between">
+                                    <span>
+                                      Kullanılabilir Başlıklar (
+                                      {
+                                        titlesByCategory[selectedCategory]
+                                          .length
+                                      }{" "}
+                                      adet)
+                                    </span>
+                                    {loadingTitles && (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    )}
+                                  </Label>
+                                  <TitleUsageTracker
+                                    titles={titlesByCategory[
+                                      selectedCategory
+                                    ].map((title) => ({
+                                      title: title.title,
+                                      isUsed: false, // Bu başlıklar available titles'dan geldiği için kullanılmamış
+                                      usageCount: 0,
+                                      lastUsedAt: null,
+                                      usages: [],
+                                    }))}
+                                    categoryKey={selectedCategory}
+                                    categoryName={
+                                      DEFAULT_TITLE_CATEGORIES.find(
+                                        (c) => c.key === selectedCategory
+                                      )?.name
+                                    }
+                                    datasetId={selectedDataset}
+                                    onTitleSelect={(titleData) => {
+                                      const topic = titleData.title;
+                                      if (selectedTopics.includes(topic)) {
+                                        setSelectedTopics(
+                                          selectedTopics.filter(
+                                            (t) => t !== topic
+                                          )
+                                        );
+                                      } else {
+                                        setSelectedTopics([
+                                          ...selectedTopics,
+                                          topic,
+                                        ]);
+                                      }
+                                    }}
+                                    selectedTitle={
+                                      selectedTopics.length > 0
+                                        ? selectedTopics[
+                                            selectedTopics.length - 1
+                                          ]
+                                        : null
+                                    }
+                                    compact={true}
+                                    showUsageDetails={false}
+                                    className="max-h-60 overflow-y-auto"
+                                  />
+                                </div>
+                              )}
+
+                            {selectedCategory &&
+                              selectedDataset &&
+                              (!titlesByCategory[selectedCategory] ||
+                                titlesByCategory[selectedCategory].length ===
+                                  0) &&
+                              !loadingTitles && (
+                                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                  <div className="flex items-center space-x-2">
+                                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                                    <p className="text-amber-800 font-medium">
+                                      Bu kategoride kullanılabilir başlık yok
+                                    </p>
+                                  </div>
+                                  <p className="text-amber-700 text-sm mt-1">
+                                    Bu kategori için tüm başlıklar kullanılmış
+                                    veya dataset'te bu kategori mevcut değil.
+                                  </p>
+                                </div>
+                              )}
+                          </>
+                        ) : (
+                          // Manual Topic Entry
+                          <>
+                            <div className="space-y-2">
+                              <Label className="text-base font-medium">
+                                Konu Kategorisi (Referans)
+                              </Label>
+                              <Select
+                                value={selectedCategory}
+                                onValueChange={setSelectedCategory}
+                              >
+                                <SelectTrigger className="border-green-200 focus:border-green-500">
+                                  <SelectValue placeholder="Kategori seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DEFAULT_TITLE_CATEGORIES.map((category) => (
+                                    <SelectItem
+                                      key={category.key}
+                                      value={category.key}
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <span>{category.icon}</span>
+                                        <span>{category.name}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {selectedCategory && (
+                              <div className="space-y-3">
+                                <Label className="text-base font-medium">
+                                  Örnek Konular (Referans)
+                                </Label>
+                                <div className="max-h-40 overflow-y-auto pr-2 space-y-1">
+                                  {TOPIC_CATEGORIES[selectedCategory]?.topics
+                                    .slice(0, 5)
+                                    .map((topic, index) => (
+                                      <div
+                                        key={index}
+                                        className="p-2 bg-gray-100 rounded border text-sm text-gray-600"
+                                      >
+                                        💡 {topic}
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Custom Topic Entry - Always visible */}
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="customTopic"
+                            className="text-base font-medium"
+                          >
+                            {useFirestoreTitles
+                              ? "Ek Özel Konu (Opsiyonel)"
+                              : "Özel Konu / Araştırma Talebi"}
+                          </Label>
+                          <Textarea
+                            id="customTopic"
+                            placeholder={
+                              useFirestoreTitles
+                                ? "Seçilen başlıklara ek olarak özel bir konu eklemek isterseniz..."
+                                : "Örn: 'Sürdürülebilir ambalaj trendleri 2024', 'Kozmetik sektöründe yenilikçi çözümler'..."
+                            }
+                            value={customTopic}
+                            onChange={(e) => setCustomTopic(e.target.value)}
+                            rows={useFirestoreTitles ? 4 : 6}
+                            className="border-gray-200 focus:border-green-500 resize-none"
+                          />
+                          <p className="text-xs text-gray-500">
+                            {useFirestoreTitles
+                              ? "Bu konu seçilen başlıklarla birlikte kullanılacak"
+                              : "Detaylı açıklamalar daha iyi sonuçlar verir"}
+                          </p>
+                        </div>
+
+                        {/* Seçilen konuların özeti */}
+                        {(selectedTopics.length > 0 || customTopic.trim()) && (
+                          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                            <h4 className="font-medium text-green-800 mb-2 flex items-center">
+                              <BarChart3 className="mr-2 h-4 w-4" />
+                              Seçim Özeti
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              {selectedTopics.length > 0 && (
+                                <div>
+                                  <span className="font-medium text-green-700">
+                                    {useFirestoreTitles
+                                      ? "Seçilen Başlıklar"
+                                      : "Önerilen Konular"}
+                                    :
+                                  </span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {selectedTopics.map((topic, idx) => (
+                                      <Badge
+                                        key={idx}
+                                        variant="secondary"
+                                        className="bg-green-200 text-green-800"
+                                      >
+                                        {useFirestoreTitles && (
+                                          <CheckCircle className="mr-1 h-3 w-3" />
+                                        )}
+                                        {topic.length > 50
+                                          ? `${topic.substring(0, 50)}...`
+                                          : topic}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {customTopic.trim() && (
+                                <div>
+                                  <span className="font-medium text-green-700">
+                                    Özel Konu:
+                                  </span>
+                                  <p className="text-green-600 mt-1 text-xs">
+                                    {customTopic.substring(0, 100)}
+                                    {customTopic.length > 100 && "..."}
+                                  </p>
+                                </div>
+                              )}
+
+                              {useFirestoreTitles &&
+                                selectedDataset &&
+                                selectedTopics.length > 0 && (
+                                  <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                                    <div className="flex items-center space-x-2 text-blue-700">
+                                      <Database className="h-3 w-3" />
+                                      <span className="text-xs font-medium">
+                                        Seçilen başlıklar kullanım için
+                                        işaretlenecek
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Firestore dataset stats */}
+                        {useFirestoreTitles &&
+                          selectedDataset &&
+                          titleDatasets.length > 0 && (
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              {(() => {
+                                const dataset = titleDatasets.find(
+                                  (d) => d.id === selectedDataset
+                                );
+                                return dataset ? (
+                                  <div className="text-sm">
+                                    <div className="font-medium text-blue-900 mb-1">
+                                      Dataset: {dataset.name}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-blue-700">
+                                      <div>
+                                        <span className="font-medium">
+                                          Toplam:
+                                        </span>{" "}
+                                        {dataset.totalTitles}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Kullanılan:
+                                        </span>{" "}
+                                        {dataset.usedTitles || 0}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">
+                                          Kalan:
+                                        </span>{" "}
+                                        {dataset.totalTitles -
+                                          (dataset.usedTitles || 0)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-between items-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab("setup")}
+                        className="hover:bg-gray-50"
+                      >
+                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                        AI Ayarları
+                      </Button>
+
+                      <div className="text-sm text-gray-500">
+                        {(() => {
+                          const hasSelectedTopics = selectedTopics.length > 0;
+                          const hasCustomTopic = customTopic.trim();
+                          const hasAnyContent =
+                            hasSelectedTopics || hasCustomTopic;
+
+                          if (hasAnyContent) {
+                            const parts = [];
+                            if (hasSelectedTopics)
+                              parts.push(
+                                `${selectedTopics.length} başlık seçildi`
+                              );
+                            if (hasCustomTopic) parts.push("özel konu");
+                            return `✓ ${parts.join(" + ")}`;
+                          }
+                          return "⚠ Hiç konu seçilmedi";
+                        })()}
+                      </div>
+
+                      <Button
+                        onClick={() => setActiveTab("content")}
+                        disabled={
+                          selectedTopics.length === 0 && !customTopic.trim()
+                        }
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                      >
+                        Devam Et
+                        <PenTool className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* İçerik Ayarları Sekmesi */}
+              <TabsContent value="content" className="space-y-6">
+                <Card className="border-blue-200 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-blue-700">
+                      <PenTool className="mr-2 h-5 w-5" />
+                      İçerik Ayarları & Özelleştirme
+                    </CardTitle>
+                    <CardDescription>
+                      Blog yazısının tonu, uzunluğu ve özelliklerini belirleyin
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Sol Kolon - Temel Ayarlar */}
+                      <div className="space-y-6">
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-gray-900 flex items-center">
+                            <Code className="mr-2 h-4 w-4" />
+                            Temel Ayarlar
+                          </h3>
+
+                          <div className="space-y-2">
+                            <Label>Yazım Tonu</Label>
+                            <Select
+                              value={blogDetails.tone}
+                              onValueChange={(value) =>
+                                setBlogDetails({ ...blogDetails, tone: value })
+                              }
+                            >
+                              <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {BLOG_SETTINGS_CONFIG.tones.map((tone) => (
+                                  <SelectItem
+                                    key={tone.value}
+                                    value={tone.value}
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {tone.label}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {tone.description}
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>İçerik Uzunluğu</Label>
+                            <Select
+                              value={blogDetails.length}
+                              onValueChange={(value) =>
+                                setBlogDetails({
+                                  ...blogDetails,
+                                  length: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {BLOG_SETTINGS_CONFIG.lengths.map((length) => (
+                                  <SelectItem
+                                    key={length.value}
+                                    value={length.value}
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {length.label}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {length.description}
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="targetKeywords">
+                              Hedef Anahtar Kelimeler
+                            </Label>
+                            <Input
+                              id="targetKeywords"
+                              placeholder="Örn: fason üretim, kozmetik, MKN Group, sürdürülebilir ambalaj"
+                              value={blogDetails.targetKeywords}
+                              onChange={(e) =>
+                                setBlogDetails({
+                                  ...blogDetails,
+                                  targetKeywords: e.target.value,
+                                })
+                              }
+                              className="border-blue-200 focus:border-blue-500"
+                            />
+                            <p className="text-xs text-gray-500">
+                              Virgülle ayırarak birden fazla anahtar kelime
+                              girebilirsiniz
+                            </p>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* İçerik Özellikleri */}
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-gray-900 flex items-center">
+                            <Workflow className="mr-2 h-4 w-4" />
+                            İçerik Özellikleri
+                          </h3>
+                          {BLOG_SETTINGS_CONFIG.features.map((feature) => (
+                            <div
+                              key={feature.key}
+                              className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+                            >
+                              <div className="flex-1">
+                                <div className="font-medium text-blue-900">
+                                  {feature.label}
+                                </div>
+                                <div className="text-sm text-blue-700">
+                                  {feature.description}
+                                </div>
+                              </div>
+                              <Switch
+                                checked={blogDetails[feature.key]}
+                                onCheckedChange={(checked) =>
+                                  setBlogDetails({
+                                    ...blogDetails,
+                                    [feature.key]: checked,
+                                  })
+                                }
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sağ Kolon - Gelişmiş Özellikler */}
+                      <div className="space-y-6">
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-gray-900 flex items-center">
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Gelişmiş Özellikler
+                          </h3>
+
+                          {/* Görsel İçerik */}
+                          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="font-semibold text-purple-900 flex items-center mb-1">
+                                  <ImageIcon className="mr-2 h-4 w-4" />
+                                  Görsel İçerik Dahil Et
+                                </div>
+                                <div className="text-sm text-purple-700">
+                                  Blog için otomatik görsel önerileri
+                                </div>
+                              </div>
+                              <Switch
+                                checked={blogDetails.includeImages}
+                                onCheckedChange={(checked) =>
+                                  setBlogDetails({
+                                    ...blogDetails,
+                                    includeImages: checked,
+                                  })
+                                }
+                              />
+                            </div>
+
+                            {/* Otomatik Görsel Seçimi */}
+                            {blogDetails.includeImages && (
+                              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-100">
+                                <div className="flex-1">
+                                  <div className="font-medium text-purple-800 flex items-center text-sm">
+                                    <Sparkles className="mr-2 h-3 w-3" />
+                                    Otomatik Görsel Seçimi
+                                  </div>
+                                  <div className="text-xs text-purple-600">
+                                    AI tarafından uygun görsel otomatik seçilsin
+                                  </div>
+                                </div>
+                                <Switch
+                                  checked={blogDetails.autoSelectImage}
+                                  onCheckedChange={(checked) =>
+                                    setBlogDetails({
+                                      ...blogDetails,
+                                      autoSelectImage: checked,
+                                    })
+                                  }
+                                  size="sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* İnfografik */}
+                          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div className="flex-1">
+                              <div className="font-medium text-green-900 flex items-center">
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                İnfografik Önerileri
+                              </div>
+                              <div className="text-sm text-green-700">
+                                Veri görselleştirme önerileri ekle
+                              </div>
+                            </div>
+                            <Switch
+                              checked={blogDetails.includeInfographics}
+                              onCheckedChange={(checked) =>
+                                setBlogDetails({
+                                  ...blogDetails,
+                                  includeInfographics: checked,
+                                })
+                              }
+                            />
+                          </div>
+
+                          {/* Çok Dil */}
+                          <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                            <div className="flex-1">
+                              <div className="font-medium text-orange-900 flex items-center">
+                                <Globe className="mr-2 h-4 w-4" />
+                                Çok Dil Desteği
+                              </div>
+                              <div className="text-sm text-orange-700">
+                                İngilizce özet ve meta bilgiler
+                              </div>
+                            </div>
+                            <Switch
+                              checked={blogDetails.multiLanguage}
+                              onCheckedChange={(checked) =>
+                                setBlogDetails({
+                                  ...blogDetails,
+                                  multiLanguage: checked,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Üretim Önizlemesi */}
+                        <div className="space-y-3">
+                          <h3 className="font-semibold text-gray-900 flex items-center">
+                            <Eye className="mr-2 h-4 w-4" />
+                            Üretim Önizlemesi
+                          </h3>
+
+                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <div className="text-gray-600">Model</div>
+                                <div className="font-medium text-gray-900">
+                                  {AI_MODELS[selectedModel]?.name} v
+                                  {selectedVersion}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-gray-600">Uzunluk</div>
+                                <div className="font-medium text-gray-900">
+                                  {
+                                    BLOG_SETTINGS_CONFIG.lengths.find(
+                                      (l) => l.value === blogDetails.length
+                                    )?.label
+                                  }
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-gray-600">Ton</div>
+                                <div className="font-medium text-gray-900">
+                                  {
+                                    BLOG_SETTINGS_CONFIG.tones.find(
+                                      (t) => t.value === blogDetails.tone
+                                    )?.label
+                                  }
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-gray-600">Özellikler</div>
+                                <div className="font-medium text-gray-900">
+                                  {
+                                    Object.values(blogDetails).filter(
+                                      (v) => v === true
+                                    ).length
+                                  }{" "}
+                                  aktif
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex justify-between items-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab("topics")}
+                        className="hover:bg-gray-50"
+                      >
+                        <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                        Konular
+                      </Button>
+
+                      {/* Generation Progress */}
+                      {aiLoading && (
+                        <div className="flex items-center space-x-3 flex-1 max-w-md mx-4">
+                          <div className="flex-1">
+                            <Progress
+                              value={generationProgress}
+                              className="h-2"
+                            />
+                          </div>
+                          <div className="text-sm font-medium text-purple-600">
+                            {Math.round(generationProgress)}%
+                          </div>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={generateBlog}
+                        disabled={aiLoading}
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-8"
+                      >
+                        {aiLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Üretiliyor...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="mr-2 h-4 w-4" />
+                            Blog Üret
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              {/* Önizleme Sekmesi - Modernize edilmiş */}
+              <TabsContent value="preview" className="space-y-6">
+                {generatedBlog && (
+                  <Card className="border-indigo-200 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-indigo-700">
+                        <Eye className="mr-2 h-5 w-5" />
+                        Blog Önizlemesi
+                        <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                          {generatedBlog.aiModel?.toUpperCase()} AI
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        {
+                          AI_MODELS[generatedBlog.aiModel || selectedModel]
+                            ?.name
+                        }{" "}
+                        ile üretilen blog yazısını inceleyin
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* İstatistik kartları - Daha görsel */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+                          <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-blue-600">
+                            {generatedBlog.readingTime || 0}
+                          </div>
+                          <div className="text-sm text-blue-600">
+                            Dakika Okuma
+                          </div>
+                        </div>
+                        <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                          <FileText className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-green-600">
+                            {generatedBlog.content?.split(" ").length || 0}
+                          </div>
+                          <div className="text-sm text-green-600">Kelime</div>
+                        </div>
+                        <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                          <Target className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-purple-600">
+                            {generatedBlog.tags?.split(",").length || 0}
+                          </div>
+                          <div className="text-sm text-purple-600">Etiket</div>
+                        </div>
+                        <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200">
+                          <BarChart3 className="h-6 w-6 text-orange-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-orange-600">
+                            {Math.round(aiSettings.seoOptimization || 80)}
+                          </div>
+                          <div className="text-sm text-orange-600">
+                            SEO Skoru
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="p-6 bg-gray-50 rounded-xl border">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Başlık
+                          </h3>
+                          <p className="text-xl text-gray-800 leading-relaxed">
+                            {generatedBlog.title}
+                          </p>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 rounded-xl border">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Özet
+                          </h3>
+                          <p className="text-gray-700 leading-relaxed">
+                            {generatedBlog.excerpt}
+                          </p>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 rounded-xl border">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Etiketler
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {generatedBlog.tags
+                              ?.split(",")
+                              .map((tag, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="secondary"
+                                  className="bg-indigo-100 text-indigo-800 px-3 py-1 text-sm"
+                                >
+                                  #{tag.trim()}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 rounded-xl border">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            İçerik Önizlemesi
+                          </h3>
+                          <div className="bg-white p-4 rounded-lg max-h-96 overflow-y-auto border-2 border-gray-200">
+                            <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
+                              {generatedBlog.content?.substring(0, 1500)}
+                              {generatedBlog.content?.length > 1500 && "..."}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveTab("content")}
+                          className="hover:bg-gray-50"
+                        >
+                          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                          İçerik Ayarları
+                        </Button>
+                        <Button
+                          onClick={() => setActiveTab("edit")}
+                          className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                        >
+                          Düzenle
+                          <Edit className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Düzenleme Sekmesi - Geliştirilmiş */}
+              <TabsContent value="edit" className="space-y-6">
+                {generatedBlog && (
+                  <Card className="border-emerald-200 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-emerald-700">
+                        <Edit className="mr-2 h-5 w-5" />
+                        Blog Düzenleme & Optimizasyon
+                      </CardTitle>
+                      <CardDescription>
+                        Blog içeriğini ihtiyaçlarınıza göre düzenleyin ve
+                        optimize edin
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Hızlı aksiyon butonları */}
+                      <div className="flex flex-wrap gap-2 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={improveContent}
                           disabled={improving || !editableBlog.content}
+                          className="border-emerald-300 hover:bg-emerald-100"
                         >
                           {improving ? (
                             <>
@@ -904,239 +2187,521 @@ export default function AIBlogGeneratorPage() {
                           ) : (
                             <>
                               <SparklesIcon className="mr-2 h-3 w-3" />
-                              Metni Güzelleştir
+                              AI ile İyileştir
                             </>
                           )}
                         </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Content Editor */}
-                    <div className="space-y-2">
-                      <Textarea
-                        id="editContent"
-                        value={
-                          editViewMode === "html" 
-                            ? editableBlog.content 
-                            : htmlToMarkdown(editableBlog.content)
-                        }
-                        onChange={(e) => {
-                          const newContent = e.target.value;
-                          setEditableBlog({
-                            ...editableBlog,
-                            content: editViewMode === "html" 
-                              ? newContent 
-                              : convertMarkdownToHtml(newContent),
-                          });
-                        }}
-                        rows={20}
-                        className="font-mono text-sm"
-                        placeholder={
-                          editViewMode === "html" 
-                            ? "HTML formatında içerik yazın..." 
-                            : "Markdown formatında içerik yazın..."
-                        }
-                      />
-                      <p className="text-xs text-gray-500">
-                        {editViewMode === "html" 
-                          ? "HTML etiketlerini kullanarak düzenleyin. Veritabanında HTML formatında saklanacak." 
-                          : "Markdown formatında yazın. Otomatik olarak HTML'e dönüştürülecek."}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="editTags">Etiketler</Label>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleGenerateTags}
                           disabled={!editableBlog.content}
+                          className="border-blue-300 hover:bg-blue-100"
                         >
                           <RefreshCw className="mr-2 h-3 w-3" />
-                          Otomatik Üret
+                          Etiket Üret
                         </Button>
                       </div>
-                      <Input
-                        id="editTags"
-                        value={editableBlog.tags}
-                        onChange={(e) =>
-                          setEditableBlog({
-                            ...editableBlog,
-                            tags: e.target.value,
-                          })
-                        }
-                        placeholder="etiket1, etiket2, etiket3"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editCategory">Kategori</Label>
-                      <Select
-                        value={editableBlog.categorySlug}
-                        onValueChange={(value) => {
-                          const category = categories.find(
-                            (c) => c.slug === value
-                          );
-                          setEditableBlog({
-                            ...editableBlog,
-                            category: category?.name || "",
-                            categorySlug: value,
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Kategori seçin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem
-                              key={category.slug}
-                              value={category.slug}
+
+                      {/* Düzenleme alanları - responsive grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Başlık ve Slug */}
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="editTitle"
+                              className="text-base font-medium"
                             >
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                              Başlık
+                            </Label>
+                            <Input
+                              id="editTitle"
+                              value={editableBlog.title}
+                              onChange={(e) => {
+                                const newTitle = e.target.value;
+                                setEditableBlog({
+                                  ...editableBlog,
+                                  title: newTitle,
+                                  slug: generateSlug(newTitle),
+                                });
+                              }}
+                              className="border-emerald-200 focus:border-emerald-500"
+                            />
+                            <Progress
+                              value={Math.min(
+                                ((editableBlog.title?.length || 0) / 60) * 100,
+                                100
+                              )}
+                              className="h-2"
+                            />
+                            <p className="text-xs text-gray-500">
+                              {editableBlog.title?.length || 0}/60 karakter (SEO
+                              için ideal)
+                            </p>
+                          </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="editMetaDescription">Meta Açıklama</Label>
-                    <Textarea
-                      id="editMetaDescription"
-                      value={editableBlog.metaDescription}
-                      onChange={(e) =>
-                        setEditableBlog({
-                          ...editableBlog,
-                          metaDescription: e.target.value,
-                        })
-                      }
-                      rows={2}
-                      placeholder="SEO için meta açıklama (150-160 karakter)"
-                    />
-                    <p className="text-xs text-gray-500">
-                      {editableBlog.metaDescription?.length || 0}/160 karakter
-                    </p>
-                  </div>
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="editSlug"
+                              className="text-base font-medium"
+                            >
+                              URL Slug
+                            </Label>
+                            <Input
+                              id="editSlug"
+                              value={editableBlog.slug}
+                              onChange={(e) =>
+                                setEditableBlog({
+                                  ...editableBlog,
+                                  slug: e.target.value,
+                                })
+                              }
+                              className="border-emerald-200 focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
 
-                  {/* Smart Image Selection */}
-                  <div className="space-y-4">
-                    <SmartImageSelection
-                      onImageSelect={handleImageSelect}
-                      blogTitle={editableBlog.title}
-                      blogContent={editableBlog.content}
-                      blogTags={editableBlog.tags ? editableBlog.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []}
-                      selectedImageUrl={editableBlog.image}
-                      className="border rounded-lg p-4"
-                    />
-                  </div>
+                        {/* Kategori ve Etiketler */}
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="editCategory"
+                              className="text-base font-medium"
+                            >
+                              Kategori
+                            </Label>
+                            <Select
+                              value={editableBlog.categorySlug}
+                              onValueChange={(value) => {
+                                const category = categories.find(
+                                  (c) => c.slug === value
+                                );
+                                setEditableBlog({
+                                  ...editableBlog,
+                                  category: category?.name || "",
+                                  categorySlug: value,
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="border-emerald-200 focus:border-emerald-500">
+                                <SelectValue placeholder="Kategori seçin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem
+                                    key={category.slug}
+                                    value={category.slug}
+                                  >
+                                    {category.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => setActiveTab("preview")}
-                    >
-                      Önizlemeye Dön
-                    </Button>
-                    <Button onClick={() => setShowSaveDialog(true)}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Blog'u Kaydet
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="editTags"
+                              className="text-base font-medium"
+                            >
+                              Etiketler
+                            </Label>
+                            <Input
+                              id="editTags"
+                              value={editableBlog.tags}
+                              onChange={(e) =>
+                                setEditableBlog({
+                                  ...editableBlog,
+                                  tags: e.target.value,
+                                })
+                              }
+                              placeholder="etiket1, etiket2, etiket3"
+                              className="border-emerald-200 focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-        {/* Kaydetme Onay Dialog */}
-        <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Blog'u Kaydet</AlertDialogTitle>
-              <AlertDialogDescription>
-                Blog yazısını kaydetmek istediğinizden emin misiniz? Bu işlem
-                blog'u yayınlayacaktır.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={saving}>İptal</AlertDialogCancel>
-              <AlertDialogAction onClick={handleSaveBlog} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Kaydediliyor...
-                  </>
-                ) : (
-                  "Kaydet"
+                      {/* Özet */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="editExcerpt"
+                          className="text-base font-medium"
+                        >
+                          Blog Özeti
+                        </Label>
+                        <Textarea
+                          id="editExcerpt"
+                          value={editableBlog.excerpt}
+                          onChange={(e) =>
+                            setEditableBlog({
+                              ...editableBlog,
+                              excerpt: e.target.value,
+                            })
+                          }
+                          rows={3}
+                          placeholder="Blog yazısının kısa özeti (SEO için önemli)"
+                          className="border-emerald-200 focus:border-emerald-500"
+                        />
+                        <Progress
+                          value={Math.min(
+                            ((editableBlog.excerpt?.length || 0) / 250) * 100,
+                            100
+                          )}
+                          className="h-2"
+                        />
+                        <p className="text-xs text-gray-500">
+                          {editableBlog.excerpt?.length || 0}/250 karakter
+                        </p>
+                      </div>
+
+                      {/* Meta Açıklama */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="editMetaDescription"
+                          className="text-base font-medium"
+                        >
+                          SEO Meta Açıklaması
+                        </Label>
+                        <Textarea
+                          id="editMetaDescription"
+                          value={editableBlog.metaDescription}
+                          onChange={(e) =>
+                            setEditableBlog({
+                              ...editableBlog,
+                              metaDescription: e.target.value,
+                            })
+                          }
+                          rows={2}
+                          placeholder="Arama motorları için meta açıklama (150-160 karakter)"
+                          className="border-emerald-200 focus:border-emerald-500"
+                        />
+                        <Progress
+                          value={Math.min(
+                            ((editableBlog.metaDescription?.length || 0) /
+                              160) *
+                              100,
+                            100
+                          )}
+                          className="h-2"
+                        />
+                        <p className="text-xs text-gray-500">
+                          {editableBlog.metaDescription?.length || 0}/160
+                          karakter
+                        </p>
+                      </div>
+
+                      {/* İçerik editörü */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label
+                            htmlFor="editContent"
+                            className="text-base font-medium"
+                          >
+                            Blog İçeriği
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            {/* View Mode Toggle */}
+                            <div className="flex rounded-md border border-emerald-200 overflow-hidden">
+                              <Button
+                                variant={
+                                  editViewMode === "html" ? "default" : "ghost"
+                                }
+                                size="sm"
+                                onClick={() => setEditViewMode("html")}
+                                className="rounded-r-none border-r border-emerald-200"
+                              >
+                                HTML
+                              </Button>
+                              <Button
+                                variant={
+                                  editViewMode === "markdown"
+                                    ? "default"
+                                    : "ghost"
+                                }
+                                size="sm"
+                                onClick={() => setEditViewMode("markdown")}
+                                className="rounded-l-none"
+                              >
+                                Markdown
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Textarea
+                          id="editContent"
+                          value={
+                            editViewMode === "html"
+                              ? editableBlog.content
+                              : htmlToMarkdown(editableBlog.content)
+                          }
+                          onChange={(e) => {
+                            const newContent = e.target.value;
+                            setEditableBlog({
+                              ...editableBlog,
+                              content:
+                                editViewMode === "html"
+                                  ? newContent
+                                  : convertMarkdownToHtml(newContent),
+                            });
+                          }}
+                          rows={20}
+                          className="font-mono text-sm border-emerald-200 focus:border-emerald-500"
+                          placeholder={
+                            editViewMode === "html"
+                              ? "HTML formatında içerik yazın..."
+                              : "Markdown formatında içerik yazın..."
+                          }
+                        />
+                        <p className="text-xs text-gray-500">
+                          {editViewMode === "html"
+                            ? "HTML etiketlerini kullanarak düzenleyin. Veritabanında HTML formatında saklanacak."
+                            : "Markdown formatında yazın. Otomatik olarak HTML'e dönüştürülecek."}
+                        </p>
+                      </div>
+
+                      {/* Profesyonel Görsel Seçimi Alanı */}
+                      <div className="space-y-4">
+                        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-xl border-2 border-emerald-200 p-6 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg">
+                                <ImageIcon className="h-5 w-5 text-white" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-emerald-900">
+                                  Akıllı Görsel Seçimi
+                                </h3>
+                                <p className="text-sm text-emerald-700">
+                                  İçeriğinize uygun profesyonel görseller
+                                </p>
+                              </div>
+                            </div>
+                            {editableBlog.image && (
+                              <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                Seçildi
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Mevcut seçili görsel önizlemesi */}
+                          {editableBlog.image && (
+                            <div className="mb-4 p-3 bg-white rounded-lg border border-emerald-200">
+                              <div className="flex items-center space-x-3">
+                                <img
+                                  src={editableBlog.image}
+                                  alt={editableBlog.imageAlt}
+                                  className="w-16 h-16 object-cover rounded-lg"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-medium text-emerald-900 text-sm">
+                                    {editableBlog.imageAlt}
+                                  </div>
+                                  <div className="text-xs text-emerald-600">
+                                    {editableBlog.imageCredit}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setEditableBlog((prev) => ({
+                                      ...prev,
+                                      image: "",
+                                      imageAlt: "",
+                                      imageCredit: "",
+                                    }))
+                                  }
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Kaldır
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          <SmartImageSelection
+                            onImageSelect={handleImageSelect}
+                            blogTitle={editableBlog.title}
+                            blogContent={editableBlog.content}
+                            blogTags={
+                              editableBlog.tags
+                                ? editableBlog.tags
+                                    .split(",")
+                                    .map((tag) => tag.trim())
+                                    .filter(Boolean)
+                                : []
+                            }
+                            selectedImageUrl={editableBlog.image}
+                            className="bg-white rounded-lg border-0 shadow-none p-0"
+                          />
+
+                          {/* Görsel ipuçları */}
+                          <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                            <div className="flex items-start space-x-2">
+                              <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                              <div className="text-xs text-blue-700">
+                                <div className="font-medium mb-1">
+                                  💡 Görsel Seçim İpuçları:
+                                </div>
+                                <ul className="space-y-1 text-xs">
+                                  <li>
+                                    • Otomatik seçim aktifse, blog üretiminde AI
+                                    tarafından uygun görsel seçilir
+                                  </li>
+                                  <li>
+                                    • Manuel seçim için arama yaparak
+                                    istediğiniz görseli bulabilirsiniz
+                                  </li>
+                                  <li>
+                                    • Yüksek çözünürlüklü ve profesyonel
+                                    görseller tercih edilir
+                                  </li>
+                                  <li>
+                                    • Tüm görseller telif hakkı açıklaması ile
+                                    birlikte gelir
+                                  </li>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-4 border-t border-emerald-200">
+                        <Button
+                          variant="outline"
+                          onClick={() => setActiveTab("preview")}
+                          className="hover:bg-gray-50"
+                        >
+                          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                          Önizlemeye Dön
+                        </Button>
+                        <Button
+                          onClick={() => setShowSaveDialog(true)}
+                          className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-8"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Blog'u Kaydet & Yayınla
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </TabsContent>
+            </Tabs>
 
-        {/* İçerik İyileştirme Onay Modal */}
-        <Dialog open={showImproveModal} onOpenChange={setShowImproveModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <SparklesIcon className="h-5 w-5 text-purple-500" />
-                İçerik İyileştirme
-              </DialogTitle>
-              <DialogDescription>
-                İçeriği AI ile iyileştirmek istediğinizden emin misiniz?
-                <br />
-                <span className="text-red-500 font-medium">
-                  Mevcut içerik değişecektir ve bu işlem geri alınamaz.
-                </span>
-              </DialogDescription>
-            </DialogHeader>
+            {/* Modaller ve Dialoglar */}
 
-            <div className="space-y-3 p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-medium text-purple-900">
-                AI iyileştirme kapsamı:
-              </h4>
-              <ul className="text-sm space-y-1 text-purple-800">
-                <li>• Daha akıcı ve anlaşılır dil kullanımı</li>
-                <li>• SEO dostu anahtar kelime optimizasyonu</li>
-                <li>• Paragraf yapısının optimize edilmesi</li>
-                <li>• Teknik detayların anlaşılır hale getirilmesi</li>
-                <li>• MKN Group uzmanlık alanlarının vurgulanması</li>
-              </ul>
-            </div>
+            {/* Kaydetme Onay Dialog */}
+            <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <AlertDialogContent className="max-w-md">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center">
+                    <Save className="mr-2 h-5 w-5 text-green-600" />
+                    Blog'u Kaydet & Yayınla
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Blog yazısını kaydetmek ve yayınlamak istediğinizden emin
+                    misiniz?
+                    <br />
+                    <br />
+                    <strong>Bu işlem:</strong>
+                    <br />
+                    • Blog'u anında yayınlayacak
+                    <br />
+                    • Arama motorları tarafından indekslenebilir hale getirecek
+                    <br />• Sosyal medya paylaşımlarına hazır hale getirecek
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={saving}>İptal</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleSaveBlog}
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Kaydediliyor...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Evet, Kaydet
+                      </>
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowImproveModal(false)}
-                disabled={improving}
-              >
-                İptal
-              </Button>
-              <Button
-                onClick={performContentImprovement}
-                disabled={improving}
-                className="bg-purple-500 hover:bg-purple-600"
-              >
-                {improving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    İyileştiriliyor...
-                  </>
-                ) : (
-                  <>
-                    <SparklesIcon className="mr-2 h-4 w-4" />
-                    Evet, İyileştir
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            {/* AI İyileştirme Onay Modal */}
+            <Dialog open={showImproveModal} onOpenChange={setShowImproveModal}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <SparklesIcon className="h-5 w-5 text-purple-500" />
+                    AI İçerik İyileştirme
+                  </DialogTitle>
+                  <DialogDescription>
+                    İçeriği AI ile iyileştirmek istediğinizden emin misiniz?
+                    <br />
+                    <span className="text-red-500 font-medium">
+                      ⚠️ Mevcut içerik değişecektir ve bu işlem geri alınamaz.
+                    </span>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <h4 className="font-medium text-purple-900">
+                    🤖 AI iyileştirme kapsamı:
+                  </h4>
+                  <ul className="text-sm space-y-1 text-purple-800">
+                    <li>✨ Daha akıcı ve anlaşılır dil kullanımı</li>
+                    <li>🎯 SEO dostu anahtar kelime optimizasyonu</li>
+                    <li>📝 Paragraf yapısının optimize edilmesi</li>
+                    <li>🔧 Teknik detayların anlaşılır hale getirilmesi</li>
+                    <li>🏢 MKN Group uzmanlık alanlarının vurgulanması</li>
+                    <li>📊 İçerik yapısının geliştirilmesi</li>
+                  </ul>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowImproveModal(false)}
+                    disabled={improving}
+                  >
+                    İptal
+                  </Button>
+                  <Button
+                    onClick={performContentImprovement}
+                    disabled={improving}
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                  >
+                    {improving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        İyileştiriliyor...
+                      </>
+                    ) : (
+                      <>
+                        <SparklesIcon className="mr-2 h-4 w-4" />
+                        Evet, İyileştir
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </TooltipProvider>
     </PermissionGuard>
   );
 }

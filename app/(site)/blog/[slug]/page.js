@@ -17,16 +17,20 @@ import {
   getBlogPostBySlug,
   getRelatedBlogPosts,
 } from "@/lib/services/blog-service";
+import { cleanBlogPost } from "@/lib/utils/content-cleaner";
 
 export async function generateMetadata({ params }) {
   const awaitedParams = await params;
-  const post = await getBlogPostBySlug(awaitedParams.slug);
+  let post = await getBlogPostBySlug(awaitedParams.slug);
 
   if (!post) {
     return {
       title: "Blog Yazısı Bulunamadı | MKN Group",
     };
   }
+
+  // Post'u temizle
+  post = cleanBlogPost(post);
 
   return {
     title: `${post.title} | MKN Group Blog`,
@@ -68,11 +72,14 @@ export async function generateStaticParams() {
 
 export default async function BlogPostPage({ params }) {
   const awaitedParams = await params;
-  const post = await getBlogPostBySlug(awaitedParams.slug);
+  let post = await getBlogPostBySlug(awaitedParams.slug);
 
   if (!post) {
     notFound();
   }
+
+  // Content'i temizle (JSON artifact'larını kaldır)
+  post = cleanBlogPost(post);
 
   const relatedPosts = await getRelatedBlogPosts(post.id, post.categorySlug);
 
@@ -116,7 +123,11 @@ export default async function BlogPostPage({ params }) {
             articleSection: post.category,
             keywords: post.tags.join(", "),
             wordCount: post.content.split(" ").length,
-            readingTime: `PT${typeof post.readingTime === 'string' ? post.readingTime.replace(" dk", "") : post.readingTime}M`,
+            readingTime: `PT${
+              typeof post.readingTime === "string"
+                ? post.readingTime.replace(" dk", "")
+                : post.readingTime
+            }M`,
             inLanguage: "tr-TR",
           }),
         }}
@@ -151,7 +162,11 @@ export default async function BlogPostPage({ params }) {
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                <span>{typeof post.readingTime === 'number' ? `${post.readingTime} dk` : post.readingTime}</span>
+                <span>
+                  {typeof post.readingTime === "number"
+                    ? `${post.readingTime} dk`
+                    : post.readingTime}
+                </span>
               </div>
             </div>
 

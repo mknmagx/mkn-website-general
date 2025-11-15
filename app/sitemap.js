@@ -6,6 +6,7 @@ import { createProductSlug } from "@/utils/slugify-tr";
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
   const currentDate = new Date("2025-10-11T00:00:00.000Z");
+  const productsUpdateDate = new Date("2025-11-14T00:00:00.000Z");
 
   const blogPosts = await getAllBlogPosts();
 
@@ -76,7 +77,7 @@ export default async function sitemap() {
   const productUrls = products.map((product) => {
     return {
       url: `${baseUrl}/ambalaj/${createProductSlug(product)}`,
-      lastModified: currentDate,
+      lastModified: productsUpdateDate,
       changeFrequency: "monthly",
       priority: 0.6,
     };

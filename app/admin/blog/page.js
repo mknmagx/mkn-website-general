@@ -1,23 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAdminAuth } from '../../../hooks/use-admin-auth';
-import { PermissionGuard } from '../../../components/admin-route-guard';
+import { useState, useEffect } from "react";
+import { useAdminAuth } from "../../../hooks/use-admin-auth";
+import { PermissionGuard } from "../../../components/admin-route-guard";
 import {
   getAllBlogPosts,
   getAllBlogCategories,
   deleteBlogPost,
-  getBlogStats
-} from '../../../lib/services/blog-service';
+  getBlogStats,
+  cleanBlogPostContent,
+} from "../../../lib/services/blog-service";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -25,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +34,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,16 +44,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   PlusIcon,
   SearchIcon,
@@ -66,17 +67,21 @@ import {
   TrendingUpIcon,
   StarIcon,
   SparklesIcon,
-} from 'lucide-react';
-import Link from 'next/link';
+  Database,
+  Eraser,
+} from "lucide-react";
+import Link from "next/link";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function AdminBlogPage() {
   const { user, loading: authLoading, permissions } = useAdminAuth();
+  const { toast } = useToast();
   const [blogPosts, setBlogPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
 
@@ -93,12 +98,12 @@ export default function AdminBlogPage() {
         getAllBlogCategories(),
         getBlogStats(),
       ]);
-      
+
       setBlogPosts(postsData);
       setCategories(categoriesData);
       setStats(statsData);
     } catch (error) {
-      console.error('Veri yüklenirken hata:', error);
+      console.error("Veri yüklenirken hata:", error);
     } finally {
       setLoading(false);
     }
@@ -110,26 +115,52 @@ export default function AdminBlogPage() {
 
     try {
       await deleteBlogPost(postToDelete.id);
-      setBlogPosts(posts => posts.filter(post => post.id !== postToDelete.id));
+      setBlogPosts((posts) =>
+        posts.filter((post) => post.id !== postToDelete.id)
+      );
       setDeleteDialogOpen(false);
       setPostToDelete(null);
     } catch (error) {
-      console.error('Blog post silinirken hata:', error);
+      console.error("Blog post silinirken hata:", error);
+    }
+  };
+
+  // Blog post content temizleme
+  const handleCleanContent = async (postId, postTitle) => {
+    try {
+      await cleanBlogPostContent(postId);
+      // Veriyi yenile
+      await loadData();
+
+      // Başarılı mesajı göster
+      toast({
+        title: "İçerik temizlendi",
+        description: `"${postTitle}" blog yazısının içeriği JSON artifact'larından temizlendi.`,
+      });
+    } catch (error) {
+      console.error("Content temizlenirken hata:", error);
+      toast({
+        title: "Hata",
+        description: "Content temizlenirken bir hata oluştu.",
+        variant: "destructive",
+      });
     }
   };
 
   // Filtreleme
-  const filteredPosts = blogPosts.filter(post => {
-    const matchesSearch = post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || post.categorySlug === selectedCategory;
+  const filteredPosts = blogPosts.filter((post) => {
+    const matchesSearch =
+      post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || post.categorySlug === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const formatDate = (date) => {
-    if (!date) return 'Tarih yok';
+    if (!date) return "Tarih yok";
     const d = date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('tr-TR');
+    return d.toLocaleDateString("tr-TR");
   };
 
   if (authLoading || loading) {
@@ -150,9 +181,19 @@ export default function AdminBlogPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Blog Yönetimi</h1>
-            <p className="text-gray-600">Blog yazılarını ve kategorileri yönetin</p>
+            <p className="text-gray-600">
+              Blog yazılarını ve kategorileri yönetin
+            </p>
           </div>
           <div className="flex gap-3">
+            <PermissionGuard requiredPermission="blog.write">
+              <Button asChild variant="outline">
+                <Link href="/admin/blog/title-management">
+                  <Database className="mr-2 h-4 w-4" />
+                  Title Management
+                </Link>
+              </Button>
+            </PermissionGuard>
             <PermissionGuard requiredPermission="blog.write">
               <Button asChild>
                 <Link href="/admin/blog/categories">
@@ -197,7 +238,9 @@ export default function AdminBlogPage() {
               <TagIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalCategories || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.totalCategories || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -206,7 +249,9 @@ export default function AdminBlogPage() {
               <StarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.featuredPosts || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.featuredPosts || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -215,7 +260,9 @@ export default function AdminBlogPage() {
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.publishedThisMonth || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.publishedThisMonth || 0}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -242,7 +289,10 @@ export default function AdminBlogPage() {
               </div>
               <div className="w-full md:w-48">
                 <Label htmlFor="category">Kategori</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <Select
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Kategori seçin" />
                   </SelectTrigger>
@@ -330,6 +380,16 @@ export default function AdminBlogPage() {
                                 </Link>
                               </DropdownMenuItem>
                             </PermissionGuard>
+                            <PermissionGuard requiredPermission="blog.write">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleCleanContent(post.id, post.title)
+                                }
+                              >
+                                <Eraser className="mr-2 h-4 w-4" />
+                                İçeriği Temizle
+                              </DropdownMenuItem>
+                            </PermissionGuard>
                             <DropdownMenuSeparator />
                             <PermissionGuard requiredPermission="blog.delete">
                               <DropdownMenuItem
@@ -360,8 +420,8 @@ export default function AdminBlogPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Blog yazısını sil</AlertDialogTitle>
               <AlertDialogDescription>
-                "{postToDelete?.title}" adlı blog yazısını silmek istediğinizden emin misiniz?
-                Bu işlem geri alınamaz.
+                "{postToDelete?.title}" adlı blog yazısını silmek istediğinizden
+                emin misiniz? Bu işlem geri alınamaz.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
