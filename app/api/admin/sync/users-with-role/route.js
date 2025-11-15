@@ -1,16 +1,7 @@
-import { NextResponse } from 'next/server';
-import { withAuth } from '@/lib/services/api-auth-middleware';
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  where,
-  writeBatch,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from '@/lib/firebase';
-import logger from '@/lib/utils/logger';
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/services/api-auth-middleware";
+import { adminFirestore } from "@/lib/firebase-admin";
+import logger from "@/lib/utils/logger";
 
 // POST - Belirli roldeki kullanıcıları senkronize et
 export const POST = withAuth(async (request) => {
@@ -20,53 +11,49 @@ export const POST = withAuth(async (request) => {
 
     if (!roleId || !Array.isArray(newPermissions)) {
       return NextResponse.json(
-        { 
-          error: 'Role ID ve permissions array gerekli',
-          success: false 
-        }, 
+        {
+          error: "Role ID ve permissions array gerekli",
+          success: false,
+        },
         { status: 400 }
       );
     }
 
-    const batch = writeBatch(db);
-    
-    const usersQuery = query(
-      collection(db, "users"),
-      where("role", "==", roleId)
-    );
-    const usersSnapshot = await getDocs(usersQuery);
+    const batch = adminFirestore.batch();
+
+    const usersQuery = adminFirestore
+      .collection("users")
+      .where("role", "==", roleId);
+    const usersSnapshot = await usersQuery.get();
 
     let updatedUsers = 0;
 
-    for (const userDoc of usersSnapshot.docs) {
-      const userRef = doc(db, "users", userDoc.id);
+    usersSnapshot.forEach((userDoc) => {
+      const userRef = adminFirestore.collection("users").doc(userDoc.id);
       batch.update(userRef, {
         permissions: newPermissions,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date(),
       });
       updatedUsers++;
-    }
+    });
 
-    if (batch._mutations && batch._mutations.length > 0) {
+    if (updatedUsers > 0) {
       await batch.commit();
     }
 
-    logger.info(`Successfully synced ${updatedUsers} users with role ${roleId}`);
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       updatedUsers: updatedUsers,
       message: `${updatedUsers} kullanıcı başarıyla senkronize edildi`,
     });
-
   } catch (error) {
-    logger.error('User role sync error:', error.message);
+    logger.error("User role sync error:", error.message);
     return NextResponse.json(
-      { 
-        error: 'Kullanıcı senkronizasyonu başarısız',
+      {
+        error: "Kullanıcı senkronizasyonu başarısız",
         details: error.message,
-        success: false 
-      }, 
+        success: false,
+      },
       { status: 500 }
     );
   }
