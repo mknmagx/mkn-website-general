@@ -11,6 +11,7 @@ import {
   Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createCategorySlug } from "@/utils/slugify-tr";
 
 export default function Hero() {
   return (
@@ -172,6 +173,39 @@ export default function Hero() {
                   Dijital Pazarlama
                 </span>
               </Link>
+            </div>
+            
+            {/* Popüler Ambalaj Kategorileri */}
+            <div className="text-center mb-8">
+              <div className="text-sm text-muted-foreground mb-3 font-medium">
+                🔥 Popüler Ambalaj Kategorileri
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link
+                  href={`/ambalaj/kategori/${createCategorySlug("Disc Top Kapaklar")}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-white/10 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/50 rounded-full hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 text-foreground"
+                >
+                  Disc Top Kapaklar
+                </Link>
+                <Link
+                  href={`/ambalaj/kategori/${createCategorySlug("Krem Pompalar")}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-white/10 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/50 rounded-full hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 text-foreground"
+                >
+                  Krem Pompaları
+                </Link>
+                <Link
+                  href={`/ambalaj/kategori/${createCategorySlug("Airless Şişeler")}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-white/10 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/50 rounded-full hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 text-foreground"
+                >
+                  Airless Şişeler
+                </Link>
+                <Link
+                  href={`/ambalaj/kategori/${createCategorySlug("Sprey Pompalar")}`}
+                  className="px-3 py-1.5 text-xs font-medium bg-white/10 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/50 rounded-full hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 text-foreground"
+                >
+                  Sprey Pompalar
+                </Link>
+              </div>
             </div>
           </div>
 

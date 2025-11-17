@@ -7,11 +7,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    optimizePackageImports: ['@radix-ui/react-accordion', '@radix-ui/react-dialog', 'lucide-react'],
+    optimizePackageImports: [
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-dialog",
+      "lucide-react",
+    ],
   },
   images: {
     unoptimized: false,
-   
+
     formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 86400,
     dangerouslyAllowSVG: true,

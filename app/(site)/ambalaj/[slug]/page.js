@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { packagingService } from "@/lib/services/packaging-service";
-import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
+import { createProductSlug, createCategorySlug } from "@/utils/slugify-tr";
 import {
-  ProductSchema,
-  BreadcrumbSchema,
-  WebPageSchema,
-} from "@/components/structured-data";
+  PackagingProductSchema,
+  PackagingBreadcrumbSchema,
+  PackagingFAQSchema,
+} from "@/components/packaging-structured-data";
 import ProductDetailClient from "./client";
 
 const getCloudinaryUrl = (imageName) => {
@@ -89,28 +89,40 @@ export async function generateMetadata({ params }) {
   }
 
   const { product } = productData;
-  const title = `${product.name} | MKN Group Ambalaj`;
+  const productSize = product.specifications?.size || product.size;
+  const title = `${product.name}${
+    productSize ? ` - ${productSize}` : ""
+  } | MKN Group Ambalaj - Stokta Var`;
   const description =
     product.description ||
-    `${product.name} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`;
+    `${product.name}${productSize ? ` (${productSize})` : ""} - ${
+      product.category
+    } kategorisinde profesyonel ambalaj çözümleri. Stokta mevcut, hızlı teslimat.`;
   const canonical = `https://www.mkngroup.com.tr/ambalaj/${slug}`;
   const ogImage = getCloudinaryUrl(product.images?.[0]);
+
+  // Google Shopping optimized keywords
+  const seoKeywords = [
+    product.name,
+    product.category,
+    "ambalaj",
+    "packaging",
+    "MKN Group",
+    "stokta var",
+    "satın al",
+    "fiyat",
+    "toptan",
+    "üretici",
+    product.specifications?.material,
+    product.specifications?.size,
+    ...(product.features || []),
+    ...(product.seo?.keywords || []),
+  ].filter(Boolean);
 
   return {
     title,
     description,
-    keywords: [
-      product.name,
-      product.category,
-      "ambalaj",
-      "MKN Group",
-      product.specifications?.material,
-      "packaging",
-      ...(product.features || []),
-      ...(product.seo?.keywords || []),
-    ]
-      .filter(Boolean)
-      .join(", "),
+    keywords: seoKeywords.join(", "),
     authors: [{ name: "MKN Group" }],
     creator: "MKN Group",
     publisher: "MKN Group",
@@ -128,7 +140,7 @@ export async function generateMetadata({ params }) {
           url: ogImage || "/apple-touch-icon.png",
           width: 1200,
           height: 630,
-          alt: product.name,
+          alt: `${product.name} - Stokta Var - MKN Group`,
         },
       ],
       locale: "tr_TR",
@@ -140,6 +152,16 @@ export async function generateMetadata({ params }) {
       description,
       images: [ogImage || "/apple-touch-icon.png"],
       creator: "@mkngroup",
+    },
+    other: {
+      // Google Shopping specific meta tags
+      "product:availability": "in stock",
+      "product:condition": "new",
+      "product:price:currency": "TRY",
+      "product:retailer": "MKN Group",
+      "product:brand": "MKN Group",
+      "google-site-verification": process.env.GOOGLE_SITE_VERIFICATION || "",
+      "msvalidate.01": process.env.BING_VERIFICATION || "",
     },
     robots: {
       index: true,
@@ -153,6 +175,10 @@ export async function generateMetadata({ params }) {
       },
     },
     category: "business",
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION || "",
+      bing: process.env.BING_VERIFICATION || "",
+    },
   };
 }
 
@@ -180,50 +206,66 @@ export default async function ProductDetailPage({ params }) {
   }
 
   const { product, relatedProducts } = productData;
+  const categorySlug = createCategorySlug(product.category);
+
+  // Generate schemas for head with new packaging structured data
+  const canonical = `https://www.mkngroup.com.tr/ambalaj/${slug}`;
+  const productSize = product.specifications?.size || product.size;
+  const title = `${product.name}${
+    productSize ? ` - ${productSize}` : ""
+  } | MKN Group Ambalaj - Stokta Var`;
+  const description =
+    product.description ||
+    `${product.name}${productSize ? ` (${productSize})` : ""} - ${
+      product.category
+    } kategorisinde profesyonel ambalaj çözümleri. Stokta mevcut, hızlı teslimat.`;
+
+  // Generate Product Schema for SEO with new component
+  const productSchema = PackagingProductSchema({
+    product,
+    pageUrl: canonical,
+  });
+
+  // Generate Breadcrumb Schema
+  const breadcrumbItems = [
+    { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
+    { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
+    {
+      name: product.category,
+      url: `https://www.mkngroup.com.tr/ambalaj/kategori/${categorySlug}`,
+    },
+    {
+      name: product.name,
+      url: canonical,
+    },
+  ];
+  const breadcrumbSchema = PackagingBreadcrumbSchema(breadcrumbItems);
+
+  // Generate FAQ Schema
+  const faqSchema = PackagingFAQSchema();
+
   return (
     <>
-      <ProductSchema product={product} />
-      <BreadcrumbSchema
-        items={[
-          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
-          { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
-          {
-            name: product.category,
-            url: `https://www.mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
-              product.category
-            )}`,
-          },
-          {
-            name: product.name,
-            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
-              product
-            )}`,
-          },
-        ]}
+      {/* Enhanced Structured Data Scripts */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productSchema),
+        }}
       />
-      <WebPageSchema
-        title={`${product.name} | MKN Group Ambalaj`}
-        description={`${product.description} - ${product.category} kategorisinde profesyonel ambalaj çözümleri.`}
-        url={`https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
-          product
-        )}`}
-        breadcrumbs={[
-          { name: "Ana Sayfa", url: "https://www.mkngroup.com.tr" },
-          { name: "Ambalaj", url: "https://www.mkngroup.com.tr/ambalaj" },
-          {
-            name: product.category,
-            url: `https://www.mkngroup.com.tr/ambalaj?category=${encodeURIComponent(
-              product.category
-            )}`,
-          },
-          {
-            name: product.name,
-            url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
-              product
-            )}`,
-          },
-        ]}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbSchema),
+        }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqSchema),
+        }}
+      />
+
       <ProductDetailClient
         product={product}
         relatedProducts={relatedProducts}

@@ -11,6 +11,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { createCategorySlug } from "@/utils/slugify-tr";
 
 export function AboutSection() {
   const achievements = [
@@ -42,8 +43,12 @@ export function AboutSection() {
 
   const trustedFeatures = [
     "ISO 22716 Sertifikalı Kozmetik Üretimi",
-    "GMP Standardında Üretim Kalitesi",
-    "5000+ Premium Ambalaj Seçeneği",
+    "GMP Standardında Üretim Kalitesi", 
+    <span key="ambalaj">
+      <Link href="/ambalaj" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+        5000+ Premium Ambalaj Seçeneği
+      </Link>
+    </span>,
     "24 Saat İçinde Sevkiyat Garantisi",
     "Profesyonel R&D Laboratuvarı",
     "1000+ Başarılı Proje Deneyimi",
@@ -88,8 +93,20 @@ export function AboutSection() {
 
             <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
               <strong className="text-gray-900 dark:text-white">İstanbul merkezli</strong> modern
-              tesisimizde, kozmetik üretiminden e-ticaret operasyonlarına,
-              ambalaj çözümlerinden dijital pazarlamaya kadar{" "}
+              tesisimizde,{" "}
+              <Link href="/fason-uretim" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                kozmetik üretiminden
+              </Link>{" "}
+              <Link href="/e-ticaret" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                e-ticaret operasyonlarına
+              </Link>,{" "}
+              <Link href="/ambalaj" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                ambalaj çözümlerinden
+              </Link>{" "}
+              <Link href="/pazarlama" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline">
+                dijital pazarlamaya
+              </Link>{" "}
+              kadar{" "}
               <strong className="text-blue-600 dark:text-blue-400">360° hizmet</strong> sunuyoruz.
             </p>
 
@@ -102,7 +119,9 @@ export function AboutSection() {
                 {trustedFeatures.map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {typeof feature === 'string' ? feature : feature}
+                    </span>
                   </div>
                 ))}
               </div>

@@ -9,6 +9,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { site } from "@/config/site";
+import { createCategorySlug } from "@/utils/slugify-tr";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -19,6 +20,15 @@ export function Footer() {
     { name: "E-ticaret Operasyon", href: "/e-ticaret" },
     { name: "Pazarlama Hizmetleri", href: "/pazarlama" },
     { name: "Tasarım Hizmetleri", href: "/tasarim" },
+  ];
+
+  // Popüler ambalaj kategorileri için SEO linkler
+  const ambalajKategoriler = [
+    { name: "Disc Top Kapaklar", category: "Disc Top Kapaklar" },
+    { name: "Krem Pompaları", category: "Krem Pompalar" },
+    { name: "Airless Şişeler", category: "Airless Şişeler" },
+    { name: "Sprey Pompalar", category: "Sprey Pompalar" },
+    { name: "Losyon Pompaları", category: "Losyon Pompaları" },
   ];
 
   const companyLinks = [
@@ -42,7 +52,7 @@ export function Footer() {
       itemType="https://schema.org/Organization"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -160,6 +170,23 @@ export function Footer() {
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
                     {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Ambalaj Kategorileri */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-foreground">Ambalaj Kategorileri</h3>
+            <ul className="space-y-2">
+              {ambalajKategoriler.map((item) => (
+                <li key={item.category}>
+                  <Link
+                    href={`/ambalaj/kategori/${createCategorySlug(item.category)}`}
+                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  >
+                    {item.name}
                   </Link>
                 </li>
               ))}

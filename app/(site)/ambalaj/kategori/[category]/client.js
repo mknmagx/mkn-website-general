@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Search,
   X,
@@ -21,10 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import ProductCard from "@/components/product-card";
-
 import { Input } from "@/components/ui/input";
-
+import ProductCard from "@/components/product-card";
 import {
   Dialog,
   DialogContent,
@@ -40,54 +38,55 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination";
-import { usePackagingData } from "@/hooks/use-packaging-data";
-import {
-  slugifyTr,
-  createProductSlug,
-  createCategorySlug,
-} from "@/utils/slugify-tr";
+import { createProductSlug, createCategorySlug } from "@/utils/slugify-tr";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  parseURLParams,
-  createURLParams,
   saveScrollPosition,
   restoreScrollPosition,
 } from "@/utils/ambalaj-state";
 
 const getCloudinaryUrl = (imageName, width = 400, height = 400) => {
   if (!imageName) return null;
-
-  // Remove .jpg, .png, .webp extensions if they exist
   const nameWithoutExt = imageName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
-
   return `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_${width},h_${height},c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${nameWithoutExt}`;
 };
 
-export default function AmbalajClient() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const isMobile = useIsMobile();
-  const hookData = usePackagingData();
-  const {
-    products = [],
-    categories = [],
-    loading: dataLoading = false,
-    error: dataError = null,
-    searchProducts,
-    filterProducts,
-    getFilterOptions,
-  } = hookData || {};
+const getProductImageSrc = (imageName) => {
+  if (!imageName) {
+    return "/placeholder-product.jpg";
+  }
+  return getCloudinaryUrl(imageName);
+};
 
-  const [searchQuery, setSearchQuery] = useState("");
+const handleImageError = (e, productName = "") => {
+  if (!e.target.src.includes("placeholder-product.jpg")) {
+    e.target.src = "/placeholder-product.jpg";
+  }
+};
+
+export default function CategoryPageClient({
+  categoryName,
+  categorySlug,
+  products: initialProducts,
+}) {
+  const router = useRouter();
+  const isMobile = useIsMobile();
+
+  // Initialize with server-provided products filtered by category
+  const [products] = useState(initialProducts);
+  const [searchQuery, setSearchQuery] = useState(""); // Başlangıçta boş, kategoriye özel arama yapmak için
   const [activeFilters, setActiveFilters] = useState({
-    category: [],
+    category: [categoryName], // Bu kategori seçili
     material: [],
     size: [],
     colors: [],
   });
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [filteredProducts, setFilteredProducts] = useState(initialProducts);
+  const [activeCategory, setActiveCategory] = useState(categoryName);
+  const [viewMode, setViewMode] = useState("grid");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const PRODUCTS_PER_PAGE = 12;
@@ -95,125 +94,183 @@ export default function AmbalajClient() {
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isHeroVisible, setIsHeroVisible] = useState(false);
   const [isContentVisible, setIsContentVisible] = useState(false);
+  const [isScrolledToProducts, setIsScrolledToProducts] = useState(false);
 
-  const filterOptions = getFilterOptions
-    ? getFilterOptions()
-    : {
-        categories: [],
-        materials: [],
-        sizes: [],
-        colors: [],
-      };
+  // Get filter options from current category products, but include all categories for navigation
+  const allCategories = [
+    "Disc Top Kapaklar",
+    "Krem Pompalar",
+    "Losyon Pompaları",
+    "Sprey Pompalar",
+    "Köpük Pompalar",
+    "Parmak Losyon Pompaları",
+    "Aseton Kapakları",
+    "Airless Şişeler",
+  ];
+
+  const filterOptions = {
+    categories: allCategories, // Tüm kategoriler navigasyon için
+    materials: [
+      ...new Set(
+        products
+          .map((p) => p.specifications?.material || p.material)
+          .filter(Boolean)
+      ),
+    ],
+    sizes: [
+      ...new Set(
+        products.map((p) => p.specifications?.size || p.size).filter(Boolean)
+      ),
+    ],
+    colors: [...new Set(products.flatMap((p) => p.colors || []))],
+  };
 
   useEffect(() => {
-    if (!dataLoading && products.length > 0) {
+    if (products.length > 0) {
       applyFilters();
     }
-  }, [searchQuery, activeFilters, activeCategory, products, dataLoading]);
+  }, [searchQuery, activeFilters, products]);
 
-  // URL'den state'i yükle (sadece ilk yüklemede)
+  // URL'den state'i yükle (sadece ilk yüklemede) - Kategori sayfasında basitleştirildi
   useEffect(() => {
-    if (!dataLoading && products.length > 0) {
-      const urlState = parseURLParams(searchParams);
-
-      setSearchQuery(urlState.search);
-      setActiveCategory(urlState.category);
-      setCurrentPage(urlState.page);
+    if (products.length > 0) {
+      // Kategori sayfasında filtreleri varsayılan değerlerle başlat
+      setSearchQuery("");
+      setCurrentPage(1);
       setActiveFilters({
-        category: urlState.category !== "all" ? [urlState.category] : [],
-        material: urlState.materials,
-        size: urlState.sizes,
-        colors: urlState.colors,
+        category: [categoryName], // Kategori her zaman sabit
+        material: [],
+        size: [],
+        colors: [],
       });
-
-      // Scroll pozisyonunu geri yükle
       restoreScrollPosition();
     }
-  }, [dataLoading, products.length]);
+  }, [products.length, categoryName]);
 
   useEffect(() => {
     setIsPageLoaded(true);
     const timer1 = setTimeout(() => setIsHeroVisible(true), 100);
     const timer2 = setTimeout(() => setIsContentVisible(true), 300);
 
+    // Sayfa yüklendiğinde scroll davranışını belirle
+    const timer3 = setTimeout(() => {
+      const isFromProductPage =
+        sessionStorage.getItem("fromProductPage") === "true";
+      const shouldScrollToTop =
+        sessionStorage.getItem("scrollToProducts") === "true";
+      const hasHashKatalog = window.location.hash === "#katalog";
+      const isFromAmbalajPages = document.referrer.includes("/ambalaj");
+
+      if (isFromProductPage) {
+        // Ürün sayfasından geri geliyorsa, scroll pozisyonunu restore et
+        restoreScrollPosition();
+        sessionStorage.removeItem("fromProductPage");
+      } else if (shouldScrollToTop || hasHashKatalog) {
+        // Kategori değişikliği veya direkt link ile geliyorsa katalog bölümüne scroll et
+        scrollToProductList();
+        sessionStorage.removeItem("scrollToProducts");
+      } else if (isFromAmbalajPages && !isFromProductPage) {
+        // Ambalaj sayfalarından geliyorsa ama ürün sayfası değilse kataloga scroll et
+        scrollToProductList();
+      }
+      // Hiçbir koşul yoksa normal sayfa yükleme, scroll yapmıyoruz
+    }, 600);
+
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(timer3);
     };
   }, []);
 
-  // URL'i güncelle (state değiştiğinde)
+  // Intersection Observer for smooth scroll detection
   useEffect(() => {
-    if (!dataLoading && products.length > 0) {
-      const currentState = {
-        search: searchQuery,
-        category: activeCategory,
-        page: currentPage,
-        materials: activeFilters.material || [],
-        sizes: activeFilters.size || [],
-        colors: activeFilters.colors || [],
-      };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        setIsScrolledToProducts(entry.isIntersecting);
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "-50px 0px -50px 0px",
+      }
+    );
 
-      const urlString = createURLParams(currentState);
-      const newUrl = urlString ? `?${urlString}` : "/ambalaj";
-
-      router.replace(newUrl, { scroll: false });
-    }
-  }, [
-    searchQuery,
-    activeCategory,
-    currentPage,
-    activeFilters,
-    dataLoading,
-    products.length,
-  ]);
-
-  const scrollToProductList = () => {
     const productSection = document.getElementById("katalog");
     if (productSection) {
-      productSection.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      observer.observe(productSection);
+    }
+
+    return () => {
+      if (productSection) {
+        observer.unobserve(productSection);
+      }
+    };
+  }, [isPageLoaded]);
+
+  // URL'i güncelle (state değiştiğinde) - Kategori sayfasında basitleştirildi
+  useEffect(() => {
+    if (products.length > 0) {
+      // Kategori sayfasında sadece base URL kullanıyoruz
+      const baseUrl = `/ambalaj/kategori/${categorySlug}`;
+
+      // Sadece sayfa değişikliğinde URL'i güncelle (opsiyonel)
+      if (currentPage > 1) {
+        router.replace(`${baseUrl}?page=${currentPage}`, { scroll: false });
+      } else {
+        router.replace(baseUrl, { scroll: false });
+      }
+    }
+  }, [currentPage, products.length, categorySlug]);
+
+  const scrollToProductList = (offset = -100, smooth = true) => {
+    const productSection = document.getElementById("katalog");
+    if (productSection) {
+      const elementTop = productSection.offsetTop;
+      const offsetPosition = elementTop + offset;
+
+      if (smooth) {
+        // Smooth scroll with easing
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: "smooth",
+        });
+
+        // Scroll işlemi tamamlandığında focus ekle
+        setTimeout(() => {
+          productSection.style.scrollMargin = "100px";
+          // URL hash'i güncelle
+          if (window.location.hash !== "#katalog") {
+            history.replaceState(null, null, "#katalog");
+          }
+        }, 500);
+      } else {
+        // Instant scroll
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: "instant",
+        });
+      }
     }
   };
 
   const applyFilters = () => {
-    let filtered = products;
+    let filtered = products; // Already filtered by category from server
 
     // Apply search
     if (searchQuery.trim()) {
-      filtered = searchProducts
-        ? searchProducts(searchQuery)
-        : products.filter(
-            (product) =>
-              product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              product.category
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-              (product.code &&
-                product.code.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-    }
-
-    // Category tab filter
-    if (activeCategory !== "all") {
       filtered = filtered.filter(
-        (product) => product.category === activeCategory
+        (product) =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (product.code &&
+            product.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (product.colors &&
+            product.colors.some((color) =>
+              color.toLowerCase().includes(searchQuery.toLowerCase())
+            ))
       );
     }
 
-    // Apply advanced filters only when "all" category is selected
-    if (activeCategory === "all") {
-      // Category filter (side panel)
-      if (activeFilters.category.length > 0) {
-        filtered = filtered.filter((product) =>
-          activeFilters.category.includes(product.category)
-        );
-      }
-    }
-
-    // Apply other filters on the already filtered products
     // Material filter
     if (activeFilters.material.length > 0) {
       filtered = filtered.filter(
@@ -246,9 +303,8 @@ export default function AmbalajClient() {
 
     setFilteredProducts(filtered);
 
-    // Only reset page if we're not restoring from URL
-    const pageParam = searchParams.get("page");
-    if (!pageParam) {
+    // Reset to first page when filters change
+    if (currentPage !== 1) {
       setCurrentPage(1);
     }
   };
@@ -268,38 +324,19 @@ export default function AmbalajClient() {
         : [...activeFilters[type], value],
     };
     setActiveFilters(newFilters);
-    setCurrentPage(1); // Sayfa resetle
+    setCurrentPage(1);
   };
 
   const clearAllFilters = () => {
     setActiveFilters({
-      category: [],
+      category: [categoryName],
       material: [],
       size: [],
       colors: [],
     });
     setSearchQuery("");
-    setActiveCategory("all");
     setCurrentPage(1);
-    router.push("/ambalaj", { scroll: false });
-  };
-
-  const handleCategoryChange = (category) => {
-    setCurrentPage(1);
-    setActiveCategory(category);
-
-    // Sync with filter panel
-    if (category === "all") {
-      setActiveFilters((prev) => ({
-        ...prev,
-        category: [],
-      }));
-    } else {
-      setActiveFilters((prev) => ({
-        ...prev,
-        category: [category],
-      }));
-    }
+    router.push(`/ambalaj/kategori/${categorySlug}`, { scroll: false });
   };
 
   const handleSearchChange = (value) => {
@@ -307,7 +344,31 @@ export default function AmbalajClient() {
     setCurrentPage(1);
   };
 
-  // Function to handle product navigation
+  const handleCategoryChange = (newCategory) => {
+    // Ürün sayfası işaretini temizle ve kategori değişikliği işaretle
+    sessionStorage.removeItem("fromProductPage");
+    sessionStorage.removeItem("navigatingToProduct");
+    sessionStorage.setItem("scrollToProducts", "true");
+
+    if (newCategory === "all") {
+      // Ana sayfaya git ve arama bölümüne scroll et
+      router.push("/ambalaj#katalog");
+    } else if (newCategory !== categoryName) {
+      // Başka kategoriye git
+      const newCategorySlug = createCategorySlug(newCategory);
+      router.push(`/ambalaj/kategori/${newCategorySlug}#katalog`);
+    }
+    // Aynı kategorideyse katalog bölümüne smooth scroll
+    else {
+      scrollToProductList();
+    }
+  };
+
+  const handleQuickView = (product) => {
+    setSelectedProduct(product);
+    setIsQuickViewOpen(true);
+  };
+
   const handleProductNavigation = (product) => {
     // Ürün sayfasına gidildiğini işaretle
     sessionStorage.setItem("fromProductPage", "false"); // Şimdilik false, ürün sayfası yüklendiğinde true yapılacak
@@ -320,38 +381,7 @@ export default function AmbalajClient() {
     router.push(productUrl);
   };
 
-  if (dataLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-lg dark:text-white">
-            Ambalaj ürünleri yükleniyor...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (dataError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg mb-2 dark:text-white">
-            Ürünler yüklenirken hata oluştu
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {dataError}
-          </p>
-          <Button onClick={() => window.location.reload()}>Tekrar Dene</Button>
-        </div>
-      </div>
-    );
-  }
-
   const renderFilters = () => {
-    const categories = filterOptions.categories || [];
     const materials = filterOptions.materials || [];
     const sizes = filterOptions.sizes || [];
     const colors = filterOptions.colors || [];
@@ -368,8 +398,7 @@ export default function AmbalajClient() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold dark:text-white">Filtreler</h3>
-            {(activeFilters.category.length > 0 ||
-              activeFilters.material.length > 0 ||
+            {(activeFilters.material.length > 0 ||
               activeFilters.size.length > 0 ||
               activeFilters.colors.length > 0) && (
               <Button
@@ -384,33 +413,38 @@ export default function AmbalajClient() {
             )}
           </div>
 
-          {/* Kategori Filtresi */}
+          {/* Kategori Filtresi - Sadece mevcut kategori seçili */}
           <div>
             <h4 className="text-sm font-medium mb-3 dark:text-gray-300">
-              Kategori
+              Kategoriler
             </h4>
             <div className="space-y-2">
-              {categories.map((category) => (
+              {filterOptions.categories.map((category) => (
                 <label
                   key={category}
                   className="flex items-center space-x-2 cursor-pointer"
                 >
                   <input
                     type="checkbox"
-                    checked={
-                      activeCategory === category ||
-                      activeFilters.category.includes(category)
-                    }
+                    checked={category === categoryName}
                     onChange={() => {
-                      if (activeCategory === category) {
-                        handleCategoryChange("all");
-                      } else {
-                        handleCategoryChange(category);
+                      if (category !== categoryName) {
+                        const newCategorySlug = createCategorySlug(category);
+                        router.push(`/ambalaj/kategori/${newCategorySlug}`);
                       }
                     }}
                     className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
                   />
-                  <span className="text-sm dark:text-gray-300">{category}</span>
+                  <Link
+                    href={`/ambalaj/kategori/${createCategorySlug(category)}`}
+                    className={`text-sm dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 ${
+                      category === categoryName
+                        ? "font-semibold text-blue-600 dark:text-blue-400"
+                        : ""
+                    }`}
+                  >
+                    {category}
+                  </Link>
                 </label>
               ))}
             </div>
@@ -497,9 +531,184 @@ export default function AmbalajClient() {
     );
   };
 
+  const renderQuickViewModal = () => {
+    if (!selectedProduct) return null;
+
+    return (
+      <Dialog open={isQuickViewOpen} onOpenChange={setIsQuickViewOpen}>
+        <DialogContent className="max-w-4xl dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white">
+              {selectedProduct.name}
+            </DialogTitle>
+            <DialogDescription className="dark:text-gray-300">
+              {selectedProduct.category} - {selectedProduct.code}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="aspect-square rounded-lg overflow-hidden border dark:border-gray-700">
+                <Image
+                  src={
+                    getProductImageSrc(selectedProduct.images?.[0]) ||
+                    "/placeholder.jpg"
+                  }
+                  alt={selectedProduct.name}
+                  width={400}
+                  height={400}
+                  className="w-full h-full object-cover"
+                  onError={(e) => handleImageError(e, selectedProduct.name)}
+                />
+              </div>
+              {selectedProduct.images && selectedProduct.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {selectedProduct.images.slice(1, 4).map((image, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-20 h-20 rounded border dark:border-gray-700 overflow-hidden"
+                    >
+                      <Image
+                        src={getProductImageSrc(image) || "/placeholder.jpg"}
+                        alt={`${selectedProduct.name} ${index + 2}`}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                        onError={(e) =>
+                          handleImageError(e, selectedProduct.name)
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-2 dark:text-white">
+                  Ürün Bilgileri
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Kod:
+                    </span>
+                    <span className="dark:text-white">
+                      {selectedProduct.code}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Kategori:
+                    </span>
+                    <span className="dark:text-white">
+                      {selectedProduct.category}
+                    </span>
+                  </div>
+                  {(selectedProduct.specifications?.size ||
+                    selectedProduct.size) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Boyut:
+                      </span>
+                      <span className="dark:text-white">
+                        {selectedProduct.specifications?.size ||
+                          selectedProduct.size}
+                      </span>
+                    </div>
+                  )}
+                  {(selectedProduct.specifications?.material ||
+                    selectedProduct.material) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Materyal:
+                      </span>
+                      <span className="dark:text-white">
+                        {selectedProduct.specifications?.material ||
+                          selectedProduct.material}
+                      </span>
+                    </div>
+                  )}
+                  {(selectedProduct.specifications?.debit ||
+                    selectedProduct.debit) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Debi:
+                      </span>
+                      <span className="dark:text-white">
+                        {selectedProduct.specifications?.debit ||
+                          selectedProduct.debit}
+                      </span>
+                    </div>
+                  )}
+                  {(selectedProduct.specifications?.lockType ||
+                    selectedProduct.lockType) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Kilit Tipi:
+                      </span>
+                      <span className="dark:text-white">
+                        {selectedProduct.specifications?.lockType ||
+                          selectedProduct.lockType}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedProduct.colors && selectedProduct.colors.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 dark:text-white">
+                    Mevcut Renkler
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProduct.colors.map((color, index) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="dark:border-gray-600 dark:text-gray-300"
+                      >
+                        {color}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedProduct.description && (
+                <div>
+                  <h3 className="font-semibold mb-2 dark:text-white">
+                    Açıklama
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {selectedProduct.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={() => handleProductNavigation(selectedProduct)}
+                  className="flex-1 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  Detayları Gör
+                </Button>
+                <Button
+                  variant="outline"
+                  className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <Heart className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Hero Section */}
+      {/* Hero Section - Same as main ambalaj page but category specific */}
       <section
         className={`mb-8 sm:mb-12 ${
           isHeroVisible ? "slide-up visible" : "slide-up"
@@ -509,7 +718,7 @@ export default function AmbalajClient() {
           <div className="rounded-lg sm:rounded-xl overflow-hidden relative min-h-[400px] md:min-h-[500px]">
             <Image
               src="/optimized/cosmetic-packaging-mockup.webp"
-              alt="Premium Kozmetik Ambalaj Ürünleri - MKN Group Fason Üretim Tesisi, Parfüm Şişeleri ve Krem Kavanozları"
+              alt={`Premium ${categoryName} - MKN Group Fason Üretim Tesisi, Profesyonel Kozmetik Ambalaj Çözümleri`}
               width={1600}
               height={500}
               className="absolute inset-0 w-full h-full object-cover"
@@ -522,15 +731,14 @@ export default function AmbalajClient() {
               }`}
             >
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-4">
-                Premium Kozmetik Ambalaj Ürünleri | MKN Group Kalite Garantisi
+                {categoryName} | MKN Group Premium Kalite Garantisi
               </h1>
               <p className="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 text-blue-50 dark:text-gray-200">
-                Markanızın değerini yansıtan premium kalitede kozmetik ambalaj
-                çözümleri. Parfüm şişeleri, krem kavanozları, pompalı şişeler ve
-                airless ambalajlarımızla ürünlerinizi fark yaratan bir sunumla
-                müşterilerinize ulaştırın. Detaylı ürün bilgileri için PDF
-                kataloğumuzu indirin veya aşağıdaki ürünlerimizi inceleyin. Özel
-                tasarım ambalajlar için bizimle iletişime geçin.
+                {categoryName} kategorisinde {products.length} farklı premium
+                kalite ürün seçeneği. Markanızın değerini yansıtan yuksek
+                standartlarda kozmetik ambalaj çözümleri. Detaylı ürün bilgileri
+                için PDF kataloğumuzu indirin veya aşağıdaki ürünlerimizi
+                inceleyin. Özel tasarım ambalajlar için bizimle iletişime geçin.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button
@@ -637,38 +845,50 @@ export default function AmbalajClient() {
 
                   {/* Category Filter Chips */}
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleCategoryChange("all")}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                        activeCategory === "all"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                      }`}
+                    <Link
+                      href="/ambalaj#katalog"
+                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      onClick={() => {
+                        // Kategori değişikliği yapılıyor
+                        sessionStorage.removeItem("fromProductPage");
+                        sessionStorage.removeItem("navigatingToProduct");
+                        sessionStorage.setItem("scrollToProducts", "true");
+                        saveScrollPosition();
+                      }}
                     >
-                      Tümü ({products.length})
-                    </button>
+                      Tümü
+                    </Link>
                     {filterOptions.categories.map((category) => {
-                      const count = products.filter(
-                        (product) => product.category === category
-                      ).length;
-                      const categorySlug = createCategorySlug(category);
+                      const count =
+                        category === categoryName ? products.length : 0;
+                      const categorySlugForLink = createCategorySlug(category);
                       return (
                         <Link
                           key={category}
-                          href={`/ambalaj/kategori/${categorySlug}`}
+                          href={`/ambalaj/kategori/${categorySlugForLink}#katalog`}
                           className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                            activeCategory === category
+                            category === categoryName
                               ? "bg-blue-600 text-white shadow-md"
                               : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                           }`}
-                          onClick={() => {
-                            // Kategori değişikliği yapılıyor
-                            sessionStorage.removeItem("fromProductPage");
-                            sessionStorage.removeItem("navigatingToProduct");
-                            sessionStorage.setItem("scrollToProducts", "true");
+                          onClick={(e) => {
+                            if (category !== categoryName) {
+                              // Kategori değiştiriliyor
+                              sessionStorage.removeItem("fromProductPage");
+                              sessionStorage.removeItem("navigatingToProduct");
+                              sessionStorage.setItem(
+                                "scrollToProducts",
+                                "true"
+                              );
+                              saveScrollPosition();
+                            } else {
+                              // Aynı kategoriye tıklandı, sayfa içi scroll
+                              e.preventDefault();
+                              scrollToProductList();
+                            }
                           }}
                         >
-                          {category} ({count})
+                          {category} {category === categoryName && `(${count})`}
                         </Link>
                       );
                     })}
@@ -851,19 +1071,26 @@ export default function AmbalajClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
             <div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-4 dark:text-gray-100">
-                Fason Ambalaj Üretimi ve Özel Tasarım Hizmetleri
+                {categoryName} için Özel Fiyat Teklifi ve Fason Üretim
               </h2>
               <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 dark:text-gray-300">
-                Markanızı öne çıkaracak özel tasarım kozmetik ambalaj çözümleri
-                için deneyimli ekibimizle iletişime geçin. ISO sertifikalı
-                üretim tesislerimizde, ürün geliştirme aşamasından seri üretime
-                kadar her adımda yanınızdayız. Custom ambalaj tasarımları,
-                private label kozmetik packaging ve contract manufacturing
-                hizmetlerimizle işinizi büyütün.
+                {categoryName} kategorisinde toplu alımlarınız için özel fiyat
+                teklifleri ve markanıza özel tasarım seçenekleri için deneyimli
+                ekibimizle iletişime geçin. ISO sertifikalı üretim
+                tesislerimizde, ürün geliştirme aşamasından seri üretime kadar
+                her adımda yanınızdayız.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button size="default" asChild className="text-sm sm:text-base">
                   <Link href="/iletisim">İletişime Geçin</Link>
+                </Button>
+                <Button
+                  size="default"
+                  variant="outline"
+                  asChild
+                  className="text-sm sm:text-base"
+                >
+                  <Link href="/ambalaj">Tüm Ürünleri İncele</Link>
                 </Button>
               </div>
             </div>
@@ -891,7 +1118,10 @@ export default function AmbalajClient() {
         </div>
       </section>
 
-      {/* Animations Styles - Simplified since most animations moved to framer-motion */}
+      {/* Quick view modal */}
+      {renderQuickViewModal()}
+
+      {/* Animations Styles - Simplified since ProductCard handles most animations */}
       <style jsx>{`
         .hero-animation {
           opacity: 0;

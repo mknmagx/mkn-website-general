@@ -1,11 +1,11 @@
 import { site } from "@/config/site";
 import { packagingService } from "@/lib/services/packaging-service";
 import { getAllBlogPosts } from "@/lib/services/blog-service";
-import { createProductSlug } from "@/utils/slugify-tr";
+import { createProductSlug, getAllCategorySlugs } from "@/utils/slugify-tr";
 
 export default async function sitemap() {
   const baseUrl = `https://${site.domain}`;
-  const currentDate = new Date("2025-10-11T00:00:00.000Z");
+  const currentDate = new Date("2025-11-15T00:00:00.000Z");
   const productsUpdateDate = new Date("2025-11-14T00:00:00.000Z");
 
   const blogPosts = await getAllBlogPosts();
@@ -83,6 +83,16 @@ export default async function sitemap() {
     };
   });
 
+  const categorySlugs = getAllCategorySlugs();
+  const categoryUrls = categorySlugs.map((slug) => {
+    return {
+      url: `${baseUrl}/ambalaj/kategori/${slug}`,
+      lastModified: productsUpdateDate,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    };
+  });
+
   const blogUrls = blogPosts.map((post) => {
     return {
       url: `${baseUrl}/blog/${post.slug}`,
@@ -92,5 +102,5 @@ export default async function sitemap() {
     };
   });
 
-  return [...staticUrls, ...productUrls, ...blogUrls];
+  return [...staticUrls, ...categoryUrls, ...productUrls, ...blogUrls];
 }

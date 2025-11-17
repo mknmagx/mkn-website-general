@@ -3,7 +3,6 @@ import { SEOHead } from "@/components/seo-head";
 export const metadata = {
   title: "Kullanım Koşulları | MKN Group",
   description: "MKN Group web sitesi kullanım koşulları ve kuralları",
-  robots: "noindex, nofollow",
 };
 
 export default function TermsOfServicePage() {

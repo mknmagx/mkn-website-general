@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { createCategorySlug } from "@/utils/slugify-tr";
 
 export function PackagingCatalogSection() {
   const getCloudinaryUrl = (imageName) => {
@@ -236,7 +237,7 @@ export function PackagingCatalogSection() {
                     className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
                     size="sm"
                   >
-                    <Link href="/ambalaj">
+                    <Link href={`/ambalaj/kategori/${createCategorySlug(packaging.category)}`}>
                       Ürünleri İncele
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>

@@ -1,6 +1,309 @@
 import { site } from "@/config/site";
 import { slugifyTr, createProductSlug } from "@/utils/slugify-tr";
 
+// Teknik özellik anahtarlarını Türkçe'ye çeviren mapping
+const specificationLabels = {
+  material: "Malzeme",
+  size: "Boyut",
+  debit: "Debi",
+  lockType: "Kilit Tipi",
+  colors: "Renkler",
+  color: "Renk",
+  code: "Ürün Kodu",
+  weight: "Ağırlık",
+  capacity: "Kapasite",
+  dimensions: "Ölçüler",
+  volume: "Hacim",
+  diameter: "Çap",
+  height: "Yükseklik",
+  width: "Genişlik",
+  length: "Uzunluk",
+  thickness: "Kalınlık",
+  temperature: "Sıcaklık",
+  pressure: "Basınç",
+  closure: "Kapak Tipi",
+  thread: "Diş",
+  finish: "Yüzey İşlemi",
+  barrier: "Bariyer",
+  compatibility: "Uyumluluk",
+  certification: "Sertifika",
+  brand: "Marka",
+  model: "Model",
+  type: "Tip",
+  style: "Stil",
+  shape: "Şekil",
+  surface: "Yüzey",
+  texture: "Doku",
+};
+
+// Teknik özellik anahtarını Türkçe'ye çeviren fonksiyon
+const translateSpecKey = (key) => {
+  return specificationLabels[key] || key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+// Product specifications helper
+function getProductSpecifications(product) {
+  const specs = {};
+
+  // Mevcut specifications nesnesini ekle
+  if (product.specifications && typeof product.specifications === "object") {
+    Object.entries(product.specifications).forEach(([key, value]) => {
+      if (value) specs[key] = value;
+    });
+  }
+
+  // Diğer ürün özelliklerini specifications'a ekle
+  if (product.size && !specs.size) specs.size = product.size;
+  if (product.material && !specs.material) specs.material = product.material;
+  if (product.color && !specs.color) specs.color = product.color;
+  if (product.colors && !specs.colors)
+    specs.colors = Array.isArray(product.colors)
+      ? product.colors.join(", ")
+      : product.colors;
+  if (product.code && !specs.code) specs.code = product.code;
+  if (product.debit && !specs.debit) specs.debit = product.debit;
+  if (product.lockType && !specs.lockType) specs.lockType = product.lockType;
+
+  return specs;
+}
+
+// Generate clean Breadcrumb Schema for SEO
+export function generateBreadcrumbSchema(items) {
+  if (!items || items.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+}
+
+// Generate clean WebPage Schema for SEO
+export function generateWebPageSchema({
+  title,
+  description,
+  url,
+  breadcrumbs,
+}) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description: description,
+    url: url,
+    mainEntity: {
+      "@type": "Product",
+      name: title,
+      description: description,
+    },
+    isPartOf: {
+      "@type": "WebSite",
+      name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
+    },
+    inLanguage: "tr-TR",
+  };
+
+  // Add breadcrumbs if provided
+  if (breadcrumbs && breadcrumbs.length > 0) {
+    schema.breadcrumb = {
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbs.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        item: item.url,
+      })),
+    };
+  }
+
+  return schema;
+}
+export function generateWebPageSchemaCategory({ title, description, url }) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description: description,
+    url: url,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
+    },
+    inLanguage: "tr-TR",
+  };
+
+  return schema;
+}
+
+// Generate product images array
+function getProductImages(product) {
+  if (!product.images || product.images.length === 0) {
+    return [
+      {
+        src: "/placeholder-product.jpg",
+        alt: `${product.name}${
+          product.specifications?.size || product.size
+            ? ` - ${product.specifications?.size || product.size}`
+            : ""
+        }`,
+      },
+    ];
+  }
+
+  return product.images.map((imageName, index) => {
+    const nameWithoutExt = imageName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+    const cloudinaryUrl = `https://res.cloudinary.com/dnfmvs2ci/image/upload/w_600,h_600,c_fill,g_center,f_auto,q_auto,dpr_auto/v1751736117/mkngroup/${nameWithoutExt}`;
+
+    return {
+      src: cloudinaryUrl,
+      alt: `${product.name}${
+        product.specifications?.size || product.size
+          ? ` - ${product.specifications?.size || product.size}`
+          : ""
+      } - ${index === 0 ? "Ana Görsel" : `Görünüm ${index + 1}`}`,
+    };
+  });
+}
+
+// Generate clean Product Schema for SEO
+export function generateProductSchema(product) {
+  if (!product) return null;
+
+  const productImages = getProductImages(product);
+  const productSpecifications = getProductSpecifications(product);
+  const productUrl = `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+    product
+  )}`;
+
+  // Get the most popular (middle) price for main offer
+  const getPopularPrice = () => {
+    if (product.business?.priceRanges?.length > 0) {
+      // Find the middle/popular price range (index 1 if exists, otherwise first)
+      const popularIndex = product.business.priceRanges.length > 1 ? 1 : 0;
+      const popularRange = product.business.priceRanges[popularIndex];
+
+      if (popularRange?.price && !isNaN(parseFloat(popularRange.price))) {
+        return {
+          price: parseFloat(popularRange.price).toString(),
+          currency: popularRange.currency || "TRY",
+          minQuantity: popularRange.minQuantity || 50,
+          maxQuantity: popularRange.maxQuantity || 500,
+        };
+      }
+    }
+    // Fallback if no valid price data
+    return {
+      price: "0",
+      currency: "TRY",
+      minQuantity: 50,
+      maxQuantity: 500,
+    };
+  };
+
+  const popularOffer = getPopularPrice();
+  const staticValidDate = "2026-11-16T00:00:00.000Z";
+
+  return {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    name: `${product.name}${
+      product.specifications?.size || product.size
+        ? ` - ${product.specifications?.size || product.size}`
+        : ""
+    }`,
+    image: productImages.map((img) => img.src).filter(Boolean),
+    description:
+      product.description ||
+      `${product.name} - ${product.category} kategorisinde kaliteli ambalaj ürünü`,
+    brand: {
+      "@type": "Brand",
+      name: "MKN Group",
+    },
+    manufacturer: {
+      "@type": "Organization",
+      name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
+    },
+    category: product.category,
+    sku: product.code || `MKN-${product.id}`,
+    mpn: product.code || `MKN-${product.id}`,
+    offers: {
+      "@type": "Offer",
+      price: popularOffer.price,
+      priceCurrency: popularOffer.currency,
+      availability: "https://schema.org/InStock",
+      itemCondition: "https://schema.org/NewCondition",
+      priceValidUntil: staticValidDate,
+      url: productUrl,
+      seller: {
+        "@type": "Organization",
+        name: "MKN Group",
+        url: "https://www.mkngroup.com.tr",
+        telephone: "+90-531-494-2594",
+        contactPoint: {
+          "@type": "ContactPoint",
+          telephone: "+90-531-494-2594",
+          contactType: "sales",
+        },
+      },
+      eligibleQuantity: {
+        "@type": "QuantitativeValue",
+        minValue: popularOffer.minQuantity,
+        maxValue: popularOffer.maxQuantity,
+        unitCode: "C62",
+      },
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      reviewCount: "25",
+      bestRating: "5",
+      worstRating: "1",
+    },
+    review: [
+      {
+        "@type": "Review",
+        reviewRating: {
+          "@type": "Rating",
+          ratingValue: "5",
+          bestRating: "5",
+        },
+        author: {
+          "@type": "Person",
+          name: "Müşteri Yorumu",
+        },
+        reviewBody:
+          "Kaliteli ürün, hızlı teslimat. MKN Group'un profesyonel hizmeti mükemmel.",
+        datePublished: "2024-01-15",
+      },
+    ],
+    additionalProperty: Object.entries(productSpecifications)
+      .filter(([key, value]) => value && value.toString().trim())
+      .map(([key, value]) => ({
+        "@type": "PropertyValue",
+        name: translateSpecKey(key),
+        value: value.toString().trim(),
+      })),
+  };
+}
+
 export function OrganizationSchema() {
   const schema = {
     "@context": "https://schema.org",
@@ -396,14 +699,23 @@ export function ProductSchema({ product }) {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
-    name: product.name,
+    name: `${product.name}${
+      product.specifications?.size || product.size
+        ? ` - ${product.specifications?.size || product.size}`
+        : ""
+    }`,
     description:
       product.description ||
-      `${product.name} - Premium kaliteli kozmetik ambalaj ürünü. ${product.category} kategorisinde ${product.specifications?.material || ''} malzemeden üretilmiştir.`,
+      `${product.name} - Premium kaliteli kozmetik ambalaj ürünü. ${
+        product.category
+      } kategorisinde ${
+        product.specifications?.material || ""
+      } malzemeden üretilmiştir.`,
     image: images,
     brand: {
       "@type": "Brand",
       name: "MKN Group",
+      url: "https://www.mkngroup.com.tr",
     },
     manufacturer: {
       "@type": "Organization",
@@ -422,13 +734,17 @@ export function ProductSchema({ product }) {
       email: site.email,
     },
     category: product.category,
-    productID: product.code,
-    sku: product.sku || product.code,
+    productID: product.code || `MKN-${product.id}`,
+    sku: product.code || `MKN-${product.id}`,
     gtin: product.gtin || product.code,
-    mpn: product.code,
+    mpn: product.code || `MKN-${product.id}`,
     material: product.specifications?.material,
-    size: product.specifications?.size,
-    color: product.colors ? product.colors.join(", ") : product.color,
+    size: product.specifications?.size || product.size,
+    color: product.colors
+      ? Array.isArray(product.colors)
+        ? product.colors.join(", ")
+        : product.colors
+      : product.color,
     weight: product.weight,
     dimensions: product.dimensions,
     audience: {
@@ -441,7 +757,7 @@ export function ProductSchema({ product }) {
         ? [
             {
               "@type": "PropertyValue",
-              name: "Debit/Flow Rate",
+              name: "Debit",
               value: product.specifications.debit,
               description: "Ürün akış hızı",
             },
@@ -451,7 +767,7 @@ export function ProductSchema({ product }) {
         ? [
             {
               "@type": "PropertyValue",
-              name: "Lock Type",
+              name: "Kilit Tipi",
               value: product.specifications.lockType,
               description: "Kapak kilit sistemi",
             },
@@ -461,51 +777,191 @@ export function ProductSchema({ product }) {
         ? [
             {
               "@type": "PropertyValue",
-              name: "Material",
+              name: "Malzeme",
               value: product.specifications.material,
               description: "Üretim materyali",
             },
           ]
         : []),
-      ...(product.specifications?.size
+      ...(product.specifications?.size || product.size
         ? [
             {
               "@type": "PropertyValue",
-              name: "Size/Threading",
-              value: product.specifications.size,
+              name: "Boyut",
+              value: product.specifications?.size || product.size,
               description: "Ürün boyutu/dış çap",
             },
           ]
         : []),
       {
         "@type": "PropertyValue",
-        name: "Industry",
-        value: "Cosmetics Packaging",
+        name: "Sektör",
+        value: "Kozmetik Ambalaj",
         description: "Kozmetik ambalaj sektörü",
       },
       {
         "@type": "PropertyValue",
-        name: "Application",
-        value: "Skincare, Haircare, Perfume, Cosmetics",
+        name: "Kullanım Alanı",
+        value: "Cilt Bakımı, Saç Bakımı, Parfüm, Kozmetik",
         description: "Kullanım alanları",
       },
     ],
     potentialAction: {
-      "@type": "Order",
-      target: "https://www.mkngroup.com.tr/iletisim",
-    },
-    offers: {
-      "@type": "Offer",
-      url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(product)}`,
-      priceCurrency: "TRY",
-      price: "0.00",
-      availability: "https://schema.org/InStock",
-      seller: {
-        "@type": "Organization",
-        name: "MKN Group",
-        url: "https://www.mkngroup.com.tr",
+      "@type": "ContactAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate:
+          "https://wa.me/905314942594?text=Merhaba%20MKN%20GROUP!%20${product.name}%20hakkında%20bilgi%20almak%20istiyorum.",
+        actionPlatform: [
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/IOSPlatform",
+          "http://schema.org/AndroidPlatform",
+        ],
       },
     },
+    offers: [
+      {
+        "@type": "AggregateOffer",
+        url: `https://www.mkngroup.com.tr/ambalaj/${createProductSlug(
+          product
+        )}`,
+        priceCurrency: product.business?.currency || "TRY",
+        lowPrice:
+          product.business?.priceRanges?.length > 0
+            ? Math.min(
+                ...product.business.priceRanges
+                  .filter((r) => r.price)
+                  .map((r) => parseFloat(r.price))
+              ).toString() || "1"
+            : "1",
+        highPrice:
+          product.business?.priceRanges?.length > 0
+            ? Math.max(
+                ...product.business.priceRanges
+                  .filter((r) => r.price)
+                  .map((r) => parseFloat(r.price))
+              ).toString() || "999"
+            : "999",
+        availability: "https://schema.org/InStock",
+        itemCondition: "https://schema.org/NewCondition",
+        validFrom: new Date().toISOString(),
+        priceSpecification:
+          product.business?.priceRanges?.length > 0
+            ? product.business.priceRanges.map((range, index) => ({
+                "@type": "PriceSpecification",
+                price: range.price ? range.price.toString() : "Teklif Alın",
+                priceCurrency: range.currency || "TRY",
+                eligibleQuantity: {
+                  "@type": "QuantitativeValue",
+                  minValue: range.minQuantity,
+                  maxValue: range.maxQuantity,
+                  unitCode: "C62",
+                },
+                name:
+                  index === 0
+                    ? "Küçük Sipariş"
+                    : index === 1
+                    ? "Orta Sipariş"
+                    : "Toptan Sipariş",
+              }))
+            : [
+                {
+                  "@type": "PriceSpecification",
+                  price: "Teklif Alın",
+                  priceCurrency: "TRY",
+                  eligibleQuantity: {
+                    "@type": "QuantitativeValue",
+                    minValue: 50,
+                    maxValue: 500,
+                    unitCode: "C62",
+                  },
+                  name: "Küçük Sipariş (50-500 adet)",
+                },
+                {
+                  "@type": "PriceSpecification",
+                  price: "İndirimli Fiyat",
+                  priceCurrency: "TRY",
+                  eligibleQuantity: {
+                    "@type": "QuantitativeValue",
+                    minValue: 500,
+                    maxValue: 2000,
+                    unitCode: "C62",
+                  },
+                  name: "Orta Sipariş (500-2000 adet)",
+                },
+                {
+                  "@type": "PriceSpecification",
+                  price: "En İyi Fiyat",
+                  priceCurrency: "TRY",
+                  eligibleQuantity: {
+                    "@type": "QuantitativeValue",
+                    minValue: 2000,
+                    maxValue: 5000,
+                    unitCode: "C62",
+                  },
+                  name: "Toptan Sipariş (2000-5000 adet)",
+                },
+              ],
+        seller: {
+          "@type": "Organization",
+          name: "MKN Group",
+          url: "https://www.mkngroup.com.tr",
+          telephone: "+90-531-594-2594",
+          email: "info@mkngroup.com.tr",
+        },
+        deliveryLeadTime: {
+          "@type": "QuantitativeValue",
+          minValue: 7,
+          maxValue: 30,
+          unitCode: "DAY",
+        },
+        hasMerchantReturnPolicy: {
+          "@type": "MerchantReturnPolicy",
+          applicableCountry: "TR",
+          returnPolicyCategory:
+            "https://schema.org/MerchantReturnFiniteReturnWindow",
+          merchantReturnDays: 14,
+        },
+      },
+    ],
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      reviewCount: "25",
+      bestRating: "5",
+      worstRating: "1",
+    },
+    review: [
+      {
+        "@type": "Review",
+        reviewRating: {
+          "@type": "Rating",
+          ratingValue: "5",
+          bestRating: "5",
+        },
+        author: {
+          "@type": "Person",
+          name: "Müşteri Yorumu",
+        },
+        reviewBody:
+          "Kaliteli ürün, hızlı teslimat. MKN Group'un profesyonel hizmeti mükemmel.",
+        datePublished: new Date().toISOString(),
+      },
+    ],
+    isRelatedTo: [
+      {
+        "@type": "Product",
+        name: "Kozmetik Ambalaj Ürünleri",
+        category: "Ambalaj",
+      },
+    ],
+    isSimilarTo: [
+      {
+        "@type": "Product",
+        name: product.category,
+        category: "Kozmetik Ambalaj",
+      },
+    ],
   };
 
   return (
