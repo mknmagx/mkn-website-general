@@ -18,9 +18,37 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Filter, Edit, Trash2, Eye, Package } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Eye,
+  Package,
+  ChevronUp,
+  ChevronDown,
+  MoreHorizontal,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import QuickPriceEditDialog from "@/components/admin/quick-price-edit-dialog";
 
 const getCloudinaryUrl = (imageName, width = 400, height = 400) => {
   if (!imageName) return null;
@@ -72,6 +100,9 @@ export default function AdminPackagingPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [sortField, setSortField] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [priceEditProduct, setPriceEditProduct] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -101,19 +132,70 @@ export default function AdminPackagingPage() {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "in-stock" && product.inStock) ||
-      (selectedStatus === "out-of-stock" && !product.inStock);
+  const filteredProducts = products
+    .filter((product) => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "all" || product.category === selectedCategory;
+      const matchesStatus =
+        selectedStatus === "all" ||
+        (selectedStatus === "in-stock" && product.inStock) ||
+        (selectedStatus === "out-of-stock" && !product.inStock);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+      return matchesSearch && matchesCategory && matchesStatus;
+    })
+    .sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      if (typeof aValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (sortDirection === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return null;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="ml-1 h-4 w-4" />
+    ) : (
+      <ChevronDown className="ml-1 h-4 w-4" />
+    );
+  };
+
+  const formatPrice = (business) => {
+    if (!business?.priceRanges || business.priceRanges.length === 0) {
+      return "Fiyat belirtilmedi";
+    }
+
+    const prices = business.priceRanges
+      .map((range) => range.price)
+      .sort((a, b) => a - b);
+    const min = prices[0];
+    const max = prices[prices.length - 1];
+
+    if (min === max) {
+      return `${min.toFixed(2)} TRY`;
+    }
+    return `${min.toFixed(2)} - ${max.toFixed(2)} TRY`;
+  };
 
   const handleDeleteProduct = async (productId) => {
     try {
@@ -131,6 +213,13 @@ export default function AdminPackagingPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handlePriceSave = (updatedProduct) => {
+    // Update the products list with the new price data
+    setProducts(prev => 
+      prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    );
   };
 
   if (authLoading || loading) {
@@ -270,140 +359,230 @@ export default function AdminPackagingPage() {
           </CardContent>
         </Card>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <CardHeader className="p-0">
-                {product.images && product.images.length > 0 ? (
-                  <div className="relative h-48 bg-gray-100">
-                    <Image
-                      src={getProductImageSrc(product.images[0])}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      onError={(e) => handleImageError(e, product.name)}
-                    />
-                  </div>
-                ) : (
-                  <div className="h-48 bg-gray-100 flex items-center justify-center">
-                    <Package className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-sm leading-tight">
-                      {product.name}
-                    </h3>
-                    <Badge variant={product.inStock ? "default" : "secondary"}>
-                      {product.inStock ? "Stokta" : "Stok Dışı"}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>
-                      <span className="font-medium">Kod:</span> {product.code}
-                    </p>
-                    <p>
-                      <span className="font-medium">Kategori:</span>{" "}
-                      {product.category}
-                    </p>
-                    {product.specifications?.size && (
-                      <p>
-                        <span className="font-medium">Boyut:</span>{" "}
-                        {product.specifications.size}
-                      </p>
-                    )}
-                    {product.specifications?.material && (
-                      <p>
-                        <span className="font-medium">Malzeme:</span>{" "}
-                        {product.specifications.material}
-                      </p>
-                    )}
-                  </div>
-
-                  {product.colors && product.colors.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-1">Renkler:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {product.colors.slice(0, 2).map((color, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {color}
-                          </Badge>
-                        ))}
-                        {product.colors.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{product.colors.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Link href={`/admin/packaging/${product.id}`}>
-                      <Eye className="mr-1 h-3 w-3" />
-                      Görüntüle
-                    </Link>
-                  </Button>
-                  <PermissionGuard requiredPermission="packaging.write">
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
+        {/* Products Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ürünler ({filteredProducts.length})</CardTitle>
+            <CardDescription>
+              Tüm ambalaj ürünlerinizi görüntüleyin ve yönetin
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Görsel</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none min-w-48"
+                      onClick={() => handleSort("name")}
                     >
-                      <Link href={`/admin/packaging/${product.id}/edit`}>
-                        <Edit className="mr-1 h-3 w-3" />
-                        Düzenle
-                      </Link>
-                    </Button>
-                  </PermissionGuard>
-                  <PermissionGuard requiredPermission="packaging.delete">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="px-2">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Ürünü sil</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Bu ürünü silmek istediğinizden emin misiniz? Bu
-                            işlem geri alınamaz.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>İptal</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="bg-red-600 hover:bg-red-700"
+                      <div className="flex items-center">
+                        Ürün Adı
+                        <SortIcon field="name" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none w-32"
+                      onClick={() => handleSort("code")}
+                    >
+                      <div className="flex items-center">
+                        Kod
+                        <SortIcon field="code" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none w-36"
+                      onClick={() => handleSort("category")}
+                    >
+                      <div className="flex items-center">
+                        Kategori
+                        <SortIcon field="category" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-32">Boyut/Malzeme</TableHead>
+                    <TableHead className="w-40">Renkler</TableHead>
+                    <TableHead className="w-48">Fiyat Aralığı</TableHead>
+                    <TableHead
+                      className="cursor-pointer select-none w-24"
+                      onClick={() => handleSort("inStock")}
+                    >
+                      <div className="flex items-center">
+                        Durum
+                        <SortIcon field="inStock" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-16">İşlemler</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProducts.map((product) => (
+                    <TableRow key={product.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        {product.images && product.images.length > 0 ? (
+                          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+                            <Image
+                              src={getProductImageSrc(product.images[0])}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                              onError={(e) => handleImageError(e, product.name)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <Package className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="max-w-44 truncate" title={product.name}>
+                          {product.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                          {product.code}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs truncate max-w-32" title={product.category}>
+                          {product.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm space-y-0.5 max-w-28">
+                          {product.specifications?.size && (
+                            <div className="text-muted-foreground truncate" title={product.specifications.size}>
+                              {product.specifications.size}
+                            </div>
+                          )}
+                          {product.specifications?.material && (
+                            <div className="text-muted-foreground text-xs truncate" title={product.specifications.material}>
+                              {product.specifications.material}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {product.colors && product.colors.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-36">
+                            {product.colors.slice(0, 2).map((color, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="text-xs px-1.5 py-0 truncate max-w-20"
+                                title={color}
+                              >
+                                {color}
+                              </Badge>
+                            ))}
+                            {product.colors.length > 2 && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs px-1.5 py-0"
+                                title={`+${product.colors.length - 2} renk daha`}
+                              >
+                                +{product.colors.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 max-w-44">
+                          <div className="text-sm font-medium truncate flex-1" title={formatPrice(product.business)}>
+                            {formatPrice(product.business)}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 flex-shrink-0"
+                            onClick={() => setPriceEditProduct(product)}
+                            title="Fiyat düzenle"
                           >
-                            Sil
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </PermissionGuard>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={product.inStock ? "default" : "secondary"}
+                          className={
+                            product.inStock
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {product.inStock ? "Stokta" : "Stok Dışı"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Menüyü aç</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/packaging/${product.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Görüntüle
+                              </Link>
+                            </DropdownMenuItem>
+                            <PermissionGuard requiredPermission="packaging.write">
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/admin/packaging/${product.id}/edit`}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Düzenle
+                                </Link>
+                              </DropdownMenuItem>
+                            </PermissionGuard>
+                            <PermissionGuard requiredPermission="packaging.write">
+                              <DropdownMenuItem
+                                onClick={() => setPriceEditProduct(product)}
+                              >
+                                <Package className="mr-2 h-4 w-4" />
+                                Fiyat Düzenle
+                              </DropdownMenuItem>
+                            </PermissionGuard>
+                            <DropdownMenuSeparator />
+                            <PermissionGuard requiredPermission="packaging.delete">
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => {
+                                  if (
+                                    confirm(
+                                      "Bu ürünü silmek istediğinizden emin misiniz?"
+                                    )
+                                  ) {
+                                    handleDeleteProduct(product.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Sil
+                              </DropdownMenuItem>
+                            </PermissionGuard>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
         {filteredProducts.length === 0 && (
           <Card>
@@ -423,6 +602,14 @@ export default function AdminPackagingPage() {
             </CardContent>
           </Card>
         )}
+        
+        {/* Quick Price Edit Dialog */}
+        <QuickPriceEditDialog
+          product={priceEditProduct}
+          isOpen={!!priceEditProduct}
+          onClose={() => setPriceEditProduct(null)}
+          onSave={handlePriceSave}
+        />
       </div>
     </PermissionGuard>
   );

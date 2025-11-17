@@ -421,11 +421,12 @@ export default function PackagingForm({ productId, onSuccess }) {
     try {
       setLoading(true);
 
-      // Clean up empty array fields (görsel isimleri henüz boş bırak)
+      // Clean up empty array fields - mevcut görselleri koru
       const cleanedData = {
         ...formData,
         colors: formData.colors.filter((color) => color.trim()),
-        images: [], // Başlangıçta boş, görseller yüklendikten sonra güncellenecek
+        // Mevcut görselleri koru, sadece yeni yüklenecek görseller eklenecek
+        images: isEditing ? formData.images : [],
         seo: {
           ...formData.seo,
           keywords: formData.seo.keywords.filter((keyword) => keyword.trim()),
@@ -470,13 +471,17 @@ export default function PackagingForm({ productId, onSuccess }) {
             throw new Error(result.error || "Görsel yükleme başarısız");
           }
 
-          // 3. Ürünü görsel isimleri ile güncelle
+          // 3. Ürünü görsel isimleri ile güncelle - mevcut görselleri koru
           const updatedData = {
             ...cleanedData,
-            images: result.images,
+            // Mevcut görseller + yeni yüklenen görseller
+            images: [...cleanedData.images, ...result.images],
           };
 
           await packagingService.updateProduct(currentProductId, updatedData);
+
+          // Başarılı yükleme sonrası selectedFiles'ı temizle
+          setSelectedFiles([]);
 
           toast({
             title: "Başarılı",

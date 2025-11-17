@@ -45,6 +45,39 @@ const handleImageError = (e, productName = "", imageIndex = "") => {
     e.target.src = "/placeholder-product.jpg";
   }
 };
+
+// Safe date formatter for Firebase Timestamps and regular Date objects
+const formatDate = (dateValue) => {
+  if (!dateValue) return "Belirtilmemiş";
+  
+  try {
+    // If it's a Firebase Timestamp with toDate method
+    if (dateValue && typeof dateValue.toDate === 'function') {
+      return dateValue.toDate().toLocaleDateString("tr-TR");
+    }
+    // If it's already a Date object or timestamp
+    else if (dateValue instanceof Date) {
+      return dateValue.toLocaleDateString("tr-TR");
+    }
+    // If it's a timestamp number
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue).toLocaleDateString("tr-TR");
+    }
+    // If it's a serialized timestamp object
+    else if (dateValue && dateValue.seconds) {
+      return new Date(dateValue.seconds * 1000).toLocaleDateString("tr-TR");
+    }
+    // Try to parse as string
+    else if (typeof dateValue === 'string') {
+      return new Date(dateValue).toLocaleDateString("tr-TR");
+    }
+    
+    return "Geçersiz tarih";
+  } catch (error) {
+    console.error("Date formatting error:", error, dateValue);
+    return "Geçersiz tarih";
+  }
+};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -336,6 +369,7 @@ export default function PackagingDetailPage({ params }) {
             {/* Business Information */}
             {(product.business?.minOrderQuantity ||
               product.business?.leadTime ||
+              product.business?.priceRanges ||
               (product.business?.price !== undefined &&
                 product.business?.price !== null)) && (
               <Card>
@@ -355,14 +389,49 @@ export default function PackagingDetailPage({ params }) {
                       <span>{product.business.leadTime} gün</span>
                     </div>
                   )}
+                  
+                  {/* Price Ranges */}
+                  {product.business.priceRanges && product.business.priceRanges.length > 0 && (
+                    <div>
+                      <span className="font-medium">Fiyat Aralıkları:</span>
+                      <div className="mt-2 space-y-2">
+                        {product.business.priceRanges
+                          .sort((a, b) => a.quantity - b.quantity)
+                          .map((range, index) => (
+                            <div key={index} className="flex justify-between items-center bg-muted p-2 rounded">
+                              <span className="text-sm">
+                                {range.quantity}+ adet
+                              </span>
+                              <span className="font-semibold">
+                                {range.price.toFixed(2)} TRY
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                      <div className="mt-2 p-2 bg-primary/10 rounded">
+                        <span className="text-sm text-muted-foreground">
+                          Fiyat Aralığı: 
+                        </span>
+                        <span className="font-semibold ml-1">
+                          {(() => {
+                            const prices = product.business.priceRanges.map(r => r.price).sort((a, b) => a - b);
+                            const min = prices[0];
+                            const max = prices[prices.length - 1];
+                            return min === max ? `${min.toFixed(2)} TRY` : `${min.toFixed(2)} - ${max.toFixed(2)} TRY`;
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {product.business.price !== undefined &&
                     product.business.price !== null && (
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">Fiyat:</span>
+                        <span className="font-medium">Sabit Fiyat:</span>
                         <span>
                           {product.business.price === 0
                             ? "Ücretsiz"
-                            : `${product.business.price} ${product.business.currency}`}
+                            : `${product.business.price} ${product.business.currency || 'TRY'}`}
                         </span>
                       </div>
                     )}
@@ -433,9 +502,7 @@ export default function PackagingDetailPage({ params }) {
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Oluşturulma:</span>
                     <span className="text-sm">
-                      {new Date(
-                        product.metadata.createdAt.toDate()
-                      ).toLocaleDateString("tr-TR")}
+                      {formatDate(product.metadata.createdAt)}
                     </span>
                   </div>
                 )}
@@ -443,9 +510,7 @@ export default function PackagingDetailPage({ params }) {
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Son Güncelleme:</span>
                     <span className="text-sm">
-                      {new Date(
-                        product.metadata.updatedAt.toDate()
-                      ).toLocaleDateString("tr-TR")}
+                      {formatDate(product.metadata.updatedAt)}
                     </span>
                   </div>
                 )}

@@ -74,6 +74,23 @@ const nextConfig = {
         ],
       },
       {
+        source: "/ambalaj/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, max-age=0, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+        ],
+      },
+      {
         source: "/robots.txt",
         headers: [
           {
