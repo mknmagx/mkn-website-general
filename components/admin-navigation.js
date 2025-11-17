@@ -20,6 +20,7 @@ import {
   Activity,
   Edit3,
   Package,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -114,6 +115,13 @@ export default function AdminNavigation() {
       icon: Package,
       current: pathname.startsWith("/admin/packaging"),
       show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]),
+    },
+    {
+      name: "İrsaliye Yönetimi",
+      href: "/admin/deliveries",
+      icon: Truck,
+      current: pathname.startsWith("/admin/deliveries"),
+      show: hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]),
     },
     {
       name: "E-ticaret Entegrasyonları",
