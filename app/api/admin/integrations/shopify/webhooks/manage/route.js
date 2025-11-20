@@ -110,7 +110,9 @@ export async function DELETE(request) {
         success: true,
         message: result.message || "Webhook'lar başarıyla kaldırıldı",
         removed: result.removed || [],
-        errors: result.errors
+        errors: result.errors,
+        webhookCleanup: result.webhookCleanup,
+        totalCleaned: result.webhookCleanup?.totalDeleted || 0,
       });
     } else {
       logger.warn("Failed to remove webhooks", result);
