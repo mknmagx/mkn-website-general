@@ -51,7 +51,8 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,7 +64,7 @@ import {
 } from "../../ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 
-export function CustomersSection({ customers, orders }) {
+export function CustomersSection({ customers, orders, onSyncCustomers, isSyncing = false }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSegment, setSelectedSegment] = useState("all");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -87,6 +88,10 @@ export function CustomersSection({ customers, orders }) {
   };
 
   const getSegmentBadge = (segment) => {
+    if (!segment || typeof segment !== 'string') {
+      return <Badge variant="secondary">N/A</Badge>;
+    }
+    
     switch (segment.toLowerCase()) {
       case "premium":
         return <Badge className="bg-purple-100 text-purple-800">Premium</Badge>;
@@ -224,11 +229,34 @@ export function CustomersSection({ customers, orders }) {
 
       {/* Customers Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Müşteri Listesi</CardTitle>
-          <CardDescription>
-            {filteredCustomers.length} müşteri gösteriliyor
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle>Müşteri Listesi</CardTitle>
+            <CardDescription>
+              {filteredCustomers.length} müşteri gösteriliyor
+            </CardDescription>
+          </div>
+          {onSyncCustomers && (
+            <Button
+              onClick={onSyncCustomers}
+              disabled={isSyncing}
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+            >
+              {isSyncing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Senkronize Ediliyor...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Müşterileri Senkronize Et
+                </>
+              )}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Table>

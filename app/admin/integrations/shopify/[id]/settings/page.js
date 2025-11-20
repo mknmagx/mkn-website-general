@@ -43,6 +43,7 @@ import {
   TabsTrigger,
 } from "../../../../../../components/ui/tabs";
 import { useToast } from "../../../../../../hooks/use-toast";
+import ShopifyWebhooksManagerSimple from "../../../../../../components/admin/shopify-webhooks-manager-simple";
 
 export default function ShopifyIntegrationSettingsPage() {
   const params = useParams();
@@ -194,15 +195,14 @@ export default function ShopifyIntegrationSettingsPage() {
     setConnectionStatus(null);
 
     try {
-      // Real API connection test with authentication
+      // Test using database credentials - no body needed
       const response = await authenticatedFetch(
         `/api/admin/integrations/shopify/${id}/test`,
         {
           method: "POST",
-          body: JSON.stringify({
-            shopDomain: formData.credentials.shopDomain,
-            accessToken: formData.credentials.accessToken,
-          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -513,9 +513,10 @@ export default function ShopifyIntegrationSettingsPage() {
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="company">Şirket Bilgileri</TabsTrigger>
             <TabsTrigger value="connection">Bağlantı</TabsTrigger>
+            <TabsTrigger value="webhooks">Webhook'lar</TabsTrigger>
             <TabsTrigger value="sync">Senkronizasyon</TabsTrigger>
             <TabsTrigger value="fulfillment">Fulfillment</TabsTrigger>
             <TabsTrigger value="advanced">Gelişmiş</TabsTrigger>
@@ -707,15 +708,26 @@ export default function ShopifyIntegrationSettingsPage() {
           <TabsContent value="connection" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Shopify API Bağlantısı</CardTitle>
+                <CardTitle>Shopify API Bağlantı Bilgileri</CardTitle>
                 <CardDescription>
-                  Shopify mağazanıza bağlanmak için gerekli API bilgileri
+                  Shopify mağazanıza bağlanmak için gerekli tüm bilgiler. 
+                  Bu bilgiler sadece database'de saklanır, environment dosyalarından alınmaz.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Önemli:</strong> Tüm API bilgileri database'den gelir. 
+                    Her müşteri için ayrı API credentials kullanılabilir.
+                    Shopify Partner Dashboard'dan alacağınız bilgileri buraya girin.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="shop-domain">Shop Domain</Label>
+                    <Label htmlFor="shop-domain">Shop Domain *</Label>
                     <Input
                       id="shop-domain"
                       value={formData.credentials?.shopDomain || ""}
@@ -726,43 +738,75 @@ export default function ShopifyIntegrationSettingsPage() {
                           e.target.value
                         )
                       }
-                      placeholder="enbivo veya enbivo.myshopify.com"
+                      placeholder="mystore.myshopify.com"
                     />
                     <p className="text-xs text-gray-500">
-                      Sadece mağaza adınızı (örn: "enbivo") veya tam domain'i
-                      girin
+                      Tam domain girin (örn: "mystore.myshopify.com")
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="api-version">API Versiyonu</Label>
-                    <Input
-                      id="api-version"
-                      type="text"
+                    <Label htmlFor="api-version">API Versiyonu *</Label>
+                    <Select
                       value={formData.credentials?.apiVersion || "2025-10"}
+                      onValueChange={(value) =>
+                        handleInputChange("credentials", "apiVersion", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2025-10">2025-10 (Latest)</SelectItem>
+                        <SelectItem value="2025-07">2025-07</SelectItem>
+                        <SelectItem value="2025-04">2025-04</SelectItem>
+                        <SelectItem value="2025-01">2025-01</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">Shopify API Key *</Label>
+                    <Input
+                      id="api-key"
+                      value={formData.credentials?.apiKey || ""}
                       onChange={(e) =>
                         handleInputChange(
                           "credentials",
-                          "apiVersion",
+                          "apiKey",
                           e.target.value
                         )
                       }
-                      placeholder="2025-10"
-                      className="font-mono"
+                      placeholder="abc123..."
                     />
                     <p className="text-xs text-gray-500">
-                      Örnekler: 2025-10, 2025-01, 2024-10 (YYYY-MM formatında)
+                      Shopify Partner Dashboard → Apps → Your App → API keys
                     </p>
-                    {errors["credentials.apiVersion"] && (
-                      <p className="text-sm text-red-600">
-                        {errors["credentials.apiVersion"]}
-                      </p>
-                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="api-secret">Shopify API Secret *</Label>
+                    <Input
+                      id="api-secret"
+                      type="password"
+                      value={formData.credentials?.apiSecret || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "credentials",
+                          "apiSecret",
+                          e.target.value
+                        )
+                      }
+                      placeholder="shpss_..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      Shopify Partner Dashboard'da "Show" butonuna basın
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="access-token">Access Token</Label>
+                  <Label htmlFor="access-token">Access Token *</Label>
                   <div className="relative">
                     <Input
                       id="access-token"
@@ -775,7 +819,7 @@ export default function ShopifyIntegrationSettingsPage() {
                           e.target.value
                         )
                       }
-                      placeholder="shppa_..."
+                      placeholder="shpat_..."
                       className="pr-10"
                     />
                     <button
@@ -790,12 +834,16 @@ export default function ShopifyIntegrationSettingsPage() {
                       )}
                     </button>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    Müşteri Shopify mağazasından alınan private app token'ı
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="webhook-secret">Webhook Secret</Label>
                   <Input
                     id="webhook-secret"
+                    type="password"
                     value={formData.credentials?.webhookSecret || ""}
                     onChange={(e) =>
                       handleInputChange(
@@ -804,8 +852,11 @@ export default function ShopifyIntegrationSettingsPage() {
                         e.target.value
                       )
                     }
-                    placeholder="Webhook doğrulama için secret"
+                    placeholder="Webhook HMAC doğrulama için secret"
                   />
+                  <p className="text-xs text-gray-500">
+                    Webhook güvenliği için kullanılır. Boş bırakılabilir.
+                  </p>
                 </div>
 
                 {/* Connection Test */}
@@ -845,6 +896,35 @@ export default function ShopifyIntegrationSettingsPage() {
                     <AlertDescription>{errors.connection}</AlertDescription>
                   </Alert>
                 )}
+
+                {/* Shopify Setup Guide */}
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <h5 className="text-sm font-medium text-blue-900 mb-2">
+                    📘 Shopify Kurulum Rehberi
+                  </h5>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p><strong>1.</strong> Shopify Partners → Apps → Create app</p>
+                    <p><strong>2.</strong> API keys sekmesinden Key ve Secret'ı kopyalayın</p>
+                    <p><strong>3.</strong> Müşteri mağazasından Private app oluşturun</p>
+                    <p><strong>4.</strong> Admin API access token'ını kopyalayın</p>
+                    <p><strong>5.</strong> Webhook endpoint: <code className="bg-white px-1 rounded text-xs">mkngroup.com.tr/api/admin/integrations/shopify/webhooks/receiver</code></p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Webhook Settings */}
+          <TabsContent value="webhooks" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Webhook Yönetimi</CardTitle>
+                <CardDescription>
+                  Shopify'dan gerçek zamanlı veri alımı için webhook'ları yapılandırın
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ShopifyWebhooksManagerSimple integrationId={id} />
               </CardContent>
             </Card>
           </TabsContent>

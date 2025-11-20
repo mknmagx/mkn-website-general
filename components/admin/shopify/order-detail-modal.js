@@ -185,6 +185,11 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                   <CardTitle className="flex items-center gap-2">
                     <ShoppingBag className="w-5 h-5" />
                     Sipariş Özeti
+                    {order.isAnonymousCustomer && (
+                      <Badge variant="outline" className="text-blue-600 border-blue-600">
+                        Anonim Müşteri
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -203,12 +208,49 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                       {order.financialStatus === "paid" ? "Ödendi" : order.financialStatus}
                     </Badge>
                   </div>
+                  {order.sourceName && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Kaynak:</span>
+                      <span className="font-medium">{order.sourceName}</span>
+                    </div>
+                  )}
+                  {order.phone && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Telefon:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{order.phone}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => copyToClipboard(order.phone)}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {order.isAnonymousCustomer && order.browserInfo && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-gray-600 text-sm">Tarayıcı Bilgileri:</span>
+                        <div className="mt-1 space-y-1 text-sm">
+                          {order.browserInfo.ip && (
+                            <div className="text-gray-500">IP: {order.browserInfo.ip}</div>
+                          )}
+                          {order.browserInfo.language && (
+                            <div className="text-gray-500">Dil: {order.browserInfo.language}</div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Toplam:</span>
                     <span>{formatCurrency(order.totalPrice, order.currency)}</span>
                   </div>
-                  {order.tags.length > 0 && (
+                  {order.tags && order.tags.length > 0 && (
                     <>
                       <Separator />
                       <div>
@@ -224,40 +266,75 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                       </div>
                     </>
                   )}
+                  {order.note && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-gray-600 text-sm">Sipariş Notu:</span>
+                        <div className="mt-1 p-2 bg-gray-50 rounded text-sm">
+                          {order.note}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Teslimat Adresi */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    Teslimat Adresi
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="font-medium">
-                      {order.shippingAddress.firstName} {order.shippingAddress.lastName}
-                    </div>
-                    <div className="text-gray-600">
-                      {order.shippingAddress.address1}
-                    </div>
-                    <div className="text-gray-600">
-                      {order.shippingAddress.city}, {order.shippingAddress.province}
-                    </div>
-                    <div className="text-gray-600">
-                      {order.shippingAddress.country} {order.shippingAddress.zip}
-                    </div>
-                    {order.shippingAddress.phone && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Phone className="w-4 h-4" />
-                        {order.shippingAddress.phone}
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => copyToClipboard(order.shippingAddress.phone)}
-                        >
+              {order.shippingAddress ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Teslimat Adresi
+                      {order.shippingAddress.isIncomplete && (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                          Eksik Bilgi
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(order.shippingAddress.firstName || order.shippingAddress.lastName) && (
+                        <div className="font-medium">
+                          {order.shippingAddress.firstName} {order.shippingAddress.lastName}
+                        </div>
+                      )}
+                      {order.shippingAddress.company && (
+                        <div className="text-gray-600">
+                          {order.shippingAddress.company}
+                        </div>
+                      )}
+                      {order.shippingAddress.address1 && (
+                        <div className="text-gray-600">
+                          {order.shippingAddress.address1}
+                        </div>
+                      )}
+                      {order.shippingAddress.address2 && (
+                        <div className="text-gray-600">
+                          {order.shippingAddress.address2}
+                        </div>
+                      )}
+                      {(order.shippingAddress.city || order.shippingAddress.province) && (
+                        <div className="text-gray-600">
+                          {[order.shippingAddress.city, order.shippingAddress.province].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                      {(order.shippingAddress.country || order.shippingAddress.zip) && (
+                        <div className="text-gray-600">
+                          {[order.shippingAddress.country, order.shippingAddress.zip].filter(Boolean).join(' ')}
+                        </div>
+                      )}
+                      {order.shippingAddress.phone && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Phone className="w-4 h-4" />
+                          {order.shippingAddress.phone}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => copyToClipboard(order.shippingAddress.phone)}
+                          >
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
@@ -265,6 +342,83 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                   </div>
                 </CardContent>
               </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Teslimat Adresi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-500">Teslimat adresi bilgisi bulunmamaktadır.</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Fatura Adresi */}
+              {order.billingAddress ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Fatura Adresi
+                      {order.billingAddress.isIncomplete && (
+                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                          Eksik Bilgi
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(order.billingAddress.firstName || order.billingAddress.lastName) && (
+                        <div className="font-medium">
+                          {order.billingAddress.firstName} {order.billingAddress.lastName}
+                        </div>
+                      )}
+                      {order.billingAddress.company && (
+                        <div className="text-gray-600">
+                          {order.billingAddress.company}
+                        </div>
+                      )}
+                      {order.billingAddress.address1 && (
+                        <div className="text-gray-600">
+                          {order.billingAddress.address1}
+                        </div>
+                      )}
+                      {order.billingAddress.address2 && (
+                        <div className="text-gray-600">
+                          {order.billingAddress.address2}
+                        </div>
+                      )}
+                      {(order.billingAddress.city || order.billingAddress.province) && (
+                        <div className="text-gray-600">
+                          {[order.billingAddress.city, order.billingAddress.province].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                      {(order.billingAddress.country || order.billingAddress.zip) && (
+                        <div className="text-gray-600">
+                          {[order.billingAddress.country, order.billingAddress.zip].filter(Boolean).join(' ')}
+                        </div>
+                      )}
+                      {order.billingAddress.phone && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Phone className="w-4 h-4" />
+                          {order.billingAddress.phone}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => copyToClipboard(order.billingAddress.phone)}
+                          >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
             </div>
 
             {/* Ürünler */}
@@ -274,7 +428,7 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {order.lineItems.map((item) => (
+                  {(order.lineItems || []).map((item) => (
                     <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
                       <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
                         {item.image ? (
@@ -288,11 +442,26 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                         )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">{item.title}</h4>
+                        <h4 className="font-medium">{item.title || item.name}</h4>
                         {item.variantTitle && (
                           <p className="text-sm text-gray-600">{item.variantTitle}</p>
                         )}
-                        <p className="text-sm text-gray-600">SKU: {item.sku}</p>
+                        <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                          {item.sku && (
+                            <span>SKU: {item.sku}</span>
+                          )}
+                          {item.vendor && (
+                            <span>• Satıcı: {item.vendor}</span>
+                          )}
+                          {item.fulfillmentStatus && (
+                            <span>• Durum: {item.fulfillmentStatus}</span>
+                          )}
+                        </div>
+                        {item.totalDiscount > 0 && (
+                          <p className="text-sm text-green-600 mt-1">
+                            İndirim: -{formatCurrency(item.totalDiscount, order.currency)}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="font-medium">
@@ -407,7 +576,61 @@ export function OrderDetailModal({ order, open, onClose, onFulfill, onRefund }) 
                   <CardTitle>Fulfillment Bilgileri</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {order.trackingInfo ? (
+                  {order.fulfillments && order.fulfillments.length > 0 ? (
+                    <div className="space-y-4">
+                      {order.fulfillments.map((fulfillment, index) => (
+                        <div key={fulfillment.id || index} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-medium">Fulfillment #{index + 1}</h4>
+                            <Badge variant={fulfillment.status === "success" ? "default" : "secondary"}>
+                              {fulfillment.status}
+                            </Badge>
+                          </div>
+                          
+                          {fulfillment.trackingCompany && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Kargo Firması:</span>
+                              <span className="font-medium">{fulfillment.trackingCompany}</span>
+                            </div>
+                          )}
+                          
+                          {fulfillment.trackingNumber && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">Takip Numarası:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{fulfillment.trackingNumber}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => copyToClipboard(fulfillment.trackingNumber)}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {fulfillment.trackingUrl && (
+                            <div className="flex justify-end">
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={fulfillment.trackingUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-3 h-3 mr-1" />
+                                  Takip Et
+                                </a>
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {fulfillment.createdAt && (
+                            <div className="flex justify-between text-sm text-gray-500">
+                              <span>Oluşturulma:</span>
+                              <span>{formatDate(fulfillment.createdAt)}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : order.trackingInfo ? (
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Kargo Firması:</span>

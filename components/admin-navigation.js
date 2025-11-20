@@ -21,6 +21,7 @@ import {
   Edit3,
   Package,
   Truck,
+  Share2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -108,6 +109,13 @@ export default function AdminNavigation() {
       icon: Edit3,
       current: pathname.startsWith("/admin/blog"),
       show: hasPermission("blog.read"),
+    },
+    {
+      name: "Sosyal Medya",
+      href: "/admin/social-media",
+      icon: Share2,
+      current: pathname.startsWith("/admin/social-media"),
+      show: hasPermission("blog.read"), // Blog yetkisi olan herkes sosyal medyayı da kullanabilir
     },
     {
       name: "Ambalaj Yönetimi",

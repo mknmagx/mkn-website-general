@@ -26,6 +26,11 @@ import {
   TrendingUp,
   Calendar,
   Download,
+  Bug,
+  Eye,
+  Search,
+  EyeOff,
+  Code,
 } from "lucide-react";
 import {
   Card,
@@ -66,11 +71,23 @@ export default function ShopifyIntegrationDetailPage() {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncingCustomers, setSyncingCustomers] = useState(false);
+  const [debugging, setDebugging] = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+
+  // Debug states
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugData, setDebugData] = useState({
+    orders: null,
+    customers: null,
+    returns: null,
+    stats: null,
+    integration: null,
+  });
 
   useEffect(() => {
     loadIntegrationData();
@@ -115,6 +132,9 @@ export default function ShopifyIntegrationDetailPage() {
       const data = await response.json();
       setIntegration(data.integration);
 
+      // Debug için raw API response'u sakla
+      setDebugData((prev) => ({ ...prev, integration: data }));
+
       // lastSyncAt değerini güvenli şekilde parse et ve set et
       if (data.integration.lastSyncAt) {
         const syncDate = parseFirestoreDate(data.integration.lastSyncAt);
@@ -137,6 +157,9 @@ export default function ShopifyIntegrationDetailPage() {
       if (response.ok) {
         const data = await response.json();
         setCustomers(data.customers || []);
+
+        // Debug için raw API response'u sakla
+        setDebugData((prev) => ({ ...prev, customers: data }));
       }
     } catch (error) {
       setCustomers([]);
@@ -151,6 +174,9 @@ export default function ShopifyIntegrationDetailPage() {
       if (response.ok) {
         const data = await response.json();
         setReturns(data.returns || []);
+
+        // Debug için raw API response'u sakla
+        setDebugData((prev) => ({ ...prev, returns: data }));
       }
     } catch (error) {
       setReturns([]);
@@ -174,6 +200,9 @@ export default function ShopifyIntegrationDetailPage() {
         }));
 
         setOrders(validatedOrders);
+
+        // Debug için raw API response'u sakla
+        setDebugData((prev) => ({ ...prev, orders: data }));
       }
     } catch (error) {
       toast({
@@ -230,6 +259,9 @@ export default function ShopifyIntegrationDetailPage() {
             topProductsSold: "0 ürün",
           }
         );
+
+        // Debug için raw API response'u sakla
+        setDebugData((prev) => ({ ...prev, stats: data }));
       }
     } catch (error) {
       // Set default values on error
@@ -331,6 +363,121 @@ export default function ShopifyIntegrationDetailPage() {
       });
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleSyncCustomers = async () => {
+    setSyncingCustomers(true);
+
+    toast({
+      title: "Müşteri Senkronizasyonu Başlatılıyor...",
+      description: "Shopify'dan müşteri verileri alınıyor, lütfen bekleyin",
+      duration: 3000,
+    });
+
+    try {
+      // Sadece customer sync
+      const response = await authenticatedFetch(
+        `/api/admin/integrations/shopify/${id}/sync-customers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            syncType: "customers",
+            refreshCache: true,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+
+        toast({
+          title: "✅ Müşteri Senkronizasyonu Tamamlandı",
+          description: `${result.syncedCustomers || 0} müşteri güncellendi.`,
+          variant: "default",
+          duration: 4000,
+        });
+
+        // Sadece customer verilerini yenile
+        await fetchCustomers();
+        await fetchStats(); // Stats da müşteri bilgilerini içerebilir
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Customer sync failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Müşteri Senkronizasyon Hatası",
+        description: `Müşteri senkronizasyonu sırasında hata oluştu: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setSyncingCustomers(false);
+    }
+  };
+
+  const handleDebugOrders = async () => {
+    setDebugging(true);
+
+    toast({
+      title: "🔍 Siparişler Debug Başlatılıyor...",
+      description: "Shopify API'den siparişler kontrol ediliyor",
+      duration: 3000,
+    });
+
+    try {
+      const response = await authenticatedFetch(
+        `/api/admin/integrations/shopify/debug-orders`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            integrationId: id,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Debug data'ya sonuçları ekle
+        setDebugData((prev) => ({ ...prev, debug_orders: result }));
+
+        // Sonuçları toast ile göster
+        const totalOrdersFound = Object.values(result.debug_results)
+          .filter(r => r.success)
+          .reduce((sum, r) => sum + (r.count || 0), 0);
+
+        toast({
+          title: "🔍 Debug Tamamlandı",
+          description: `${totalOrdersFound} sipariş bulundu. Debug panelini kontrol edin.`,
+          variant: "default",
+          duration: 5000,
+        });
+
+        // Eğer debug mode değilse, debug mode'a geç
+        if (!debugMode) {
+          setDebugMode(true);
+        }
+
+      } else {
+        throw new Error("Debug API request failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Debug Hatası",
+        description: `Siparişler debug edilirken hata oluştu: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDebugging(false);
     }
   };
 
@@ -586,6 +733,18 @@ export default function ShopifyIntegrationDetailPage() {
 
           <div className="flex gap-3">
             <Button
+              variant={debugMode ? "default" : "outline"}
+              onClick={() => setDebugMode(!debugMode)}
+              className={debugMode ? "bg-orange-600 hover:bg-orange-700" : ""}
+            >
+              {debugMode ? (
+                <EyeOff className="h-4 w-4 mr-2" />
+              ) : (
+                <Bug className="h-4 w-4 mr-2" />
+              )}
+              {debugMode ? "Debug Kapat" : "Debug Aç"}
+            </Button>
+            <Button
               variant="outline"
               onClick={handleSyncOrders}
               disabled={syncing}
@@ -596,6 +755,19 @@ export default function ShopifyIntegrationDetailPage() {
                 <RotateCcw className="h-4 w-4 mr-2" />
               )}
               Senkronize Et
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDebugOrders}
+              disabled={debugging}
+              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            >
+              {debugging ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
+              )}
+              Debug Siparişler
             </Button>
             <Link href={`/admin/integrations/shopify/${id}/settings`}>
               <Button variant="outline">
@@ -715,7 +887,11 @@ export default function ShopifyIntegrationDetailPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList
+            className={
+              debugMode ? "grid w-full grid-cols-5" : "grid w-full grid-cols-4"
+            }
+          >
             <TabsTrigger value="orders">
               Siparişler ({orders.length})
             </TabsTrigger>
@@ -726,6 +902,12 @@ export default function ShopifyIntegrationDetailPage() {
               İadeler ({returns.length})
             </TabsTrigger>
             <TabsTrigger value="analytics">Analitik</TabsTrigger>
+            {debugMode && (
+              <TabsTrigger value="debug" className="text-orange-600">
+                <Bug className="h-4 w-4 mr-1" />
+                Debug
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="orders" className="space-y-4">
@@ -842,7 +1024,12 @@ export default function ShopifyIntegrationDetailPage() {
           </TabsContent>
 
           <TabsContent value="customers">
-            <CustomersSection customers={customers} orders={orders} />
+            <CustomersSection 
+              customers={customers} 
+              orders={orders} 
+              onSyncCustomers={handleSyncCustomers}
+              isSyncing={syncingCustomers}
+            />
           </TabsContent>
 
           <TabsContent value="returns">
@@ -856,6 +1043,262 @@ export default function ShopifyIntegrationDetailPage() {
           <TabsContent value="analytics">
             <AnalyticsSection analytics={analytics} stats={stats} />
           </TabsContent>
+
+          {debugMode && (
+            <TabsContent value="debug" className="space-y-6">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bug className="h-5 w-5 text-orange-600" />
+                  <h3 className="text-lg font-semibold text-orange-800">
+                    Shopify API Debug Paneli
+                  </h3>
+                </div>
+                <p className="text-sm text-orange-700">
+                  Bu panel Shopify API'sinden gelen ham verileri gösterir.
+                  Geliştirme ve hata ayıklama amaçlıdır.
+                </p>
+              </div>
+
+              <div className="grid gap-6">
+                {/* Integration Debug */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-blue-600" />
+                      <CardTitle className="text-lg">
+                        Entegrasyon Bilgileri
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Entegrasyon detayları API response
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {JSON.stringify(debugData.integration, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Orders Debug */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-green-600" />
+                      <CardTitle className="text-lg">
+                        Siparişler API Response ({orders.length} sipariş)
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Shopify'dan gelen sipariş verileri
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {JSON.stringify(debugData.orders, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Customers Debug */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-purple-600" />
+                      <CardTitle className="text-lg">
+                        Müşteriler API Response ({customers.length} müşteri)
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Shopify'dan gelen müşteri verileri
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {JSON.stringify(debugData.customers, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Returns Debug */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-red-600" />
+                      <CardTitle className="text-lg">
+                        İadeler API Response ({returns.length} iade)
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Shopify'dan gelen iade verileri
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {JSON.stringify(debugData.returns, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Stats Debug */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-indigo-600" />
+                      <CardTitle className="text-lg">
+                        İstatistikler API Response
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      İstatistik ve analitik verileri
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {JSON.stringify(debugData.stats, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Debug Orders Results */}
+                {debugData.debug_orders && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4 text-purple-600" />
+                        <CardTitle className="text-lg">
+                          Debug Orders Sonuçları
+                        </CardTitle>
+                      </div>
+                      <CardDescription>
+                        Farklı API endpoint'lerinden gelen sipariş sayıları
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {Object.entries(debugData.debug_orders.debug_results || {}).map(([key, result]) => (
+                          <div key={key} className="border rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              {result.success ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-red-600" />
+                              )}
+                              <span className="font-medium">
+                                {key.replace('url_', 'Test ')}: {result.success ? `${result.count} sipariş` : 'Hata'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{result.url}</p>
+                            {result.error && (
+                              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                                {result.error}
+                              </div>
+                            )}
+                            {result.success && result.orders && result.orders.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-sm font-medium mb-2">Bulunan Siparişler:</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {result.orders.slice(0, 3).map((order) => (
+                                    <div key={order.id} className="text-xs bg-gray-50 p-2 rounded">
+                                      <strong>{order.name}</strong> - {order.total_price} {order.currency}
+                                      <br />
+                                      Email: {order.email || 'Yok'}, Status: {order.financial_status}
+                                      <br />
+                                      Tarih: {new Date(order.created_at).toLocaleDateString('tr-TR')}
+                                    </div>
+                                  ))}
+                                  {result.orders.length > 3 && (
+                                    <p className="text-xs text-gray-500">
+                                      ... ve {result.orders.length - 3} sipariş daha
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        
+                        {debugData.debug_orders.database_info && (
+                          <div className="border-t pt-4 mt-4">
+                            <h4 className="font-medium mb-2">Database Durumu:</h4>
+                            <div className="bg-blue-50 p-3 rounded text-sm">
+                              <p><strong>Mevcut DB'deki Siparişler:</strong> {debugData.debug_orders.database_info.current_orders_in_db}</p>
+                              <p><strong>Integration ID:</strong> {debugData.debug_orders.database_info.integration_id}</p>
+                              <p><strong>Shop Domain:</strong> {debugData.debug_orders.database_info.shop_domain}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+                          <div className="text-sm">
+                            <p className="font-medium text-yellow-800">💡 Debug Önerileri:</p>
+                            <ul className="mt-1 text-yellow-700 list-disc list-inside">
+                              <li>Eğer hiç sipariş bulunamıyorsa, API permissions kontrol edin</li>
+                              <li>status=any parametresi tüm siparişleri (open, closed, cancelled) getirir</li>
+                              <li>En fazla sipariş dönen URL'i tespit edip senkronizasyon için kullanın</li>
+                              <li>Database'de sipariş varsa ama API'da yoksa, tarih filtresi gerekebilir</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Processed Data Preview */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-teal-600" />
+                      <CardTitle className="text-lg">
+                        İşlenmiş Veriler (State)
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Uygulamada kullanılan işlenmiş veriler
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-2 text-gray-700">
+                          Orders State:
+                        </h4>
+                        <div className="bg-gray-50 rounded p-3 text-sm max-h-48 overflow-auto">
+                          <pre>
+                            {JSON.stringify(orders.slice(0, 3), null, 2)}
+                          </pre>
+                          {orders.length > 3 && (
+                            <p className="text-gray-500 mt-2">
+                              ... ve {orders.length - 3} sipariş daha
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2 text-gray-700">
+                          Stats State:
+                        </h4>
+                        <div className="bg-gray-50 rounded p-3 text-sm max-h-48 overflow-auto">
+                          <pre>{JSON.stringify(stats, null, 2)}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Order Detail Modal */}
