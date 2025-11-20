@@ -148,8 +148,10 @@ export async function POST(req) {
       return NextResponse.json({ error: "Integration not found" }, { status: 404 });
     }
 
-    // HMAC doğrulama - integration'ın kendi webhook secret'ı ile
-    const webhookSecret = integration.credentials?.webhookSecret;
+    // HMAC doğrulama - Shopify App API Secret Key kullanılmalı
+    // Shopify, webhook'ları App'in API Secret Key ile imzalar
+    // credentials.apiSecret: Shopify App'in API Secret Key'i (shpss_...)
+    const webhookSecret = integration.credentials?.apiSecret || integration.credentials?.apiSecretKey || integration.credentials?.webhookSecret;
     
     // Production'da HMAC doğrulama zorunlu (test istekleri hariç)
     if ((process.env.NODE_ENV === 'production' && !isTestRequest) || 
@@ -158,6 +160,9 @@ export async function POST(req) {
       if (!isValid) {
         logger.warn(`Invalid webhook signature for ${topic} from ${shopDomain}`, {
           hasSecret: !!webhookSecret,
+          hasApiSecret: !!integration.credentials?.apiSecret,
+          hasApiSecretKey: !!integration.credentials?.apiSecretKey,
+          hasWebhookSecret: !!integration.credentials?.webhookSecret,
           hasSignature: !!headers["x-shopify-hmac-sha256"],
           environment: process.env.NODE_ENV,
           isTest: isTestRequest,
