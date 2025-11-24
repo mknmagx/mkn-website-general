@@ -21,7 +21,7 @@ export function useClaude() {
    * @returns {Promise<string>} Claude's response
    */
   const sendMessage = useCallback(async (message, options = {}) => {
-    const { systemPrompt = null, maxTokens = 1000, type = "chat" } = options;
+    const { systemPrompt = null, maxTokens = 1000, type = "chat", model = null } = options;
 
     setLoading(true);
     setError(null);
@@ -37,6 +37,7 @@ export function useClaude() {
           systemPrompt,
           maxTokens,
           type,
+          model,
         }),
       });
 

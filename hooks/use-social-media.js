@@ -258,6 +258,38 @@ ${platform} platformu için bu konuda özel olarak optimize edilmiş sosyal medy
     }
   }, [generateContent]);
 
+  // Hashtag önerileri
+  const generateHashtags = useCallback(async (topic, platform, count = 10) => {
+    const platformConfig = SOCIAL_PLATFORMS[platform];
+    
+    const systemPrompt = `MKN Group için ${platformConfig.name} platformunda "${topic}" konusu hakkında relevant hashtagler öner. 
+    Maksimum ${Math.min(count, platformConfig.hashtagLimit)} hashtag öner.
+    
+    MKN Group alanları:
+    - Ambalaj üretimi
+    - Kozmetik üretimi  
+    - E-ticaret fulfillment
+    - B2B çözümler
+    
+    Sadece hashtag listesi döndür, açıklama yapma.`;
+
+    try {
+      const response = await generateContent(topic, { systemPrompt });
+      
+      // Hashtag formatında parse et
+      const hashtags = response
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.startsWith('#'))
+        .slice(0, count);
+
+      return hashtags;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  }, [generateContent]);
+
   // Çoklu platform için aynı anda içerik üretimi
   const generateMultiPlatformContent = useCallback(async ({
     platforms,
@@ -313,38 +345,6 @@ ${platform} platformu için bu konuda özel olarak optimize edilmiş sosyal medy
       setLoading(false);
     }
   }, [generateSocialContent, generateHashtags]);
-
-  // Hashtag önerileri
-  const generateHashtags = useCallback(async (topic, platform, count = 10) => {
-    const platformConfig = SOCIAL_PLATFORMS[platform];
-    
-    const systemPrompt = `MKN Group için ${platformConfig.name} platformunda "${topic}" konusu hakkında relevant hashtagler öner. 
-    Maksimum ${Math.min(count, platformConfig.hashtagLimit)} hashtag öner.
-    
-    MKN Group alanları:
-    - Ambalaj üretimi
-    - Kozmetik üretimi  
-    - E-ticaret fulfillment
-    - B2B çözümler
-    
-    Sadece hashtag listesi döndür, açıklama yapma.`;
-
-    try {
-      const response = await generateContent(topic, { systemPrompt });
-      
-      // Hashtag formatında parse et
-      const hashtags = response
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.startsWith('#'))
-        .slice(0, count);
-
-      return hashtags;
-    } catch (err) {
-      setError(err.message);
-      return [];
-    }
-  }, [generateContent]);
 
   // İçerik optimizasyonu
   const optimizeContent = useCallback(async (content, platform, optimization = 'engagement') => {

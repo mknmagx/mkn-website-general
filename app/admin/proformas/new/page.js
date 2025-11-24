@@ -6,6 +6,7 @@ import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import { PermissionGuard } from "../../../../components/admin-route-guard";
 import { useCreateProforma } from "../../../../hooks/use-proforma";
 import { getAllCompanies } from "../../../../lib/services/companies-service";
+import * as PricingService from "../../../../lib/services/pricing-service";
 import {
   SERVICE_CATEGORIES,
   SERVICE_CATEGORY_LABELS,
@@ -36,6 +37,14 @@ import {
   SelectValue,
 } from "../../../../components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../../../components/ui/dialog";
+import {
   Plus,
   Trash2,
   Save,
@@ -44,6 +53,12 @@ import {
   Calculator,
   Download,
   Eye,
+  ArrowLeft,
+  Loader2,
+  Search,
+  Package,
+  DollarSign,
+  ShoppingCart,
 } from "lucide-react";
 
 export default function CreateProformaPage() {
@@ -70,6 +85,12 @@ export default function CreateProformaPage() {
     notes: "",
   });
 
+  // Pricing calculations state
+  const [calculations, setCalculations] = useState([]);
+  const [loadingCalculations, setLoadingCalculations] = useState(false);
+  const [calculationsDialog, setCalculationsDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Terms configuration state
   const [termsConfig, setTermsConfig] = useState({
     validityPeriod: 30, // gün
@@ -88,10 +109,11 @@ export default function CreateProformaPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showPreview, setShowPreview] = useState(false);
 
-  // Firmaları yükle
+  // Firmaları ve hesaplamaları yükle
   useEffect(() => {
     if (user) {
       loadCompanies();
+      loadCalculations();
     }
   }, [user]);
 
@@ -106,6 +128,18 @@ export default function CreateProformaPage() {
         description: "Firmalar yüklenirken hata oluştu",
         variant: "destructive",
       });
+    }
+  };
+
+  const loadCalculations = async () => {
+    try {
+      setLoadingCalculations(true);
+      const data = await PricingService.getPricingCalculations();
+      setCalculations(data || []);
+    } catch (error) {
+      console.error("Error loading calculations:", error);
+    } finally {
+      setLoadingCalculations(false);
     }
   };
 
@@ -125,6 +159,73 @@ export default function CreateProformaPage() {
         },
       }));
     }
+  };
+
+  // Hesaplamadan ürün ekleme
+  const addFromCalculation = (calc) => {
+    if (!calc || !calc.calculations) return;
+
+    // Ürün açıklamasını oluştur
+    const descriptions = [];
+    
+    // Formül bilgisi
+    if (calc.formData?.ingredients && calc.formData.ingredients.length > 0) {
+      const ingredientSummary = calc.formData.ingredients
+        .filter(ing => ing.name)
+        .slice(0, 3)
+        .map(ing => ing.name)
+        .join(", ");
+      descriptions.push(`Formül: ${ingredientSummary}${calc.formData.ingredients.length > 3 ? '...' : ''}`);
+    }
+
+    // Formül notu
+    if (calc.formData?.notes) {
+      descriptions.push(`Not: ${calc.formData.notes.substring(0, 100)}${calc.formData.notes.length > 100 ? '...' : ''}`);
+    }
+
+    // Ambalaj bilgisi
+    if (calc.formData?.packaging && calc.formData.packaging.length > 0) {
+      const packagingSummary = calc.formData.packaging
+        .filter(pkg => pkg.type)
+        .map(pkg => `${pkg.type}${pkg.material ? ` (${pkg.material})` : ''}`)
+        .join(", ");
+      if (packagingSummary) {
+        descriptions.push(`Ambalaj: ${packagingSummary}`);
+      }
+    }
+
+    // Kutu/Etiket bilgisi
+    const packagingDetails = [];
+    if (calc.formData?.boxQuantity && parseFloat(calc.formData.boxQuantity) > 0) {
+      packagingDetails.push(`Kutu: ${calc.formData.boxQuantity} adet`);
+    }
+    if (calc.formData?.labelQuantity && parseFloat(calc.formData.labelQuantity) > 0) {
+      packagingDetails.push(`Etiket: ${calc.formData.labelQuantity} adet`);
+    }
+    if (packagingDetails.length > 0) {
+      descriptions.push(packagingDetails.join(", "));
+    }
+
+    const newService = {
+      id: Date.now(),
+      name: calc.productName || "Ürün",
+      description: descriptions.join(" | "),
+      quantity: calc.quantity || 1,
+      unit: "Adet",
+      unitPrice: parseFloat(calc.calculations.unitPrice) || 0,
+      calculationId: calc.id, // Hesaplama referansı
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      services: [...prev.services, newService],
+    }));
+
+    setCalculationsDialog(false);
+    toast({
+      title: "Ürün Eklendi",
+      description: `${calc.productName} proformaya eklendi`,
+    });
   };
 
   // Kategori seçimi
@@ -452,68 +553,80 @@ export default function CreateProformaPage() {
     }
   };
 
-  if (authLoading) return <div>Yükleniyor...</div>;
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <PermissionGuard
       requiredPermission="proformas.create"
-      fallback={
-        <div className="min-h-screen bg-gray-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Erişim Engellendi
-              </h1>
-              <p className="text-gray-600">
-                Proforma oluşturmak için gerekli izinlere sahip değilsiniz.
-              </p>
+      showMessage={true}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        {/* Modern Header */}
+        <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="container mx-auto px-6 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/admin/proformas")}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
+                      <FileText className="h-7 w-7 text-white" />
+                    </div>
+                    Yeni Proforma Oluştur
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2 ml-14">
+                    Müşterileriniz için profesyonel fiyat teklifi hazırlayın
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      }
-    >
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <FileText className="h-8 w-8 text-blue-600" />
-              Yeni Proforma Oluştur
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Müşterileriniz için kapsamlı fiyat teklifleri hazırlayın
-            </p>
-          </div>
 
+        <div className="container mx-auto px-6 py-8">
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Ana Form */}
+            {/* Ana Form - Sol Taraf */}
             <div className="xl:col-span-2 space-y-6">
               {/* Müşteri Bilgileri */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+                      <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     Müşteri Bilgileri
                   </CardTitle>
                   <CardDescription>
-                    Müşteri detaylarını girin veya mevcut firmadan seçin
+                    Müşteri detaylarını girin veya kayıtlı firmadan seçin
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Firma Seçimi */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mevcut Firma Seç (İsteğe bağlı)
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Kayıtlı Firma Seç (İsteğe bağlı)
                     </label>
-                    <Select onValueChange={handleCompanySelect}>
-                      <SelectTrigger>
+                    <Select onValueChange={handleCompanySelect} value={selectedCompanyId}>
+                      <SelectTrigger className="h-11 border-2">
                         <SelectValue placeholder="Firma seçin..." />
                       </SelectTrigger>
                       <SelectContent>
                         {companies.map((company) => (
                           <SelectItem key={company.id} value={company.id}>
-                            {company.name ||
-                              company.companyName ||
-                              "İsimsiz Şirket"}
+                            {company.name || company.companyName || "İsimsiz Şirket"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -522,119 +635,204 @@ export default function CreateProformaPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Firma Adı *
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Firma Adı <span className="text-red-500">*</span>
                       </label>
                       <Input
                         value={formData.customerInfo.companyName}
                         onChange={(e) =>
-                          handleInputChange(
-                            "customerInfo",
-                            "companyName",
-                            e.target.value
-                          )
+                          handleInputChange("customerInfo", "companyName", e.target.value)
                         }
                         placeholder="ABC Şirketi Ltd. Şti."
+                        className="h-11 border-2"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Yetkili Kişi
                       </label>
                       <Input
                         value={formData.customerInfo.contactPerson}
                         onChange={(e) =>
-                          handleInputChange(
-                            "customerInfo",
-                            "contactPerson",
-                            e.target.value
-                          )
+                          handleInputChange("customerInfo", "contactPerson", e.target.value)
                         }
                         placeholder="Ahmet Yılmaz"
+                        className="h-11 border-2"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Telefon
                       </label>
                       <Input
                         value={formData.customerInfo.phone}
                         onChange={(e) =>
-                          handleInputChange(
-                            "customerInfo",
-                            "phone",
-                            e.target.value
-                          )
+                          handleInputChange("customerInfo", "phone", e.target.value)
                         }
                         placeholder="+90 532 123 45 67"
+                        className="h-11 border-2"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         E-posta
                       </label>
                       <Input
                         type="email"
                         value={formData.customerInfo.email}
                         onChange={(e) =>
-                          handleInputChange(
-                            "customerInfo",
-                            "email",
-                            e.target.value
-                          )
+                          handleInputChange("customerInfo", "email", e.target.value)
                         }
                         placeholder="info@abcsirketi.com"
+                        className="h-11 border-2"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Adres
                     </label>
                     <Textarea
                       value={formData.customerInfo.address}
                       onChange={(e) =>
-                        handleInputChange(
-                          "customerInfo",
-                          "address",
-                          e.target.value
-                        )
+                        handleInputChange("customerInfo", "address", e.target.value)
                       }
                       placeholder="Şirket adresini girin..."
                       rows={3}
+                      className="border-2"
                     />
                   </div>
                 </CardContent>
               </Card>
 
               {/* Hizmetler */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Calculator className="h-5 w-5" />
-                      Hizmetler ve Fiyatlar
-                    </span>
+                  <CardTitle className="flex items-center justify-between text-xl">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-2">
+                        <Calculator className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      Hizmetler ve Ürünler
+                    </div>
                     <div className="flex gap-2">
+                      {/* Hesaplamalardan Ekle Dialog */}
+                      <Dialog open={calculationsDialog} onOpenChange={setCalculationsDialog}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="border-2">
+                            <Calculator className="h-4 w-4 mr-2" />
+                            Hesaplamalardan Ekle
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle className="text-2xl">Maliyet Hesaplamaları</DialogTitle>
+                            <DialogDescription>
+                              Kayıtlı hesaplamalardan ürün seçip proformaya ekleyin
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          {/* Search */}
+                          <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Ürün adı ile ara..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="pl-10 h-11 border-2"
+                            />
+                          </div>
+
+                          {/* Calculations List */}
+                          {loadingCalculations ? (
+                            <div className="flex items-center justify-center py-12">
+                              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                            </div>
+                          ) : calculations.filter(calc => 
+                              calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+                            ).length === 0 ? (
+                            <div className="text-center py-12">
+                              <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                              <p className="text-gray-600 dark:text-gray-400">
+                                {searchTerm ? "Arama sonucu bulunamadı" : "Henüz hesaplama yok"}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {calculations
+                                .filter(calc => 
+                                  calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map((calc) => (
+                                  <Card 
+                                    key={calc.id}
+                                    className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-blue-300"
+                                    onClick={() => addFromCalculation(calc)}
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <h4 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+                                            {calc.productName}
+                                          </h4>
+                                          <div className="flex gap-2 flex-wrap mb-3">
+                                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                                              {calc.productType || "Genel"}
+                                            </Badge>
+                                            {calc.quantity && (
+                                              <Badge variant="outline">
+                                                {calc.quantity} adet
+                                              </Badge>
+                                            )}
+                                            {calc.productVolume && (
+                                              <Badge variant="outline">
+                                                {calc.productVolume} ml
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          {calc.description && (
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                              {calc.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="text-right ml-4">
+                                          <p className="text-sm text-gray-600 dark:text-gray-400">Birim Fiyat</p>
+                                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                            ₺{calc.calculations?.unitPrice?.toFixed(2) || "0.00"}
+                                          </p>
+                                          <Button size="sm" className="mt-2">
+                                            <Plus className="h-4 w-4 mr-1" />
+                                            Ekle
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+
                       <Select onValueChange={handleCategorySelect}>
-                        <SelectTrigger className="w-64">
-                          <SelectValue placeholder="Hizmet şablonu seç..." />
+                        <SelectTrigger className="w-48 h-9 border-2">
+                          <SelectValue placeholder="Şablon seç..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(SERVICE_CATEGORY_LABELS).map(
-                            ([key, label]) => (
-                              <SelectItem key={key} value={key}>
-                                {label}
-                              </SelectItem>
-                            )
-                          )}
+                          {Object.entries(SERVICE_CATEGORY_LABELS).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      <Button onClick={addCustomService} size="sm">
+                      
+                      <Button onClick={addCustomService} size="sm" className="bg-gradient-to-r from-blue-600 to-blue-700">
                         <Plus className="h-4 w-4 mr-1" />
                         Özel Hizmet
                       </Button>
@@ -643,11 +841,15 @@ export default function CreateProformaPage() {
                 </CardHeader>
                 <CardContent>
                   {formData.services.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Calculator className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Henüz hizmet eklenmedi</p>
-                      <p className="text-sm">
-                        Yukarıdaki şablonları kullanın veya özel hizmet ekleyin
+                    <div className="text-center py-12">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                        <ShoppingCart className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        Henüz Hizmet Eklenmedi
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        Hesaplamalardan ekle, şablon kullan veya özel hizmet oluşturun
                       </p>
                     </div>
                   ) : (
@@ -655,20 +857,22 @@ export default function CreateProformaPage() {
                       {formData.services.map((service, index) => (
                         <div
                           key={service.id}
-                          className="border border-gray-200 rounded-lg p-4"
+                          className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-700 transition-all bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850"
                         >
                           <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">#{index + 1}</Badge>
-                              <span className="text-sm text-gray-500">
-                                Hizmet
-                              </span>
+                            <div className="flex items-center gap-3">
+                              <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold shadow-md">
+                                {index + 1}
+                              </div>
+                              <Badge variant="outline" className="border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400">
+                                {service.calculationId ? "Hesaplamadan" : "Manuel"}
+                              </Badge>
                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => removeService(service.id)}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -676,101 +880,85 @@ export default function CreateProformaPage() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Hizmet Adı *
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Hizmet/Ürün Adı <span className="text-red-500">*</span>
                               </label>
                               <Input
                                 value={service.name}
                                 onChange={(e) =>
-                                  updateService(
-                                    service.id,
-                                    "name",
-                                    e.target.value
-                                  )
+                                  updateService(service.id, "name", e.target.value)
                                 }
                                 placeholder="Hizmet adını girin..."
+                                className="h-11 border-2"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Birim
                               </label>
                               <Input
                                 value={service.unit}
                                 onChange={(e) =>
-                                  updateService(
-                                    service.id,
-                                    "unit",
-                                    e.target.value
-                                  )
+                                  updateService(service.id, "unit", e.target.value)
                                 }
                                 placeholder="Adet, Litre, Kg..."
+                                className="h-11 border-2"
                               />
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Açıklama
                             </label>
                             <Textarea
                               value={service.description}
                               onChange={(e) =>
-                                updateService(
-                                  service.id,
-                                  "description",
-                                  e.target.value
-                                )
+                                updateService(service.id, "description", e.target.value)
                               }
                               placeholder="Hizmet detaylarını açıklayın..."
-                              rows={2}
+                              rows={3}
+                              className="border-2"
                             />
                           </div>
 
-                          <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Miktar *
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Miktar <span className="text-red-500">*</span>
                               </label>
                               <Input
                                 type="number"
                                 value={service.quantity}
                                 onChange={(e) =>
-                                  updateService(
-                                    service.id,
-                                    "quantity",
-                                    Number(e.target.value)
-                                  )
+                                  updateService(service.id, "quantity", Number(e.target.value))
                                 }
                                 min="0"
+                                className="h-11 border-2"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Birim Fiyat *
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Birim Fiyat <span className="text-red-500">*</span>
                               </label>
                               <Input
                                 type="number"
                                 step="0.01"
                                 value={service.unitPrice}
                                 onChange={(e) =>
-                                  updateService(
-                                    service.id,
-                                    "unitPrice",
-                                    Number(e.target.value)
-                                  )
+                                  updateService(service.id, "unitPrice", Number(e.target.value))
                                 }
                                 min="0"
+                                className="h-11 border-2"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Toplam
                               </label>
-                              <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium text-gray-900">
+                              <div className="px-4 py-3 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-2 border-green-200 dark:border-green-800 rounded-lg text-base font-bold text-green-700 dark:text-green-400">
                                 {formatPrice(
-                                  (service.quantity || 0) *
-                                    (service.unitPrice || 0),
+                                  (service.quantity || 0) * (service.unitPrice || 0),
                                   formData.currency
                                 )}
                               </div>
@@ -784,23 +972,26 @@ export default function CreateProformaPage() {
               </Card>
 
               {/* Ek Bilgiler */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                 <CardHeader>
-                  <CardTitle>Ek Bilgiler</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-2">
+                      <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    Fiyatlandırma ve Şartlar
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Para Birimi
                       </label>
                       <Select
                         value={formData.currency}
-                        onValueChange={(value) =>
-                          handleInputChange("", "currency", value)
-                        }
+                        onValueChange={(value) => handleInputChange("", "currency", value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 border-2">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -813,7 +1004,7 @@ export default function CreateProformaPage() {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         İndirim Oranı (%)
                       </label>
                       <Input
@@ -823,16 +1014,13 @@ export default function CreateProformaPage() {
                         step="0.1"
                         value={formData.discountRate}
                         onChange={(e) =>
-                          handleInputChange(
-                            "",
-                            "discountRate",
-                            Number(e.target.value)
-                          )
+                          handleInputChange("", "discountRate", Number(e.target.value))
                         }
+                        className="h-11 border-2"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         KDV Oranı (%)
                       </label>
                       <Input
@@ -842,19 +1030,16 @@ export default function CreateProformaPage() {
                         step="0.1"
                         value={formData.taxRate}
                         onChange={(e) =>
-                          handleInputChange(
-                            "",
-                            "taxRate",
-                            Number(e.target.value)
-                          )
+                          handleInputChange("", "taxRate", Number(e.target.value))
                         }
+                        className="h-11 border-2"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Geçerlilik Tarihi (Otomatik Hesaplanır)
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Geçerlilik Tarihi
                     </label>
                     <div className="flex space-x-2">
                       <Input
@@ -863,7 +1048,7 @@ export default function CreateProformaPage() {
                         onChange={(e) =>
                           handleInputChange("", "validUntil", e.target.value)
                         }
-                        className="flex-1"
+                        className="flex-1 h-11 border-2"
                       />
                       <Button
                         type="button"
@@ -871,45 +1056,34 @@ export default function CreateProformaPage() {
                         size="sm"
                         onClick={() => {
                           const date = new Date();
-                          date.setDate(
-                            date.getDate() + termsConfig.validityPeriod
-                          );
-                          handleInputChange(
-                            "",
-                            "validUntil",
-                            date.toISOString().split("T")[0]
-                          );
+                          date.setDate(date.getDate() + termsConfig.validityPeriod);
+                          handleInputChange("", "validUntil", date.toISOString().split("T")[0]);
                         }}
+                        className="border-2"
                       >
                         Otomatik Ayarla
                       </Button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Şartlar ayarlarındaki geçerlilik süresine göre:{" "}
-                      {(() => {
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Önerilen: {(() => {
                         const date = new Date();
-                        date.setDate(
-                          date.getDate() + termsConfig.validityPeriod
-                        );
+                        date.setDate(date.getDate() + termsConfig.validityPeriod);
                         return date.toLocaleDateString("tr-TR");
                       })()}
                     </p>
                   </div>
 
                   <div>
-                    <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                    <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Şartlar ve Koşullar Ayarları
-                      <span className="ml-2 text-xs text-red-500">
-                        * Mecburi alanlar
-                      </span>
+                      <Badge variant="destructive" className="ml-2 text-xs">Mecburi</Badge>
                     </label>
-                    <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                    <div className="space-y-4 p-5 border-2 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-850">
                       {/* Geçerlilik Süresi */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1">
-                            Geçerlilik Süresi (Gün){" "}
-                            <span className="text-red-500">*</span>
+                          <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Geçerlilik Süresi (Gün) <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -1231,124 +1405,162 @@ export default function CreateProformaPage() {
 
                     {/* Oluşturulan Şartlar Önizlemesi */}
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Otomatik Oluşturulan Şartlar (Önizleme)
                       </label>
-                      <div className="p-4 border rounded-lg bg-blue-50 text-sm whitespace-pre-line">
-                        {formData.terms ||
-                          "Şartlar ve koşullar ayarlarını tamamlayın..."}
+                      <div className="p-4 border-2 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-sm whitespace-pre-line text-blue-900 dark:text-blue-100">
+                        {formData.terms || "Şartlar ve koşullar ayarlarını tamamlayın..."}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Notlar
                     </label>
                     <Textarea
                       value={formData.notes}
-                      onChange={(e) =>
-                        handleInputChange("", "notes", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("", "notes", e.target.value)}
                       rows={4}
                       placeholder="Ek notlarınızı girin..."
+                      className="border-2"
                     />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Özet Paneli */}
+            {/* Özet Paneli - Sağ Taraf */}
             <div className="space-y-6">
-              {/* Finansal Özet */}
-              <Card>
+              {/* Finansal Özet ve İşlemler - Birleştirilmiş */}
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg sticky top-24">
                 <CardHeader>
-                  <CardTitle className="text-lg">Finansal Özet</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-2 shadow-md">
+                      <DollarSign className="h-5 w-5 text-white" />
+                    </div>
+                    Finansal Özet
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Ara Toplam:</span>
-                    <span className="font-medium">
-                      {formatPrice(subtotal, formData.currency)}
-                    </span>
-                  </div>
-
-                  {formData.discountRate > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        İndirim ({formData.discountRate}%):
-                      </span>
-                      <span className="font-medium text-green-600">
-                        -{formatPrice(discountAmount, formData.currency)}
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Ara Toplam:</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatPrice(subtotal, formData.currency)}
                       </span>
                     </div>
-                  )}
 
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      KDV ({formData.taxRate}%):
-                    </span>
-                    <span className="font-medium">
-                      {formatPrice(taxAmount, formData.currency)}
-                    </span>
-                  </div>
+                    {formData.discountRate > 0 && (
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          İndirim ({formData.discountRate}%):
+                        </span>
+                        <span className="font-semibold text-green-600 dark:text-green-400">
+                          -{formatPrice(discountAmount, formData.currency)}
+                        </span>
+                      </div>
+                    )}
 
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>TOPLAM:</span>
-                      <span className="text-blue-600">
-                        {formatPrice(grandTotal, formData.currency)}
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        KDV ({formData.taxRate}%):
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatPrice(taxAmount, formData.currency)}
                       </span>
                     </div>
+
+                    <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">TOPLAM:</span>
+                        <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                          {formatPrice(grandTotal, formData.currency)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
 
-              {/* İşlemler */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">İşlemler</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    onClick={() => handleSubmit("draft")}
-                    disabled={createLoading}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {createLoading ? "Kaydediliyor..." : "Taslak Kaydet"}
-                  </Button>
+                  <div className="pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-3 text-center mb-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Hizmet Sayısı</p>
+                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                          {formData.services.length}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">Toplam Adet</p>
+                        <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                          {formData.services.reduce((sum, s) => sum + (s.quantity || 0), 0)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                  <Button
-                    onClick={() => handleSubmit("sent")}
-                    disabled={createLoading}
-                    className="w-full"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Oluştur ve Gönder
-                  </Button>
+                  {/* İşlemler Butonları */}
+                  <div className="space-y-3 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">İşlemler</h3>
+                    
+                    <Button
+                      onClick={() => handleSubmit("draft")}
+                      disabled={createLoading}
+                      className="w-full h-12 text-base border-2"
+                      variant="outline"
+                    >
+                      {createLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Kaydediliyor...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5 mr-2" />
+                          Taslak Kaydet
+                        </>
+                      )}
+                    </Button>
 
-                  {formData.services.length > 0 && (
-                    <div className="pt-3 border-t">
+                    <Button
+                      onClick={() => handleSubmit("sent")}
+                      disabled={createLoading}
+                      className="w-full h-12 text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+                    >
+                      {createLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Oluşturuluyor...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-5 w-5 mr-2" />
+                          Oluştur ve Gönder
+                        </>
+                      )}
+                    </Button>
+
+                    {formData.services.length > 0 && (
                       <Button
                         onClick={() => setShowPreview(!showPreview)}
                         variant="ghost"
-                        className="w-full"
+                        className="w-full h-11 border-2 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         {showPreview ? "Önizlemeyi Gizle" : "PDF Önizleme"}
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
               {/* PDF Önizleme */}
               {showPreview && formData.services.length > 0 && (
-                <Card>
+                <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                   <CardHeader>
-                    <CardTitle className="text-lg">PDF Önizleme</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Download className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      PDF Önizleme
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ProformaPDFExport
@@ -1361,9 +1573,7 @@ export default function CreateProformaPage() {
                         grandTotal,
                         createdAt: { seconds: Date.now() / 1000 },
                       }}
-                      companyData={companies.find(
-                        (c) => c.id === selectedCompanyId
-                      )}
+                      companyData={companies.find((c) => c.id === selectedCompanyId)}
                     />
                   </CardContent>
                 </Card>

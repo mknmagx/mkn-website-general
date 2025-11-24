@@ -20,6 +20,7 @@ import { Button } from "../../../../components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../../components/ui/card";
@@ -54,6 +55,13 @@ import {
   DollarSign,
   FileText,
   Clock,
+  Loader2,
+  Package,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  TrendingUp,
+  ShoppingCart,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -141,19 +149,11 @@ export default function ProformaDetailPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/4 mb-4"></div>
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2 space-y-6">
-                <div className="h-64 bg-gray-300 rounded"></div>
-                <div className="h-64 bg-gray-300 rounded"></div>
-              </div>
-              <div className="space-y-6">
-                <div className="h-48 bg-gray-300 rounded"></div>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Proforma yükleniyor...</p>
           </div>
         </div>
       </div>
@@ -162,17 +162,25 @@ export default function ProformaDetailPage() {
 
   if (error || !proforma) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600">{error || "Proforma bulunamadı"}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        <div className="flex items-center justify-center min-h-screen p-6">
+          <Card className="max-w-md w-full bg-white dark:bg-gray-800 border-none shadow-lg">
+            <CardContent className="p-8 text-center">
+              <div className="bg-red-100 dark:bg-red-900/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Proforma Bulunamadı
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {error || "İstediğiniz proforma bulunamadı veya erişim izniniz yok."}
+              </p>
               <Button
                 onClick={() => router.push("/admin/proformas")}
-                className="mt-4"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
               >
-                Geri Dön
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Proforma Listesine Dön
               </Button>
             </CardContent>
           </Card>
@@ -182,120 +190,119 @@ export default function ProformaDetailPage() {
   }
 
   return (
-    <PermissionGuard
-      requiredPermission="proformas.view"
-      fallback={
-        <div className="min-h-screen bg-gray-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center py-12">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Erişim Engellendi
-              </h1>
-              <p className="text-gray-600">
-                Bu proformayı görüntülemek için gerekli izinlere sahip
-                değilsiniz.
-              </p>
+    <PermissionGuard requiredPermission="proformas.view" showMessage={true}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        {/* Modern Header */}
+        <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="container mx-auto px-6 py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/admin/proformas")}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
+                      <FileText className="h-7 w-7 text-white" />
+                    </div>
+                    Proforma Detayı
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2 ml-14">
+                    {proforma.proformaNumber}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Status Badge */}
+                <Badge
+                  variant={getStatusBadgeVariant(proforma.status)}
+                  className="px-4 py-2 text-base"
+                >
+                  {getProformaStatusLabel(proforma.status)}
+                </Badge>
+                
+                {/* Action Buttons */}
+                {hasPermission("proformas.edit") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(`/admin/proformas/${id}/edit`)}
+                    className="border-2"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Düzenle
+                  </Button>
+                )}
+                
+                <ProformaPDFExport
+                  proforma={proforma}
+                  fileName={`${proforma.proformaNumber}.pdf`}
+                />
+              </div>
             </div>
           </div>
         </div>
-      }
-    >
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/admin/proformas")}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Geri
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="h-8 w-8 text-blue-600" />
-                  Proforma Detayı
-                </h1>
-                <p className="text-gray-600 mt-1">{proforma.proformaNumber}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={getStatusBadgeVariant(proforma.status)}
-                className="text-sm px-3 py-1"
-              >
-                {getProformaStatusLabel(proforma.status)}
-              </Badge>
-              {hasPermission("proformas.edit") && (
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/admin/proformas/${id}/edit`)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Düzenle
-                </Button>
-              )}
-              <ProformaPDFExport
-                proforma={proforma}
-                fileName={`${proforma.proformaNumber}.pdf`}
-              />
-            </div>
-          </div>
 
+        <div className="container mx-auto px-6 py-8">
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Ana İçerik */}
+            {/* Ana İçerik - Sol Taraf */}
             <div className="xl:col-span-2 space-y-6">
               {/* Müşteri Bilgileri */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+                      <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     Müşteri Bilgileri
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Building2 className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                        <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-500">Firma Adı</p>
-                          <p className="font-medium text-gray-900">
-                            {proforma.customerInfo?.companyName ||
-                              "Belirtilmemiş"}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Firma Adı</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {proforma.customerInfo?.companyName || "Belirtilmemiş"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-3">
-                        <User className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                        <User className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-500">Yetkili Kişi</p>
-                          <p className="font-medium text-gray-900">
-                            {proforma.customerInfo?.contactPerson ||
-                              "Belirtilmemiş"}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Yetkili Kişi</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {proforma.customerInfo?.contactPerson || "Belirtilmemiş"}
                           </p>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                        <Phone className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-500">Telefon</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Telefon</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
                             {proforma.customerInfo?.phone || "Belirtilmemiş"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-3">
-                        <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                        <Mail className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-500">E-posta</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">E-posta</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
                             {proforma.customerInfo?.email || "Belirtilmemiş"}
                           </p>
                         </div>
@@ -304,12 +311,12 @@ export default function ProformaDetailPage() {
                   </div>
 
                   {proforma.customerInfo?.address && (
-                    <div className="mt-6 pt-6 border-t">
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                    <div className="mt-6 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                        <MapPin className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                         <div>
-                          <p className="text-sm text-gray-500">Adres</p>
-                          <p className="font-medium text-gray-900">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Adres</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
                             {proforma.customerInfo.address}
                           </p>
                         </div>
@@ -320,93 +327,105 @@ export default function ProformaDetailPage() {
               </Card>
 
               {/* Hizmetler */}
-              <Card>
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                 <CardHeader>
-                  <CardTitle>Hizmet Detayları</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-2">
+                      <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    Hizmet Detayları
+                  </CardTitle>
+                  <CardDescription>
+                    Toplam {(proforma.services || []).length} hizmet
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Hizmet</TableHead>
-                        <TableHead className="text-center">Miktar</TableHead>
-                        <TableHead className="text-center">Birim</TableHead>
-                        <TableHead className="text-right">
-                          Birim Fiyat
-                        </TableHead>
-                        <TableHead className="text-right">Toplam</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(proforma.services || []).map((service, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{service.name}</p>
-                              {service.description && (
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {service.description}
-                                </p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {service.quantity || 0}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {service.unit || "Adet"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatPrice(
-                              service.unitPrice || 0,
-                              proforma.currency
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatPrice(
-                              (service.quantity || 0) *
-                                (service.unitPrice || 0),
-                              proforma.currency
-                            )}
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b-2">
+                          <TableHead className="font-bold">Hizmet</TableHead>
+                          <TableHead className="text-center font-bold">Miktar</TableHead>
+                          <TableHead className="text-center font-bold">Birim</TableHead>
+                          <TableHead className="text-right font-bold">Birim Fiyat</TableHead>
+                          <TableHead className="text-right font-bold">Toplam</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {(proforma.services || []).map((service, index) => (
+                          <TableRow key={index} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                            <TableCell className="max-w-md">
+                              <div className="group relative">
+                                <p className="font-semibold text-gray-900 dark:text-white break-words">{service.name}</p>
+                                {service.description && (
+                                  <>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words line-clamp-3">
+                                      {service.description}
+                                    </p>
+                                    {/* Hover Tooltip */}
+                                    <div className="invisible group-hover:visible absolute z-50 left-0 top-full mt-2 p-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg shadow-2xl max-w-md w-max border-2 border-gray-700 dark:border-gray-300">
+                                      <div className="font-semibold mb-2 text-blue-300 dark:text-blue-600">{service.name}</div>
+                                      <div className="whitespace-normal leading-relaxed">{service.description}</div>
+                                      <div className="absolute -top-2 left-4 w-4 h-4 bg-gray-900 dark:bg-gray-100 border-l-2 border-t-2 border-gray-700 dark:border-gray-300 transform rotate-45"></div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-medium whitespace-nowrap">
+                              {service.quantity || 0}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className="whitespace-nowrap">{service.unit || "Adet"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold whitespace-nowrap">
+                              {formatPrice(service.unitPrice || 0, proforma.currency)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                              {formatPrice(
+                                (service.quantity || 0) * (service.unitPrice || 0),
+                                proforma.currency
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
                   {/* Toplam Hesapları */}
-                  <div className="mt-6 pt-6 border-t">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Ara Toplam:</span>
-                        <span className="font-medium">
+                  <div className="mt-6 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600 dark:text-gray-400">Ara Toplam:</span>
+                        <span className="font-semibold text-gray-900 dark:text-white text-lg">
                           {formatPrice(subtotal, proforma.currency)}
                         </span>
                       </div>
 
                       {proforma.discountRate > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">
+                        <div className="flex justify-between items-center py-2 bg-green-50 dark:bg-green-900/20 rounded-lg px-3">
+                          <span className="text-green-700 dark:text-green-400">
                             İndirim (%{proforma.discountRate}):
                           </span>
-                          <span className="font-medium text-green-600">
+                          <span className="font-semibold text-green-600 dark:text-green-400 text-lg">
                             -{formatPrice(discountAmount, proforma.currency)}
                           </span>
                         </div>
                       )}
 
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600 dark:text-gray-400">
                           KDV (%{proforma.taxRate || 0}):
                         </span>
-                        <span className="font-medium">
+                        <span className="font-semibold text-gray-900 dark:text-white text-lg">
                           {formatPrice(taxAmount, proforma.currency)}
                         </span>
                       </div>
 
-                      <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                        <span>TOPLAM:</span>
-                        <span className="text-blue-600">
+                      <div className="flex justify-between items-center text-xl font-bold pt-3 mt-3 border-t-2 border-gray-300 dark:border-gray-600">
+                        <span className="text-gray-900 dark:text-white">TOPLAM:</span>
+                        <span className="bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
                           {formatPrice(grandTotal, proforma.currency)}
                         </span>
                       </div>
@@ -417,17 +436,23 @@ export default function ProformaDetailPage() {
 
               {/* Şartlar ve Notlar */}
               {(proforma.terms || proforma.notes || proforma.termsConfig) && (
-                <Card>
+                <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
                   <CardHeader>
-                    <CardTitle>Ek Bilgiler</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-2">
+                        <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      Ek Bilgiler
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {proforma.terms && (
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-2 border-blue-200 dark:border-blue-800">
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
                           Şartlar ve Koşullar
                         </h4>
-                        <p className="text-sm text-gray-600 whitespace-pre-line">
+                        <p className="text-sm text-blue-900 dark:text-blue-100 whitespace-pre-line leading-relaxed">
                           {proforma.terms}
                         </p>
                       </div>
@@ -436,16 +461,16 @@ export default function ProformaDetailPage() {
                     {/* Şartlar Konfigürasyonu Detayları */}
                     {proforma.termsConfig && (
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-3">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
                           Şartlar Detayları
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">
+                          <div className="space-y-3">
+                            <div className="flex justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                              <span className="text-gray-600 dark:text-gray-400">
                                 Geçerlilik Süresi:
                               </span>
-                              <span className="font-medium">
+                              <span className="font-semibold text-gray-900 dark:text-white">
                                 {proforma.termsConfig.validityPeriod} gün
                               </span>
                             </div>
@@ -559,137 +584,132 @@ export default function ProformaDetailPage() {
               )}
             </div>
 
-            {/* Yan Panel */}
+            {/* Yan Panel - Sağ Taraf */}
             <div className="space-y-6">
-              {/* Genel Bilgiler */}
-              <Card>
+              {/* Genel Bilgiler ve Durum Yönetimi - Birleştirilmiş */}
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg sticky top-24">
                 <CardHeader>
-                  <CardTitle>Genel Bilgiler</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-md">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    Proforma Bilgileri
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">Oluşturma Tarihi</p>
-                      <p className="font-medium">
-                        {format(
-                          new Date(
-                            proforma.createdAt?.seconds * 1000 || Date.now()
-                          ),
-                          "dd MMMM yyyy HH:mm",
-                          { locale: tr }
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  {proforma.validUntil && (
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-500">
-                          Geçerlilik Tarihi
-                        </p>
-                        <p className="font-medium">
-                          {(() => {
-                            const date = convertFirestoreDate(
-                              proforma.validUntil
-                            );
-                            return date
-                              ? format(date, "dd MMMM yyyy", { locale: tr })
-                              : "Tarih belirtilmemiş";
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">Para Birimi</p>
-                      <p className="font-medium">{proforma.currency}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Durum Yönetimi */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Durum Yönetimi</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Mevcut Durum</p>
+                  {/* Durum Badge - En Üstte */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-850 border-2 border-gray-200 dark:border-gray-700">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Mevcut Durum</p>
                     <Badge
                       variant={getStatusBadgeVariant(proforma.status)}
-                      className="text-sm"
+                      className="text-base px-4 py-2 w-full justify-center"
                     >
                       {getProformaStatusLabel(proforma.status)}
                     </Badge>
                   </div>
 
+                  {/* Durum Güncelleme */}
                   {proforma.status !== PROFORMA_STATUS.ACCEPTED &&
-                    proforma.status !== PROFORMA_STATUS.REJECTED && (
-                      <div>
-                        <p className="text-sm text-gray-500 mb-2">
-                          Durum Değiştir
+                    proforma.status !== PROFORMA_STATUS.REJECTED &&
+                    hasPermission("proformas.edit") && (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-2 border-blue-200 dark:border-blue-800">
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Durumu Güncelle
                         </p>
                         <Select
                           onValueChange={handleStatusUpdate}
                           disabled={updateLoading}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="border-2 h-11 bg-white dark:bg-gray-800">
                             <SelectValue placeholder="Yeni durum seç..." />
                           </SelectTrigger>
                           <SelectContent>
                             {proforma.status === PROFORMA_STATUS.DRAFT && (
                               <SelectItem value={PROFORMA_STATUS.SENT}>
-                                Gönderildi
+                                📤 Gönderildi
                               </SelectItem>
                             )}
                             {proforma.status === PROFORMA_STATUS.SENT && (
                               <>
                                 <SelectItem value={PROFORMA_STATUS.ACCEPTED}>
-                                  Kabul Edildi
+                                  ✅ Kabul Edildi
                                 </SelectItem>
                                 <SelectItem value={PROFORMA_STATUS.REJECTED}>
-                                  Reddedildi
+                                  ❌ Reddedildi
                                 </SelectItem>
                               </>
                             )}
                           </SelectContent>
                         </Select>
+                        {updateLoading && (
+                          <div className="flex items-center gap-2 mt-2 text-sm text-blue-600 dark:text-blue-400">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Güncelleniyor...
+                          </div>
+                        )}
                       </div>
                     )}
-                </CardContent>
-              </Card>
 
-              {/* Finansal Özet */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Finansal Özet</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Hizmet Sayısı:</span>
-                      <span className="font-medium">
-                        {proforma.services?.length || 0}
-                      </span>
+                  {/* Tarih Bilgileri */}
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                      <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Oluşturma Tarihi</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {format(
+                            new Date(proforma.createdAt?.seconds * 1000 || Date.now()),
+                            "dd MMMM yyyy HH:mm",
+                            { locale: tr }
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Ara Toplam:</span>
-                      <span className="font-medium">
-                        {formatPrice(subtotal, proforma.currency)}
-                      </span>
+
+                    {proforma.validUntil && (
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                        <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
+                        <div>
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">
+                            Geçerlilik Tarihi
+                          </p>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {(() => {
+                              const date = convertFirestoreDate(proforma.validUntil);
+                              return date
+                                ? format(date, "dd MMMM yyyy", { locale: tr })
+                                : "Tarih belirtilmemiş";
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                      <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-green-600 dark:text-green-400 mb-1">Para Birimi</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">{proforma.currency}</p>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                      <span>Net Toplam:</span>
-                      <span className="text-blue-600">
-                        {formatPrice(grandTotal, proforma.currency)}
-                      </span>
+                  </div>
+
+                  {/* İstatistikler */}
+                  <div className="pt-4 mt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mb-1">Hizmet</p>
+                        <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                          {(proforma.services || []).length}
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Toplam</p>
+                        <p className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                          {formatPrice(grandTotal, proforma.currency).split(' ')[0]}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
