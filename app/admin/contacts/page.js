@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   PermissionGuard,
   RoleGuard,
@@ -22,6 +23,17 @@ import {
   CONTACT_SOURCE,
 } from "../../../lib/services/contacts-service";
 import {
+  RequestService,
+  REQUEST_STATUS,
+  REQUEST_PRIORITY,
+  getRequestCategoryLabel,
+} from "../../../lib/services/request-service";
+import {
+  getAllCompanies,
+  createCompany,
+} from "../../../lib/services/companies-service";
+import { Timestamp } from "firebase/firestore";
+import {
   Mail,
   Phone,
   User,
@@ -42,11 +54,14 @@ import {
   Users,
   MessageCircle,
   BarChart3,
+  PlusCircle,
+  FileText,
 } from "lucide-react";
 
 export default function ContactsPage() {
   const { user: currentUser } = useAdminAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [contacts, setContacts] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -67,6 +82,14 @@ export default function ContactsPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingContact, setViewingContact] = useState(null);
+
+  // Talep oluşturma state'leri
+  const [showCreateRequestModal, setShowCreateRequestModal] = useState(false);
+  const [requestPreview, setRequestPreview] = useState(null);
+  const [shouldCreateCompany, setShouldCreateCompany] = useState(false);
+  const [companyExists, setCompanyExists] = useState(false);
+  const [existingCompanyData, setExistingCompanyData] = useState(null);
+  const [creatingRequest, setCreatingRequest] = useState(false);
 
   // Yetki kontrolü
   const { hasPermission } = usePermissions();
@@ -283,6 +306,284 @@ export default function ContactsPage() {
     setShowViewModal(true);
   };
 
+  // İletişimden talep oluşturma fonksiyonları
+  const handleCreateRequest = async (contact) => {
+    try {
+      // Şirketin sistemde kayıtlı olup olmadığını kontrol et
+      const companies = await getAllCompanies();
+      const existingCompany = companies.find(
+        (c) =>
+          c.email?.toLowerCase() === contact.email?.toLowerCase() ||
+          c.name?.toLowerCase() === contact.company?.toLowerCase()
+      );
+
+      setCompanyExists(!!existingCompany);
+      setExistingCompanyData(existingCompany);
+      setShouldCreateCompany(!existingCompany);
+
+      // Kategoriyi belirle (service veya product bilgisinden)
+      const category = determineCategoryFromService(
+        contact.service || contact.product
+      );
+
+      // İletişim bilgilerinden talep formatı oluştur
+      const preview = {
+        contactId: contact.id,
+        companyId: existingCompany?.id || null,
+        contactInfo: {
+          company: contact.company || "",
+          firstName: contact.name?.split(" ")[0] || "",
+          lastName: contact.name?.split(" ").slice(1).join(" ") || "",
+          email: contact.email || "",
+          phone: contact.phone || "",
+        },
+        projectInfo: {
+          projectName: contact.service || "İletişim Talebi",
+          projectDescription: contact.message || "",
+          serviceArea: contact.service || contact.product || "Genel Talep",
+        },
+        requirements: {
+          specificRequirements: formatContactRequirements(contact),
+        },
+        metadata: {
+          source: "contact",
+          category: category,
+          priority: contact.priority || "normal",
+          originalContactData: contact,
+        },
+      };
+
+      setRequestPreview(preview);
+      setShowCreateRequestModal(true);
+    } catch (error) {
+      console.error("Error preparing request:", error);
+      toast({
+        title: "Hata",
+        description: "Talep hazırlanırken bir hata oluştu.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatContactRequirements = (contact) => {
+    let requirements = "";
+
+    if (contact.service) {
+      requirements += `Hizmet: ${contact.service}\n`;
+    }
+
+    if (contact.product) {
+      requirements += `Ürün: ${contact.product}\n`;
+    }
+
+    if (contact.message) {
+      requirements += `\nMesaj:\n${contact.message}\n`;
+    }
+
+    if (contact.company) {
+      requirements += `\nŞirket: ${contact.company}\n`;
+    }
+
+    return requirements.trim() || "İletişim mesajından oluşturulan talep.";
+  };
+
+  // Hizmet/ürün bilgisinden kategori belirle
+  const determineCategoryFromService = (serviceOrProduct) => {
+    if (!serviceOrProduct) return "consultation";
+
+    const service = serviceOrProduct.toLowerCase();
+
+    // Kozmetik anahtar kelimeler
+    if (
+      service.includes("kozmetik") ||
+      service.includes("krem") ||
+      service.includes("serum") ||
+      service.includes("şampuan") ||
+      service.includes("maske") ||
+      service.includes("tonik")
+    ) {
+      return "cosmetic_manufacturing";
+    }
+
+    // Gıda takviyesi anahtar kelimeler
+    if (
+      service.includes("takviye") ||
+      service.includes("vitamin") ||
+      service.includes("suplement") ||
+      service.includes("tablet") ||
+      service.includes("kapsül")
+    ) {
+      return "supplement_manufacturing";
+    }
+
+    // Temizlik ürünleri
+    if (
+      service.includes("temizlik") ||
+      service.includes("deterjan") ||
+      service.includes("sabun")
+    ) {
+      return "cleaning_manufacturing";
+    }
+
+    // Ambalaj
+    if (
+      service.includes("ambalaj") ||
+      service.includes("şişe") ||
+      service.includes("kutu") ||
+      service.includes("etiket") ||
+      service.includes("paket")
+    ) {
+      return "packaging_supply";
+    }
+
+    // E-ticaret
+    if (
+      service.includes("e-ticaret") ||
+      service.includes("eticaret") ||
+      service.includes("trendyol") ||
+      service.includes("hepsiburada") ||
+      service.includes("amazon")
+    ) {
+      return "ecommerce_operations";
+    }
+
+    // Dijital pazarlama
+    if (
+      service.includes("pazarlama") ||
+      service.includes("reklam") ||
+      service.includes("sosyal medya") ||
+      service.includes("seo") ||
+      service.includes("google ads")
+    ) {
+      return "digital_marketing";
+    }
+
+    // Formülasyon
+    if (
+      service.includes("formül") ||
+      service.includes("ar-ge") ||
+      service.includes("arge") ||
+      service.includes("geliştirme") ||
+      service.includes("reçete")
+    ) {
+      return "formulation_development";
+    }
+
+    // Varsayılan: Danışmanlık
+    return "consultation";
+  };
+
+  const confirmCreateRequest = async () => {
+    if (!requestPreview) return;
+
+    setCreatingRequest(true);
+    try {
+      let companyId = requestPreview.companyId;
+
+      // Eğer şirket yoksa ve oluşturma seçili ise, önce şirketi oluştur
+      if (shouldCreateCompany && !companyExists) {
+        const newCompany = {
+          name: requestPreview.contactInfo.company || "Bilinmeyen Şirket",
+          email: requestPreview.contactInfo.email,
+          phone: requestPreview.contactInfo.phone || "",
+          contactPerson:
+            `${requestPreview.contactInfo.firstName} ${requestPreview.contactInfo.lastName}`.trim(),
+          status: "lead",
+          priority: "normal",
+          businessLine: "genel",
+          source: "contact_form",
+          tags: ["iletişim-formu"],
+          createdBy: currentUser?.email || "system",
+        };
+
+        const result = await createCompany(newCompany);
+
+        if (result.success) {
+          companyId = result.id;
+          toast({
+            title: "Şirket Oluşturuldu",
+            description: "Yeni şirket kaydı başarıyla oluşturuldu.",
+          });
+        }
+      }
+
+      // Priority'yi enum'a çevir
+      let priorityEnum = REQUEST_PRIORITY.NORMAL;
+      if (requestPreview.metadata.priority === "urgent") {
+        priorityEnum = REQUEST_PRIORITY.URGENT;
+      } else if (requestPreview.metadata.priority === "high") {
+        priorityEnum = REQUEST_PRIORITY.HIGH;
+      } else if (requestPreview.metadata.priority === "low") {
+        priorityEnum = REQUEST_PRIORITY.LOW;
+      }
+
+      // Talebi oluştur - doğru veri yapısıyla
+      const requestData = {
+        // Temel bilgiler
+        title: requestPreview.projectInfo.projectName,
+        description: requestPreview.projectInfo.projectDescription,
+        category: requestPreview.metadata.category,
+
+        // İletişim bilgileri
+        companyId: companyId,
+        companyName: requestPreview.contactInfo.company,
+        contactName:
+          `${requestPreview.contactInfo.firstName} ${requestPreview.contactInfo.lastName}`.trim(),
+        contactEmail: requestPreview.contactInfo.email,
+        contactPhone: requestPreview.contactInfo.phone,
+
+        // Proje detayları
+        serviceType: requestPreview.projectInfo.serviceArea,
+        requirements: requestPreview.requirements.specificRequirements,
+
+        // Metadata
+        source: "contact_form",
+        priority: priorityEnum,
+        status: REQUEST_STATUS.NEW,
+
+        // Referans bilgisi
+        originalContactId: requestPreview.contactId,
+
+        // Ek bilgiler
+        tags: ["iletişim-formu"],
+        assignedTo: null,
+        createdBy: currentUser?.email || "system",
+      };
+
+      const result = await RequestService.createRequest(requestData);
+
+      if (!result.success) {
+        throw new Error(result.error || "Talep oluşturulamadı");
+      }
+
+      // İletişim durumunu "işlemde" olarak güncelle
+      await updateContactStatus(
+        requestPreview.contactId,
+        CONTACT_STATUS.IN_PROGRESS
+      );
+
+      toast({
+        title: "Başarılı",
+        description:
+          "Talep başarıyla oluşturuldu ve iletişim durumu güncellendi.",
+      });
+
+      // Modal'ı kapat ve sayfayı yenile
+      setShowCreateRequestModal(false);
+      setRequestPreview(null);
+      loadContacts();
+    } catch (error) {
+      console.error("Error creating request:", error);
+      toast({
+        title: "Hata",
+        description: error.message || "Talep oluşturulurken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
   const handleUpdateStatus = async (contactId, newStatus) => {
     try {
       // Mock güncelleme - gerçek servise bağlanacak
@@ -305,6 +606,213 @@ export default function ContactsPage() {
         variant: "destructive",
       });
     }
+  };
+
+  // Talep Oluşturma Önizleme Modalı
+  const RequestPreviewModal = ({ isOpen, onClose, preview, onConfirm }) => {
+    if (!isOpen || !preview) return null;
+
+    return (
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+      >
+        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-6 w-6 text-white" />
+                  <h3 className="text-lg font-semibold text-white">
+                    Talep Önizleme
+                  </h3>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-white hover:text-gray-200 transition-colors"
+                  disabled={creatingRequest}
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-6">
+                {/* İletişim Bilgileri */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <User className="h-4 w-4 mr-2 text-blue-600" />
+                    İletişim Bilgileri
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Şirket:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.contactInfo.company || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Ad Soyad:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.contactInfo.firstName}{" "}
+                        {preview.contactInfo.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">E-posta:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.contactInfo.email}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Telefon:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.contactInfo.phone || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Proje Bilgileri */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <Building2 className="h-4 w-4 mr-2 text-green-600" />
+                    Proje Bilgileri
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="text-gray-600">Proje Adı:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.projectInfo.projectName}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Kategori:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.metadata.category
+                          ? getRequestCategoryLabel(preview.metadata.category)
+                          : "Belirlenmedi"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Hizmet Alanı:</span>
+                      <p className="font-medium text-gray-900">
+                        {preview.projectInfo.serviceArea}
+                      </p>
+                    </div>
+                    {preview.projectInfo.projectDescription && (
+                      <div>
+                        <span className="text-gray-600">Açıklama:</span>
+                        <p className="font-medium text-gray-900 whitespace-pre-wrap">
+                          {preview.projectInfo.projectDescription}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Özel Gereksinimler */}
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg p-4 border border-amber-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <MessageSquare className="h-4 w-4 mr-2 text-amber-600" />
+                    Gereksinimler
+                  </h4>
+                  <div className="text-sm">
+                    <pre className="whitespace-pre-wrap font-medium text-gray-900 bg-white/50 p-3 rounded border border-amber-100">
+                      {preview.requirements.specificRequirements}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Şirket Oluşturma Kontrolü */}
+                {!companyExists && (
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        id="createCompany"
+                        checked={shouldCreateCompany}
+                        onChange={(e) =>
+                          setShouldCreateCompany(e.target.checked)
+                        }
+                        className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor="createCompany"
+                          className="text-sm font-medium text-gray-900 cursor-pointer"
+                        >
+                          Yeni şirket kaydı oluştur
+                        </label>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Bu iletişim için sistemde kayıtlı bir şirket
+                          bulunamadı. İşaretlerseniz otomatik olarak yeni bir
+                          şirket kaydı oluşturulacaktır.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {companyExists && (
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center space-x-2 text-green-700">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="text-sm font-medium">
+                        Bu şirket sistemde kayıtlı
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200">
+              <button
+                onClick={onClose}
+                disabled={creatingRequest}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                İptal
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={creatingRequest}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {creatingRequest ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Oluşturuluyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Talebi Oluştur</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (!canView) {
@@ -448,25 +956,25 @@ export default function ContactsPage() {
         {/* İletişim Mesajları Tablosu */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full divide-y divide-gray-200 table-fixed min-w-max">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/5 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     İletişim Bilgileri
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/4 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mesaj
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Durum
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Öncelik
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tarih
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-[18%] px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
@@ -492,98 +1000,108 @@ export default function ContactsPage() {
                 ) : (
                   contacts.map((contact) => (
                     <tr key={contact.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <User className="h-5 w-5 text-gray-600" />
+                      <td className="px-3 py-3">
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 h-8 w-8">
+                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                              <User className="h-4 w-4 text-gray-600" />
                             </div>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                          <div className="ml-2 min-w-0">
+                            <div className="text-xs font-medium text-gray-900 truncate">
                               {contact.name}
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Mail className="h-3 w-3 mr-1" />
-                              {contact.email}
+                            <div className="text-xs text-gray-500 flex items-center truncate">
+                              <Mail className="h-2.5 w-2.5 mr-1 flex-shrink-0" />
+                              <span className="truncate">{contact.email}</span>
                             </div>
                             {contact.phone && (
-                              <div className="text-sm text-gray-500 flex items-center">
-                                <Phone className="h-3 w-3 mr-1" />
-                                {contact.phone}
+                              <div className="text-xs text-gray-500 flex items-center truncate">
+                                <Phone className="h-2.5 w-2.5 mr-1 flex-shrink-0" />
+                                <span className="truncate">
+                                  {contact.phone}
+                                </span>
                               </div>
                             )}
                             {contact.company && (
-                              <div className="text-sm text-gray-500 flex items-center">
-                                <Building2 className="h-3 w-3 mr-1" />
-                                {contact.company}
+                              <div className="text-xs text-gray-500 flex items-center truncate">
+                                <Building2 className="h-2.5 w-2.5 mr-1 flex-shrink-0" />
+                                <span className="truncate">
+                                  {contact.company}
+                                </span>
                               </div>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          <div className="font-medium mb-1">
+                      <td className="px-3 py-3">
+                        <div className="text-xs text-gray-900">
+                          <div className="font-medium mb-1 flex flex-wrap gap-1">
                             {contact.service && (
-                              <span className="inline-flex px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mr-2">
+                              <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded">
                                 {contact.service}
                               </span>
                             )}
                             {contact.product && (
-                              <span className="inline-flex px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                              <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-green-100 text-green-800 rounded">
                                 {contact.product}
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-600 text-sm line-clamp-2">
+                          <p className="text-gray-600 text-xs line-clamp-2">
                             {contact.message || "Mesaj bulunamadı"}
                           </p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
+                      <td className="px-2 py-3">
+                        <div className="flex items-center justify-center">
                           {getStatusIcon(contact.status)}
-                          <span className="ml-2 text-sm text-gray-900">
-                            {getStatusText(contact.status)}
-                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-2 py-3">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(
+                          className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded ${getPriorityColor(
                             contact.priority
                           )}`}
                         >
                           {getPriorityText(contact.priority)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 py-3 text-xs text-gray-500">
                         <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {contact.createdAt
-                            ? (() => {
-                                try {
-                                  const date = contact.createdAt.toDate
-                                    ? contact.createdAt.toDate()
-                                    : new Date(contact.createdAt);
-                                  return date.toLocaleDateString("tr-TR");
-                                } catch (error) {
-                                  console.error("Date format error:", error);
-                                  return "Geçersiz tarih";
-                                }
-                              })()
-                            : "-"}
+                          <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="whitespace-nowrap">
+                            {contact.createdAt
+                              ? (() => {
+                                  try {
+                                    const date = contact.createdAt.toDate
+                                      ? contact.createdAt.toDate()
+                                      : new Date(contact.createdAt);
+                                    return date.toLocaleDateString("tr-TR");
+                                  } catch (error) {
+                                    console.error("Date format error:", error);
+                                    return "Geçersiz tarih";
+                                  }
+                                })()
+                              : "-"}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center space-x-2">
+                      <td className="px-2 py-3 text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleViewContact(contact)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-blue-600 hover:text-blue-900 p-1"
                             title="Görüntüle"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleCreateRequest(contact)}
+                            className="text-green-600 hover:text-green-900 p-1"
+                            title="Talep Oluştur"
+                          >
+                            <PlusCircle className="h-3.5 w-3.5" />
                           </button>
                           {canUpdate && (
                             <select
@@ -591,7 +1109,7 @@ export default function ContactsPage() {
                               onChange={(e) =>
                                 handleStatusChange(contact.id, e.target.value)
                               }
-                              className="text-xs border border-gray-300 rounded px-2 py-1"
+                              className="text-[10px] border border-gray-300 rounded px-1 py-0.5 max-w-[70px]"
                               title="Durumu Değiştir"
                             >
                               <option value={CONTACT_STATUS.NEW}>Yeni</option>
@@ -609,10 +1127,10 @@ export default function ContactsPage() {
                           {canDelete && (
                             <button
                               onClick={() => handleDeleteContact(contact.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="text-red-600 hover:text-red-900 p-1"
                               title="Sil"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </div>
@@ -633,6 +1151,19 @@ export default function ContactsPage() {
               setShowViewModal(false);
               setViewingContact(null);
             }}
+          />
+        )}
+
+        {/* Talep Oluşturma Modal'ı */}
+        {showCreateRequestModal && requestPreview && (
+          <RequestPreviewModal
+            isOpen={showCreateRequestModal}
+            onClose={() => {
+              setShowCreateRequestModal(false);
+              setRequestPreview(null);
+            }}
+            preview={requestPreview}
+            onConfirm={confirmCreateRequest}
           />
         )}
       </div>

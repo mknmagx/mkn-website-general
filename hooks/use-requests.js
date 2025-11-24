@@ -55,7 +55,14 @@ export function useRequests(options = {}) {
 
   useEffect(() => {
     loadRequests();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    options.status,
+    options.category,
+    options.priority,
+    options.searchTerm,
+    options.limitCount
+  ]);
 
   return {
     requests,

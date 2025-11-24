@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRequests, useRequestStats } from "../../../hooks/use-requests";
 import { useCompanies } from "../../../hooks/use-company";
+import { useAdminAuth } from "../../../hooks/use-admin-auth";
+import { useToast } from "../../../hooks/use-toast";
 import {
   usePermissions,
   PermissionGuard,
@@ -17,7 +19,9 @@ import {
   getRequestPriorityLabel,
   getCategoryColor,
   getCategoryIcon,
+  RequestService,
 } from "../../../lib/services/request-service";
+import { USER_ROLES } from "../../../lib/services/admin-user-service";
 
 // UI Components
 import { Button } from "../../../components/ui/button";
@@ -30,11 +34,13 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../components/ui/table";
 import {
   Select,
   SelectContent,
@@ -42,6 +48,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 
 // Icons
 import {
@@ -69,29 +81,33 @@ import {
   Users,
   Star,
   Zap,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 
 export default function RequestsPage() {
   const { hasPermission } = usePermissions();
-  const [activeTab, setActiveTab] = useState("all");
+  const { user: currentUser } = useAdminAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [companyFilter, setCompanyFilter] = useState("all");
 
   // Data hooks
   const { stats, loading: statsLoading } = useRequestStats();
-  const { companies, loading: companiesLoading } = useCompanies();
 
-  // Build filter options for requests
-  const requestOptions = {
-    ...(statusFilter !== "all" && { status: statusFilter }),
-    ...(categoryFilter !== "all" && { category: categoryFilter }),
-    ...(priorityFilter !== "all" && { priority: priorityFilter }),
-    ...(companyFilter !== "all" && { companyId: companyFilter }),
-    limitCount: 50,
-  };
+  // Build filter options for requests - memoized to prevent unnecessary re-renders
+  const requestOptions = useMemo(
+    () => ({
+      ...(statusFilter !== "all" && { status: statusFilter }),
+      ...(categoryFilter !== "all" && { category: categoryFilter }),
+      ...(priorityFilter !== "all" && { priority: priorityFilter }),
+      ...(searchTerm && { searchTerm }),
+      limitCount: 100,
+    }),
+    [statusFilter, categoryFilter, priorityFilter, searchTerm]
+  );
 
   const {
     requests,
@@ -107,72 +123,83 @@ export default function RequestsPage() {
   const canDelete =
     hasPermission("requests.delete") || hasPermission("admin.all");
 
-  // Filter requests by search term
-  const filteredRequests = requests.filter((request) => {
-    if (!searchTerm) return true;
+  // All filters are now applied in useRequests hook
+  const filteredRequests = requests;
 
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      request.title?.toLowerCase().includes(searchLower) ||
-      request.description?.toLowerCase().includes(searchLower) ||
-      request.requestNumber?.toLowerCase().includes(searchLower) ||
-      request.companyName?.toLowerCase().includes(searchLower) ||
-      request.contactEmail?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Talep silme fonksiyonu - sadece super_admin
+  const handleDeleteRequest = async (requestId) => {
+    if (
+      !confirm(
+        "Bu talebi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+      )
+    ) {
+      return;
+    }
 
-  // Group requests by status for tabs
-  const requestsByStatus = {
-    all: filteredRequests,
-    new: filteredRequests.filter((r) => r.status === REQUEST_STATUS.NEW),
-    in_progress: filteredRequests.filter(
-      (r) => r.status === REQUEST_STATUS.IN_PROGRESS
-    ),
-    quotation_sent: filteredRequests.filter(
-      (r) => r.status === REQUEST_STATUS.QUOTATION_SENT
-    ),
-    completed: filteredRequests.filter(
-      (r) => r.status === REQUEST_STATUS.COMPLETED
-    ),
+    try {
+      const result = await RequestService.deleteRequest(requestId);
+
+      if (!result.success) {
+        throw new Error(result.error || "Talep silinemedi");
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Talep başarıyla silindi.",
+      });
+
+      refreshRequests();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: error.message || "Talep silinirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Sadece super_admin silme yetkisine sahip
+  const canDeleteRequest = () => {
+    return currentUser?.role === USER_ROLES.SUPER_ADMIN;
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case REQUEST_STATUS.NEW:
-        return "bg-sky-50 text-sky-700 border-sky-200";
+        return "bg-sky-100 text-sky-700 border-sky-300";
       case REQUEST_STATUS.ASSIGNED:
-        return "bg-violet-50 text-violet-700 border-violet-200";
+        return "bg-violet-100 text-violet-700 border-violet-300";
       case REQUEST_STATUS.IN_PROGRESS:
-        return "bg-amber-50 text-amber-700 border-amber-200";
+        return "bg-amber-100 text-amber-700 border-amber-300";
       case REQUEST_STATUS.WAITING_CLIENT:
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
+        return "bg-yellow-100 text-yellow-700 border-yellow-300";
       case REQUEST_STATUS.QUOTATION_SENT:
-        return "bg-indigo-50 text-indigo-700 border-indigo-200";
+        return "bg-indigo-100 text-indigo-700 border-indigo-300";
       case REQUEST_STATUS.APPROVED:
-        return "bg-green-50 text-green-700 border-green-200";
+        return "bg-green-100 text-green-700 border-green-300";
       case REQUEST_STATUS.REJECTED:
-        return "bg-red-50 text-red-700 border-red-200";
+        return "bg-red-100 text-red-700 border-red-300";
       case REQUEST_STATUS.COMPLETED:
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+        return "bg-emerald-100 text-emerald-700 border-emerald-300";
       case REQUEST_STATUS.CANCELLED:
-        return "bg-slate-50 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-slate-700 border-slate-300";
       default:
-        return "bg-slate-50 text-slate-700 border-slate-200";
+        return "bg-slate-100 text-slate-700 border-slate-300";
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
       case REQUEST_PRIORITY.LOW:
-        return "bg-slate-50 text-slate-600 border-slate-200";
+        return "bg-slate-100 text-slate-600 border-slate-300";
       case REQUEST_PRIORITY.NORMAL:
-        return "bg-blue-50 text-blue-600 border-blue-200";
+        return "bg-blue-100 text-blue-700 border-blue-300";
       case REQUEST_PRIORITY.HIGH:
-        return "bg-orange-50 text-orange-600 border-orange-200";
+        return "bg-orange-100 text-orange-700 border-orange-300";
       case REQUEST_PRIORITY.URGENT:
-        return "bg-red-50 text-red-600 border-red-200";
+        return "bg-red-100 text-red-700 border-red-300";
       default:
-        return "bg-slate-50 text-slate-600 border-slate-200";
+        return "bg-slate-100 text-slate-600 border-slate-300";
     }
   };
 
@@ -196,9 +223,9 @@ export default function RequestsPage() {
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case REQUEST_PRIORITY.URGENT:
-        return <Zap className="h-3 w-3" />;
+        return <Zap className="h-3.5 w-3.5" />;
       case REQUEST_PRIORITY.HIGH:
-        return <Star className="h-3 w-3" />;
+        return <Star className="h-3.5 w-3.5" />;
       default:
         return null;
     }
@@ -219,8 +246,6 @@ export default function RequestsPage() {
       year: "numeric",
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     }).format(date);
   };
 
@@ -242,525 +267,551 @@ export default function RequestsPage() {
 
   return (
     <PermissionGuard requiredPermission="requests.view">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
-                <MessageSquareText className="h-6 w-6 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        {/* Modern Header with Glass Effect */}
+        <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="container mx-auto px-6 py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-2.5 shadow-lg">
+                    <MessageSquareText className="h-7 w-7 text-white" />
+                  </div>
+                  Müşteri Talepleri
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2 ml-14">
+                  Tüm müşteri taleplerini görüntüleyin ve yönetin
+                </p>
               </div>
-              Müşteri Talepleri
-            </h1>
-            <p className="text-slate-600 mt-2 max-w-2xl">
-              MKN Group'a gelen tüm müşteri taleplerini kategorizasyon, öncelik
-              ve durum bazında yönetin
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refreshRequests()}
-              className="hover:bg-slate-50"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Yenile
-            </Button>
-            {canCreate && (
-              <Link href="/admin/requests/new">
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yeni Talep
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshRequests()}
+                  className="hover:bg-slate-50 dark:hover:bg-gray-800"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Yenile
                 </Button>
-              </Link>
-            )}
+                {canCreate && (
+                  <Link href="/admin/requests/new">
+                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+                      <Plus className="h-5 w-5 mr-2" />
+                      Yeni Talep
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        {!statsLoading && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-800">
-                  Toplam Talepler
-                </CardTitle>
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <MessageSquareText className="h-4 w-4 text-blue-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900">
-                  {stats.total}
-                </div>
-                <p className="text-xs text-blue-600">
-                  Bu ay {stats.thisMonth} yeni talep
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-amber-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-amber-800">
-                  Bekleyen Değer
-                </CardTitle>
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <DollarSign className="h-4 w-4 text-amber-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-amber-900">
-                  {formatCurrency(stats.pendingValue)}
-                </div>
-                <p className="text-xs text-amber-600">Potansiyel gelir</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-emerald-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-emerald-800">
-                  Tamamlanan
-                </CardTitle>
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <CheckCircle className="h-4 w-4 text-emerald-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-900">
-                  {stats.byStatus[REQUEST_STATUS.COMPLETED] || 0}
-                </div>
-                <p className="text-xs text-emerald-600">
-                  {formatCurrency(stats.completedValue)} değer
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-violet-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-violet-800">
-                  İşleniyor
-                </CardTitle>
-                <div className="p-2 bg-violet-100 rounded-lg">
-                  <Clock className="h-4 w-4 text-violet-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-violet-900">
-                  {stats.byStatus[REQUEST_STATUS.IN_PROGRESS] || 0}
-                </div>
-                <p className="text-xs text-violet-600">Aktif talepler</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Filters */}
-        <Card className="border-0 shadow-sm bg-slate-50/50">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-slate-700">
-              <Filter className="h-5 w-5" />
-              Arama ve Filtreler
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {/* Search */}
-              <div className="relative lg:col-span-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                <Input
-                  placeholder="Talep başlığı, açıklama, firma adı ara..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                  <SelectValue placeholder="Durum" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Durumlar</SelectItem>
-                  {Object.values(REQUEST_STATUS).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {getRequestStatusLabel(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Category Filter */}
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                  <SelectValue placeholder="Kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {Object.values(REQUEST_CATEGORIES).map((category) => (
-                    <SelectItem
-                      key={category}
-                      value={category}
-                      className="flex items-center gap-2"
-                    >
-                      {getRequestCategoryLabel(category)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Priority Filter */}
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                  <SelectValue placeholder="Öncelik" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Öncelikler</SelectItem>
-                  {Object.values(REQUEST_PRIORITY).map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      {getRequestPriorityLabel(priority)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Active Filters */}
-            {(searchTerm ||
-              statusFilter !== "all" ||
-              categoryFilter !== "all" ||
-              priorityFilter !== "all") && (
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-200">
-                <span className="text-sm font-medium text-slate-600">
-                  Aktif filtreler:
-                </span>
-                {searchTerm && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-800 hover:bg-blue-200"
-                  >
-                    Arama: {searchTerm}
-                  </Badge>
-                )}
-                {statusFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                  >
-                    Durum: {getRequestStatusLabel(statusFilter)}
-                  </Badge>
-                )}
-                {categoryFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-purple-100 text-purple-800 hover:bg-purple-200"
-                  >
-                    Kategori: {getRequestCategoryLabel(categoryFilter)}
-                  </Badge>
-                )}
-                {priorityFilter !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-amber-100 text-amber-800 hover:bg-amber-200"
-                  >
-                    Öncelik: {getRequestPriorityLabel(priorityFilter)}
-                  </Badge>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setStatusFilter("all");
-                    setCategoryFilter("all");
-                    setPriorityFilter("all");
-                    setCompanyFilter("all");
-                  }}
-                  className="h-6 px-2 text-slate-500 hover:text-slate-700"
-                >
-                  Temizle
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Requests Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 bg-slate-100 p-1 rounded-xl">
-            <TabsTrigger
-              value="all"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
-            >
-              Tümü
-              <Badge
-                variant="secondary"
-                className="text-xs bg-slate-200 text-slate-700"
-              >
-                {requestsByStatus.all.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="new"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
-            >
-              Yeni
-              <Badge
-                variant="secondary"
-                className="text-xs bg-sky-100 text-sky-700"
-              >
-                {requestsByStatus.new.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="in_progress"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
-            >
-              İşleniyor
-              <Badge
-                variant="secondary"
-                className="text-xs bg-amber-100 text-amber-700"
-              >
-                {requestsByStatus.in_progress.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="quotation_sent"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
-            >
-              Teklif Gönderildi
-              <Badge
-                variant="secondary"
-                className="text-xs bg-indigo-100 text-indigo-700"
-              >
-                {requestsByStatus.quotation_sent.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="completed"
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
-            >
-              Tamamlandı
-              <Badge
-                variant="secondary"
-                className="text-xs bg-emerald-100 text-emerald-700"
-              >
-                {requestsByStatus.completed.length}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-
-          {Object.entries(requestsByStatus).map(([status, statusRequests]) => (
-            <TabsContent key={status} value={status} className="space-y-4">
-              {requestsLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="text-center">
-                    <div className="relative">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                      <MessageSquareText className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600" />
+        <div className="container mx-auto px-6 py-8">
+          {/* Statistics Cards */}
+          {!statsLoading && stats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Toplam Talepler
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                        {stats.total}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Bu ay {stats.thisMonth} yeni
+                      </p>
                     </div>
-                    <p className="mt-4 text-gray-600 font-medium">
-                      Talepler yükleniyor...
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Lütfen bekleyin
-                    </p>
+                    <div className="bg-blue-100 dark:bg-blue-900/30 rounded-xl p-3">
+                      <MessageSquareText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Yeni
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                        {stats.byStatus[REQUEST_STATUS.NEW] || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Yeni talepler
+                      </p>
+                    </div>
+                    <div className="bg-sky-100 dark:bg-sky-900/30 rounded-xl p-3">
+                      <AlertCircle className="h-8 w-8 text-sky-600 dark:text-sky-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        İşleniyor
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                        {stats.byStatus[REQUEST_STATUS.IN_PROGRESS] || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Aktif talepler
+                      </p>
+                    </div>
+                    <div className="bg-amber-100 dark:bg-amber-900/30 rounded-xl p-3">
+                      <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white dark:bg-gray-800 border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Tamamlanan
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                        {stats.byStatus[REQUEST_STATUS.COMPLETED] || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {formatCurrency(stats.completedValue)}
+                      </p>
+                    </div>
+                    <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-xl p-3">
+                      <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Filters */}
+          <Card className="mb-8 bg-white dark:bg-gray-800 border-none shadow-lg">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="relative lg:col-span-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    placeholder="Talep ara..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-12 h-12 text-base border-2 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+                  />
                 </div>
-              ) : statusRequests.length > 0 ? (
-                <div className="space-y-4">
-                  {statusRequests.map((request) => (
-                    <Card
-                      key={request.id}
-                      className="group hover:shadow-xl transition-all duration-300 border-0 bg-white shadow-sm hover:scale-[1.01] relative overflow-hidden"
+
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-12 border-2 border-gray-200 dark:border-gray-700 focus:border-blue-500">
+                    <SelectValue placeholder="Durum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Durumlar</SelectItem>
+                    {Object.values(REQUEST_STATUS).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {getRequestStatusLabel(status)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Category Filter */}
+                <Select
+                  value={categoryFilter}
+                  onValueChange={setCategoryFilter}
+                >
+                  <SelectTrigger className="h-12 border-2 border-gray-200 dark:border-gray-700 focus:border-blue-500">
+                    <SelectValue placeholder="Kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Kategoriler</SelectItem>
+                    {Object.values(REQUEST_CATEGORIES).map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {getRequestCategoryLabel(category)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Priority Filter */}
+                <Select
+                  value={priorityFilter}
+                  onValueChange={setPriorityFilter}
+                >
+                  <SelectTrigger className="h-12 border-2 border-gray-200 dark:border-gray-700 focus:border-blue-500">
+                    <SelectValue placeholder="Öncelik" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Öncelikler</SelectItem>
+                    {Object.values(REQUEST_PRIORITY).map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {getRequestPriorityLabel(priority)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Active Filters */}
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                categoryFilter !== "all" ||
+                priorityFilter !== "all") && (
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    Aktif Filtreler:
+                  </span>
+                  {searchTerm && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                     >
-                      {/* Kategori renk çubuğu */}
-                      <div
-                        className={`absolute left-0 top-0 bottom-0 w-1 ${
-                          getCategoryColor(request.category).split(" ")[0]
-                        } opacity-60`}
-                      ></div>
+                      Arama: "{searchTerm}"
+                    </Badge>
+                  )}
+                  {statusFilter !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    >
+                      {getRequestStatusLabel(statusFilter)}
+                    </Badge>
+                  )}
+                  {categoryFilter !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                    >
+                      {getRequestCategoryLabel(categoryFilter)}
+                    </Badge>
+                  )}
+                  {priorityFilter !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                    >
+                      {getRequestPriorityLabel(priorityFilter)}
+                    </Badge>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("all");
+                      setCategoryFilter("all");
+                      setPriorityFilter("all");
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium ml-auto"
+                  >
+                    Filtreleri Temizle
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                      <CardContent className="p-6">
-                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                          <div className="flex-1 space-y-4">
-                            {/* Header with title and badges */}
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                              <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                                {request.title}
-                              </h3>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className={`${getStatusColor(
-                                    request.status
-                                  )} font-medium border`}
-                                >
-                                  {getRequestStatusLabel(request.status)}
-                                </Badge>
-                                <Badge
-                                  variant="outline"
-                                  className={`${getPriorityColor(
-                                    request.priority
-                                  )} font-medium border flex items-center gap-1`}
-                                >
-                                  {getPriorityIcon(request.priority)}
-                                  {getRequestPriorityLabel(request.priority)}
-                                </Badge>
-                              </div>
+          {/* Results Count */}
+          {filteredRequests.length > 0 && (
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {filteredRequests.length}
+                </span>{" "}
+                talep listeleniyor
+                {filteredRequests.length !== requests.length && (
+                  <span className="text-gray-500 dark:text-gray-500">
+                    {" "}
+                    (toplam {requests.length} içinden)
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Requests Table */}
+          {requestsLoading ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400 font-medium">
+                  Talepler yükleniyor...
+                </p>
+              </div>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <Card className="bg-white dark:bg-gray-800 border-none shadow-lg">
+              <CardContent className="py-16 text-center">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                  <MessageSquareText className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                  {searchTerm ||
+                  statusFilter !== "all" ||
+                  categoryFilter !== "all" ||
+                  priorityFilter !== "all"
+                    ? "Sonuç Bulunamadı"
+                    : "Henüz Talep Yok"}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                  {searchTerm ||
+                  statusFilter !== "all" ||
+                  categoryFilter !== "all" ||
+                  priorityFilter !== "all"
+                    ? "Arama kriterlerine uygun talep bulunamadı. Farklı filtreler deneyin."
+                    : "Müşteri talepleri burada görünecek. İlk talebi oluşturmak için yeni talep butonuna tıklayın."}
+                </p>
+                {(searchTerm ||
+                  statusFilter !== "all" ||
+                  categoryFilter !== "all" ||
+                  priorityFilter !== "all") && (
+                  <Button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("all");
+                      setCategoryFilter("all");
+                      setPriorityFilter("all");
+                    }}
+                    variant="outline"
+                    size="lg"
+                  >
+                    Filtreleri Temizle
+                  </Button>
+                )}
+                {!searchTerm &&
+                  statusFilter === "all" &&
+                  categoryFilter === "all" &&
+                  priorityFilter === "all" &&
+                  canCreate && (
+                    <Link href="/admin/requests/new">
+                      <Button
+                        size="lg"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        <Plus className="h-5 w-5 mr-2" />
+                        İlk Talebi Oluştur
+                      </Button>
+                    </Link>
+                  )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="bg-white dark:bg-gray-800 border-none shadow-lg overflow-hidden">
+              <TooltipProvider>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                      <TableHead className="font-bold text-gray-900 dark:text-white py-4">
+                        Talep Bilgileri
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        Kategori
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        Durum
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        Öncelik
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        Firma
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        Tarih
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                        İşlemler
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((request) => (
+                      <TableRow
+                        key={request.id}
+                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                        onClick={() =>
+                          (window.location.href = `/admin/requests/${request.id}`)
+                        }
+                      >
+                        {/* Talep Bilgileri */}
+                        <TableCell className="py-4 max-w-[350px]">
+                          <div className="flex items-start gap-3">
+                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2 shadow-md flex-shrink-0">
+                              <MessageSquareText className="h-4 w-4 text-white" />
                             </div>
-
-                            {/* Request info */}
-                            <div className="flex flex-wrap items-center gap-3 text-sm">
-                              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full">
-                                <span className="font-semibold text-slate-700">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-bold text-gray-900 dark:text-white line-clamp-1">
+                                  {request.title}
+                                </h3>
+                              </div>
+                              {request.description && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 cursor-help truncate">
+                                      {request.description
+                                        .trim()
+                                        .substring(0, 80)}
+                                      {request.description.trim().length > 80
+                                        ? "..."
+                                        : ""}
+                                    </p>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="bottom"
+                                    className="max-w-md"
+                                  >
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {request.description.trim()}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-mono border-gray-300 dark:border-gray-600"
+                                >
                                   #{request.requestNumber}
-                                </span>
-                              </div>
-                              <div
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getCategoryColor(
-                                  request.category
-                                )}`}
-                              >
-                                {getCategoryIconComponent(request.category)}
-                                <span className="font-medium">
-                                  {getRequestCategoryLabel(request.category)}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Description */}
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                              <p className="text-slate-700 leading-relaxed line-clamp-2">
-                                {request.description}
-                              </p>
-                            </div>
-
-                            {/* Meta information */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                              {request.companyName && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
-                                  <Building2 className="h-4 w-4 text-blue-500" />
-                                  <span className="font-medium truncate">
-                                    {request.companyName}
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
-                                <Calendar className="h-4 w-4 text-emerald-500" />
-                                <span>{formatDate(request.createdAt)}</span>
-                              </div>
-                              {request.estimatedValue > 0 && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
-                                  <DollarSign className="h-4 w-4 text-amber-500" />
-                                  <span className="font-semibold text-emerald-600">
-                                    {formatCurrency(request.estimatedValue)}
-                                  </span>
-                                </div>
-                              )}
-                              {request.contactEmail && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg sm:col-span-2 lg:col-span-1">
-                                  <MessageSquareText className="h-4 w-4 text-violet-500" />
-                                  <span className="truncate">
+                                </Badge>
+                                {request.contactEmail && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
                                     {request.contactEmail}
                                   </span>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
+                        </TableCell>
 
-                          {/* Action buttons */}
-                          <div className="flex items-center gap-2 lg:flex-col lg:items-stretch">
-                            <Link
-                              href={`/admin/requests/${request.id}`}
-                              className="flex-1 lg:flex-none"
+                        {/* Kategori */}
+                        <TableCell className="text-center">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <div
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${getCategoryColor(
+                                request.category
+                              )}`}
                             >
+                              {getCategoryIconComponent(request.category)}
+                              <span className="text-xs font-medium whitespace-nowrap">
+                                {
+                                  (
+                                    getRequestCategoryLabel(request.category) ||
+                                    "Bilinmiyor"
+                                  ).split(" ")[0]
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Durum */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={`${getStatusColor(
+                              request.status
+                            )} font-medium border text-xs whitespace-nowrap`}
+                          >
+                            {getRequestStatusLabel(request.status)}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Öncelik */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={`${getPriorityColor(
+                              request.priority
+                            )} font-medium border flex items-center justify-center gap-1 text-xs whitespace-nowrap mx-auto w-fit`}
+                          >
+                            {getPriorityIcon(request.priority)}
+                            {getRequestPriorityLabel(request.priority)}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Firma */}
+                        <TableCell className="text-center">
+                          {request.companyName ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Building2 className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                                {request.companyName}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+
+                        {/* Tarih */}
+                        <TableCell className="text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              {formatDate(request.createdAt)}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* İşlemler */}
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-2">
+                            <Link href={`/admin/requests/${request.id}`}>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="w-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 border-slate-200"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                               >
-                                <Eye className="h-4 w-4 mr-2" />
-                                <span className="hidden sm:inline">
-                                  Görüntüle
-                                </span>
+                                <Eye className="h-4 w-4" />
                               </Button>
                             </Link>
                             {canEdit && (
-                              <Link
-                                href={`/admin/requests/${request.id}/edit`}
-                                className="flex-1 lg:flex-none"
-                              >
+                              <Link href={`/admin/requests/${request.id}/edit`}>
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  className="w-full hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 border-slate-200"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                 >
-                                  <Edit3 className="h-4 w-4 mr-2" />
-                                  <span className="hidden sm:inline">
-                                    Düzenle
-                                  </span>
+                                  <Edit3 className="h-4 w-4" />
                                 </Button>
                               </Link>
                             )}
+                            {canDeleteRequest() && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRequest(request.id);
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title="Talebi Sil (Sadece Super Admin)"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="max-w-md mx-auto">
-                    <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
-                      <MessageSquareText className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {status === "all"
-                        ? "Henüz talep bulunmuyor"
-                        : `${getRequestStatusLabel(
-                            status
-                          )} durumunda talep bulunmuyor`}
-                    </h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      {status === "all"
-                        ? "Müşterilerinizden gelen talepler burada görünecek. İlk talebi ekleyerek başlayın."
-                        : `Bu durumdaki talepler burada görünecek. Diğer durumları kontrol edebilir veya yeni talep ekleyebilirsiniz.`}
-                    </p>
-                    {canCreate && status === "all" && (
-                      <Link href="/admin/requests/new">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                          <Plus className="h-4 w-4 mr-2" />
-                          İlk Talebi Ekle
-                        </Button>
-                      </Link>
-                    )}
-                    {status !== "all" && (
-                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Button
-                          variant="outline"
-                          onClick={() => setActiveTab("all")}
-                          className="hover:bg-gray-100"
-                        >
-                          Tüm Talepleri Görüntüle
-                        </Button>
-                        {canCreate && (
-                          <Link href="/admin/requests/new">
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Yeni Talep Ekle
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TooltipProvider>
+            </Card>
+          )}
+        </div>
       </div>
     </PermissionGuard>
   );
