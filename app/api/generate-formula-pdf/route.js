@@ -752,57 +752,6 @@ function generateFormulaHTML(formula, options = {}, logoBase64 = "") {
         : ""
     }
 
-    <!-- AI Generation Info -->
-    ${
-      formula.aiConfig
-        ? `
-    <div style="margin-top: 20pt; padding: 12pt; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 8px;">
-      <div style="font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 6pt;">Formül Oluşturma Bilgisi</div>
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8pt; font-size: 9pt;">
-        ${
-          formula.aiConfig.modelName
-            ? `
-        <div>
-          <span style="color: #94a3b8;">AI Model:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${formula.aiConfig.modelName}</span>
-        </div>
-        `
-            : ""
-        }
-        ${
-          formula.aiConfig.formulaLevel
-            ? `
-        <div>
-          <span style="color: #94a3b8;">Formül Seviyesi:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${
-            formula.aiConfig.formulaLevel === "basic"
-              ? "Temel"
-              : formula.aiConfig.formulaLevel === "professional"
-              ? "Profesyonel"
-              : "İleri Seviye"
-          }</span>
-        </div>
-        `
-            : ""
-        }
-        ${
-          formula.aiConfig.generatedAt
-            ? `
-        <div>
-          <span style="color: #94a3b8;">Oluşturma Tarihi:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${new Date(
-            formula.aiConfig.generatedAt
-          ).toLocaleDateString("tr-TR")}</span>
-        </div>
-        `
-            : ""
-        }
-      </div>
-    </div>
-    `
-        : ""
-    }
-
     <!-- Professional Footer -->
     <div class="footer">
       <div style="margin-bottom: 10pt;">
