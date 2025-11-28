@@ -63,6 +63,11 @@ export default async function sitemap() {
       priority: 0.5,
       changeFreq: "yearly",
     },
+    {
+      route: "/iade-politikasi",
+      priority: 0.6,
+      changeFreq: "yearly",
+    },
   ];
 
   const staticUrls = mainRoutes.map((item) => {

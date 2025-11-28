@@ -229,7 +229,7 @@ export function Footer() {
               <span className="font-montserrat font-semibold">{site.name}</span>
               . Tüm hakları saklıdır.
             </p>
-            <div className="flex space-x-4 text-sm">
+            <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-sm">
               <Link
                 href="/gizlilik-politikasi"
                 className="text-muted-foreground hover:text-primary transition-colors"
@@ -241,6 +241,12 @@ export function Footer() {
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
                 Kullanım Koşulları
+              </Link>
+              <Link
+                href="/iade-politikasi"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                İade Politikası
               </Link>
             </div>
           </div>
