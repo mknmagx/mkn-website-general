@@ -30,6 +30,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Calculator,
   ArrowLeft,
   Package,
@@ -48,12 +55,25 @@ import {
   FileText,
   TrendingUp,
   Beaker,
+  Building2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import * as PricingService from "@/lib/services/pricing-service";
+import * as CompaniesService from "@/lib/services/companies-service";
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import PricingCalculationPDFExport from "@/components/pricing-calculation-pdf-export";
+import Link from "next/link";
 
 export default function PricingCalculationDetailPage({ params }) {
   const { id } = use(params);
@@ -65,10 +85,23 @@ export default function PricingCalculationDetailPage({ params }) {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(null);
+  const [linkedCompanies, setLinkedCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [showAddCompanyDialog, setShowAddCompanyDialog] = useState(false);
+  const [allCompanies, setAllCompanies] = useState([]);
+  const [selectedCompanyToAdd, setSelectedCompanyToAdd] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadCalculation();
   }, [id]);
+
+  useEffect(() => {
+    if (calculation) {
+      loadLinkedCompanies();
+    }
+  }, [calculation]);
 
   const loadCalculation = async () => {
     try {
@@ -95,6 +128,117 @@ export default function PricingCalculationDetailPage({ params }) {
       router.push("/admin/pricing-calculations");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLinkedCompanies = async () => {
+    try {
+      setLoadingCompanies(true);
+      const companies = await CompaniesService.getCompaniesByCalculationId(id);
+      setLinkedCompanies(companies);
+    } catch (error) {
+      console.error("Error loading linked companies:", error);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const loadAllCompanies = async () => {
+    try {
+      const companies = await CompaniesService.getCompaniesForSelect();
+      setAllCompanies(companies);
+    } catch (error) {
+      console.error("Error loading all companies:", error);
+    }
+  };
+
+  const handleAddCompanyToCalculation = async () => {
+    if (!selectedCompanyToAdd) return;
+
+    try {
+      const calculationInfo = {
+        calculationId: id,
+        productName: calculation.productName,
+        productVolume: calculation.productVolume,
+        quantity: calculation.quantity,
+        totalCost: calculation.calculations?.totalCostPerUnit || 0,
+        totalCostPerUnit: calculation.calculations?.totalCostPerUnit || 0,
+        unitPrice: calculation.calculations?.unitPrice || 0,
+        profitMargin: calculation.formData?.profitMarginPercent || 0,
+        profitPerUnit: calculation.calculations?.profitPerUnit || 0,
+        finalPrice: calculation.calculations?.unitPrice || 0,
+        totalPrice: calculation.calculations?.totalPrice || 0,
+        notes: calculation.formData?.notes,
+        productType: calculation.productType,
+      };
+
+      await CompaniesService.addPricingCalculationToCompany(
+        selectedCompanyToAdd,
+        calculationInfo
+      );
+
+      toast({
+        title: "Başarılı",
+        description: "Hesaplama müşteriye eklendi",
+      });
+
+      setShowAddCompanyDialog(false);
+      setSelectedCompanyToAdd("");
+      loadLinkedCompanies();
+    } catch (error) {
+      console.error("Error adding company to calculation:", error);
+      toast({
+        title: "Hata",
+        description: "Müşteri eklenirken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveCompanyFromCalculation = async (
+    companyId,
+    calculationRecordId
+  ) => {
+    try {
+      await CompaniesService.removePricingCalculationFromCompany(
+        companyId,
+        calculationRecordId
+      );
+
+      toast({
+        title: "Başarılı",
+        description: "Hesaplama müşteriden kaldırıldı",
+      });
+
+      loadLinkedCompanies();
+    } catch (error) {
+      console.error("Error removing company from calculation:", error);
+      toast({
+        title: "Hata",
+        description: "Müşteri kaldırılırken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await PricingService.deletePricingCalculation(id);
+
+      toast({
+        title: "Silindi",
+        description: "Hesaplama başarıyla silindi.",
+      });
+
+      router.push("/admin/pricing-calculations");
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Silme işlemi başarısız.",
+        variant: "destructive",
+      });
+      setDeleting(false);
     }
   };
 
@@ -202,12 +346,26 @@ export default function PricingCalculationDetailPage({ params }) {
     try {
       setSaving(true);
 
+      // Validation: Ensure formula reference is preserved if it exists
+      if (formData.sourceFormulaId && !formData.sourceFormulaName) {
+        toast({
+          title: "Eksik Bilgi",
+          description: "Formül referansı eksik. Lütfen sayfayı yenileyin.",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
       // Clean form data
       const cleanFormData = {
         ...formData,
         ingredients: formData.ingredients.filter((ing) => ing.name),
         packaging: formData.packaging.filter((pkg) => pkg.type),
         otherCosts: formData.otherCosts.filter((cost) => cost.description),
+        // CRITICAL: Always preserve formula reference if it exists
+        sourceFormulaId: formData.sourceFormulaId || null,
+        sourceFormulaName: formData.sourceFormulaName || null,
       };
 
       const updatedData = {
@@ -332,6 +490,16 @@ export default function PricingCalculationDetailPage({ params }) {
                     <Calendar className="h-3 w-3" />
                     {formatDate(calculation.createdAt)}
                   </Badge>
+                  {calculation.formData?.sourceFormulaId &&
+                    calculation.formData?.sourceFormulaName && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 border-blue-200"
+                      >
+                        <Beaker className="h-3 w-3 mr-1" />
+                        {calculation.formData.sourceFormulaName}
+                      </Badge>
+                    )}
                 </div>
               </div>
 
@@ -352,6 +520,14 @@ export default function PricingCalculationDetailPage({ params }) {
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Düzenle
+                    </Button>
+                    <Button
+                      onClick={() => setDeleteDialog(true)}
+                      variant="outline"
+                      className="border-2 border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Sil
                     </Button>
                   </>
                 ) : (
@@ -385,6 +561,32 @@ export default function PricingCalculationDetailPage({ params }) {
         </div>
 
         <div className="container mx-auto px-6 py-8 max-w-7xl">
+          {/* Formula Reference Warning in Edit Mode */}
+          {editMode &&
+            formData.sourceFormulaId &&
+            formData.sourceFormulaName && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                <Beaker className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 mb-1">
+                    Bu hesaplama bir formülden oluşturuldu
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    <strong>{formData.sourceFormulaName}</strong> formülü baz
+                    alınarak oluşturulmuştur. Değişiklikleriniz kaydedildiğinde
+                    formül bağlantısı korunacaktır.
+                  </p>
+                  <Link
+                    href={`/admin/formulas/${formData.sourceFormulaId}`}
+                    className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                  >
+                    <Beaker className="h-4 w-4" />
+                    Formülü görüntüle
+                  </Link>
+                </div>
+              </div>
+            )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 hover:shadow-2xl transition-all duration-300 border border-blue-200">
@@ -463,6 +665,115 @@ export default function PricingCalculationDetailPage({ params }) {
               <div className="text-sm mt-2 text-purple-600">Kar marjı</div>
             </div>
           </div>
+
+          {/* Linked Companies Card */}
+          <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
+            <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  Bağlı Müşteriler
+                  <Badge variant="secondary" className="ml-2">
+                    {linkedCompanies.length}
+                  </Badge>
+                </CardTitle>
+                <Button
+                  onClick={() => {
+                    loadAllCompanies();
+                    setShowAddCompanyDialog(true);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-blue-300 hover:bg-blue-50"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Müşteri Ekle
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {loadingCompanies ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              ) : linkedCompanies.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600 mb-4">
+                    Bu hesaplama henüz hiç müşteriye atanmamış
+                  </p>
+                  <Button
+                    onClick={() => {
+                      loadAllCompanies();
+                      setShowAddCompanyDialog(true);
+                    }}
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    İlk Müşteriyi Ekle
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {linkedCompanies.map((company) => {
+                    // Bu company'de bu hesaplamayı bul
+                    const calcInCompany = (
+                      company.pricingCalculations || []
+                    ).find((calc) => calc.calculationId === id);
+
+                    return (
+                      <div
+                        key={company.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <Link
+                            href={`/admin/companies/${company.id}`}
+                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                          >
+                            {company.name}
+                          </Link>
+                          <div className="flex items-center gap-2 mt-1">
+                            {company.email && (
+                              <span className="text-sm text-gray-500">
+                                {company.email}
+                              </span>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {company.status}
+                            </Badge>
+                            {calcInCompany && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs text-blue-600"
+                              >
+                                {new Date(
+                                  calcInCompany.addedAt
+                                ).toLocaleDateString("tr-TR")}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            handleRemoveCompanyFromCalculation(
+                              company.id,
+                              calcInCompany?.id
+                            )
+                          }
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Description */}
           {!editMode && calculation.description && (
@@ -605,18 +916,18 @@ export default function PricingCalculationDetailPage({ params }) {
                                 ).length || 0}{" "}
                             adet
                           </Badge>
-                          {!editMode && calculation.formData?.sourceFormulaId && (
-                            <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/admin/formulas/${calculation.formData.sourceFormulaId}`);
-                              }}
-                              className="ml-2 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950 rounded cursor-pointer transition-colors"
-                            >
-                              <Beaker className="h-3 w-3" />
-                              {calculation.formData.sourceFormulaName} Formülünden
-                            </span>
-                          )}
+                          {!editMode &&
+                            calculation.formData?.sourceFormulaId && (
+                              <Link
+                                href={`/admin/formulas/${calculation.formData.sourceFormulaId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-2 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950 rounded cursor-pointer transition-colors"
+                              >
+                                <Beaker className="h-3 w-3" />
+                                {calculation.formData.sourceFormulaName}{" "}
+                                Formülünden
+                              </Link>
+                            )}
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -1915,6 +2226,116 @@ export default function PricingCalculationDetailPage({ params }) {
             </Card>
           )}
         </div>
+
+        {/* Add Company Dialog */}
+        <Dialog
+          open={showAddCompanyDialog}
+          onOpenChange={setShowAddCompanyDialog}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-600" />
+                Müşteri Ekle
+              </DialogTitle>
+              <DialogDescription>
+                Bu hesaplamayı eklemek istediğiniz müşteriyi seçin
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="company-select">Müşteri Seçin</Label>
+                <Select
+                  value={selectedCompanyToAdd}
+                  onValueChange={setSelectedCompanyToAdd}
+                >
+                  <SelectTrigger id="company-select">
+                    <SelectValue placeholder="Bir müşteri seçin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCompanies
+                      .filter(
+                        (company) =>
+                          !linkedCompanies.some((lc) => lc.id === company.id)
+                      )
+                      .map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{company.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {company.status}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {allCompanies.filter(
+                (company) => !linkedCompanies.some((lc) => lc.id === company.id)
+              ).length === 0 && (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  Tüm müşteriler bu hesaplamaya zaten eklenmiş
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleAddCompanyToCalculation}
+                  disabled={!selectedCompanyToAdd}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ekle
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowAddCompanyDialog(false);
+                    setSelectedCompanyToAdd("");
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  İptal
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+          <AlertDialogContent className="bg-white dark:bg-gray-800">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                Hesaplamayı Sil
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                Bu hesaplamayı silmek istediğinizden emin misiniz? Bu işlem geri
+                alınamaz ve tüm bağlı müşteri kayıtları da kaldırılacaktır.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>İptal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Siliniyor...
+                  </>
+                ) : (
+                  "Sil"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PermissionGuard>
   );

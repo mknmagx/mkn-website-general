@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -65,6 +66,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
 export default function CompanyCommunications({ companyId, companyName }) {
+  const { toast } = useToast();
   const [communications, setCommunications] = useState([]);
   const [upcomingTasks, setUpcomingTasks] = useState([]);
   const [stats, setStats] = useState(null);
@@ -106,7 +108,11 @@ export default function CompanyCommunications({ companyId, companyName }) {
       setUpcomingTasks(tasksData || []);
       setStats(statsData || {});
     } catch (error) {
-      console.error("Error loading communication data:", error);
+      toast({
+        title: "Hata",
+        description: "İletişim verileri yüklenirken bir hata oluştu.",
+        variant: "destructive",
+      });
       setCommunications([]);
       setUpcomingTasks([]);
       setStats({});
@@ -156,22 +162,37 @@ export default function CompanyCommunications({ companyId, companyName }) {
       setIsAddDialogOpen(false);
       setEditingCommunication(null);
       
+      toast({
+        title: "Başarılı",
+        description: "İletişim kaydı başarıyla kaydedildi.",
+      });
+
       // Verileri yenile
       await loadData();
     } catch (error) {
-      console.error("Error saving communication:", error);
+      toast({
+        title: "Hata",
+        description: "İletişim kaydı kaydedilirken bir hata oluştu.",
+        variant: "destructive",
+      });
     }
   };
 
   // İletişim silme
-  const handleDelete = async (id) => {
-    if (window.confirm("Bu iletişim kaydını silmek istediğinizden emin misiniz?")) {
-      try {
-        await deleteCommunication(id);
-        await loadData();
-      } catch (error) {
-        console.error("Error deleting communication:", error);
-      }
+  const confirmAndDelete = async (id) => {
+    try {
+      await deleteCommunication(id);
+      toast({
+        title: "Başarılı",
+        description: "İletişim kaydı silindi.",
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "İletişim kaydı silinirken bir hata oluştu.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -17,10 +17,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Calculator,
   Plus,
   Search,
-  Eye,
   Trash2,
   Loader2,
   Calendar,
@@ -28,11 +33,11 @@ import {
   Package,
   DollarSign,
   FileText,
-  ArrowUpRight,
-  Filter,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as PricingService from "@/lib/services/pricing-service";
+import * as CompaniesService from "@/lib/services/companies-service";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 
 export default function PricingCalculationsPage() {
   const router = useRouter();
@@ -54,9 +60,12 @@ export default function PricingCalculationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
   const [deleting, setDeleting] = useState(false);
+  const [companiesMap, setCompaniesMap] = useState({});
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
 
   useEffect(() => {
     loadCalculations();
+    loadCompaniesData();
   }, []);
 
   const loadCalculations = async () => {
@@ -74,6 +83,36 @@ export default function PricingCalculationsPage() {
       setLoading(false);
     }
   };
+
+  const loadCompaniesData = async () => {
+    try {
+      setLoadingCompanies(true);
+      const allCompanies = await CompaniesService.getAllCompanies();
+      
+      // Her hesaplama için bağlı firmaları map olarak oluştur
+      const map = {};
+      
+      calculations.forEach((calc) => {
+        map[calc.id] = allCompanies.filter((company) => {
+          const calcs = company.pricingCalculations || [];
+          return calcs.some((c) => c.calculationId === calc.id);
+        });
+      });
+      
+      setCompaniesMap(map);
+    } catch (error) {
+      console.error("Error loading companies:", error);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  // Calculations yüklendiğinde companies'i de yükle
+  useEffect(() => {
+    if (calculations.length > 0) {
+      loadCompaniesData();
+    }
+  }, [calculations]);
 
   const handleDelete = async () => {
     try {
@@ -305,29 +344,29 @@ export default function PricingCalculationsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                      <TableHead className="font-bold text-gray-900 dark:text-white py-4">
+                      <TableHead className="font-bold text-gray-900 dark:text-white py-4 w-[240px]">
                         Ürün Bilgileri
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center w-[180px]">
+                        Bağlı Müşteriler
+                      </TableHead>
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center w-[100px]">
                         Miktar
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-right">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-right w-[120px]">
                         Birim Fiyat
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-right">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-right w-[120px]">
                         Toplam Fiyat
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-right">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-right w-[120px]">
                         Birim Maliyet
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-right">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-right w-[110px]">
                         Birim Kar
                       </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
+                      <TableHead className="font-bold text-gray-900 dark:text-white text-center w-[100px]">
                         Kar Marjı
-                      </TableHead>
-                      <TableHead className="font-bold text-gray-900 dark:text-white text-center">
-                        İşlemler
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -351,109 +390,211 @@ export default function PricingCalculationsPage() {
                           }
                         >
                           {/* Ürün Bilgileri */}
-                          <TableCell className="py-4">
-                            <div className="flex items-start gap-3">
-                              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-md flex-shrink-0">
-                                <Calculator className="h-4 w-4 text-white" />
+                          <TableCell className="py-4 max-w-[240px]">
+                            <div className="flex items-start gap-2">
+                              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-1.5 shadow-md flex-shrink-0">
+                                <Calculator className="h-3.5 w-3.5 text-white" />
                               </div>
-                              <div className="min-w-0">
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-1 truncate">
-                                  {calc.productName}
-                                </h3>
-                                <div className="flex gap-1.5 flex-wrap">
+                              <div className="min-w-0 flex-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 leading-tight cursor-help">
+                                        {calc.productName}
+                                      </h3>
+                                    </TooltipTrigger>
+                                    <TooltipContent 
+                                      side="top" 
+                                      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg p-2 max-w-xs"
+                                    >
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {calc.productName}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <div className="flex gap-1 flex-wrap">
                                   <Badge
                                     variant="secondary"
-                                    className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
+                                    className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5"
                                   >
                                     {calc.productType || "Genel"}
                                   </Badge>
                                   {calc.productVolume && (
                                     <Badge
                                       variant="outline"
-                                      className="border-gray-300 dark:border-gray-600 text-xs"
+                                      className="border-gray-300 dark:border-gray-600 text-[10px] px-1.5 py-0.5"
                                     >
                                       {calc.productVolume} ml
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
                                   <Calendar className="h-3 w-3" />
-                                  {formatDate(calc.createdAt)}
+                                  <span className="truncate">{formatDate(calc.createdAt)}</span>
                                 </div>
                               </div>
                             </div>
                           </TableCell>
 
+                          {/* Bağlı Müşteriler */}
+                          <TableCell className="text-center max-w-[180px]">
+                            <TooltipProvider>
+                              {loadingCompanies ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400 mx-auto" />
+                              ) : (
+                                (() => {
+                                  const linkedCompanies = companiesMap[calc.id] || [];
+                                  
+                                  if (linkedCompanies.length === 0) {
+                                    return (
+                                      <Badge variant="outline" className="text-[10px] text-gray-400 px-1.5 py-0.5">
+                                        Atanmamış
+                                      </Badge>
+                                    );
+                                  }
+                                  
+                                  if (linkedCompanies.length === 1) {
+                                    return (
+                                      <Link
+                                        href={`/admin/companies/${linkedCompanies[0].id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-[11px] font-medium max-w-full"
+                                      >
+                                        <Building2 className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{linkedCompanies[0].name}</span>
+                                      </Link>
+                                    );
+                                  }
+                                  
+                                  // Birden fazla firma varsa
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="inline-flex items-center gap-1.5 max-w-full">
+                                          <Link
+                                            href={`/admin/companies/${linkedCompanies[0].id}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-[11px] font-medium min-w-0"
+                                          >
+                                            <Building2 className="h-3 w-3 flex-shrink-0" />
+                                            <span className="truncate max-w-[80px]">{linkedCompanies[0].name}</span>
+                                          </Link>
+                                          <Badge 
+                                            variant="secondary" 
+                                            className="bg-blue-600 text-white hover:bg-blue-700 cursor-help text-[10px] px-1.5 py-0.5 flex-shrink-0"
+                                          >
+                                            +{linkedCompanies.length - 1}
+                                          </Badge>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent 
+                                        side="top" 
+                                        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg p-3 max-w-xs"
+                                      >
+                                        <div className="space-y-2">
+                                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                                            Tüm Bağlı Müşteriler ({linkedCompanies.length})
+                                          </p>
+                                          <div className="space-y-1.5">
+                                            {linkedCompanies.map((company) => (
+                                              <Link
+                                                key={company.id}
+                                                href={`/admin/companies/${company.id}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-md transition-colors"
+                                              >
+                                                <Building2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                                <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                  {company.name}
+                                                </span>
+                                                {company.status && (
+                                                  <Badge variant="outline" className="text-xs ml-auto flex-shrink-0">
+                                                    {company.status}
+                                                  </Badge>
+                                                )}
+                                              </Link>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()
+                              )}
+                            </TooltipProvider>
+                          </TableCell>
+
                           {/* Miktar */}
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <Package className="h-4 w-4 text-gray-400" />
-                              <span className="font-semibold text-gray-900 dark:text-white">
+                          <TableCell className="text-center max-w-[100px]">
+                            <div className="flex items-center justify-center gap-1">
+                              <Package className="h-3.5 w-3.5 text-gray-400" />
+                              <span className="font-semibold text-gray-900 dark:text-white text-sm">
                                 {calc.quantity?.toLocaleString() || "0"}
                               </span>
                             </div>
                           </TableCell>
 
                           {/* Birim Fiyat */}
-                          <TableCell className="text-right">
+                          <TableCell className="text-right max-w-[120px]">
                             <div className="flex flex-col items-end">
-                              <span className="font-bold text-blue-700 dark:text-blue-300">
+                              <span className="font-bold text-blue-700 dark:text-blue-300 text-sm">
                                 ₺{calc.calculations?.unitPrice?.toFixed(2) || "0.00"}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
                                 satış fiyatı
                               </span>
                             </div>
                           </TableCell>
 
                           {/* Toplam Fiyat */}
-                          <TableCell className="text-right">
+                          <TableCell className="text-right max-w-[120px]">
                             <div className="flex flex-col items-end">
-                              <span className="font-bold text-green-700 dark:text-green-300">
+                              <span className="font-bold text-green-700 dark:text-green-300 text-sm">
                                 ₺
                                 {calc.calculations?.totalPrice?.toFixed(2) ||
                                   "0.00"}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
                                 toplam
                               </span>
                             </div>
                           </TableCell>
 
                           {/* Birim Maliyet */}
-                          <TableCell className="text-right">
+                          <TableCell className="text-right max-w-[120px]">
                             <div className="flex flex-col items-end">
-                              <span className="font-bold text-orange-700 dark:text-orange-300">
+                              <span className="font-bold text-orange-700 dark:text-orange-300 text-sm">
                                 ₺
                                 {calc.calculations?.totalCostPerUnit?.toFixed(
                                   2
                                 ) || "0.00"}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
                                 maliyet
                               </span>
                             </div>
                           </TableCell>
 
                           {/* Birim Kar */}
-                          <TableCell className="text-right">
+                          <TableCell className="text-right max-w-[110px]">
                             <div className="flex flex-col items-end">
-                              <span className="font-bold text-purple-700 dark:text-purple-300">
+                              <span className="font-bold text-purple-700 dark:text-purple-300 text-sm">
                                 ₺
                                 {calc.calculations?.profitPerUnit?.toFixed(2) ||
                                   "0.00"}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
                                 kar
                               </span>
                             </div>
                           </TableCell>
 
                           {/* Kar Marjı */}
-                          <TableCell className="text-center">
+                          <TableCell className="text-center max-w-[100px]">
                             <Badge
                               variant="outline"
-                              className={`font-bold ${
+                              className={`font-bold text-[10px] px-1.5 py-0.5 ${
                                 parseFloat(profitMargin) >= 30
                                   ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700"
                                   : parseFloat(profitMargin) >= 15
@@ -461,39 +602,9 @@ export default function PricingCalculationsPage() {
                                   : "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700"
                               }`}
                             >
-                              <TrendingUp className="h-3 w-3 mr-1" />
+                              <TrendingUp className="h-3 w-3 mr-0.5" />
                               %{profitMargin}
                             </Badge>
-                          </TableCell>
-
-                          {/* İşlemler */}
-                          <TableCell>
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(
-                                    `/admin/pricing-calculations/${calc.id}`
-                                  );
-                                }}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteDialog({ open: true, id: calc.id });
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </TableCell>
                         </TableRow>
                       );

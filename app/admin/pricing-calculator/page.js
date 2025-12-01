@@ -59,11 +59,13 @@ import {
   Info,
   CheckCircle,
   ChevronDown,
+  Building2,
 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { useClaude } from "../../../hooks/use-claude";
 import * as FormulaService from "../../../lib/services/formula-service";
 import * as PricingService from "../../../lib/services/pricing-service";
+import * as CompaniesService from "../../../lib/services/companies-service";
 
 // Form başlangıç değerleri
 const initialFormState = {
@@ -89,6 +91,7 @@ const initialFormState = {
   notes: "",
   sourceFormulaId: null,
   sourceFormulaName: null,
+  selectedCompanyIds: [], // Seçili müşteriler
 };
 
 export default function PricingCalculatorPage() {
@@ -118,11 +121,26 @@ export default function PricingCalculatorPage() {
   const [showGenerateFormulaDialog, setShowGenerateFormulaDialog] =
     useState(false);
   const [formulaLevel, setFormulaLevel] = useState(5);
+  const [companies, setCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
 
   // Load formulas
   useEffect(() => {
     loadSavedFormulas();
+    loadCompanies();
   }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setLoadingCompanies(true);
+      const data = await CompaniesService.getCompaniesForSelect();
+      setCompanies(data);
+    } catch (error) {
+      console.error("Error loading companies:", error);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
 
   const loadSavedFormulas = async () => {
     try {
@@ -468,6 +486,18 @@ JSON formatında şu bilgileri içer:
     try {
       setSavingCalculation(true);
 
+      // Validation: Ensure formula reference is preserved if it exists
+      if (formData.sourceFormulaId && !formData.sourceFormulaName) {
+        toast({
+          title: "Eksik Bilgi",
+          description:
+            "Formül referansı eksik. Lütfen formülü yeniden yükleyin.",
+          variant: "destructive",
+        });
+        setSavingCalculation(false);
+        return;
+      }
+
       const cleanFormData = {
         productName: formData.productName || "",
         productType: formData.productType || "",
@@ -489,6 +519,7 @@ JSON formatında şu bilgileri içer:
         profitMarginPercent: formData.profitMarginPercent || "20",
         profitAmountPerUnit: formData.profitAmountPerUnit || "",
         notes: formData.notes || "",
+        // CRITICAL: Always preserve formula reference if it exists
         sourceFormulaId: formData.sourceFormulaId || null,
         sourceFormulaName: formData.sourceFormulaName || null,
       };
@@ -508,11 +539,43 @@ JSON formatında şu bilgileri içer:
         },
       };
 
-      const id = await PricingService.savePricingCalculation(calculationData);
+      // Save calculation with linked companies
+      const selectedCompanyIds = formData.selectedCompanyIds || [];
+      const id = await PricingService.savePricingCalculation(
+        calculationData,
+        selectedCompanyIds
+      );
+
+      // Add calculation to selected companies
+      if (selectedCompanyIds.length > 0) {
+        const calculationInfo = {
+          calculationId: id,
+          productName: cleanFormData.productName,
+          productVolume: cleanFormData.productVolume,
+          quantity: parseFloat(cleanFormData.quantity) || 0,
+          totalCost: parseFloat(calculatePrice.totalCostPerUnit) || 0,
+          totalCostPerUnit: parseFloat(calculatePrice.totalCostPerUnit) || 0,
+          unitPrice: parseFloat(calculatePrice.unitPrice) || 0,
+          profitMargin: parseFloat(cleanFormData.profitMarginPercent) || 0,
+          profitPerUnit: parseFloat(calculatePrice.profitPerUnit) || 0,
+          finalPrice: parseFloat(calculatePrice.unitPrice) || 0,
+          totalPrice: parseFloat(calculatePrice.totalPrice) || 0,
+          notes: cleanFormData.notes,
+          productType: cleanFormData.productType,
+        };
+
+        await CompaniesService.addPricingCalculationToMultipleCompanies(
+          selectedCompanyIds,
+          calculationInfo
+        );
+      }
 
       toast({
         title: "Kaydedildi",
-        description: "Hesaplama başarıyla kaydedildi.",
+        description:
+          selectedCompanyIds.length > 0
+            ? `Hesaplama başarıyla kaydedildi ve ${selectedCompanyIds.length} müşteriye atandı.`
+            : "Hesaplama başarıyla kaydedildi.",
       });
 
       router.push(`/admin/pricing-calculations/${id}`);
@@ -911,6 +974,81 @@ JSON formatında şu bilgileri içer:
                     className="border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    İlgili Müşteriler (Opsiyonel)
+                  </Label>
+                  <div className="border-2 border-gray-300 rounded-lg p-3 min-h-[100px] max-h-[200px] overflow-y-auto">
+                    {loadingCompanies ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : companies.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        Henüz müşteri bulunmuyor
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {companies.map((company) => (
+                          <label
+                            key={company.id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(
+                                formData.selectedCompanyIds || []
+                              ).includes(company.id)}
+                              onChange={(e) => {
+                                const currentIds =
+                                  formData.selectedCompanyIds || [];
+                                if (e.target.checked) {
+                                  updateField("selectedCompanyIds", [
+                                    ...currentIds,
+                                    company.id,
+                                  ]);
+                                } else {
+                                  updateField(
+                                    "selectedCompanyIds",
+                                    currentIds.filter((id) => id !== company.id)
+                                  );
+                                }
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {company.name}
+                              </p>
+                              {company.email && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {company.email}
+                                </p>
+                              )}
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="text-xs flex-shrink-0"
+                            >
+                              {company.status}
+                            </Badge>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {(formData.selectedCompanyIds || []).length > 0 && (
+                    <p className="text-sm text-blue-600 mt-2">
+                      {formData.selectedCompanyIds.length} müşteri seçildi
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Bu hesaplama seçtiğiniz müşterilere otomatik olarak
+                    atanacaktır
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -930,11 +1068,26 @@ JSON formatında şu bilgileri içer:
                       <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                         <Beaker className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         Hammadde Bileşenleri
+                        {formData.sourceFormulaId &&
+                          formData.sourceFormulaName && (
+                            <Badge
+                              variant="outline"
+                              className="ml-2 bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              <Beaker className="h-3 w-3 mr-1" />
+                              {formData.sourceFormulaName}
+                            </Badge>
+                          )}
                       </CardTitle>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {formData.ingredients.filter((i) => i.name).length}{" "}
                         hammadde • Toplam: {calculatePrice.totalProductVolume}{" "}
                         gram
+                        {formData.sourceFormulaId && (
+                          <span className="text-blue-600 ml-2">
+                            • Formülden yüklendi
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2788,7 +2941,6 @@ JSON formatında şu bilgileri içer:
           </div>
         </DialogContent>
       </Dialog>
-    
     </PermissionGuard>
   );
 }

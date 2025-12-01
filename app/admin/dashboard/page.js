@@ -553,7 +553,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <PermissionGuard requiredPermission="quotes.view">
               <StatCard
-                title="Fiyat Talepleri"
+                title="Quote İstekleri"
                 value={quoteStats.total}
                 icon={FileText}
                 color="bg-blue-600"

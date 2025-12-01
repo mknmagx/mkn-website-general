@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { PermissionGuard } from "../../../../../components/admin-route-guard";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminAuth } from "../../../../../hooks/use-admin-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   getCompanyById,
   updateCompany,
@@ -19,6 +20,17 @@ import {
   CardTitle,
 } from "../../../../../components/ui/card";
 import { Badge } from "../../../../../components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../../../../components/ui/alert-dialog";
 import {
   ArrowLeft,
   Building2,
@@ -39,8 +51,10 @@ export default function EditCompanyPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAdminAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [newService, setNewService] = useState("");
 
@@ -62,6 +76,9 @@ export default function EditCompanyPage() {
     foundedYear: "",
     monthlyBudget: "",
     description: "",
+    taxOffice: "",
+    taxNumber: "",
+    mersisNumber: "",
     tags: [],
     services: [],
     socialMedia: {
@@ -96,6 +113,9 @@ export default function EditCompanyPage() {
             foundedYear: companyData.foundedYear || "",
             monthlyBudget: companyData.monthlyBudget || "",
             description: companyData.description || "",
+            taxOffice: companyData.taxOffice || "",
+            taxNumber: companyData.taxNumber || "",
+            mersisNumber: companyData.mersisNumber || "",
             // Ensure arrays are initialized
             tags: companyData.tags || [],
             services: companyData.services || [],
@@ -108,13 +128,19 @@ export default function EditCompanyPage() {
           });
         } else {
           // Firma bulunamadı, hata göster
-          console.error("Company not found");
-          alert("Firma bulunamadı!");
+          toast({
+            title: "Hata",
+            description: "Firma bulunamadı!",
+            variant: "destructive",
+          });
           router.push("/admin/companies");
         }
       } catch (error) {
-        console.error("Error loading company:", error);
-        alert("Firma bilgileri yüklenirken bir hata oluştu!");
+        toast({
+          title: "Hata",
+          description: "Firma bilgileri yüklenirken bir hata oluştu!",
+          variant: "destructive",
+        });
         router.push("/admin/companies");
       } finally {
         setLoading(false);
@@ -188,27 +214,47 @@ export default function EditCompanyPage() {
 
     // Form validation
     if (!formData.name.trim()) {
-      alert("Firma adı zorunludur!");
+      toast({
+        title: "Uyarı",
+        description: "Firma adı zorunludur!",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!formData.businessLine) {
-      alert("İş kolu seçimi zorunludur!");
+      toast({
+        title: "Uyarı",
+        description: "İş kolu seçimi zorunludur!",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!formData.phone.trim()) {
-      alert("Telefon numarası zorunludur!");
+      toast({
+        title: "Uyarı",
+        description: "Telefon numarası zorunludur!",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!formData.email.trim()) {
-      alert("E-posta adresi zorunludur!");
+      toast({
+        title: "Uyarı",
+        description: "E-posta adresi zorunludur!",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!formData.contactPerson.trim()) {
-      alert("İletişim kişisi zorunludur!");
+      toast({
+        title: "Uyarı",
+        description: "İletişim kişisi zorunludur!",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -218,42 +264,49 @@ export default function EditCompanyPage() {
       // Updating company data
 
       await updateCompany(params.id, formData);
-      alert("Firma başarıyla güncellendi!");
+      toast({
+        title: "Başarılı",
+        description: "Firma başarıyla güncellendi!",
+      });
 
       // Firma detay sayfasına yönlendir
       router.push(`/admin/companies/${params.id}`);
     } catch (error) {
-      console.error("Error updating company:", error);
-      alert("Firma güncellenirken bir hata oluştu: " + error.message);
+      toast({
+        title: "Hata",
+        description: "Firma güncellenirken bir hata oluştu: " + error.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (
-      window.confirm(
-        "Bu firmayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
-      )
-    ) {
-      setSaving(true);
-      try {
-        // Deleting company
+    setSaving(true);
+    try {
+      // Deleting company
 
-        const { deleteCompany } = await import(
-          "../../../../../lib/services/companies-service"
-        );
-        await deleteCompany(params.id);
-        alert("Firma başarıyla silindi!");
+      const { deleteCompany } = await import(
+        "../../../../../lib/services/companies-service"
+      );
+      await deleteCompany(params.id);
+      toast({
+        title: "Başarılı",
+        description: "Firma başarıyla silindi!",
+      });
 
-        // Firmalar listesine yönlendir
-        router.push("/admin/companies");
-      } catch (error) {
-        console.error("Error deleting company:", error);
-        alert("Firma silinirken bir hata oluştu: " + error.message);
-      } finally {
-        setSaving(false);
-      }
+      // Firmalar listesine yönlendir
+      router.push("/admin/companies");
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Firma silinirken bir hata oluştu: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -560,6 +613,63 @@ export default function EditCompanyPage() {
               </CardContent>
             </Card>
 
+            {/* Tax Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Vergi Bilgileri</CardTitle>
+                <CardDescription>
+                  Şirketin resmi vergi ve ticaret sicil bilgileri
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vergi Dairesi
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.taxOffice}
+                      onChange={(e) =>
+                        handleInputChange("taxOffice", e.target.value)
+                      }
+                      placeholder="Beşiktaş Vergi Dairesi"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vergi Numarası
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.taxNumber}
+                      onChange={(e) =>
+                        handleInputChange("taxNumber", e.target.value)
+                      }
+                      placeholder="1234567890"
+                      maxLength={10}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mersis Numarası
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.mersisNumber}
+                      onChange={(e) =>
+                        handleInputChange("mersisNumber", e.target.value)
+                      }
+                      placeholder="0123456789012345"
+                      maxLength={16}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Contact Person */}
             <Card>
               <CardHeader>
@@ -820,6 +930,36 @@ export default function EditCompanyPage() {
                     İptal
                   </Button>
                 </Link>
+                
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      type="button" 
+                      variant="destructive"
+                      disabled={saving}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Firmayı Sil
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Firmayı silmek istediğinizden emin misiniz?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bu işlem geri alınamaz. Firma ve tüm ilgili kayıtlar kalıcı olarak silinecektir.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>İptal</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {saving ? "Siliniyor..." : "Evet, Sil"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
               <Button
                 type="submit"

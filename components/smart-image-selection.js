@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, Sparkles, ImageIcon, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Smart Image Selection Component
@@ -40,7 +41,11 @@ export function SmartImageSelection({
     try {
       await searchImages(searchQuery, 20);
     } catch (error) {
-      console.error('Simple search failed:', error);
+      toast({
+        title: "Arama Hatası",
+        description: "Görseller aranırken bir hata oluştu.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -56,7 +61,11 @@ export function SmartImageSelection({
       });
       setSearchMode('ai');
     } catch (error) {
-      console.error('AI search failed:', error);
+      toast({
+        title: "AI Arama Hatası",
+        description: "Akıllı görsel arama sırasında bir hata oluştu.",
+        variant: "destructive",
+      });
     }
   };
 

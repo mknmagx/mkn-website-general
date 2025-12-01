@@ -41,8 +41,10 @@ import {
   Bug,
   Bell,
   Mail,
+  Calendar as CalendarIcon,
+  FileSignature,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function AdminNavigation() {
   const pathname = usePathname();
@@ -50,6 +52,28 @@ export default function AdminNavigation() {
   const { hasPermission, hasRole, hasAnyRole } = usePermissions();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState({});
+
+  // Aktif menüyü otomatik olarak aç
+  useEffect(() => {
+    const menuStructure = getMenuStructure();
+    const activeMenu = menuStructure.find((menu) => {
+      if (menu.href) {
+        return pathname.startsWith(menu.href);
+      }
+      if (menu.items) {
+        return menu.items.some((item) => pathname.startsWith(item.href));
+      }
+      return false;
+    });
+
+    if (activeMenu && activeMenu.items) {
+      // Sadece aktif menüyü aç, diğerlerini kapat
+      setOpenMenus({ [activeMenu.id]: true });
+    } else {
+      // Hiçbir alt menü yoksa hepsini kapat
+      setOpenMenus({});
+    }
+  }, [pathname]);
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
@@ -78,10 +102,14 @@ export default function AdminNavigation() {
   };
 
   const toggleMenu = (menuId) => {
-    setOpenMenus((prev) => ({
-      ...prev,
-      [menuId]: !prev[menuId],
-    }));
+    setOpenMenus((prev) => {
+      // Eğer açılmak istenen menü zaten açıksa kapat
+      if (prev[menuId]) {
+        return { [menuId]: false };
+      }
+      // Değilse, sadece bu menüyü aç, diğerlerini kapat
+      return { [menuId]: true };
+    });
   };
 
   const isMenuActive = (items) => {
@@ -141,21 +169,9 @@ export default function AdminNavigation() {
       show: hasPermission("blog.read"),
       items: [
         {
-          name: "Tüm Gönderiler",
+          name: "Dashboard",
           href: "/admin/social-media",
-          icon: Share2,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Yeni Gönderi Oluştur",
-          href: "/admin/social-media/create",
-          icon: FileText,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Şablonlar",
-          href: "/admin/social-media/social-media-templates",
-          icon: Folder,
+          icon: LayoutDashboard,
           show: hasPermission("blog.read"),
         },
         {
@@ -165,9 +181,21 @@ export default function AdminNavigation() {
           show: hasPermission("blog.read"),
         },
         {
-          name: "Ayarlar",
-          href: "/admin/social-media/settings",
-          icon: Settings,
+          name: "İçerik Planlama",
+          href: "/admin/social-media/calendar-view",
+          icon: CalendarIcon,
+          show: hasPermission("blog.read"),
+        },
+        {
+          name: "İçerik Stüdyosu",
+          href: "/admin/social-media/content-studio",
+          icon: Sparkles,
+          show: hasPermission("blog.read"),
+        },
+        {
+          name: "İçerik Kütüphanesi",
+          href: "/admin/social-media/content-list",
+          icon: Database,
           show: hasPermission("blog.read"),
         },
       ],
@@ -178,6 +206,7 @@ export default function AdminNavigation() {
       icon: Building2,
       show:
         hasPermission("companies.view") ||
+        hasPermission("contracts.view") ||
         hasPermission("quotes.view") ||
         hasPermission("contacts.view") ||
         hasPermission("requests.view"),
@@ -187,6 +216,12 @@ export default function AdminNavigation() {
           href: "/admin/companies",
           icon: Building2,
           show: hasPermission("companies.view"),
+        },
+        {
+          name: "Contracts",
+          href: "/admin/contracts",
+          icon: FileSignature,
+          show: hasPermission("contracts.view"),
         },
         {
           name: "Quote İstekleri",
@@ -393,19 +428,19 @@ export default function AdminNavigation() {
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #d1d5db 0%, #9ca3af 100%);
+          background: linear-gradient(180deg, #e0e7ff 0%, #c7d2fe 100%);
           border-radius: 10px;
           transition: all 0.3s ease;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #9ca3af 0%, #6b7280 100%);
+          background: linear-gradient(180deg, #c7d2fe 0%, #a5b4fc 100%);
         }
 
         /* For Firefox */
         .custom-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: #9ca3af transparent;
+          scrollbar-color: #c7d2fe transparent;
         }
 
         /* Mobile menu scrollbar */
@@ -433,41 +468,39 @@ export default function AdminNavigation() {
       `}</style>
 
       {/* Desktop Navigation */}
-      <nav className="custom-scrollbar hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:bg-white lg:pt-5 lg:pb-4 lg:overflow-y-auto">
-        <div className="flex items-center justify-between flex-shrink-0 px-6 pb-3 mb-1 border-b border-gray-200">
+      <nav className="custom-scrollbar hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:bg-gradient-to-b lg:from-white lg:to-gray-50 lg:pt-5 lg:pb-4 lg:overflow-y-auto">
+        <div className="flex items-center justify-between flex-shrink-0 px-6 pb-4 mb-2 border-b border-gray-200">
           <Link
             href="/admin/dashboard"
             className="flex items-center gap-2 group"
           >
             <img
-              className="h-6 w-auto transition-opacity duration-200 group-hover:opacity-80"
+              className="h-6 w-auto transition-all duration-200 group-hover:scale-105"
               src="/MKN-GROUP-LOGO.png"
               alt="MKN Group"
             />
-            <span className="text-xs font-semibold text-gray-700">
-              MKN - Panel
-            </span>
+            <span className="text-xs font-bold text-gray-800">MKN - Panel</span>
           </Link>
           <div className="flex items-center gap-1">
             <button
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 relative"
+              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
               title="Bildirimler"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
             </button>
             <button
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 relative"
+              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
               title="Mesajlar"
             >
               <Mail className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white"></span>
             </button>
           </div>
         </div>
 
         {/* Navigation Links */}
-        <nav className="mt-4 flex-1 px-2 space-y-1">
+        <nav className="mt-5 flex-1 px-3 space-y-1.5">
           {menuStructure.map((menu) => {
             const Icon = menu.icon;
             const isOpen = openMenus[menu.id];
@@ -483,14 +516,16 @@ export default function AdminNavigation() {
                   href={menu.href}
                   className={`${
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                  } group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200`}
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
+                      : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
+                  } group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200`}
                 >
                   <Icon
                     className={`${
-                      isActive ? "text-blue-600" : "text-gray-400"
-                    } flex-shrink-0 mr-3 h-5 w-5`}
+                      isActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-gray-600"
+                    } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
                   />
                   <span>{menu.name}</span>
                 </Link>
@@ -504,30 +539,32 @@ export default function AdminNavigation() {
                   onClick={() => toggleMenu(menu.id)}
                   className={`${
                     isActive
-                      ? "bg-gray-50 text-gray-900"
+                      ? "bg-gray-100 text-gray-900 shadow-sm"
                       : "text-gray-700 hover:bg-gray-50"
-                  } group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200`}
+                  } group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200`}
                 >
                   <div className="flex items-center">
                     <Icon
                       className={`${
-                        isActive ? "text-gray-700" : "text-gray-400"
-                      } flex-shrink-0 mr-3 h-5 w-5`}
+                        isActive
+                          ? "text-blue-600"
+                          : "text-gray-400 group-hover:text-gray-600"
+                      } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
                     />
                     <span>{menu.name}</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-gray-400 transition-transform duration-300 ${
-                      isOpen ? "rotate-0" : "-rotate-90"
+                    className={`h-4 w-4 text-gray-400 transition-all duration-300 ${
+                      isOpen ? "rotate-0 text-blue-600" : "-rotate-90"
                     }`}
                   />
                 </button>
                 <div
                   className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                    isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
                   }`}
                 >
-                  <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-1 py-1">
+                  <div className="ml-5 pl-4 border-l-2 border-blue-200 space-y-1 py-1.5">
                     {menu.items.map((item) => {
                       const SubIcon = item.icon;
                       const isSubActive = pathname.startsWith(item.href);
@@ -537,16 +574,20 @@ export default function AdminNavigation() {
                           href={item.href}
                           className={`${
                             isSubActive
-                              ? "bg-blue-50 text-blue-700"
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
                               : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                           } group flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200`}
                         >
                           <SubIcon
                             className={`${
-                              isSubActive ? "text-blue-600" : "text-gray-400"
-                            } flex-shrink-0 mr-3 h-4 w-4`}
+                              isSubActive
+                                ? "text-white"
+                                : "text-gray-400 group-hover:text-gray-600"
+                            } flex-shrink-0 mr-3 h-4 w-4 transition-colors`}
                           />
-                          <span className="text-xs">{item.name}</span>
+                          <span className="text-xs font-medium">
+                            {item.name}
+                          </span>
                         </Link>
                       );
                     })}
@@ -558,20 +599,20 @@ export default function AdminNavigation() {
         </nav>
 
         {/* User Info & Role Badge - Bottom */}
-        <div className="flex-shrink-0 mx-3 mb-3 p-3 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200">
+        <div className="flex-shrink-0 mx-3 mb-3 p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border border-blue-100 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md ring-2 ring-white">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-2 ring-blue-100">
                 <span className="text-base font-semibold text-white">
                   {user?.displayName?.charAt(0)?.toUpperCase() ||
                     user?.email?.charAt(0)?.toUpperCase() ||
                     "A"}
                 </span>
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-400 rounded-full border-2 border-white"></div>
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">
+              <p className="text-sm font-bold text-gray-900 truncate">
                 {user?.displayName || "Admin User"}
               </p>
               <p className="text-xs text-gray-500 truncate">
@@ -579,9 +620,9 @@ export default function AdminNavigation() {
               </p>
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+          <div className="mt-3 pt-3 border-t border-blue-100 flex items-center justify-between">
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium shadow-sm ${getRoleBadgeColor(
+              className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm ${getRoleBadgeColor(
                 userRole
               )}`}
             >
@@ -602,33 +643,33 @@ export default function AdminNavigation() {
       {/* Mobile Navigation */}
       <div className="lg:hidden">
         {/* Mobile menu button */}
-        <div className="flex items-center justify-between bg-white border-b border-gray-200 px-4 py-2.5 sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center justify-between bg-gradient-to-r from-white to-gray-50 border-b border-gray-200 px-4 py-3 sticky top-0 z-50 shadow-sm">
           <div className="flex items-center gap-2">
             <img
               className="h-6 w-auto"
               src="/MKN-GROUP-LOGO.png"
               alt="MKN Group"
             />
-            <span className="text-xs font-semibold text-gray-700">Panel</span>
+            <span className="text-xs font-bold text-gray-800">Panel</span>
           </div>
           <div className="flex items-center gap-1">
             <button
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 relative"
+              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
               title="Bildirimler"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
             </button>
             <button
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 relative"
+              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
               title="Mesajlar"
             >
               <Mail className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white"></span>
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
             >
               {isMobileMenuOpen ? (
                 <X className="h-6 w-6" />
@@ -641,8 +682,8 @@ export default function AdminNavigation() {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="mobile-scrollbar bg-white border-b border-gray-200 shadow-lg max-h-[calc(100vh-64px)] overflow-y-auto">
-            <nav className="px-2 py-3 space-y-1">
+          <div className="mobile-scrollbar bg-gradient-to-b from-white to-gray-50 border-b border-gray-200 shadow-xl max-h-[calc(100vh-64px)] overflow-y-auto">
+            <nav className="px-3 py-4 space-y-1.5">
               {menuStructure.map((menu) => {
                 const Icon = menu.icon;
                 const isOpen = openMenus[menu.id];
@@ -659,14 +700,16 @@ export default function AdminNavigation() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`${
                         isActive
-                          ? "bg-blue-50 text-blue-700"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } group flex items-center px-3 py-3 text-base font-medium rounded-lg transition-all duration-200`}
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
+                          : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
+                      } group flex items-center px-3 py-3 text-base font-medium rounded-xl transition-all duration-200`}
                     >
                       <Icon
                         className={`${
-                          isActive ? "text-blue-600" : "text-gray-400"
-                        } flex-shrink-0 mr-3 h-6 w-6`}
+                          isActive
+                            ? "text-white"
+                            : "text-gray-400 group-hover:text-gray-600"
+                        } flex-shrink-0 mr-3 h-6 w-6 transition-colors`}
                       />
                       {menu.name}
                     </Link>
@@ -680,30 +723,34 @@ export default function AdminNavigation() {
                       onClick={() => toggleMenu(menu.id)}
                       className={`${
                         isActive
-                          ? "bg-gray-50 text-gray-900"
+                          ? "bg-gray-100 text-gray-900 shadow-sm"
                           : "text-gray-700 hover:bg-gray-50"
-                      } group w-full flex items-center justify-between px-3 py-3 text-base font-medium rounded-lg transition-all duration-200`}
+                      } group w-full flex items-center justify-between px-3 py-3 text-base font-medium rounded-xl transition-all duration-200`}
                     >
                       <div className="flex items-center">
                         <Icon
                           className={`${
-                            isActive ? "text-gray-700" : "text-gray-400"
-                          } flex-shrink-0 mr-3 h-6 w-6`}
+                            isActive
+                              ? "text-blue-600"
+                              : "text-gray-400 group-hover:text-gray-600"
+                          } flex-shrink-0 mr-3 h-6 w-6 transition-colors`}
                         />
                         <span>{menu.name}</span>
                       </div>
                       <ChevronDown
-                        className={`h-5 w-5 text-gray-400 transition-transform duration-300 ${
-                          isOpen ? "rotate-0" : "-rotate-90"
+                        className={`h-5 w-5 text-gray-400 transition-all duration-300 ${
+                          isOpen ? "rotate-0 text-blue-600" : "-rotate-90"
                         }`}
                       />
                     </button>
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                        isOpen
+                          ? "max-h-[500px] opacity-100"
+                          : "max-h-0 opacity-0"
                       }`}
                     >
-                      <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-1 py-1">
+                      <div className="ml-5 pl-4 border-l-2 border-blue-200 space-y-1 py-1.5">
                         {menu.items.map((item) => {
                           const SubIcon = item.icon;
                           const isSubActive = pathname.startsWith(item.href);
@@ -714,18 +761,18 @@ export default function AdminNavigation() {
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={`${
                                 isSubActive
-                                  ? "bg-blue-50 text-blue-700"
+                                  ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
                                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                               } group flex items-center px-3 py-2.5 text-sm rounded-lg transition-all duration-200`}
                             >
                               <SubIcon
                                 className={`${
                                   isSubActive
-                                    ? "text-blue-600"
-                                    : "text-gray-400"
-                                } flex-shrink-0 mr-3 h-5 w-5`}
+                                    ? "text-white"
+                                    : "text-gray-400 group-hover:text-gray-600"
+                                } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
                               />
-                              <span>{item.name}</span>
+                              <span className="font-medium">{item.name}</span>
                             </Link>
                           );
                         })}
@@ -737,21 +784,21 @@ export default function AdminNavigation() {
             </nav>
 
             {/* Mobile User Info - Bottom */}
-            <div className="p-3 border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white">
-              <div className="p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
+            <div className="p-3 border-t border-gray-200 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+              <div className="p-4 rounded-2xl bg-white border border-blue-100 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md ring-2 ring-blue-100">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-2 ring-blue-100">
                       <span className="text-base font-semibold text-white">
                         {user?.displayName?.charAt(0)?.toUpperCase() ||
                           user?.email?.charAt(0)?.toUpperCase() ||
                           "A"}
                       </span>
                     </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-400 rounded-full border-2 border-white"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold text-gray-900 truncate">
+                    <p className="text-base font-bold text-gray-900 truncate">
                       {user?.displayName || "Admin User"}
                     </p>
                     <p className="text-xs text-gray-500 truncate mt-0.5">
@@ -766,7 +813,7 @@ export default function AdminNavigation() {
                     <LogOut className="h-5 w-5" />
                   </button>
                 </div>
-                <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="mt-3 pt-3 border-t border-blue-100">
                   <span
                     className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm ${getRoleBadgeColor(
                       userRole

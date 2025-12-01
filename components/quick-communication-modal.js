@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ import {
 import { getAllCompanies } from "../lib/services/companies-service";
 
 export default function QuickCommunicationModal() {
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,7 +62,11 @@ export default function QuickCommunicationModal() {
         const companiesData = await getAllCompanies();
         setCompanies(companiesData || []);
       } catch (error) {
-        console.error("Error loading companies:", error);
+        toast({
+          title: "Hata",
+          description: "Firmalar yüklenirken bir hata oluştu.",
+          variant: "destructive",
+        });
         setCompanies([]);
       }
     };
@@ -81,7 +87,11 @@ export default function QuickCommunicationModal() {
     e.preventDefault();
     
     if (!formData.companyId || !formData.subject || !formData.content) {
-      alert("Lütfen tüm zorunlu alanları doldurun!");
+      toast({
+        title: "Uyarı",
+        description: "Lütfen tüm zorunlu alanları doldurun!",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -100,10 +110,16 @@ export default function QuickCommunicationModal() {
       });
       
       setIsOpen(false);
-      alert("Görüşme başarıyla kaydedildi!");
+      toast({
+        title: "Başarılı",
+        description: "Görüşme başarıyla kaydedildi!",
+      });
     } catch (error) {
-      console.error("Error saving communication:", error);
-      alert("Görüşme kaydedilirken hata oluştu!");
+      toast({
+        title: "Hata",
+        description: "Görüşme kaydedilirken hata oluştu!",
+        variant: "destructive",
+      });
     }
   };
 

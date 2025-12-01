@@ -7,6 +7,7 @@ import { useRequestCreation } from "../../../../hooks/use-requests";
 import { useCompanies } from "../../../../hooks/use-company";
 import { usePermissions } from "../../../../components/admin-route-guard";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   REQUEST_CATEGORIES,
   REQUEST_PRIORITY,
@@ -83,6 +84,7 @@ export default function NewRequestPage() {
   const router = useRouter();
   const { user } = useAdminAuth();
   const { hasPermission } = usePermissions();
+  const { toast } = useToast();
   const { createRequest, loading, error } = useRequestCreation();
   const { companies, loading: companiesLoading } = useCompanies();
 
@@ -151,10 +153,16 @@ export default function NewRequestPage() {
 
         setQuotes(quotesData);
         setContacts(contactsData);
-        console.log("Fetched quotes:", quotesData.length);
-        console.log("Fetched contacts:", contactsData.length);
+        toast({
+          title: "Veri Yüklendi",
+          description: `${quotesData.length} teklif ve ${contactsData.length} iletişim kaydı bulundu.`,
+        });
       } catch (error) {
-        console.error("Error fetching data:", error);
+        toast({
+          title: "Hata",
+          description: "Veriler yüklenirken bir hata oluştu.",
+          variant: "destructive",
+        });
       } finally {
         setLoadingData(false);
       }
@@ -497,10 +505,16 @@ export default function NewRequestPage() {
       setCompanyExists(true);
 
       // Show success message
-      alert("Firma başarıyla kaydedildi!");
+      toast({
+        title: "Başarılı",
+        description: "Firma başarıyla kaydedildi!",
+      });
     } catch (error) {
-      console.error("Error saving company:", error);
-      alert("Firma kaydedilirken bir hata oluştu.");
+      toast({
+        title: "Hata",
+        description: "Firma kaydedilirken bir hata oluştu.",
+        variant: "destructive",
+      });
     } finally {
       setSavingCompany(false);
     }

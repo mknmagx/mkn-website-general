@@ -10,30 +10,16 @@ import {
   getAllCompanies,
   deleteCompany,
   searchCompanies,
-  getCompaniesByStatus,
-  getCompaniesByBusinessLine,
 } from "../../../lib/services/companies-service";
-import {
-  getAllCommunications,
-  getCommunicationTypeText,
-} from "../../../lib/services/company-communications";
-
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -48,37 +34,27 @@ import {
   Building2,
   Phone,
   Mail,
-  MapPin,
-  Calendar,
-  Users,
-  TrendingUp,
-  Filter,
-  Package,
-  Factory,
-  ShoppingCart,
-  Target,
-  Briefcase,
-  DollarSign,
-  Activity,
-  BarChart3,
+  Globe,
   Eye,
   Edit,
   Trash2,
+  Loader2,
+  Filter,
+  X,
 } from "lucide-react";
 import Link from "next/link";
-import CompanyReportsDashboard from "../../../components/company-reports-dashboard";
-import QuickCommunicationModal from "../../../components/quick-communication-modal";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CompaniesPage() {
   const { user } = useAdminAuth();
   const { hasPermission } = usePermissions();
+  const { toast } = useToast();
+  
   const [companies, setCompanies] = useState([]);
-  const [communications, setCommunications] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBusinessLine, setFilterBusinessLine] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [communicationsLoading, setCommunicationsLoading] = useState(false);
 
   // Permission checks
   const canView = hasPermission("companies.view");
@@ -86,7 +62,7 @@ export default function CompaniesPage() {
   const canEdit = hasPermission("companies.edit");
   const canDelete = hasPermission("companies.delete");
 
-  // Firestore'dan firmaları yükle
+  // Load companies
   const loadCompanies = async () => {
     try {
       setLoading(true);
@@ -94,48 +70,33 @@ export default function CompaniesPage() {
       setCompanies(companiesData);
     } catch (error) {
       console.error("Error loading companies:", error);
-      // Toast mesajı ekleyebilirsiniz
+      toast({
+        title: "Hata",
+        description: "Firmalar yüklenirken bir hata oluştu",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Tüm iletişim geçmişini yükle
-  const loadAllCommunications = async () => {
-    try {
-      setCommunicationsLoading(true);
-      const communicationsData = await getAllCommunications(200);
-      
-      // İletişim verilerini firma bilgileriyle birleştir
-      const communicationsWithCompany = communicationsData.map(comm => {
-        const company = companies.find(c => c.id === comm.companyId);
-        return {
-          ...comm,
-          companyName: company?.name || 'Bilinmeyen Firma',
-          companyEmail: company?.email || '',
-          companyBusinessLine: company?.businessLine || ''
-        };
-      });
-      
-      setCommunications(communicationsWithCompany);
-    } catch (error) {
-      console.error("Error loading communications:", error);
-    } finally {
-      setCommunicationsLoading(false);
-    }
-  };
-
-  // Firma sil
-  const handleDeleteCompany = async (companyId) => {
-    if (window.confirm("Bu firmayı silmek istediğinizden emin misiniz?")) {
+  // Delete company
+  const handleDeleteCompany = async (companyId, companyName) => {
+    if (window.confirm(`"${companyName}" firmasını silmek istediğinizden emin misiniz?`)) {
       try {
         await deleteCompany(companyId);
-        // Listeyi yenile
         await loadCompanies();
-        // Toast mesajı ekleyebilirsiniz
+        toast({
+          title: "Başarılı",
+          description: "Firma başarıyla silindi",
+        });
       } catch (error) {
         console.error("Error deleting company:", error);
-        // Error toast ekleyebilirsiniz
+        toast({
+          title: "Hata",
+          description: "Firma silinirken bir hata oluştu",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -144,814 +105,386 @@ export default function CompaniesPage() {
     loadCompanies();
   }, []);
 
-  // Firmalar yüklenince iletişim geçmişini yükle
-  useEffect(() => {
-    if (companies.length > 0) {
-      loadAllCommunications();
-    }
-  }, [companies]);
-
-  // Arama ve filtreleme
-  const handleSearch = async () => {
-    if (searchTerm.trim()) {
-      try {
-        setLoading(true);
-        const searchResults = await searchCompanies(searchTerm);
-        setCompanies(searchResults);
-      } catch (error) {
-        console.error("Error searching companies:", error);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      loadCompanies();
-    }
-  };
-
-  const handleStatusFilter = async (status) => {
-    setFilterStatus(status);
-    if (status === "all") {
-      loadCompanies();
-    } else {
-      try {
-        setLoading(true);
-        const filteredData = await getCompaniesByStatus(status);
-        setCompanies(filteredData);
-      } catch (error) {
-        console.error("Error filtering by status:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleBusinessLineFilter = async (businessLine) => {
-    setFilterBusinessLine(businessLine);
-    if (businessLine === "all") {
-      loadCompanies();
-    } else {
-      try {
-        setLoading(true);
-        const filteredData = await getCompaniesByBusinessLine(businessLine);
-        setCompanies(filteredData);
-      } catch (error) {
-        console.error("Error filtering by business line:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Client-side filtreleme (eğer zaten filtrelenmiş data varsa)
+  // Client-side filtering
   const filteredCompanies = companies.filter((company) => {
     const matchesSearch =
       !searchTerm ||
       company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       company.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       company.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.address?.toLowerCase().includes(searchTerm.toLowerCase());
+      company.phone?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatusFilter =
+    const matchesStatus =
       filterStatus === "all" || company.status === filterStatus;
-    const matchesBusinessLineFilter =
-      filterBusinessLine === "all" ||
-      company.businessLine === filterBusinessLine;
+      
+    const matchesBusinessLine =
+      filterBusinessLine === "all" || company.businessLine === filterBusinessLine;
 
-    return matchesSearch && matchesStatusFilter && matchesBusinessLineFilter;
+    return matchesSearch && matchesStatus && matchesBusinessLine;
   });
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "lead":
-        return "bg-blue-100 text-blue-800";
-      case "prospect":
-        return "bg-blue-100 text-blue-800";
-      case "negotiation":
-        return "bg-orange-100 text-orange-800";
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "client":
-        return "bg-green-100 text-green-800";
-      case "paused":
-        return "bg-gray-100 text-gray-800";
-      case "inactive":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    const colors = {
+      "lead": "bg-blue-100 text-blue-700 border-blue-200",
+      "negotiation": "bg-yellow-100 text-yellow-700 border-yellow-200",
+      "active-client": "bg-green-100 text-green-700 border-green-200",
+      "completed": "bg-purple-100 text-purple-700 border-purple-200",
+      "paused": "bg-gray-100 text-gray-700 border-gray-200",
+    };
+    return colors[status] || "bg-gray-100 text-gray-700 border-gray-200";
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      "lead": "Potansiyel",
+      "negotiation": "Görüşme",
+      "active-client": "Aktif Müşteri",
+      "completed": "Tamamlandı",
+      "paused": "Beklemede",
+    };
+    return labels[status] || status;
   };
 
   const getBusinessLineColor = (businessLine) => {
-    switch (businessLine) {
-      case "ambalaj":
-        return "bg-indigo-100 text-indigo-800";
-      case "eticaret":
-        return "bg-violet-100 text-violet-800";
-      case "pazarlama":
-        return "bg-pink-100 text-pink-800";
-      case "fason-kozmetik":
-        return "bg-emerald-100 text-emerald-800";
-      case "fason-gida":
-        return "bg-orange-100 text-orange-800";
-      case "fason-temizlik":
-        return "bg-cyan-100 text-cyan-800";
-      case "tasarim":
-        return "bg-purple-100 text-purple-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    const colors = {
+      "ambalaj": "bg-indigo-50 text-indigo-700 border-indigo-200",
+      "eticaret": "bg-violet-50 text-violet-700 border-violet-200",
+      "pazarlama": "bg-pink-50 text-pink-700 border-pink-200",
+      "fason-kozmetik": "bg-emerald-50 text-emerald-700 border-emerald-200",
+      "fason-gida": "bg-orange-50 text-orange-700 border-orange-200",
+      "fason-temizlik": "bg-cyan-50 text-cyan-700 border-cyan-200",
+      "tasarim": "bg-purple-50 text-purple-700 border-purple-200",
+    };
+    return colors[businessLine] || "bg-gray-50 text-gray-700 border-gray-200";
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case "lead":
-        return "Potansiyel";
-      case "prospect":
-        return "Potansiyel";
-      case "negotiation":
-        return "Görüşme";
-      case "active":
-        return "Aktif";
-      case "client":
-        return "Müşteri";
-      case "paused":
-        return "Beklemede";
-      case "inactive":
-        return "Pasif";
-      default:
-        return status || "Durum belirtilmemiş";
-    }
-  };
-
-  const getBusinessLineText = (businessLine) => {
-    switch (businessLine) {
-      case "ambalaj":
-        return "Ambalaj Üretimi";
-      case "eticaret":
-        return "E-ticaret Danışmanlığı";
-      case "pazarlama":
-        return "Dijital Pazarlama";
-      case "fason-kozmetik":
-        return "Fason Kozmetik Üretimi";
-      case "fason-gida":
-        return "Fason Gıda Üretimi";
-      case "fason-temizlik":
-        return "Fason Temizlik Üretimi";
-      case "tasarim":
-        return "Tasarım Hizmetleri";
-      default:
-        return businessLine || "İş kolu belirtilmemiş";
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800";
-      case "medium":
-        return "bg-orange-100 text-orange-800";
-      case "low":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPriorityText = (priority) => {
-    switch (priority) {
-      case "high":
-        return "Yüksek";
-      case "medium":
-        return "Orta";
-      case "low":
-        return "Düşük";
-      default:
-        return priority || "Belirtilmemiş";
-    }
+  const getBusinessLineLabel = (businessLine) => {
+    const labels = {
+      "ambalaj": "Ambalaj",
+      "eticaret": "E-ticaret",
+      "pazarlama": "Pazarlama",
+      "fason-kozmetik": "Kozmetik",
+      "fason-gida": "Gıda",
+      "fason-temizlik": "Temizlik",
+      "tasarim": "Tasarım",
+    };
+    return labels[businessLine] || businessLine;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse">
-          <div className="text-lg text-gray-600">Firmalar yükleniyor...</div>
+      <PermissionGuard requiredPermission="companies.view">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600 font-medium">Firmalar yükleniyor...</p>
+          </div>
         </div>
-      </div>
+      </PermissionGuard>
     );
   }
 
   return (
     <PermissionGuard requiredPermission="companies.view">
-      <div className="space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <Briefcase className="h-8 w-8 text-blue-600" />
-              İş Ortaklıkları Yönetimi
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Ambalaj, fason üretim ve e-ticaret iş kollarındaki firma
-              ilişkilerinizi yönetin
-            </p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
+                  <Building2 className="h-7 w-7 text-white" />
+                </div>
+                Firmalar
+              </h1>
+              <p className="text-gray-600">Tüm iş ortaklarınızı yönetin</p>
+            </div>
+            {canCreate && (
+              <Link href="/admin/companies/new">
+                <Button className="bg-blue-600 hover:bg-blue-700 shadow-md">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Yeni Firma
+                </Button>
+              </Link>
+            )}
           </div>
-          <Link href="/admin/companies/new">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Firma Ekle
-            </Button>
-          </Link>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="companies" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="companies" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Firmalar
-            </TabsTrigger>
-            <TabsTrigger value="communications" className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              İletişim Geçmişi
-            </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Raporlar & Dashboard
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="companies" className="space-y-6">
-            {/* İş Kolu Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Toplam Firma
-                      </p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {companies.length}
-                      </p>
-                    </div>
-                    <Building2 className="h-6 w-6 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Ambalaj
-                      </p>
-                      <p className="text-xl font-bold text-indigo-600">
-                        {
-                          companies.filter((c) => c.businessLine === "ambalaj")
-                            .length
-                        }
-                      </p>
-                    </div>
-                    <Package className="h-6 w-6 text-indigo-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Fason Üretim
-                      </p>
-                      <p className="text-xl font-bold text-emerald-600">
-                        {
-                          companies.filter((c) =>
-                            c.businessLine.startsWith("fason")
-                          ).length
-                        }
-                      </p>
-                    </div>
-                    <Factory className="h-6 w-6 text-emerald-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        E-ticaret & Pazarlama
-                      </p>
-                      <p className="text-xl font-bold text-violet-600">
-                        {
-                          companies.filter(
-                            (c) =>
-                              c.businessLine === "eticaret" ||
-                              c.businessLine === "pazarlama"
-                          ).length
-                        }
-                      </p>
-                    </div>
-                    <ShoppingCart className="h-6 w-6 text-violet-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Aktif Müşteri
-                      </p>
-                      <p className="text-xl font-bold text-green-600">
-                        {
-                          companies.filter(
-                            (c) =>
-                              c.status === "client" || c.status === "active"
-                          ).length
-                        }
-                      </p>
-                    </div>
-                    <Activity className="h-6 w-6 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filters and Search */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Firma adı, email, kişi adı veya açıklama ara..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          handleSearch();
-                        }
-                      }}
-                      className="pl-10"
-                    />
-                  </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="border-0 shadow-md rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-white/20 rounded-xl p-3">
+                  <Building2 className="h-6 w-6" />
                 </div>
+                <Badge className="bg-white/20 text-white border-0">Toplam</Badge>
+              </div>
+              <h3 className="text-3xl font-bold mb-1">{companies.length}</h3>
+              <p className="text-white/80 text-sm">Toplam Firma</p>
+            </CardContent>
+          </Card>
 
-                <div className="flex gap-2">
-                  <select
-                    value={filterBusinessLine}
-                    onChange={(e) => handleBusinessLineFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Tüm İş Kolları</option>
-                    <option value="ambalaj">Ambalaj Üretimi</option>
-                    <option value="eticaret">E-ticaret Yönetimi</option>
-                    <option value="pazarlama">Pazarlama Hizmetleri</option>
-                    <option value="fason-kozmetik">Fason - Kozmetik</option>
-                    <option value="fason-gida">Fason - Gıda Takviyesi</option>
-                    <option value="fason-temizlik">
-                      Fason - Temizlik Ürünleri
-                    </option>
-                    <option value="tasarim">Tasarım Hizmetleri</option>
-                  </select>
+          <Card className="border-0 shadow-md rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-white/20 rounded-xl p-3">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <Badge className="bg-white/20 text-white border-0">Aktif</Badge>
+              </div>
+              <h3 className="text-3xl font-bold mb-1">
+                {companies.filter(c => c.status === "active-client").length}
+              </h3>
+              <p className="text-white/80 text-sm">Aktif Müşteri</p>
+            </CardContent>
+          </Card>
 
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => handleStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Tüm Durumlar</option>
-                    <option value="lead">Potansiyel</option>
-                    <option value="prospect">Potansiyel</option>
-                    <option value="negotiation">Görüşme</option>
-                    <option value="active">Aktif</option>
-                    <option value="client">Müşteri</option>
-                    <option value="paused">Beklemede</option>
-                    <option value="inactive">Pasif</option>
-                  </select>
+          <Card className="border-0 shadow-md rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-white/20 rounded-xl p-3">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <Badge className="bg-white/20 text-white border-0">Görüşme</Badge>
+              </div>
+              <h3 className="text-3xl font-bold mb-1">
+                {companies.filter(c => c.status === "negotiation").length}
+              </h3>
+              <p className="text-white/80 text-sm">Görüşme Aşamasında</p>
+            </CardContent>
+          </Card>
 
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtrele
-                  </Button>
+          <Card className="border-0 shadow-md rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-white/20 rounded-xl p-3">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <Badge className="bg-white/20 text-white border-0">Potansiyel</Badge>
+              </div>
+              <h3 className="text-3xl font-bold mb-1">
+                {companies.filter(c => c.status === "lead").length}
+              </h3>
+              <p className="text-white/80 text-sm">Potansiyel Müşteri</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="border-0 shadow-md rounded-2xl mb-6 bg-white">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Firma adı, email, kişi veya telefon ara..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 border-gray-200 focus:border-blue-500"
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Companies Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredCompanies.map((company) => (
-                <Card
-                  key={company.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="all">Tüm Durumlar</option>
+                <option value="lead">Potansiyel</option>
+                <option value="negotiation">Görüşme</option>
+                <option value="active-client">Aktif Müşteri</option>
+                <option value="completed">Tamamlandı</option>
+                <option value="paused">Beklemede</option>
+              </select>
+
+              {/* Business Line Filter */}
+              <select
+                value={filterBusinessLine}
+                onChange={(e) => setFilterBusinessLine(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="all">Tüm İş Kolları</option>
+                <option value="ambalaj">Ambalaj</option>
+                <option value="eticaret">E-ticaret</option>
+                <option value="pazarlama">Pazarlama</option>
+                <option value="fason-kozmetik">Kozmetik</option>
+                <option value="fason-gida">Gıda</option>
+                <option value="fason-temizlik">Temizlik</option>
+                <option value="tasarim">Tasarım</option>
+              </select>
+
+              {/* Clear Filters */}
+              {(searchTerm || filterStatus !== "all" || filterBusinessLine !== "all") && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterStatus("all");
+                    setFilterBusinessLine("all");
+                  }}
+                  className="border-gray-200"
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
-                          {company.name}
-                        </CardTitle>
-                        <CardDescription className="text-sm text-gray-600 mb-2">
-                          {getBusinessLineText(company.businessLine)} •{" "}
-                          {getStatusText(company.status)}
-                        </CardDescription>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge
-                            className={getBusinessLineColor(
-                              company.businessLine
-                            )}
-                            variant="secondary"
-                          >
-                            {getBusinessLineText(company.businessLine)}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Badge className={getStatusColor(company.status)}>
-                          {getStatusText(company.status)}
-                        </Badge>
-                        <Badge className={getPriorityColor(company.priority)}>
-                          {getPriorityText(company.priority)}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-3">
-                    {/* Contact Info */}
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Users className="h-4 w-4 mr-2 text-gray-400" />
-                        {company.contactPerson || "Kişi belirtilmemiş"}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                        {company.phone || "Telefon belirtilmemiş"}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                        {company.email || "Email belirtilmemiş"}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                        {company.address || "Adres belirtilmemiş"}
-                      </div>
-                    </div>
-
-                    {/* Project Details */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-600 mb-1">
-                          Proje Detayı:
-                        </p>
-                        <p
-                          className="text-xs text-gray-800 font-medium"
-                          style={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {typeof company.projectDetails === "object" &&
-                          company.projectDetails !== null
-                            ? company.projectDetails.projectDescription ||
-                              "Proje detayı bulunmuyor"
-                            : company.projectDetails ||
-                              "Proje detayı bulunmuyor"}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-gray-500">Aylık Hacim:</span>
-                          <p className="font-medium text-gray-800">
-                            {typeof company.monthlyOrderVolume === "object" &&
-                            company.monthlyOrderVolume !== null
-                              ? company.monthlyOrderVolume.monthlyVolume ||
-                                "Belirtilmemiş"
-                              : company.monthlyOrderVolume || "Belirtilmemiş"}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Beklenen Değer:</span>
-                          <p className="font-medium text-green-600">
-                            {typeof company.expectedOrderValue === "object" &&
-                            company.expectedOrderValue !== null
-                              ? company.expectedOrderValue
-                                  .expectedMonthlyValue || "Belirtilmemiş"
-                              : company.expectedOrderValue || "Belirtilmemiş"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 pt-2 border-t border-gray-50">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">Son İletişim:</span>
-                          <span className="font-medium">
-                            {typeof company.lastContact === "object" &&
-                            company.lastContact !== null
-                              ? new Date(
-                                  company.lastContact.seconds * 1000
-                                ).toLocaleDateString("tr-TR")
-                              : company.lastContact || "Belirtilmemiş"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1">
-                      {(company.tags || []).slice(0, 3).map((tag, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                      {(company.tags || []).length > 3 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{(company.tags || []).length - 3}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
-                      <Link
-                        href={`/admin/companies/${company.id}`}
-                        className="flex-1"
-                      >
-                        <Button variant="outline" className="w-full text-xs">
-                          Detay Görüntüle
-                        </Button>
-                      </Link>
-                      <Link
-                        href={`/admin/companies/${company.id}?tab=communications`}
-                        className="flex-1"
-                      >
-                        <Button
-                          variant="default"
-                          className="w-full text-xs bg-green-600 hover:bg-green-700"
-                        >
-                          Görüşme Ekle
-                        </Button>
-                      </Link>
-                      <Link
-                        href={`/admin/companies/${company.id}/edit`}
-                        className="flex-1"
-                      >
-                        <Button variant="secondary" className="w-full text-xs">
-                          Düzenle
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  <X className="h-4 w-4 mr-2" />
+                  Temizle
+                </Button>
+              )}
             </div>
+          </CardContent>
+        </Card>
 
+        {/* Table */}
+        <Card className="border-0 shadow-md rounded-2xl bg-white">
+          <CardHeader className="border-b border-gray-100">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              Firma Listesi ({filteredCompanies.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold text-gray-700 w-[22%]">Firma Adı</TableHead>
+                    <TableHead className="font-semibold text-gray-700 w-[21%]">İletişim</TableHead>
+                    <TableHead className="font-semibold text-gray-700 w-[12%]">İş Kolu</TableHead>
+                    <TableHead className="font-semibold text-gray-700 w-[12%]">Durum</TableHead>
+                    <TableHead className="font-semibold text-gray-700 w-[22%]">İletişim Kişisi</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700 w-[11%]">İşlemler</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCompanies.map((company, index) => (
+                    <TableRow 
+                      key={company.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      {/* Company Name */}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100 rounded-lg w-10 h-10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-blue-700 font-semibold text-sm">
+                              {company.name?.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              {company.name}
+                            </div>
+                            {company.website && (
+                              <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                <Globe className="h-3 w-3" />
+                                {company.website}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Contact Info */}
+                      <TableCell>
+                        <div className="space-y-1">
+                          {company.phone && (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Phone className="h-3.5 w-3.5 text-gray-400" />
+                              {company.phone}
+                            </div>
+                          )}
+                          {company.email && (
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Mail className="h-3.5 w-3.5 text-gray-400" />
+                              {company.email}
+                            </div>
+                          )}
+                          {!company.phone && !company.email && (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Business Line */}
+                      <TableCell>
+                        <Badge className={`${getBusinessLineColor(company.businessLine)} border`}>
+                          {getBusinessLineLabel(company.businessLine)}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell>
+                        <Badge className={`${getStatusColor(company.status)} border`}>
+                          {getStatusLabel(company.status)}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Contact Person */}
+                      <TableCell>
+                        <div className="text-sm text-gray-900">
+                          {company.contactPerson || "-"}
+                        </div>
+                        {company.contactPosition && (
+                          <div className="text-xs text-gray-500">
+                            {company.contactPosition}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/admin/companies/${company.id}`}>
+                            <Button size="sm" variant="ghost" className="hover:bg-blue-50 hover:text-blue-700">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          {canDelete && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteCompany(company.id, company.name)}
+                              className="hover:bg-red-50 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+            {/* Empty State */}
             {filteredCompanies.length === 0 && (
-              <div className="text-center py-12">
-                <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">
-                  Arama kriterlerinize uygun firma bulunamadı.
+              <div className="text-center py-16">
+                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <Building2 className="h-10 w-10 text-gray-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {searchTerm || filterStatus !== "all" || filterBusinessLine !== "all"
+                    ? "Firma bulunamadı"
+                    : "Henüz firma yok"}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || filterStatus !== "all" || filterBusinessLine !== "all"
+                    ? "Arama kriterlerinizi değiştirip tekrar deneyin"
+                    : "İlk firmayı ekleyerek başlayın"}
                 </p>
-                <p className="text-gray-500 text-sm mt-2">
-                  Farklı arama terimleri deneyin veya yeni bir firma ekleyin.
-                </p>
+                {canCreate && !(searchTerm || filterStatus !== "all" || filterBusinessLine !== "all") && (
+                  <Link href="/admin/companies/new">
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Yeni Firma Ekle
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="communications" className="space-y-6">
-            {/* İletişim Geçmişi Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Toplam İletişim
-                      </p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {communications.length}
-                      </p>
-                    </div>
-                    <Phone className="h-6 w-6 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Bu Ay
-                      </p>
-                      <p className="text-xl font-bold text-green-600">
-                        {communications.filter(comm => {
-                          const commDate = comm.createdAt?.seconds 
-                            ? new Date(comm.createdAt.seconds * 1000)
-                            : new Date(comm.createdAt);
-                          const thisMonth = new Date();
-                          return commDate.getMonth() === thisMonth.getMonth() && 
-                                 commDate.getFullYear() === thisMonth.getFullYear();
-                        }).length}
-                      </p>
-                    </div>
-                    <Calendar className="h-6 w-6 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Aktif Firmalar
-                      </p>
-                      <p className="text-xl font-bold text-purple-600">
-                        {new Set(communications.map(c => c.companyId)).size}
-                      </p>
-                    </div>
-                    <Users className="h-6 w-6 text-purple-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        Bu Hafta
-                      </p>
-                      <p className="text-xl font-bold text-orange-600">
-                        {communications.filter(comm => {
-                          const commDate = comm.createdAt?.seconds 
-                            ? new Date(comm.createdAt.seconds * 1000)
-                            : new Date(comm.createdAt);
-                          const oneWeekAgo = new Date();
-                          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                          return commDate >= oneWeekAgo;
-                        }).length}
-                      </p>
-                    </div>
-                    <TrendingUp className="h-6 w-6 text-orange-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* İletişim Geçmişi Tablosu */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Phone className="h-5 w-5" />
-                  Tüm İletişim Geçmişi
-                </CardTitle>
-                <CardDescription>
-                  Tüm firmalarla yapılan iletişimlerin kronolojik listesi
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {communicationsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Tarih</TableHead>
-                          <TableHead>Firma</TableHead>
-                          <TableHead>İletişim Türü</TableHead>
-                          <TableHead>Konu</TableHead>
-                          <TableHead>İş Kolu</TableHead>
-                          <TableHead>Durum</TableHead>
-                          <TableHead>Aksiyon</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {communications.map((comm, index) => (
-                          <TableRow key={comm.id || index}>
-                            <TableCell className="text-sm text-gray-600">
-                              {comm.createdAt?.seconds 
-                                ? new Date(comm.createdAt.seconds * 1000).toLocaleDateString('tr-TR', {
-                                    day: '2-digit',
-                                    month: '2-digit', 
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })
-                                : new Date(comm.createdAt).toLocaleDateString('tr-TR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })
-                              }
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium text-gray-900 text-sm">
-                                  {comm.companyName}
-                                </div>
-                                {comm.companyEmail && (
-                                  <div className="text-xs text-gray-500">
-                                    {comm.companyEmail}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant="secondary" 
-                                className="text-xs"
-                              >
-                                {getCommunicationTypeText(comm.type)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-900 max-w-xs">
-                              <div className="truncate" title={comm.subject}>
-                                {comm.subject || 'Belirtilmemiş'}
-                              </div>
-                              {comm.notes && (
-                                <div className="text-xs text-gray-500 truncate mt-1" title={comm.notes}>
-                                  {comm.notes}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {comm.companyBusinessLine && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-xs"
-                                >
-                                  {comm.companyBusinessLine === 'ambalaj' ? 'Ambalaj' :
-                                   comm.companyBusinessLine.startsWith('fason') ? 'Fason Üretim' :
-                                   comm.companyBusinessLine.includes('eticaret') ? 'E-ticaret' :
-                                   comm.companyBusinessLine}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={comm.status === 'completed' ? 'default' : 'secondary'}
-                                className="text-xs"
-                              >
-                                {comm.status === 'completed' ? 'Tamamlandı' :
-                                 comm.status === 'scheduled' ? 'Planlandı' :
-                                 comm.status === 'cancelled' ? 'İptal Edildi' :
-                                 comm.status === 'postponed' ? 'Ertelendi' :
-                                 comm.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Link 
-                                href={`/admin/companies/${comm.companyId}`}
-                                className="text-blue-600 hover:text-blue-800 text-sm hover:underline"
-                              >
-                                Firma Detayı
-                              </Link>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    
-                    {communications.length === 0 && (
-                      <div className="text-center py-8">
-                        <Phone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">
-                          Henüz iletişim geçmişi bulunmuyor.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="dashboard" className="space-y-6">
-            <CompanyReportsDashboard />
-          </TabsContent>
-        </Tabs>
-
-        {/* Global Hızlı Görüşme Modal */}
-        <QuickCommunicationModal />
+          </CardContent>
+        </Card>
       </div>
     </PermissionGuard>
   );

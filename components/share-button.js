@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   Popover,
   PopoverContent,
@@ -27,6 +28,7 @@ export default function ShareButton({
   variant = "outline",
   size = "sm" 
 }) {
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -53,8 +55,11 @@ export default function ShareButton({
         setIsOpen(false);
       } catch (error) {
         if (error.name !== 'AbortError') {
-          console.error('Paylaşım hatası:', error);
-          toast.error("Paylaşım sırasında bir hata oluştu");
+          toast({
+            title: "Hata",
+            description: "Paylaşım sırasında bir hata oluştu",
+            variant: "destructive",
+          });
         }
       }
     }
@@ -80,15 +85,21 @@ export default function ShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.success("Link kopyalandı!");
+      toast({
+        title: "Başarılı",
+        description: "Link kopyalandı!",
+      });
       
       setTimeout(() => {
         setCopied(false);
         setIsOpen(false);
       }, 2000);
     } catch (error) {
-      console.error('Kopyalama hatası:', error);
-      toast.error("Link kopyalanamadı");
+      toast({
+        title: "Hata",
+        description: "Link kopyalanamadı",
+        variant: "destructive",
+      });
     }
   };
 
@@ -102,15 +113,21 @@ export default function ShareButton({
     try {
       document.execCommand('copy');
       setCopied(true);
-      toast.success("Link kopyalandı!");
+      toast({
+        title: "Başarılı",
+        description: "Link kopyalandı!",
+      });
       
       setTimeout(() => {
         setCopied(false);
         setIsOpen(false);
       }, 2000);
     } catch (error) {
-      console.error('Kopyalama hatası:', error);
-      toast.error("Link kopyalanamadı");
+      toast({
+        title: "Hata",
+        description: "Link kopyalanamadı",
+        variant: "destructive",
+      });
     } finally {
       document.body.removeChild(textArea);
     }

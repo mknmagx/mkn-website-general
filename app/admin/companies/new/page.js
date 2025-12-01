@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PermissionGuard } from "../../../../components/admin-route-guard";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
+import { useToast } from "@/hooks/use-toast";
 import { createCompany } from "../../../../lib/services/companies-service";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
@@ -35,6 +36,7 @@ import Link from "next/link";
 export default function NewCompanyPage() {
   const router = useRouter();
   const { user } = useAdminAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -53,6 +55,9 @@ export default function NewCompanyPage() {
     employees: "",
     foundedYear: "",
     description: "",
+    taxOffice: "",
+    taxNumber: "",
+    mersisNumber: "",
     projectDetails: {
       productType: "",
       packagingType: "",
@@ -107,14 +112,19 @@ export default function NewCompanyPage() {
       const companyId = await createCompany(formData);
       // Company created successfully
 
-      // Başarılı mesajı (toast ekleyebilirsiniz)
-      alert("Firma başarıyla eklendi!");
+      toast({
+        title: "Başarılı",
+        description: "Firma başarıyla eklendi!",
+      });
 
       // Firmalar listesine yönlendir
       router.push("/admin/companies");
     } catch (error) {
-      console.error("Error saving company:", error);
-      alert("Firma eklenirken bir hata oluştu: " + error.message);
+      toast({
+        title: "Hata",
+        description: "Firma eklenirken bir hata oluştu: " + error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -377,6 +387,63 @@ export default function NewCompanyPage() {
                   placeholder="Tam adres bilgisi..."
                   rows={2}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tax Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Vergi Bilgileri</CardTitle>
+              <CardDescription>
+                Şirketin resmi vergi ve ticaret sicil bilgileri
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Vergi Dairesi
+                  </label>
+                  <Input
+                    type="text"
+                    value={formData.taxOffice}
+                    onChange={(e) =>
+                      handleInputChange("taxOffice", e.target.value)
+                    }
+                    placeholder="Beşiktaş Vergi Dairesi"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Vergi Numarası
+                  </label>
+                  <Input
+                    type="text"
+                    value={formData.taxNumber}
+                    onChange={(e) =>
+                      handleInputChange("taxNumber", e.target.value)
+                    }
+                    placeholder="1234567890"
+                    maxLength={10}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mersis Numarası
+                  </label>
+                  <Input
+                    type="text"
+                    value={formData.mersisNumber}
+                    onChange={(e) =>
+                      handleInputChange("mersisNumber", e.target.value)
+                    }
+                    placeholder="0123456789012345"
+                    maxLength={16}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
