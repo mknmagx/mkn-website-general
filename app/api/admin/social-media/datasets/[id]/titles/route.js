@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 // GET - Get all titles in a dataset
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     const titlesSnapshot = await adminDb
       .collection('socialMediaDatasets')
@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
 // POST - Add titles to dataset
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { titles } = await request.json();
 
     if (!titles || !Array.isArray(titles)) {

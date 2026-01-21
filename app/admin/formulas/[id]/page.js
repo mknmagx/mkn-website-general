@@ -42,11 +42,35 @@ import {
   Info,
   Plus,
   Trash2,
+  Settings,
+  Zap,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import * as FormulaService from "@/lib/services/formula-service";
-import { useClaude } from "@/hooks/use-claude";
 import { useToast } from "@/hooks/use-toast";
 import FormulaPDFExport from "@/components/formula-pdf-export";
+
+// Unified AI Hook - Firestore'dan dinamik config
+import { useUnifiedAI, AI_CONTEXTS, PROVIDER_INFO } from "@/hooks/use-unified-ai";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 
 // Helper function to extract sections from text
 function extractSection(text, keywords) {
@@ -57,17 +81,72 @@ function extractSection(text, keywords) {
     );
     const match = text.match(regex);
     if (match && match[1]) {
-      return match[1].trim();
+      return cleanContentField(match[1].trim());
     }
   }
   return "";
+}
+
+/**
+ * Content field'ı temizler - istenmeyen karakterleri ve prefix'leri kaldırır
+ * @param {string} text - Temizlenecek metin
+ * @returns {string} Temizlenmiş metin
+ */
+function cleanContentField(text) {
+  if (!text || typeof text !== 'string') return '';
+  
+  let cleaned = text;
+  
+  // 1. Escape karakterlerini düzelt (çift escape dahil)
+  cleaned = cleaned
+    .replace(/\\n/g, '\n')     // \\n -> gerçek newline
+    .replace(/\\t/g, '\t')     // \\t -> gerçek tab
+    .replace(/\\"/g, '"')      // \\" -> "
+    .replace(/\\\\/g, '\\');   // \\\\ -> \\
+  
+  // 2. Başındaki istenmeyen prefix'leri kaldır
+  const unwantedPrefixes = [
+    /^["':]+\s*/,              // Başındaki ": " veya ': ' vb.
+    /^Örnek:\s*/i,             // "Örnek:" prefix
+    /^Örn\.?:\s*/i,            // "Örn:" veya "Örn.:" prefix
+    /^Not:\s*/i,               // "Not:" prefix
+    /^Açıklama:\s*/i,          // "Açıklama:" prefix
+  ];
+  
+  for (const prefix of unwantedPrefixes) {
+    cleaned = cleaned.replace(prefix, '');
+  }
+  
+  // 3. Sonundaki istenmeyen karakterleri kaldır
+  cleaned = cleaned
+    .replace(/["']+\s*$/g, '') // Sondaki tırnak işaretleri
+    .replace(/,\s*$/g, '');    // Sondaki virgül
+  
+  // 4. Çoklu boş satırları tekle indir
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  // 5. Başında/sonundaki whitespace'i temizle
+  cleaned = cleaned.trim();
+  
+  return cleaned;
 }
 
 export default function FormulaDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const { sendMessage, loading: aiLoading } = useClaude();
+  // Unified AI - Marketing content generation için
+  // FORMULA_MARKETING_GENERATION context kullanarak merkezi AI sisteminden prompt alınıyor
+  const {
+    generateContent,
+    loading: aiLoading,
+    selectedModel: currentModel,
+    config: aiConfig,
+    availableModels,
+    prompt: aiPrompt,
+    selectModel,
+    configLoading,
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_MARKETING_GENERATION);
 
   const [formula, setFormula] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +165,65 @@ export default function FormulaDetailPage() {
     price: "",
     supplier: "",
   });
+
+  // AI Settings Dialog State
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiSettingsLocal, setAiSettingsLocal] = useState({
+    temperature: 0.7,
+    maxTokens: 1500,
+    autoMaxTokens: true,
+  });
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
+
+  // Sync AI settings from config when loaded
+  useEffect(() => {
+    if (aiConfig?.settings) {
+      setAiSettingsLocal({
+        temperature: aiConfig.settings.temperature ?? 0.7,
+        maxTokens: aiConfig.settings.maxTokens ?? 1500,
+        autoMaxTokens: true,
+      });
+    }
+  }, [aiConfig]);
+
+  // Calculate auto max tokens based on formula complexity
+  const calculateAutoMaxTokens = () => {
+    if (!formula) return 1500;
+    const ingredientCount = formula.ingredients?.length || 0;
+    const baseTokens = 800;
+    const perIngredientTokens = 50;
+    const calculated = baseTokens + (ingredientCount * perIngredientTokens);
+    return Math.min(Math.max(calculated, 1000), 4000);
+  };
+
+  // Get effective max tokens
+  const effectiveMaxTokens = aiSettingsLocal.autoMaxTokens 
+    ? calculateAutoMaxTokens() 
+    : aiSettingsLocal.maxTokens;
+
+  // Copy prompt to clipboard
+  const copyPromptToClipboard = () => {
+    if (!formula || !aiPrompt) return;
+    
+    const ingredientsList = formula.ingredients
+      ?.map((ing) => `${ing.name} (${ing.percentage}%)`)
+      .join(", ") || "";
+
+    const fullPrompt = aiPrompt.userPromptTemplate
+      ?.replace("{{formulaName}}", formula.name || "")
+      .replace("{{productType}}", formula.productType || "")
+      .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
+      .replace("{{ingredientsList}}", ingredientsList) || "";
+
+    navigator.clipboard.writeText(fullPrompt);
+    setPromptCopied(true);
+    setTimeout(() => setPromptCopied(false), 2000);
+    toast({
+      title: "Kopyalandı",
+      description: "Prompt panoya kopyalandı.",
+    });
+  };
 
   // Editable fields
   const [formulaName, setFormulaName] = useState("");
@@ -128,11 +266,14 @@ export default function FormulaDetailPage() {
 
     formula.ingredients.forEach((ing) => {
       const amount = parseFloat(ing.amount) || 0;
-      const price = parseFloat(ing.price) || 0;
+      // v3.1 uyumu: estimatedPriceTLperKg veya price kullan
+      const price = parseFloat(ing.estimatedPriceTLperKg || ing.price) || 0;
 
-      // Calculate cost based on amount and price (price is per kg)
+      // Eğer estimatedCostTL varsa direkt kullan, yoksa hesapla
       let cost = 0;
-      if (ing.unit === "g" || ing.unit === "gram") {
+      if (ing.estimatedCostTL && parseFloat(ing.estimatedCostTL) > 0) {
+        cost = parseFloat(ing.estimatedCostTL);
+      } else if (ing.unit === "g" || ing.unit === "gram") {
         cost = (amount / 1000) * price;
       } else if (ing.unit === "ml") {
         cost = (amount / 1000) * price;
@@ -145,6 +286,7 @@ export default function FormulaDetailPage() {
       totalCost += cost;
       ingredientsWithCost.push({
         ...ing,
+        price: price, // Normalize edilmiş fiyat
         calculatedCost: cost.toFixed(2),
       });
     });
@@ -212,157 +354,219 @@ export default function FormulaDetailPage() {
   const generateMarketingContent = async () => {
     if (!formula) return;
 
+    // Firestore'dan prompt gelmemişse hata ver
+    if (!aiPrompt?.userPromptTemplate || !aiPrompt?.systemPrompt) {
+      toast({
+        title: "Prompt Bulunamadı",
+        description: "Lütfen admin panelinden AI prompt ayarlarını yapılandırın.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setGenerating(true);
       setShowConfirmDialog(false);
 
-      const ingredientsList = formula.ingredients
-        .map((ing) => `${ing.name} (${ing.percentage}%)`)
+      // Hammaddeleri kategorize et
+      const ingredients = formula.ingredients || [];
+      const ingredientsList = ingredients
+        .map((ing) => `${ing.displayName || ing.name} (${ing.percentage}%)`)
         .join(", ");
+      
+      // Aktif maddeleri ayır (yüksek konsantrasyonlu veya function='Active' olanlar)
+      const activeIngredients = ingredients
+        .filter(ing => 
+          (ing.function?.toLowerCase().includes('active') || 
+           ing.function?.toLowerCase().includes('aktif') ||
+           parseFloat(ing.percentage) >= 2)
+        )
+        .map(ing => ing.displayName || ing.name)
+        .slice(0, 5)
+        .join(", ") || "Belirtilmedi";
 
-      const prompt = `Sen profesyonel bir kozmetik uzmanısın. Aşağıdaki formül için KISA ve ÖZ ürün bilgileri oluştur.
+      // Firestore'dan gelen prompt template kullan
+      const prompt = aiPrompt.userPromptTemplate
+        .replace("{{formulaName}}", formula.name || "")
+        .replace("{{productType}}", formula.productType || "")
+        .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
+        .replace("{{ingredientsList}}", ingredientsList)
+        .replace("{{activeIngredients}}", activeIngredients);
+      
+      const systemPrompt = aiPrompt.systemPrompt;
 
-FORMÜL: ${formula.name}
-TİP: ${formula.productType}
-HACİM: ${formula.productVolume || "Belirtilmedi"} ml
-HAMMADDELER: ${ingredientsList}
-
-Her bölümü KISA tut (2-4 cümle):
-
-1. ÜRÜN AÇIKLAMASI: Ne olduğu, amacı, hangi cilt için uygun
-2. KULLANIM TALİMATI: 3-4 adımda nasıl kullanılır
-3. ÖNERİLER: Saklama ve kullanım ipuçları
-4. FAYDALAR: 4-5 ana madde faydaları
-5. UYARILAR: Önemli dikkat edilecekler
-
-JSON döndür:
-{
-  "productDescription": "...",
-  "usageInstructions": "...",
-  "recommendations": "...",
-  "benefits": "...",
-  "warnings": "..."
-}`;
-
-      const response = await sendMessage(prompt, {
-        maxTokens: 1500,
-        type: "generate",
+      // AI ayarlarını kullan (lokal state'ten)
+      const result = await generateContent(prompt, {
+        maxTokens: effectiveMaxTokens,
+        temperature: aiSettingsLocal.temperature,
+        systemPrompt: systemPrompt,
       });
+      const response = result?.content || result;
 
       console.log("AI Response:", response);
 
       // Parse response - multiple fallback strategies
       let content = null;
+      
+      /**
+       * Field extraction helper - geliştirilmiş versiyon
+       */
+      const extractFieldFromText = (text, fieldName) => {
+        // Strateji 1: Standart JSON field pattern
+        const patterns = [
+          new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 's'),
+          new RegExp(`"${fieldName}"\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'`, 's'),
+          new RegExp(`${fieldName}["']?\\s*:\\s*["']([^"']+)["']`, 'i'),
+        ];
+        
+        for (const pattern of patterns) {
+          const match = text.match(pattern);
+          if (match && match[1]) {
+            return match[1];
+          }
+        }
+        return '';
+      };
+      
+      /**
+       * JSON string'i parse eder ve her field'ı temizler
+       */
+      const parseAndCleanJSON = (jsonStr) => {
+        try {
+          // Önce trailing comma'ları temizle
+          let cleaned = jsonStr
+            .replace(/,\s*([}\]])/g, '$1')
+            .replace(/\r\n/g, '\\n')
+            .replace(/\r/g, '\\n');
+          
+          const parsed = JSON.parse(cleaned);
+          
+          // Her field'ı cleanContentField ile temizle
+          return {
+            productDescription: cleanContentField(parsed.productDescription || ''),
+            usageInstructions: cleanContentField(parsed.usageInstructions || ''),
+            recommendations: cleanContentField(parsed.recommendations || ''),
+            benefits: cleanContentField(parsed.benefits || ''),
+            warnings: cleanContentField(parsed.warnings || ''),
+          };
+        } catch (e) {
+          console.log('JSON parse error:', e.message);
+          return null;
+        }
+      };
 
-      // Strategy 1: JSON code blocks
+      // Strategy 1: JSON code blocks (```json ... ```)
       let jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
-        try {
-          let jsonStr = jsonMatch[1].trim();
-          // Remove trailing commas and fix escape issues
-          jsonStr = jsonStr.replace(/,(\s*[}\]])/g, "$1");
-
-          // Parse using a more forgiving approach
-          content = JSON.parse(jsonStr);
-          console.log("Strategy 1 success");
-        } catch (e) {
-          console.log("Strategy 1 failed:", e.message);
-
-          // Try extracting fields with regex
-          try {
-            const text = jsonMatch[1].trim();
-            const extractField = (fieldName) => {
-              // Match field name and capture everything until the next field or end
-              const regex = new RegExp(
-                `"${fieldName}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`,
-                "s"
-              );
-              const match = text.match(regex);
-              if (match && match[1]) {
-                return match[1]
-                  .replace(/\\n/g, "\n")
-                  .replace(/\\"/g, '"')
-                  .replace(/\\\\/g, "\\")
-                  .replace(/\\t/g, "\t");
-              }
-              return "";
-            };
-
-            content = {
-              productDescription: extractField("productDescription"),
-              usageInstructions: extractField("usageInstructions"),
-              recommendations: extractField("recommendations"),
-              benefits: extractField("benefits"),
-              warnings: extractField("warnings"),
-            };
-
-            if (Object.values(content).some((v) => v && v.length > 0)) {
-              console.log("Strategy 1.5 success");
-            } else {
-              content = null;
-            }
-          } catch (e2) {
-            console.log("Strategy 1.5 failed:", e2.message);
+        content = parseAndCleanJSON(jsonMatch[1].trim());
+        if (content && Object.values(content).some(v => v && v.length > 0)) {
+          console.log('Strategy 1 (code block) success');
+        } else {
+          // Fallback: regex ile field extraction
+          const text = jsonMatch[1].trim();
+          content = {
+            productDescription: cleanContentField(extractFieldFromText(text, 'productDescription')),
+            usageInstructions: cleanContentField(extractFieldFromText(text, 'usageInstructions')),
+            recommendations: cleanContentField(extractFieldFromText(text, 'recommendations')),
+            benefits: cleanContentField(extractFieldFromText(text, 'benefits')),
+            warnings: cleanContentField(extractFieldFromText(text, 'warnings')),
+          };
+          
+          if (Object.values(content).some(v => v && v.length > 0)) {
+            console.log('Strategy 1.5 (regex from code block) success');
+          } else {
             content = null;
           }
         }
       }
 
-      // Strategy 2: Direct JSON object
+      // Strategy 2: Direct JSON object (without code blocks)
       if (!content) {
         jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          try {
-            let jsonStr = jsonMatch[0].trim();
-            jsonStr = jsonStr.replace(/,(\s*[}\]])/g, "$1");
-            content = JSON.parse(jsonStr);
-            console.log("Strategy 2 success");
-          } catch (e) {
-            console.log("Strategy 2 failed:", e.message);
+          content = parseAndCleanJSON(jsonMatch[0].trim());
+          if (content && Object.values(content).some(v => v && v.length > 0)) {
+            console.log('Strategy 2 (direct JSON) success');
+          } else {
+            // Fallback: regex extraction
+            const text = jsonMatch[0].trim();
+            content = {
+              productDescription: cleanContentField(extractFieldFromText(text, 'productDescription')),
+              usageInstructions: cleanContentField(extractFieldFromText(text, 'usageInstructions')),
+              recommendations: cleanContentField(extractFieldFromText(text, 'recommendations')),
+              benefits: cleanContentField(extractFieldFromText(text, 'benefits')),
+              warnings: cleanContentField(extractFieldFromText(text, 'warnings')),
+            };
+            
+            if (Object.values(content).some(v => v && v.length > 0)) {
+              console.log('Strategy 2.5 (regex from direct JSON) success');
+            } else {
+              content = null;
+            }
           }
         }
       }
 
-      // Strategy 3: Extract sections manually
+      // Strategy 3: Extract sections manually (plain text response)
       if (!content) {
-        console.log("Attempting manual extraction...");
+        console.log('Attempting manual section extraction...');
         content = {
           productDescription: extractSection(response, [
-            "productDescription",
-            "ÜRÜN AÇIKLAMASI",
-            "Ürün Açıklaması",
+            'productDescription',
+            'ÜRÜN AÇIKLAMASI',
+            'Ürün Açıklaması',
+            'Açıklama',
           ]),
           usageInstructions: extractSection(response, [
-            "usageInstructions",
-            "KULLANIM TALİMATI",
-            "Kullanım Talimatı",
+            'usageInstructions',
+            'KULLANIM TALİMATI',
+            'Kullanım Talimatı',
+            'Kullanım',
+            'Nasıl Kullanılır',
           ]),
           recommendations: extractSection(response, [
-            "recommendations",
-            "ÖNERİLER",
-            "Öneriler",
+            'recommendations',
+            'ÖNERİLER',
+            'Öneriler',
+            'İpuçları',
           ]),
           benefits: extractSection(response, [
-            "benefits",
-            "FAYDALAR",
-            "Faydalar",
+            'benefits',
+            'FAYDALAR',
+            'Faydalar',
+            'Avantajlar',
           ]),
           warnings: extractSection(response, [
-            "warnings",
-            "UYARILAR",
-            "Uyarılar",
+            'warnings',
+            'UYARILAR',
+            'Uyarılar',
+            'Dikkat',
           ]),
         };
+        
+        if (Object.values(content).some(v => v && v.length > 0)) {
+          console.log('Strategy 3 (section extraction) success');
+        }
       }
 
+      // Final validation and cleanup
       if (content && Object.values(content).some((v) => v && v.length > 0)) {
-        console.log("Final content:", content);
+        // Son bir kez tüm field'ları temizle (güvenlik için)
+        const finalContent = {
+          productDescription: cleanContentField(content.productDescription || ''),
+          usageInstructions: cleanContentField(content.usageInstructions || ''),
+          recommendations: cleanContentField(content.recommendations || ''),
+          benefits: cleanContentField(content.benefits || ''),
+          warnings: cleanContentField(content.warnings || ''),
+        };
+        
+        console.log('Final cleaned content:', finalContent);
 
-        setProductDescription(content.productDescription || "");
-        setUsageInstructions(content.usageInstructions || "");
-        setRecommendations(content.recommendations || "");
-        setBenefits(content.benefits || "");
-        setWarnings(content.warnings || "");
+        setProductDescription(finalContent.productDescription);
+        setUsageInstructions(finalContent.usageInstructions);
+        setRecommendations(finalContent.recommendations);
+        setBenefits(finalContent.benefits);
+        setWarnings(finalContent.warnings);
 
         toast({
           title: "İçerik Oluşturuldu",
@@ -1260,27 +1464,326 @@ JSON döndür:
                     <CheckCircle2 className="h-4 w-4" />
                     <span>Düzenlenebilir</span>
                   </div>
-                </div>
-                <Button
-                  onClick={checkAndGenerate}
-                  disabled={generating || aiLoading}
-                  size="lg"
-                  className="bg-white text-purple-600 hover:bg-purple-50 font-semibold shadow-lg hover:shadow-xl transition-all px-8 shrink-0"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Oluşturuluyor...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      İçerik Oluştur
-                    </>
+                  {/* Current Model Badge */}
+                  {currentModel && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
+                        {PROVIDER_INFO[currentModel.provider]?.icon} {currentModel.displayName || currentModel.name}
+                      </Badge>
+                      <Badge className="bg-white/10 text-purple-100 border-white/20">
+                        {effectiveMaxTokens} token
+                      </Badge>
+                    </div>
                   )}
-                </Button>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* AI Settings Button */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => setShowAiSettings(true)}
+                          size="lg"
+                          variant="ghost"
+                          className="bg-white/10 hover:bg-white/20 text-white border border-white/20 h-12 w-12 p-0"
+                        >
+                          <Settings className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>AI Ayarları</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  {/* Generate Button */}
+                  <Button
+                    onClick={checkAndGenerate}
+                    disabled={generating || aiLoading}
+                    size="lg"
+                    className="bg-white text-purple-600 hover:bg-purple-50 font-semibold shadow-lg hover:shadow-xl transition-all px-8"
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Oluşturuluyor...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        İçerik Oluştur
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
+
+            {/* AI Settings Dialog */}
+            <Dialog open={showAiSettings} onOpenChange={setShowAiSettings}>
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-xl">
+                    <div className="bg-purple-100 rounded-lg p-2">
+                      <Settings className="h-5 w-5 text-purple-600" />
+                    </div>
+                    AI Pazarlama İçerik Ayarları
+                  </DialogTitle>
+                  <DialogDescription>
+                    Formül pazarlama içeriği üretimi için AI model ve parametre ayarları
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 py-4">
+                  {/* Model Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-amber-500" />
+                      AI Model Seçimi
+                    </Label>
+                    <Select 
+                      value={currentModel?.modelId || currentModel?.id}
+                      onValueChange={(value) => selectModel(value)}
+                    >
+                      <SelectTrigger className="w-full h-12 rounded-xl border-gray-200">
+                        <SelectValue placeholder="Model seçin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableModels.map((model) => (
+                          <SelectItem 
+                            key={model.modelId || model.id} 
+                            value={model.modelId || model.id}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{PROVIDER_INFO[model.provider]?.icon || "⚪"}</span>
+                              <span>{model.displayName || model.name}</span>
+                              {model.isDefault && (
+                                <Badge variant="secondary" className="text-xs ml-2">Varsayılan</Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {currentModel && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {currentModel.description || `${PROVIDER_INFO[currentModel.provider]?.name} tarafından sağlanmaktadır.`}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Temperature */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Yaratıcılık (Temperature)</Label>
+                      <Badge variant="outline" className="font-mono">
+                        {aiSettingsLocal.temperature.toFixed(2)}
+                      </Badge>
+                    </div>
+                    <Slider
+                      value={[aiSettingsLocal.temperature]}
+                      onValueChange={([value]) => 
+                        setAiSettingsLocal(prev => ({ ...prev, temperature: value }))
+                      }
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Tutarlı</span>
+                      <span>Dengeli</span>
+                      <span>Yaratıcı</span>
+                    </div>
+                  </div>
+
+                  {/* Max Tokens */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Maksimum Token</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="auto-tokens" className="text-xs text-gray-500 cursor-pointer">
+                          Otomatik
+                        </Label>
+                        <Switch
+                          id="auto-tokens"
+                          checked={aiSettingsLocal.autoMaxTokens}
+                          onCheckedChange={(checked) => 
+                            setAiSettingsLocal(prev => ({ ...prev, autoMaxTokens: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    
+                    {aiSettingsLocal.autoMaxTokens ? (
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-purple-500" />
+                            <span className="text-sm text-purple-700">Otomatik Hesaplama</span>
+                          </div>
+                          <Badge className="bg-purple-100 text-purple-700 font-mono">
+                            {effectiveMaxTokens} token
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-purple-600 mt-2">
+                          {formula?.ingredients?.length || 0} hammadde için optimize edildi
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <Slider
+                          value={[aiSettingsLocal.maxTokens]}
+                          onValueChange={([value]) => 
+                            setAiSettingsLocal(prev => ({ ...prev, maxTokens: value }))
+                          }
+                          min={500}
+                          max={4000}
+                          step={100}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>500</span>
+                          <span className="font-mono">{aiSettingsLocal.maxTokens}</span>
+                          <span>4000</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Code className="h-4 w-4 text-gray-500" />
+                        Prompt Önizleme
+                      </Label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowPromptPreview(!showPromptPreview)}
+                        className="text-xs"
+                      >
+                        {showPromptPreview ? "Gizle" : "Göster"}
+                        <Eye className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                    
+                    {showPromptPreview && (
+                      <div className="space-y-3">
+                        {/* System Prompt */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-600">System Prompt</span>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 font-mono max-h-32 overflow-y-auto border border-gray-100">
+                            {aiPrompt?.systemPrompt || "Yükleniyor..."}
+                          </div>
+                        </div>
+                        
+                        {/* User Prompt Template */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-600">User Prompt Template</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={copyPromptToClipboard}
+                              className="h-6 text-xs"
+                            >
+                              {promptCopied ? (
+                                <>
+                                  <Check className="h-3 w-3 mr-1 text-green-500" />
+                                  Kopyalandı
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Kopyala
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 font-mono max-h-48 overflow-y-auto border border-gray-100 whitespace-pre-wrap">
+                            {aiPrompt?.userPromptTemplate || "Yükleniyor..."}
+                          </div>
+                        </div>
+
+                        {/* Preview with Variables */}
+                        {formula && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-600">Formül ile Önizleme</span>
+                              <Badge variant="outline" className="text-xs">Değişkenler uygulandı</Badge>
+                            </div>
+                            <div className="bg-purple-50 rounded-lg p-3 text-xs text-purple-900 font-mono max-h-48 overflow-y-auto border border-purple-100 whitespace-pre-wrap">
+                              {aiPrompt?.userPromptTemplate
+                                ?.replace("{{formulaName}}", formula.name || "—")
+                                .replace("{{productType}}", formula.productType || "—")
+                                .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
+                                .replace("{{ingredientsList}}", 
+                                  formula.ingredients?.map((ing) => `${ing.name} (${ing.percentage}%)`).join(", ") || "—"
+                                ) || "Yükleniyor..."}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Config Info */}
+                  {aiConfig && (
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Info className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">Konfigürasyon Bilgisi</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="text-gray-500">Context:</span>
+                          <span className="ml-2 font-mono text-gray-700">{aiConfig.contextId || "formula_marketing_generation"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Provider:</span>
+                          <span className="ml-2 text-gray-700">{PROVIDER_INFO[aiConfig.defaultProvider]?.name || aiConfig.defaultProvider}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Prompt Key:</span>
+                          <span className="ml-2 font-mono text-gray-700">{aiConfig.promptKey}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Versiyon:</span>
+                          <span className="ml-2 text-gray-700">{aiPrompt?.version || "1.0"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAiSettings(false)}
+                  >
+                    Kapat
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowAiSettings(false);
+                      toast({
+                        title: "Ayarlar Güncellendi",
+                        description: "AI ayarları sonraki üretimde kullanılacak.",
+                      });
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Uygula
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Product Description */}
             <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
@@ -1458,18 +1961,14 @@ JSON döndür:
                           {formula.aiConfig.modelName || "Claude AI"}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {formula.aiConfig.selectedModel === "claude-haiku"
-                            ? "Hızlı ve ekonomik AI modeli - Günlük formüller için ideal"
-                            : formula.aiConfig.selectedModel === "claude-sonnet"
-                            ? "Dengeli performans - Profesyonel formüller için önerilen"
-                            : "En güçlü model - Karmaşık formüller için"}
+                          {formula.aiConfig.modelDescription || "AI ile üretilen formül"}
                         </p>
                         <div className="mt-3 flex gap-2">
                           <Badge
                             variant="outline"
                             className="border-purple-300 text-purple-700"
                           >
-                            {formula.aiConfig.selectedModel || "claude-haiku"}
+                            {formula.aiConfig.selectedModel || formula.aiConfig.modelName || "AI Model"}
                           </Badge>
                           {formula.aiConfig.generatedAt && (
                             <Badge

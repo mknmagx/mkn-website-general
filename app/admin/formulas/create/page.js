@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -22,6 +22,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
   Loader2,
   Sparkles,
   Save,
@@ -40,10 +50,20 @@ import {
   Brain,
   Zap,
   Cpu,
+  Settings,
+  FileText,
+  Sliders,
+  Eye,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useClaude } from "@/hooks/use-claude";
 import * as FormulaService from "@/lib/services/formula-service";
+
+// Unified AI Hook - Firestore'dan dinamik config
+import { useUnifiedAI, AI_CONTEXTS } from "@/hooks/use-unified-ai";
+import { PROVIDER_INFO } from "@/lib/ai-constants";
 
 // Function türlerinin Türkçe karşılıkları
 const getFunctionTurkish = (functionEn) => {
@@ -99,63 +119,63 @@ const FUNCTION_TYPES = [
   { value: "Other", label: "Diğer" },
 ];
 
-// AI Model Configurations - Claude Only
-const AI_MODELS = {
-  "claude-haiku": {
-    id: "claude-haiku",
-    name: "Claude Haiku 4.5",
-    apiId: "claude-haiku-4-5-20251001",
-    description: "Hızlı ve ekonomik - Temel formül üretimi için ideal",
-    icon: Zap,
-    color: "from-green-500 to-emerald-600",
-    recommended: true,
-    speed: "Çok Hızlı",
-    cost: "Düşük",
-  },
-  "claude-sonnet": {
-    id: "claude-sonnet",
-    name: "Claude Sonnet 4.5",
-    apiId: "claude-sonnet-4-5-20250929",
-    description: "Dengeli performans - Profesyonel formül geliştirme için önerilir",
-    icon: Brain,
-    color: "from-purple-500 to-indigo-600",
-    recommended: true,
-    speed: "Hızlı",
-    cost: "Orta",
-  },
-  "claude-opus": {
-    id: "claude-opus",
-    name: "Claude Opus 4.1",
-    apiId: "claude-opus-4-1-20250805",
-    description: "En güçlü model - Kompleks ve özel formüller için en iyi seçim",
-    icon: Cpu,
-    color: "from-blue-500 to-cyan-600",
-    recommended: false,
-    speed: "Orta",
-    cost: "Yüksek",
-  },
-};
-
 export default function CreateFormulaPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { sendMessage, loading: claudeLoading } = useClaude();
+
+  // Unified AI Hook - Firestore'dan dinamik config
+  const {
+    config: unifiedConfig,
+    availableModels,
+    modelsByProvider,
+    selectedModel: currentModel,
+    currentProvider,
+    generateContent,
+    selectModel,
+    loading: aiLoading,
+    configLoading,
+    error: aiError,
+    isReady: aiIsReady,
+    hasModels,
+    refresh: refreshAIConfig,
+    getProviderIcon,
+    prompt: firestorePrompt,
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_GENERATION);
+
+  // Fiyat analizi için ayrı hook
+  const {
+    generateContent: generatePriceAnalysis,
+    loading: priceAnalysisLoading,
+    prompt: priceAnalysisPrompt, // Firestore'dan fiyat analizi prompt'u
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_PRICE_ANALYSIS);
 
   // AI Configuration State
   const [aiConfig, setAiConfig] = useState({
     productName: "",
     productType: "kozmetik",
     productVolume: "",
+    productionQuantity: "", // Toplam üretim adedi
     description: "",
     formulaLevel: 5,
-    selectedModel: "claude-haiku", // Default: Haiku
+    selectedModel: null, // useUnifiedAI'dan dinamik olarak set edilecek
   });
+
+  // Unified AI config yüklendiginde default model'i set et
+  useEffect(() => {
+    if (currentModel && !aiConfig.selectedModel) {
+      setAiConfig((prev) => ({
+        ...prev,
+        selectedModel: currentModel.modelId || currentModel.id,
+      }));
+    }
+  }, [currentModel, aiConfig.selectedModel]);
 
   // Formula State
   const [formula, setFormula] = useState({
     name: "",
     productType: "kozmetik",
     productVolume: "",
+    productionQuantity: "",
     notes: "",
     ingredients: [],
   });
@@ -166,6 +186,68 @@ export default function CreateFormulaPage() {
   const [generatedData, setGeneratedData] = useState(null);
   const [step, setStep] = useState(1); // 1: AI Config, 2: Review/Edit, 3: Save
   const [loadingPriceFor, setLoadingPriceFor] = useState(null); // Track which ingredient is loading price
+
+  // Settings Dialog State
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("config");
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  
+  // Model Settings State (maxToken control)
+  const [modelSettings, setModelSettings] = useState({
+    maxTokens: 8000,
+    autoMaxTokens: true,
+    temperature: 0.7,
+  });
+
+  // Check if current model is a thinking model
+  const isThinkingModel = (modelId) => {
+    if (!modelId) return false;
+    const id = modelId.toLowerCase();
+    return (
+      id.includes("gemini-2") ||
+      id.includes("gemini-exp") ||
+      id.includes("thinking") ||
+      id.includes("claude-opus") ||
+      id.includes("opus") ||
+      id.includes("o1") ||
+      id.includes("o3")
+    );
+  };
+
+  // Calculate auto max tokens based on model and formula level
+  const calculateAutoMaxTokens = () => {
+    const modelId = aiConfig.selectedModel || currentModel?.modelId || currentModel?.id;
+    const level = aiConfig.formulaLevel || 5;
+    
+    // Base tokens: formül seviyesine göre (daha yüksek seviye = daha fazla hammadde = daha fazla token)
+    const baseTokens = 3000 + (level * 300); // 3300 - 6000 arası
+    
+    // Thinking model overhead
+    const thinkingOverhead = isThinkingModel(modelId) ? 4000 : 0;
+    
+    const total = baseTokens + thinkingOverhead;
+    // Min 6000, max 16000
+    return Math.min(16000, Math.max(6000, total));
+  };
+
+  // Copy prompt to clipboard
+  const handleCopyPrompt = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  // Get current model settings
+  const getCurrentModelSettings = () => {
+    const activeModel = availableModels?.find(
+      (m) => m.modelId === aiConfig.selectedModel || m.id === aiConfig.selectedModel
+    ) || currentModel;
+    return activeModel?.settings || {};
+  };
 
   // ============================================================================
   // AI INGREDIENT PRICE SUGGESTION
@@ -195,7 +277,18 @@ export default function CreateFormulaPage() {
           productType: formula.productType,
           productName: formula.name,
         },
-        sendMessage
+        // Unified AI generateContent wrapper - API uyumluluğu için
+        async (prompt, options = {}) => {
+          const result = await generatePriceAnalysis(prompt, {
+            maxTokens: options.maxTokens || 2000,
+            temperature: 0.7,
+            // ✅ FIX: System prompt'u ayrı olarak geç - token tekrarını önler
+            systemPrompt: options.systemPrompt,
+          });
+          return result?.content || result;
+        },
+        // Firestore'dan gelen price analysis prompt - dinamik prompt sistemi
+        priceAnalysisPrompt
       );
 
       // Update ingredient with suggested price
@@ -241,15 +334,58 @@ export default function CreateFormulaPage() {
       return;
     }
 
+    if (!aiConfig.productionQuantity) {
+      toast({
+        title: "Hata",
+        description: "Üretim adedi gereklidir.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
       const result = await FormulaService.generateAIFormula(
         {
           ...aiConfig,
-          selectedModel: AI_MODELS[aiConfig.selectedModel].apiId,
+          // Model ID'yi doğrudan geç - useUnifiedAI modeli yönetir
+          selectedModel:
+            aiConfig.selectedModel || currentModel?.modelId || currentModel?.id,
         },
-        sendMessage
+        // Unified AI generateContent wrapper - API uyumluluğu için
+        async (prompt, options = {}) => {
+          // Use modelSettings if auto is off, otherwise calculate based on model
+          const maxTokens = modelSettings.autoMaxTokens 
+            ? calculateAutoMaxTokens()
+            : modelSettings.maxTokens;
+          const temperature = modelSettings.autoMaxTokens 
+            ? 0.7 
+            : modelSettings.temperature;
+          
+          console.log("[FormulaCreate] Using maxTokens:", maxTokens, "autoMode:", modelSettings.autoMaxTokens);
+            
+          const result = await generateContent(prompt, {
+            maxTokens,
+            temperature,
+            modelId: options.model || aiConfig.selectedModel,
+            // ✅ FIX: System prompt'u ayrı olarak geç - token tekrarını önler
+            systemPrompt: options.systemPrompt,
+          });
+          
+          // Check if result is successful and has content
+          if (!result?.success) {
+            throw new Error(result?.error || "AI generation failed");
+          }
+          
+          if (!result?.content || typeof result.content !== 'string') {
+            throw new Error("AI returned empty or invalid response");
+          }
+          
+          return result.content;
+        },
+        // Firestore'dan gelen prompt config - dinamik prompt sistemi
+        firestorePrompt
       );
 
       // Map AI result to formula format
@@ -268,6 +404,7 @@ export default function CreateFormulaPage() {
         name: aiConfig.productName,
         productType: aiConfig.productType,
         productVolume: aiConfig.productVolume,
+        productionQuantity: aiConfig.productionQuantity,
         notes: result.suggestions || "",
         ingredients: ingredients,
       });
@@ -281,17 +418,19 @@ export default function CreateFormulaPage() {
       });
     } catch (error) {
       console.error("AI generation error:", error);
-      
+
       let errorMessage = "Formül oluşturulurken bir hata oluştu.";
-      
+
       if (error.message.includes("JSON parse")) {
-        errorMessage = "AI yanıtı işlenirken hata oluştu. Lütfen tekrar deneyin veya farklı bir model seçin.";
+        errorMessage =
+          "AI yanıtı işlenirken hata oluştu. Lütfen tekrar deneyin veya farklı bir model seçin.";
       } else if (error.message.includes("Claude API Error")) {
-        errorMessage = "AI servisi ile bağlantı kurulamadı. Lütfen daha sonra tekrar deneyin.";
+        errorMessage =
+          "AI servisi ile bağlantı kurulamadı. Lütfen daha sonra tekrar deneyin.";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Hata",
         description: errorMessage,
@@ -380,6 +519,14 @@ export default function CreateFormulaPage() {
     setIsSaving(true);
 
     try {
+      // Model bilgisini unified AI'dan al
+      const activeModel =
+        availableModels?.find(
+          (m) =>
+            m.modelId === aiConfig.selectedModel ||
+            m.id === aiConfig.selectedModel
+        ) || currentModel;
+
       await FormulaService.saveFormula({
         ...formula,
         ingredients: validIngredients,
@@ -390,7 +537,9 @@ export default function CreateFormulaPage() {
           description: aiConfig.description,
           formulaLevel: aiConfig.formulaLevel,
           selectedModel: aiConfig.selectedModel,
-          modelName: AI_MODELS[aiConfig.selectedModel]?.name || "Unknown",
+          modelName:
+            activeModel?.name || activeModel?.displayName || "AI Model",
+          provider: activeModel?.provider || currentProvider?.id || "unified",
           generatedAt: new Date().toISOString(),
         },
       });
@@ -657,6 +806,32 @@ export default function CreateFormulaPage() {
                     className="h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-base rounded-xl"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="productionQuantity"
+                    className="text-gray-900 font-semibold text-sm flex items-center gap-2"
+                  >
+                    <Package className="h-4 w-4 text-green-600" />
+                    Üretim Adedi *
+                  </Label>
+                  <Input
+                    id="productionQuantity"
+                    type="number"
+                    placeholder="1000"
+                    value={aiConfig.productionQuantity}
+                    onChange={(e) =>
+                      setAiConfig((prev) => ({
+                        ...prev,
+                        productionQuantity: e.target.value,
+                      }))
+                    }
+                    className="h-12 border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-500 text-base rounded-xl"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Toplam kaç adet ürün üretilecek? (Fiyatlandırma için önemli)
+                  </p>
+                </div>
               </div>
 
               {/* Formula Level */}
@@ -758,77 +933,136 @@ export default function CreateFormulaPage() {
                 </div>
               </div>
 
-              {/* AI Model Selection */}
+              {/* AI Model Selection - Unified AI'dan dinamik */}
               <div className="space-y-3 bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl border-2 border-indigo-100">
-                <Label className="text-gray-900 font-semibold text-sm flex items-center gap-2 mb-4">
-                  <Brain className="h-4 w-4 text-indigo-600" />
-                  AI Model Seçimi
-                </Label>
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-gray-900 font-semibold text-sm flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-indigo-600" />
+                    AI Model Seçimi
+                    {configLoading && (
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                    )}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSettingsDialogOpen(true)}
+                    className="h-8 w-8 p-0 rounded-lg hover:bg-indigo-100 text-indigo-600"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {Object.values(AI_MODELS).map((model) => {
-                    const Icon = model.icon;
-                    const isSelected = aiConfig.selectedModel === model.id;
-                    return (
-                      <button
-                        key={model.id}
-                        type="button"
-                        onClick={() =>
-                          setAiConfig((prev) => ({
-                            ...prev,
-                            selectedModel: model.id,
-                          }))
-                        }
-                        className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
-                          isSelected
-                            ? "border-indigo-500 bg-white shadow-lg scale-[1.02]"
-                            : "border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md"
-                        }`}
-                      >
-                        {/* Model Icon */}
-                        <div
-                          className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${model.color} flex items-center justify-center shadow-md`}
-                        >
-                          <Icon className="h-6 w-6 text-white" />
+                  {/* Provider'lara göre grupla */}
+                  {Object.entries(modelsByProvider || {}).map(
+                    ([provider, models]) => (
+                      <div key={provider} className="space-y-2">
+                        {/* Provider Header */}
+                        <div className="flex items-center gap-2 px-2">
+                          <span className="text-lg">
+                            {PROVIDER_INFO[provider]?.icon || "⚪"}
+                          </span>
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                            {PROVIDER_INFO[provider]?.name || provider}
+                          </span>
                         </div>
+                        {/* Models */}
+                        {models.map((model) => {
+                          const isSelected =
+                            aiConfig.selectedModel === model.modelId ||
+                            aiConfig.selectedModel === model.id;
+                          const providerColor =
+                            PROVIDER_INFO[provider]?.gradient ||
+                            "from-gray-500 to-gray-600";
+                          return (
+                            <button
+                              key={model.id || model.modelId}
+                              type="button"
+                              onClick={() =>
+                                setAiConfig((prev) => ({
+                                  ...prev,
+                                  selectedModel: model.modelId || model.id,
+                                }))
+                              }
+                              className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left w-full ${
+                                isSelected
+                                  ? "border-indigo-500 bg-white shadow-lg scale-[1.02]"
+                                  : "border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md"
+                              }`}
+                            >
+                              {/* Model Icon */}
+                              <div
+                                className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${providerColor} flex items-center justify-center shadow-md`}
+                              >
+                                <span className="text-xl">
+                                  {PROVIDER_INFO[provider]?.icon || "🤖"}
+                                </span>
+                              </div>
 
-                        {/* Model Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-gray-900 text-sm">
-                              {model.name}
-                            </h4>
-                            {model.recommended && (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
-                                Önerilen
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2">
-                            {model.description}
-                          </p>
-                          <div className="flex items-center gap-3 text-[10px] text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Zap className="h-3 w-3" />
-                              {model.speed}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              {model.cost}
-                            </span>
-                          </div>
-                        </div>
+                              {/* Model Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-bold text-gray-900 text-sm">
+                                    {model.displayName || model.name}
+                                  </h4>
+                                  {model.isDefault && (
+                                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
+                                      Önerilen
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-600 mb-2">
+                                  {model.description ||
+                                    `${
+                                      PROVIDER_INFO[provider]?.name || provider
+                                    } modeli`}
+                                </p>
+                                <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <Zap className="h-3 w-3" />
+                                    {model.settings?.speed || "Normal"}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    {model.settings?.cost || "Standart"}
+                                  </span>
+                                </div>
+                              </div>
 
-                        {/* Selection Indicator */}
-                        {isSelected && (
-                          <div className="flex-shrink-0">
-                            <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center">
-                              <CheckCircle2 className="h-4 w-4 text-white" />
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                              {/* Selection Indicator */}
+                              {isSelected && (
+                                <div className="flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center">
+                                    <CheckCircle2 className="h-4 w-4 text-white" />
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )
+                  )}
+                  {/* Loading state */}
+                  {configLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                      <span className="ml-2 text-sm text-gray-500">
+                        Modeller yükleniyor...
+                      </span>
+                    </div>
+                  )}
+                  {/* No models state */}
+                  {!configLoading &&
+                    (!availableModels || availableModels.length === 0) && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">
+                          Kullanılabilir model bulunamadı
+                        </p>
+                      </div>
+                    )}
                 </div>
                 <div className="flex items-start gap-2 text-xs bg-white p-3 rounded-xl border border-indigo-200 mt-3">
                   <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-600" />
@@ -836,9 +1070,9 @@ export default function CreateFormulaPage() {
                     <span className="font-semibold text-indigo-900">
                       Model Seçimi:
                     </span>{" "}
-                    Basit formüller için Haiku, profesyonel formüller için
-                    Sonnet, kompleks özel formüller için Opus modelini
-                    öneriririz.
+                    Basit formüller için hızlı modeller, profesyonel formüller
+                    için dengeli modeller, kompleks özel formüller için güçlü
+                    modelleri öneriririz.
                   </div>
                 </div>
               </div>
@@ -1047,13 +1281,25 @@ export default function CreateFormulaPage() {
                       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">
                         <div className="w-8 flex-shrink-0">#</div>
                         <div className="w-52 flex-shrink-0">Hammadde</div>
-                        <div className="w-24 flex-shrink-0 text-center">Miktar</div>
-                        <div className="w-24 flex-shrink-0 text-center">Birim</div>
-                        <div className="w-20 flex-shrink-0 text-center">Yüzde</div>
-                        <div className="w-32 flex-shrink-0 text-center">Fiyat</div>
+                        <div className="w-24 flex-shrink-0 text-center">
+                          Miktar
+                        </div>
+                        <div className="w-24 flex-shrink-0 text-center">
+                          Birim
+                        </div>
+                        <div className="w-20 flex-shrink-0 text-center">
+                          Yüzde
+                        </div>
+                        <div className="w-32 flex-shrink-0 text-center">
+                          Fiyat
+                        </div>
                         <div className="w-10 flex-shrink-0"></div>
-                        <div className="w-28 flex-shrink-0 text-center">Maliyet</div>
-                        <div className="w-44 flex-shrink-0 text-center">Fonksiyon</div>
+                        <div className="w-28 flex-shrink-0 text-center">
+                          Maliyet
+                        </div>
+                        <div className="w-44 flex-shrink-0 text-center">
+                          Fonksiyon
+                        </div>
                         <div className="w-10 flex-shrink-0"></div>
                       </div>
 
@@ -1246,7 +1492,9 @@ export default function CreateFormulaPage() {
                               >
                                 <SelectTrigger className="border-gray-200 bg-white text-xs h-8 rounded-md">
                                   <SelectValue placeholder="Fonksiyon seçin">
-                                    {ingredient.function ? getFunctionTurkish(ingredient.function) : "Fonksiyon seçin"}
+                                    {ingredient.function
+                                      ? getFunctionTurkish(ingredient.function)
+                                      : "Fonksiyon seçin"}
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1430,6 +1678,331 @@ export default function CreateFormulaPage() {
           </div>
         )}
       </div>
+
+      {/* AI Settings Dialog */}
+      <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
+        <DialogContent className="sm:max-w-[540px] p-0 gap-0 overflow-hidden rounded-2xl border border-gray-200 shadow-2xl bg-white">
+          {/* Compact Header */}
+          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                  <Settings className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className="text-gray-900 text-lg font-bold">
+                    Model Ayarları
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-500 text-sm">
+                    Yapılandırma ve prompt önizlemesi
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          {/* Tabs Navigation */}
+          <Tabs value={settingsTab} onValueChange={setSettingsTab} className="w-full">
+            <div className="px-6 py-3 bg-gray-50/50">
+              <TabsList className="w-full grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-lg h-10">
+                <TabsTrigger 
+                  value="config" 
+                  className="rounded-md text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                >
+                  <Sliders className="h-4 w-4 mr-2" />
+                  Ayarlar
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="prompt" 
+                  className="rounded-md text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Prompt
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Config Tab */}
+            <TabsContent value="config" className="mt-0 focus:outline-none">
+              <ScrollArea className="h-[380px]">
+                <div className="p-6 space-y-5">
+                  
+                  {/* Active Model Card */}
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Aktif Model</p>
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${
+                          PROVIDER_INFO[currentProvider?.id]?.gradient || 'from-gray-400 to-gray-500'
+                        } flex items-center justify-center shadow-md`}>
+                          <span className="text-xl">{PROVIDER_INFO[currentProvider?.id]?.icon || '🤖'}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 truncate">
+                            {currentModel?.displayName || currentModel?.name || 'Model seçilmedi'}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {PROVIDER_INFO[currentProvider?.id]?.name || currentProvider?.id || 'Provider'}
+                          </p>
+                        </div>
+                        {currentModel?.isDefault && (
+                          <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">
+                            Varsayılan
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Model Stats */}
+                      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Zap className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{getCurrentModelSettings()?.speed || 'Normal'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <DollarSign className="h-3.5 w-3.5 text-green-500" />
+                          <span>{getCurrentModelSettings()?.cost || 'Standart'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Brain className="h-3.5 w-3.5 text-purple-500" />
+                          <span>{availableModels?.length || 0} model</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Token Settings */}
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Token Limiti</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${modelSettings.autoMaxTokens ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>
+                          Otomatik
+                        </span>
+                        <Switch
+                          checked={modelSettings.autoMaxTokens}
+                          onCheckedChange={(checked) => 
+                            setModelSettings(prev => ({ ...prev, autoMaxTokens: checked }))
+                          }
+                          className="scale-90"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      {modelSettings.autoMaxTokens ? (
+                        <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <Sparkles className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-indigo-900">Otomatik ayarlama aktif</p>
+                            <p className="text-xs text-indigo-600">
+                              {isThinkingModel(aiConfig.selectedModel || currentModel?.modelId) 
+                                ? `Thinking Model: ${calculateAutoMaxTokens().toLocaleString()} token` 
+                                : `Hesaplanan: ${calculateAutoMaxTokens().toLocaleString()} token`}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={modelSettings.maxTokens}
+                              onChange={(e) => setModelSettings(prev => ({ 
+                                ...prev, 
+                                maxTokens: parseInt(e.target.value) || 1000 
+                              }))}
+                              min={500}
+                              max={16000}
+                              step={500}
+                              className="flex-1 h-10 rounded-lg border-gray-200 text-center font-mono"
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {[1000, 2000, 4000, 8000].map((val) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setModelSettings(prev => ({ ...prev, maxTokens: val }))}
+                                className={`py-2 rounded-lg text-xs font-medium transition-all ${
+                                  modelSettings.maxTokens === val 
+                                    ? 'bg-indigo-600 text-white shadow-md' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {val >= 1000 ? `${val/1000}K` : val}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Temperature */}
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Yaratıcılık</p>
+                      <span className="text-sm font-bold text-indigo-600 font-mono">
+                        {modelSettings.temperature.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={modelSettings.temperature}
+                          onChange={(e) => setModelSettings(prev => ({ 
+                            ...prev, 
+                            temperature: parseFloat(e.target.value) 
+                          }))}
+                          className="w-full h-2 bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex justify-between mt-3 text-xs">
+                        <span className="text-blue-600 font-medium">Tutarlı</span>
+                        <span className="text-indigo-600 font-medium">Dengeli</span>
+                        <span className="text-purple-600 font-medium">Yaratıcı</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Prompt Tab */}
+            <TabsContent value="prompt" className="mt-0 focus:outline-none">
+              <ScrollArea className="h-[380px]" style={{ width: '100%' }}>
+                <div className="p-6 space-y-4" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                  
+                  {firestorePrompt ? (
+                    <>
+                      {/* Prompt Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {firestorePrompt.name && (
+                            <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs font-medium">
+                              {firestorePrompt.name}
+                            </Badge>
+                          )}
+                          {firestorePrompt.version && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              v{firestorePrompt.version}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyPrompt(firestorePrompt?.systemPrompt || firestorePrompt?.content || '')}
+                          className="h-8 px-3 text-xs rounded-lg hover:bg-gray-100 flex-shrink-0"
+                        >
+                          {copiedPrompt ? (
+                            <><Check className="h-3.5 w-3.5 mr-1.5 text-green-600" /> Kopyalandı</>
+                          ) : (
+                            <><Copy className="h-3.5 w-3.5 mr-1.5" /> Kopyala</>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* System Prompt */}
+                      <div className="rounded-xl border border-gray-700 overflow-hidden" style={{ maxWidth: '100%' }}>
+                        <div className="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center gap-2">
+                          <div className="flex gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                          </div>
+                          <span className="text-[11px] text-gray-400 ml-1 font-mono">system_prompt</span>
+                        </div>
+                        <div className="bg-gray-900 p-4 overflow-auto" style={{ maxWidth: '100%' }}>
+                          <pre style={{ 
+                            margin: 0, 
+                            whiteSpace: 'pre-wrap', 
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            fontSize: '13px',
+                            lineHeight: '1.6',
+                            color: '#f3f4f6',
+                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
+                          }}>
+{firestorePrompt.systemPrompt || firestorePrompt.content || 'Prompt bulunamadı'}</pre>
+                        </div>
+                      </div>
+
+                      {/* User Prompt Template */}
+                      {firestorePrompt.userPromptTemplate && (
+                        <div className="rounded-xl border border-purple-800 overflow-hidden" style={{ maxWidth: '100%' }}>
+                          <div className="px-3 py-2 bg-purple-900 border-b border-purple-800 flex items-center gap-2">
+                            <div className="flex gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            </div>
+                            <span className="text-[11px] text-purple-300 ml-1 font-mono">user_prompt_template</span>
+                          </div>
+                          <div className="bg-purple-950 p-4 overflow-auto" style={{ maxWidth: '100%' }}>
+                            <pre style={{ 
+                              margin: 0, 
+                              whiteSpace: 'pre-wrap', 
+                              wordBreak: 'break-word',
+                              overflowWrap: 'break-word',
+                              fontSize: '13px',
+                              lineHeight: '1.6',
+                              color: '#f3e8ff',
+                              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
+                            }}>
+{firestorePrompt.userPromptTemplate}</pre>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      {firestorePrompt.description && (
+                        <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                          <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-amber-800 leading-relaxed">{firestorePrompt.description}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                        <FileText className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-600 font-medium">Prompt yükleniyor...</p>
+                      <p className="text-gray-400 text-sm mt-1">Firestore'dan veri alınıyor</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+
+          {/* Footer */}
+          <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-400">
+              Context: <span className="font-mono text-gray-500">{AI_CONTEXTS.FORMULA_GENERATION}</span>
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSettingsDialogOpen(false)}
+              className="rounded-lg hover:bg-gray-200"
+            >
+              Kapat
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -47,6 +47,12 @@ const nextConfig = {
         port: "",
         pathname: "/v0/b/mkngroup-general.firebasestorage.app/**",
       },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        port: "",
+        pathname: "/mkngroup-general.firebasestorage.app/**",
+      },
     ],
   },
   compress: true,

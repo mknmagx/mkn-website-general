@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 // GET - Get single dataset
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const docRef = await adminDb.collection('socialMediaDatasets').doc(id).get();
 
     if (!docRef.exists) {
@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
 // PATCH - Update dataset
 export async function PATCH(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     await adminDb.collection('socialMediaDatasets').doc(id).update({
@@ -63,7 +63,7 @@ export async function PATCH(request, { params }) {
 // DELETE - Delete dataset and its titles
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Delete all titles in this dataset
     const titlesSnapshot = await adminDb

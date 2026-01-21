@@ -82,7 +82,7 @@ export const PermissionGuard = ({
   children,
   requiredPermission,
   fallback = null,
-  showMessage = true,
+  showMessage = false,
 }) => {
   const { permissions, user, userRole, hasPermission } = useAdminAuth();
 

@@ -140,6 +140,7 @@ export default function NewContractPage() {
           companyName: company.companyName || company.name || '',
           address: company.address || '',
           contactPerson: company.contactPerson || '',
+          contactPosition: company.contactPosition || '',
           phone: company.phone || '',
           email: company.email || '',
           taxOffice: company.taxOffice || '',

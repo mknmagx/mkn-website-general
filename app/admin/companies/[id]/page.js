@@ -688,7 +688,7 @@ export default function CompanyDetailPage() {
         <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 border-b border-gray-200">
           <div className="container mx-auto px-6 py-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-1">
                 <Button
                   variant="outline"
                   onClick={() => router.back()}
@@ -697,16 +697,65 @@ export default function CompanyDetailPage() {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Geri
                 </Button>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
-                      <Building2 className="h-7 w-7 text-white" />
-                    </div>
-                    {company.name}
-                  </h1>
-                  <p className="text-gray-600 mt-1 ml-14">
-                    {getBusinessLineLabel(company.businessLine)}
-                  </p>
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
+                    <Building2 className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    {editMode["name"] ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editValues["name"]}
+                          onChange={(e) =>
+                            setEditValues({
+                              ...editValues,
+                              name: e.target.value,
+                            })
+                          }
+                          className="text-2xl font-bold h-auto py-2 px-3"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => saveEdit("name")}
+                          disabled={saving}
+                          className="bg-green-500 hover:bg-green-600 h-9 w-9 p-0"
+                        >
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => cancelEdit("name")}
+                          disabled={saving}
+                          className="h-9 w-9 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="group/title flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                          {company.name}
+                        </h1>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEdit("name", company.name)}
+                          className="h-8 w-8 p-0 opacity-0 group-hover/title:opacity-100 transition-opacity"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-gray-600 mt-1">
+                      {getBusinessLineLabel(company.businessLine)}
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">

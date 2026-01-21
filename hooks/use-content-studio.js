@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import * as socialMediaService from "@/lib/services/social-media-service";
 import { toast } from "sonner";
-import { cleanContentData } from "@/lib/utils/content-helpers";
+import { cleanContentData, normalizeContent } from "@/lib/utils/content-helpers";
+
+// NOT: AI Model artık useUnifiedAI hook'undan dinamik olarak Firestore'dan çekiliyor
+// content-studio/page.js'de useUnifiedAI ile senkronize ediliyor
+// Fallback olarak null - useUnifiedAI yüklenene kadar generate engellenir
 
 /**
  * Custom hook for Content Studio state and logic
@@ -13,7 +17,7 @@ export function useContentStudio() {
   const [selectedTitle, setSelectedTitle] = useState(null);
   const [selectedPlatform, setSelectedPlatform] = useState("instagram");
   const [selectedContentType, setSelectedContentType] = useState("post");
-  const [aiModel, setAiModel] = useState("claude-sonnet-4");
+  const [aiModel, setAiModel] = useState(null); // useUnifiedAI'dan dinamik olarak set edilecek
   const [generating, setGenerating] = useState(false);
   const [generatedContents, setGeneratedContents] = useState([]);
   const [currentPreview, setCurrentPreview] = useState(0);
@@ -52,6 +56,10 @@ export function useContentStudio() {
   });
   const [showCustomization, setShowCustomization] = useState(false);
   const [editingContentId, setEditingContentId] = useState(null);
+
+  // Visual generation state
+  const [visualGenerating, setVisualGenerating] = useState(false);
+  const [aiGeneratedImages, setAiGeneratedImages] = useState([]);
 
   useEffect(() => {
     loadDatasets();
@@ -194,6 +202,34 @@ export function useContentStudio() {
           });
         }
 
+        // Load AI generated images if available
+        if (loadedContent.aiImageSuggestions && Array.isArray(loadedContent.aiImageSuggestions)) {
+          // Convert timestamps to proper format
+          const processedImages = loadedContent.aiImageSuggestions.map(suggestion => {
+            let createdAt = suggestion.createdAt;
+            
+            // If it's a Firestore Timestamp object with seconds
+            if (suggestion.createdAt?.seconds) {
+              createdAt = new Date(suggestion.createdAt.seconds * 1000).toISOString();
+            }
+            // If it's already a string, keep it
+            else if (typeof suggestion.createdAt === 'string') {
+              createdAt = suggestion.createdAt;
+            }
+            // If it's a Date object
+            else if (suggestion.createdAt instanceof Date) {
+              createdAt = suggestion.createdAt.toISOString();
+            }
+            
+            return {
+              ...suggestion,
+              createdAt: createdAt
+            };
+          });
+          
+          setAiGeneratedImages(processedImages);
+        }
+
         setActiveTab("edit");
         setCurrentPreview(0);
 
@@ -284,7 +320,7 @@ export function useContentStudio() {
     setSelectedContentType(contentTypeValue);
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (aiSettings = {}) => {
     if (!selectedTitle) {
       toast.error("Lütfen bir başlık seçin");
       return;
@@ -295,6 +331,12 @@ export function useContentStudio() {
       return;
     }
 
+    // AI Model kontrolü - useUnifiedAI'dan gelmeli
+    if (!aiModel && !aiSettings.modelId) {
+      toast.error("AI modeli yükleniyor, lütfen bekleyin...");
+      return;
+    }
+
     setGenerating(true);
 
     try {
@@ -302,16 +344,28 @@ export function useContentStudio() {
         title: selectedTitle.title,
         platform: selectedPlatform,
         contentType: selectedContentType,
-        aiModel,
+        aiModel: aiModel || aiSettings.modelId, // Fallback to aiSettings.modelId
         options: customization,
+        // AI settings from unified AI system
+        temperature: aiSettings.temperature,
+        maxTokens: aiSettings.maxTokens,
       });
 
+      // Clean and normalize content for UI compatibility
       const cleanedContent = cleanContentData(data.content);
+      const normalizedContent = normalizeContent(cleanedContent, selectedPlatform, selectedContentType);
+      
+      console.log("🔄 Content normalized:", {
+        original: Object.keys(cleanedContent || {}),
+        normalized: Object.keys(normalizedContent || {}),
+        hasHook: !!normalizedContent?.hook,
+        hasFullCaption: !!normalizedContent?.fullCaption,
+      });
 
       const result = {
         platform: selectedPlatform,
         contentType: selectedContentType,
-        content: cleanedContent,
+        content: normalizedContent,
         success: true,
       };
 
@@ -517,6 +571,8 @@ export function useContentStudio() {
     imagePreviews,
     customization,
     showCustomization,
+    visualGenerating,
+    aiGeneratedImages,
 
     // Setters
     setDatasets,
@@ -545,6 +601,8 @@ export function useContentStudio() {
     setImagePreviews,
     setCustomization,
     setShowCustomization,
+    setVisualGenerating,
+    setAiGeneratedImages,
 
     // Actions
     loadDatasets,

@@ -1,13 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   PermissionGuard,
   usePermissions,
@@ -55,9 +73,27 @@ import {
   Eye,
   X,
   Search,
+  Brain,
+  Cpu,
+  RefreshCw,
+  Settings,
+  Info,
+  Thermometer,
+  Hash,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as socialMediaService from "@/lib/services/social-media-service";
+
+// Unified AI Hook - Firestore'dan dinamik config
+import {
+  useUnifiedAI,
+  AI_CONTEXTS,
+  AI_PROVIDER_TYPES,
+} from "@/hooks/use-unified-ai";
+import { PROVIDER_INFO } from "@/lib/ai-constants";
 
 const CATEGORIES = [
   { value: "fason-kozmetik", label: "Fason - Kozmetik", icon: "💄" },
@@ -69,6 +105,74 @@ const CATEGORIES = [
   { value: "tasarim", label: "Tasarım", icon: "🎨" },
   { value: "marka-olusturma", label: "Marka Oluşturma", icon: "✨" },
 ];
+
+// Kategori bazlı zengin context bilgileri (prompt değişkenleri için)
+const CATEGORY_CONTEXTS = {
+  "fason-kozmetik": {
+    label: "Fason Kozmetik Üretimi",
+    description: "MKN Group fason kozmetik üretim hizmetleri - ISO 22716 sertifikalı",
+    topics: ["ISO 22716", "GMP standartları", "Formülasyon geliştirme", "R&D", "Minimum sipariş", "Kalite kontrol", "Vegan/cruelty-free"],
+    keywords: ["private label", "contract manufacturing", "kozmetik üretim", "cilt bakım", "saç bakım"],
+    targetAudience: "Kendi markasını kurmak isteyen girişimciler ve mevcut marka sahipleri",
+    usp: "5000+ formül, 10.600m² tesis, 75+ uzman ekip",
+  },
+  "fason-gida": {
+    label: "Fason Gıda Takviyesi Üretimi",
+    description: "MKN Group gıda takviyesi ve supplement üretim hizmetleri",
+    topics: ["HACCP", "GMP", "Gıda takviyesi", "Supplement", "Vitamin", "Protein tozu"],
+    keywords: ["supplement manufacturing", "gıda takviyesi üretim", "protein tozu", "vitamin"],
+    targetAudience: "Fitness markaları, wellness şirketleri, eczane zincirleri",
+    usp: "FDA uyumlu üretim, kalite testleri, özel formülasyon",
+  },
+  "fason-temizlik": {
+    label: "Fason Temizlik Ürünleri Üretimi", 
+    description: "MKN Group temizlik ve hijyen ürünleri üretim hizmetleri",
+    topics: ["Ev temizliği", "Endüstriyel temizlik", "Hijyen", "Dezenfektan", "Deterjan"],
+    keywords: ["temizlik ürünleri üretim", "deterjan üretim", "hijyen ürünleri"],
+    targetAudience: "Market zincirleri, temizlik firmaları, otel grupları",
+    usp: "Yüksek kapasiteli üretim, özel formülasyon, rekabetçi fiyat",
+  },
+  "kozmetik-ambalaj": {
+    label: "Kozmetik Ambalaj Çözümleri",
+    description: "MKN Group premium kozmetik ambalaj ve şişe çözümleri - 5000+ seçenek",
+    topics: ["5000+ seçenek", "Airless teknoloji", "Pompa sistemleri", "Premium tasarım", "Sürdürülebilir ambalaj"],
+    keywords: ["kozmetik ambalaj", "airless şişe", "pompa", "losyon şişesi", "krem kavanozu"],
+    targetAudience: "Kozmetik markaları, e-ticaret satıcıları, dağıtımcılar",
+    usp: "5000+ ürün, düşük MOQ, hızlı teslimat",
+  },
+  "e-ticaret-operasyon": {
+    label: "E-Ticaret Operasyon Hizmetleri",
+    description: "MKN Group e-ticaret fulfillment ve depolama hizmetleri",
+    topics: ["WMS sistemi", "Stok takibi", "Platform entegrasyonu", "24 saat kargo", "Fulfillment"],
+    keywords: ["fulfillment", "e-ticaret operasyon", "depolama", "kargo", "stok yönetimi"],
+    targetAudience: "E-ticaret satıcıları, marketplace satıcıları, D2C markaları",
+    usp: "10.600m² depo, 24 saat kargo, platform entegrasyonu",
+  },
+  "dijital-pazarlama": {
+    label: "Dijital Pazarlama Hizmetleri",
+    description: "MKN Group dijital pazarlama ve sosyal medya yönetimi",
+    topics: ["Sosyal medya", "SEO", "Google Ads", "Influencer marketing", "İçerik üretimi"],
+    keywords: ["dijital pazarlama", "sosyal medya yönetimi", "reklam", "içerik"],
+    targetAudience: "KOBİ'ler, e-ticaret markaları, yeni girişimler",
+    usp: "Entegre hizmet, deneyimli ekip, ölçülebilir sonuçlar",
+  },
+  "tasarim": {
+    label: "Tasarım Hizmetleri",
+    description: "MKN Group ambalaj ve grafik tasarım hizmetleri",
+    topics: ["Ambalaj tasarımı", "Logo", "Kurumsal kimlik", "Etiket tasarımı", "3D render"],
+    keywords: ["ambalaj tasarım", "logo tasarım", "grafik tasarım", "etiket"],
+    targetAudience: "Yeni markalar, mevcut markaların yenilenmesi, özel projeler",
+    usp: "Uzman tasarımcılar, hızlı revizyon, baskıya hazır dosya",
+  },
+  "marka-olusturma": {
+    label: "Marka Oluşturma Hizmetleri",
+    description: "MKN Group A'dan Z'ye marka oluşturma danışmanlığı",
+    topics: ["Marka stratejisi", "İsim bulma", "Konumlandırma", "Hikaye anlatımı", "Lansman"],
+    keywords: ["marka oluşturma", "branding", "marka danışmanlığı", "strateji"],
+    targetAudience: "Sıfırdan marka kurmak isteyenler, repositioning yapacaklar",
+    usp: "Uçtan uca hizmet, strateji+uygulama, sektör tecrübesi",
+  },
+};
 
 const PLATFORMS = [
   {
@@ -163,17 +267,37 @@ const CONTENT_TYPES = {
   ],
 };
 
-const AI_MODELS = [
-  { value: "claude-sonnet-4", label: "Sonnet 4 (Önerilen)" },
-  { value: "claude-opus-4", label: "Opus 4 (Güçlü)" },
-  { value: "claude-haiku-4", label: "Haiku 4 (Hızlı)" },
-];
+// AI_MODELS artık merkezi konfigürasyondan import ediliyor (yukarıda)
 
 export default function DatasetDetailPage() {
   const router = useRouter();
   const params = useParams();
   const datasetId = params.id;
   const { hasPermission } = usePermissions();
+
+  // Unified AI Hook - Firestore'dan dinamik config
+  const {
+    config: aiConfig,
+    availableModels,
+    modelsByProvider,
+    selectedModel: currentModel,
+    currentProvider,
+    generateContent,
+    selectModel,
+    loading: aiLoading,
+    configLoading,
+    error: aiError,
+    isReady: aiIsReady,
+    hasModels,
+    refresh: refreshAIConfig,
+    getProviderIcon,
+    prompt: firestorePrompt,
+    // Platform bazlı prompt desteği
+    platformPromptsInfo,
+    hasPlatformPrompts,
+    loadPromptForPlatform,
+    platformPromptCache,
+  } = useUnifiedAI(AI_CONTEXTS.SOCIAL_TITLE_GENERATION);
 
   const [dataset, setDataset] = useState(null);
   const [titles, setTitles] = useState([]);
@@ -196,8 +320,18 @@ export default function DatasetDetailPage() {
 
   // Generation settings
   const [count, setCount] = useState(10);
-  const [aiModel, setAiModel] = useState("claude-sonnet-4");
+  const [selectedModelId, setSelectedModelId] = useState(null);
   const [customPrompt, setCustomPrompt] = useState("");
+
+  // AI Configuration settings
+  const [temperature, setTemperature] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(4096);
+  const [showConfigPanel, setShowConfigPanel] = useState(false);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+  
+  // Platform bazlı prompt önizleme state'leri
+  const [previewPromptsByPlatform, setPreviewPromptsByPlatform] = useState({});
+  const [loadingPreviewPrompts, setLoadingPreviewPrompts] = useState(false);
 
   // Filter states for title library
   const [filterCategory, setFilterCategory] = useState("all");
@@ -205,10 +339,136 @@ export default function DatasetDetailPage() {
   const [filterContentType, setFilterContentType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showLibraryDialog, setShowLibraryDialog] = useState(false);
-  
+
   // Title details dialog
   const [showTitleDialog, setShowTitleDialog] = useState(false);
   const [selectedTitleDetails, setSelectedTitleDetails] = useState(null);
+
+  // AI config yüklendiğinde default model ve ayarları seç
+  useEffect(() => {
+    if (aiConfig?.defaultModelId && !selectedModelId) {
+      setSelectedModelId(aiConfig.defaultModelId);
+    } else if (availableModels?.length > 0 && !selectedModelId) {
+      setSelectedModelId(availableModels[0]?.modelId || availableModels[0]?.id);
+    }
+    // Temperature ve maxTokens'ı config'den al
+    if (aiConfig?.settings?.temperature) {
+      setTemperature(aiConfig.settings.temperature);
+    }
+    if (aiConfig?.settings?.maxTokens) {
+      setMaxTokens(aiConfig.settings.maxTokens);
+    }
+  }, [aiConfig, availableModels, selectedModelId]);
+
+  /**
+   * Kategori için zengin context string oluştur
+   * @param {string} categoryValue - Kategori değeri (ör: "fason-kozmetik")
+   */
+  const buildCategoryContext = useCallback((categoryValue) => {
+    const context = CATEGORY_CONTEXTS[categoryValue];
+    const categoryInfo = CATEGORIES.find(c => c.value === categoryValue);
+    
+    if (!context) {
+      return categoryInfo?.label || categoryValue;
+    }
+    
+    // Zengin kategori context'i oluştur
+    return `${context.label}
+
+📋 Açıklama: ${context.description}
+
+🎯 Hedef Kitle: ${context.targetAudience}
+
+🏆 Öne Çıkan Değerler: ${context.usp}
+
+📌 Ana Konular:
+${context.topics.map((t, i) => `  ${i + 1}. ${t}`).join('\n')}
+
+🔑 Anahtar Kelimeler: ${context.keywords.join(', ')}`;
+  }, []);
+
+  /**
+   * Firestore'dan gelen prompt template'ine değişkenleri yerleştir
+   * @param {Object} variables - Değişkenler
+   * @param {Object} promptOverride - Kullanılacak özel prompt (platform bazlı)
+   */
+  const applyPromptVariables = useCallback(
+    (variables = {}, promptOverride = null) => {
+      const targetPrompt = promptOverride || firestorePrompt;
+      const promptTemplate =
+        targetPrompt?.userPromptTemplate || targetPrompt?.content;
+
+      if (!promptTemplate) {
+        // Fallback prompt
+        return `MKN Group için sosyal medya başlıkları üret.
+Kategori: ${variables.categoryContext || variables.categoryLabel || variables.category}
+Platform: ${variables.platformLabel || variables.platform}
+İçerik Tipi: ${variables.contentTypeLabel || variables.contentType}
+Adet: ${variables.count}
+${variables.customPrompt ? `Ek talimat: ${variables.customPrompt}` : ""}
+
+JSON formatında başlıklar döndür:
+[{"title": "...", "description": "...", "emotionalHook": "...", "visualPotential": "...", "trendAlignment": "..."}]`;
+      }
+
+      let promptContent = promptTemplate;
+
+      // Değişkenleri uygula
+      Object.entries(variables).forEach(([key, value]) => {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "gi");
+        promptContent = promptContent.replace(regex, String(value || ""));
+      });
+
+      return promptContent;
+    },
+    [firestorePrompt]
+  );
+
+  /**
+   * Platform için system prompt al
+   * @param {Object} promptOverride - Kullanılacak özel prompt (platform bazlı)
+   */
+  const getSystemPrompt = useCallback(
+    (promptOverride = null) => {
+      const targetPrompt = promptOverride || firestorePrompt;
+      return targetPrompt?.systemPrompt || null;
+    },
+    [firestorePrompt]
+  );
+
+  // Seçili platformlar değiştiğinde platform prompt'larını yükle
+  useEffect(() => {
+    const loadPlatformPromptsForPreview = async () => {
+      if (!hasPlatformPrompts || selectedPlatforms.length === 0) {
+        setPreviewPromptsByPlatform({});
+        return;
+      }
+
+      setLoadingPreviewPrompts(true);
+      const prompts = {};
+
+      for (const platform of selectedPlatforms) {
+        try {
+          // Önce cache'e bak, yoksa yükle
+          if (platformPromptCache[platform]) {
+            prompts[platform] = platformPromptCache[platform];
+          } else {
+            const prompt = await loadPromptForPlatform(platform);
+            if (prompt) {
+              prompts[platform] = prompt;
+            }
+          }
+        } catch (error) {
+          console.error(`Platform prompt yüklenemedi: ${platform}`, error);
+        }
+      }
+
+      setPreviewPromptsByPlatform(prompts);
+      setLoadingPreviewPrompts(false);
+    };
+
+    loadPlatformPromptsForPreview();
+  }, [selectedPlatforms, hasPlatformPrompts, platformPromptCache, loadPromptForPlatform]);
 
   useEffect(() => {
     if (datasetId) {
@@ -261,32 +521,134 @@ export default function DatasetDetailPage() {
     // Parse platform:contentType
     const [platform, contentType] = platformContentType.split(":");
 
+    // Get label info
+    const categoryInfo = CATEGORIES.find((c) => c.value === category);
+    const platformInfo = PLATFORMS.find((p) => p.value === platform);
+    const contentTypeInfo = CONTENT_TYPES[platform]?.find(
+      (ct) => ct.value === contentType
+    );
+
     setGenerating(true);
     try {
-      const response = await fetch("/api/admin/social-media/generate-titles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category,
-          platform,
-          contentType,
-          count,
-          aiModel,
-          customPrompt,
-        }),
+      // Platform bazlı prompt yükle (varsa)
+      let platformPrompt = null;
+      if (hasPlatformPrompts) {
+        platformPrompt = await loadPromptForPlatform(platform);
+        if (platformPrompt) {
+          console.log(`🎯 Platform-specific prompt loaded for: ${platform}`);
+        }
+      }
+      
+      // Zengin kategori context'i oluştur
+      const categoryContext = buildCategoryContext(category);
+      
+      // Firestore'dan gelen prompt'u değişkenlerle doldur
+      const prompt = applyPromptVariables({
+        // Temel değişkenler
+        category,
+        categoryLabel: categoryInfo?.label || category,
+        categoryContext, // Zengin kategori bilgisi
+        platform,
+        platformLabel: platformInfo?.label || platform,
+        contentType,
+        contentTypeLabel: contentTypeInfo?.label || contentType,
+        count,
+        // Ek talimat
+        customPrompt: customPrompt ? `\n\n## EK TALİMAT\n${customPrompt}` : "",
+        // Ek context değişkenleri
+        targetAudience: CATEGORY_CONTEXTS[category]?.targetAudience || "",
+        usp: CATEGORY_CONTEXTS[category]?.usp || "",
+        keywords: CATEGORY_CONTEXTS[category]?.keywords?.join(", ") || "",
+      }, platformPrompt);
+
+      // Unified AI ile generate et
+      const result = await generateContent(prompt, {
+        modelId: selectedModelId,
+        systemPrompt: getSystemPrompt(platformPrompt),
+        temperature: temperature,
+        maxTokens: maxTokens,
       });
 
-      if (!response.ok) throw new Error("Generation failed");
-      const data = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || "Generation failed");
+      }
 
-      await saveGeneratedTitles(data.titles, category, platform, contentType);
+      // Parse JSON response - Robust parsing
+      let parsedTitles = [];
+      try {
+        let content = result.content;
+        
+        // Code block içindeki JSON'u çıkar (```json ... ```)
+        const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          content = codeBlockMatch[1].trim();
+        }
+        
+        // JSON array'i bul
+        const jsonMatch = content.match(/\[[\s\S]*?\]/);
+        if (jsonMatch) {
+          parsedTitles = JSON.parse(jsonMatch[0]);
+          console.log(`✅ Parsed ${parsedTitles.length} titles from JSON`);
+        } else {
+          throw new Error("JSON array not found");
+        }
+      } catch (parseError) {
+        console.warn(`⚠️ JSON parse failed, trying fallback: ${parseError.message}`);
+        
+        // Fallback: Numaralı liste veya madde işaretli parse
+        const lines = result.content
+          .split("\n")
+          .map(line => line.trim())
+          .filter(line => {
+            if (!line) return false;
+            if (line === "[" || line === "]" || line === "{" || line === "}") return false;
+            if (line.startsWith("#")) return false;
+            if (line.toLowerCase().includes("işte") || line.toLowerCase().includes("aşağıda")) return false;
+            return true;
+          });
+        
+        parsedTitles = lines
+          .filter(line => /^\d+\.|^[-*•]|^\*\*/.test(line))
+          .map((line) => {
+            let title = line
+              .replace(/^\d+\.\s*/, "")
+              .replace(/^[-*•]\s*/, "")
+              .replace(/\*\*(.*?)\*\*/g, "$1")
+              .replace(/\*(.*?)\*/g, "$1")
+              .trim();
+            
+            let description = "";
+            const parenMatch = title.match(/\((.*?)\)$/);
+            if (parenMatch) {
+              description = parenMatch[1];
+              title = title.replace(/\s*\(.*?\)$/, "").trim();
+            }
+            
+            return {
+              title: title,
+              description: description,
+              emotionalHook: "",
+              visualPotential: "",
+              trendAlignment: "",
+            };
+          })
+          .filter(t => t.title.length > 5);
+        
+        console.log(`✅ Parsed ${parsedTitles.length} titles from fallback`);
+      }
 
-      toast.success(`${data.titles.length} başlık oluşturuldu!`);
+      if (parsedTitles.length === 0) {
+        throw new Error("Başlık parse edilemedi. AI yanıtı beklenen formatta değil.");
+      }
+
+      await saveGeneratedTitles(parsedTitles, category, platform, contentType);
+
+      toast.success(`${parsedTitles.length} başlık oluşturuldu!`);
       fetchTitles();
       fetchDataset();
     } catch (error) {
       console.error("Generation error:", error);
-      toast.error("Başlık oluşturulamadı");
+      toast.error("Başlık oluşturulamadı: " + error.message);
     } finally {
       setGenerating(false);
     }
@@ -305,13 +667,20 @@ export default function DatasetDetailPage() {
     const totalCombinations = categories * contentTypes;
     const estimatedTitles = totalCombinations * count;
 
+    // Get current model info
+    const modelInfo = availableModels?.find(
+      (m) => m.modelId === selectedModelId || m.id === selectedModelId
+    );
+
     return {
       categories: selectedCategories,
       contentTypes: selectedContentTypes,
       totalCombinations,
       estimatedTitles,
       countPerRequest: count,
-      aiModel,
+      modelId: selectedModelId,
+      modelName: modelInfo?.displayName || modelInfo?.name || selectedModelId,
+      provider: modelInfo?.provider || currentProvider?.id,
     };
   };
 
@@ -348,40 +717,156 @@ export default function DatasetDetailPage() {
         }
       }
 
+      // Platform prompt'larını önceden yükle (batch için optimizasyon)
+      const platformPromptMap = {};
+      if (hasPlatformPrompts) {
+        const uniquePlatformsInBatch = [...new Set(combinations.map(c => c.platform))];
+        for (const plat of uniquePlatformsInBatch) {
+          platformPromptMap[plat] = await loadPromptForPlatform(plat);
+        }
+        console.log(`🎯 Platform prompts preloaded for: ${uniquePlatformsInBatch.join(", ")}`);
+      }
+
       // Execute each combination
       for (let i = 0; i < combinations.length; i++) {
         const { category, platform, contentType } = combinations[i];
 
         try {
-          const response = await fetch(
-            "/api/admin/social-media/generate-titles",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                category,
-                platform,
-                contentType,
-                count,
-                aiModel,
-                customPrompt,
-              }),
-            }
+          // Get label info
+          const categoryInfo = CATEGORIES.find((c) => c.value === category);
+          const platformInfo = PLATFORMS.find((p) => p.value === platform);
+          const contentTypeInfo = CONTENT_TYPES[platform]?.find(
+            (ct) => ct.value === contentType
           );
 
-          if (response.ok) {
-            const data = await response.json();
-            await saveGeneratedTitles(
-              data.titles,
-              category,
-              platform,
-              contentType
-            );
-            totalGenerated += data.titles.length;
-            successCount++;
+          // Platform bazlı prompt kullan (varsa)
+          const platformPrompt = platformPromptMap[platform] || null;
+
+          // Zengin kategori context'i oluştur
+          const categoryContext = buildCategoryContext(category);
+
+          // Firestore'dan gelen prompt'u değişkenlerle doldur
+          const prompt = applyPromptVariables({
+            // Temel değişkenler
+            category,
+            categoryLabel: categoryInfo?.label || category,
+            categoryContext, // Zengin kategori bilgisi
+            platform,
+            platformLabel: platformInfo?.label || platform,
+            contentType,
+            contentTypeLabel: contentTypeInfo?.label || contentType,
+            count,
+            // Ek talimat
+            customPrompt: customPrompt
+              ? `\n\n## EK TALİMAT\n${customPrompt}`
+              : "",
+            // Ek context değişkenleri
+            targetAudience: CATEGORY_CONTEXTS[category]?.targetAudience || "",
+            usp: CATEGORY_CONTEXTS[category]?.usp || "",
+            keywords: CATEGORY_CONTEXTS[category]?.keywords?.join(", ") || "",
+          }, platformPrompt);
+
+          console.log(`🎯 Generating for ${platform}/${category}/${contentType}...`);
+
+          // Unified AI ile generate et
+          const result = await generateContent(prompt, {
+            modelId: selectedModelId,
+            systemPrompt: getSystemPrompt(platformPrompt),
+            temperature: temperature,
+            maxTokens: maxTokens,
+          });
+
+          if (result.success) {
+            // Parse JSON response - Robust parsing
+            let parsedTitles = [];
+            try {
+              let content = result.content;
+              
+              // Code block içindeki JSON'u çıkar (```json ... ```)
+              const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+              if (codeBlockMatch) {
+                content = codeBlockMatch[1].trim();
+              }
+              
+              // JSON array'i bul
+              const jsonMatch = content.match(/\[[\s\S]*?\]/);
+              if (jsonMatch) {
+                parsedTitles = JSON.parse(jsonMatch[0]);
+                console.log(`✅ Parsed ${parsedTitles.length} titles from JSON`);
+              } else {
+                throw new Error("JSON array not found");
+              }
+            } catch (parseError) {
+              console.warn(`⚠️ JSON parse failed, trying fallback: ${parseError.message}`);
+              
+              // Fallback: Numaralı liste veya madde işaretli parse
+              const lines = result.content
+                .split("\n")
+                .map(line => line.trim())
+                .filter(line => {
+                  // Boş satırları atla
+                  if (!line) return false;
+                  // JSON işaretlerini atla
+                  if (line === "[" || line === "]" || line === "{" || line === "}") return false;
+                  // Markdown başlıklarını atla
+                  if (line.startsWith("#")) return false;
+                  // Açıklama satırlarını atla
+                  if (line.toLowerCase().includes("işte") || line.toLowerCase().includes("aşağıda")) return false;
+                  return true;
+                });
+              
+              // **Bold** başlıkları veya numaralı listeyi parse et
+              parsedTitles = lines
+                .filter(line => /^\d+\.|^[-*•]|^\*\*/.test(line))
+                .map((line) => {
+                  // Bold text'i çıkar: **text** -> text
+                  let title = line
+                    .replace(/^\d+\.\s*/, "")      // "1. " kaldır
+                    .replace(/^[-*•]\s*/, "")      // "- " veya "* " kaldır
+                    .replace(/\*\*(.*?)\*\*/g, "$1") // **text** -> text
+                    .replace(/\*(.*?)\*/g, "$1")   // *text* -> text
+                    .trim();
+                  
+                  // Parantez içi açıklamayı description yap
+                  let description = "";
+                  const parenMatch = title.match(/\((.*?)\)$/);
+                  if (parenMatch) {
+                    description = parenMatch[1];
+                    title = title.replace(/\s*\(.*?\)$/, "").trim();
+                  }
+                  
+                  return {
+                    title: title,
+                    description: description,
+                    emotionalHook: "",
+                    visualPotential: "",
+                    trendAlignment: "",
+                  };
+                })
+                .filter(t => t.title.length > 5); // Çok kısa başlıkları filtrele
+              
+              console.log(`✅ Parsed ${parsedTitles.length} titles from fallback`);
+            }
+
+            if (parsedTitles.length > 0) {
+              await saveGeneratedTitles(
+                parsedTitles,
+                category,
+                platform,
+                contentType
+              );
+              totalGenerated += parsedTitles.length;
+              successCount++;
+            } else {
+              console.error(`❌ No titles parsed for ${category}-${platform}-${contentType}`);
+              failCount++;
+            }
           } else {
             failCount++;
-            console.error(`Failed for ${category}-${platform}-${contentType}`);
+            console.error(
+              `Failed for ${category}-${platform}-${contentType}:`,
+              result.error
+            );
           }
         } catch (error) {
           failCount++;
@@ -519,19 +1004,22 @@ export default function DatasetDetailPage() {
   // Navigate to content studio with selected title
   const handleOpenInContentStudio = (title) => {
     // Store the selected title data in session storage for content studio to pick up
-    sessionStorage.setItem('contentStudioTitle', JSON.stringify({
-      id: title.id,
-      title: title.title,
-      description: title.description,
-      category: title.category,
-      platform: title.platform,
-      contentType: title.contentType,
-      datasetId: title.datasetId,
-      emotionalHook: title.emotionalHook,
-      trendAlignment: title.trendAlignment,
-      visualPotential: title.visualPotential
-    }));
-    router.push('/admin/social-media/content-studio');
+    sessionStorage.setItem(
+      "contentStudioTitle",
+      JSON.stringify({
+        id: title.id,
+        title: title.title,
+        description: title.description,
+        category: title.category,
+        platform: title.platform,
+        contentType: title.contentType,
+        datasetId: title.datasetId,
+        emotionalHook: title.emotionalHook,
+        trendAlignment: title.trendAlignment,
+        visualPotential: title.visualPotential,
+      })
+    );
+    router.push("/admin/social-media/content-studio");
   };
 
   // View title details
@@ -545,15 +1033,15 @@ export default function DatasetDetailPage() {
     try {
       // Fetch single content by ID using service
       const content = await socialMediaService.getGeneratedContentById(postId);
-      
+
       // Store content in sessionStorage for content-studio to load
       sessionStorage.setItem("editingContent", JSON.stringify(content));
-      
+
       // Navigate to content studio
       router.push("/admin/social-media/content-studio?mode=edit");
     } catch (error) {
-      console.error('Error loading content:', error);
-      toast.error('İçerik yüklenemedi');
+      console.error("Error loading content:", error);
+      toast.error("İçerik yüklenemedi");
     }
   };
 
@@ -923,49 +1411,107 @@ export default function DatasetDetailPage() {
                       </div>
                     </div>
 
-                    {/* AI Model */}
+                    {/* AI Model - Firestore'dan dinamik */}
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium text-gray-700">
-                        AI Model
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {AI_MODELS.map((model) => {
-                          const isSelected = aiModel === model.value;
-                          return (
-                            <div
-                              key={model.value}
-                              onClick={() => setAiModel(model.value)}
-                              className={`
-                                  relative cursor-pointer rounded-lg border-2 p-3 transition-all duration-200 text-center
-                                  ${
-                                    isSelected
-                                      ? "border-blue-500 bg-blue-50 shadow-sm"
-                                      : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/30"
-                                  }
-                                `}
-                            >
-                              <div className="flex flex-col items-center gap-1">
-                                <Sparkles
-                                  className={`h-4 w-4 ${
-                                    isSelected
-                                      ? "text-blue-600"
-                                      : "text-gray-400"
-                                  }`}
-                                />
-                                <span className="text-xs font-medium text-gray-900">
-                                  {model.label.split(" ")[0]}
-                                </span>
-                                <span className="text-[10px] text-gray-500">
-                                  {model.label.split(" ").slice(1).join(" ")}
-                                </span>
-                                {isSelected && (
-                                  <Check className="h-3 w-3 text-blue-600 absolute top-1 right-1" />
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                          <Brain className="h-3.5 w-3.5 text-purple-600" />
+                          AI Model
+                          {configLoading && (
+                            <RefreshCw className="h-3 w-3 animate-spin text-gray-400" />
+                          )}
+                        </Label>
+                        <button
+                          onClick={refreshAIConfig}
+                          className="text-[10px] text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Yenile
+                        </button>
                       </div>
+
+                      {configLoading ? (
+                        <div className="h-24 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+                          <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+                        </div>
+                      ) : availableModels?.length > 0 ? (
+                        <div className="space-y-2">
+                          {/* Provider grupları */}
+                          {Object.entries(modelsByProvider || {}).map(
+                            ([provider, models]) => {
+                              const providerInfo = PROVIDER_INFO[provider];
+                              return (
+                                <div key={provider} className="space-y-1.5">
+                                  <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                    <span>{providerInfo?.icon || "⚪"}</span>
+                                    <span>
+                                      {providerInfo?.name || provider}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {models.map((model) => {
+                                      const modelId = model.modelId || model.id;
+                                      const isSelected =
+                                        selectedModelId === modelId;
+                                      const isDefault =
+                                        aiConfig?.defaultModelId === modelId;
+                                      return (
+                                        <div
+                                          key={modelId}
+                                          onClick={() =>
+                                            setSelectedModelId(modelId)
+                                          }
+                                          className={`
+                                          relative cursor-pointer rounded-lg border-2 p-2 transition-all duration-200
+                                          ${
+                                            isSelected
+                                              ? "border-purple-500 bg-purple-50 shadow-sm"
+                                              : "border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/30"
+                                          }
+                                        `}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm">
+                                              {model.icon ||
+                                                providerInfo?.icon ||
+                                                "⚪"}
+                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-xs font-medium text-gray-900 truncate">
+                                                {model.displayName ||
+                                                  model.name}
+                                              </div>
+                                              {isDefault && (
+                                                <span className="text-[9px] text-purple-600">
+                                                  Önerilen
+                                                </span>
+                                              )}
+                                            </div>
+                                            {isSelected && (
+                                              <Check className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-24 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-xs text-gray-400">
+                          <Info className="h-4 w-4 mb-1" />
+                          Model yüklenemedi
+                          <button
+                            onClick={refreshAIConfig}
+                            className="text-purple-600 hover:text-purple-700 mt-1"
+                          >
+                            Tekrar dene
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -1007,6 +1553,14 @@ export default function DatasetDetailPage() {
                                   count}
                               </span>
                             </div>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">AI Model:</span>
+                              <span className="font-bold text-blue-600">
+                                {availableModels?.find(
+                                  (m) => (m.modelId || m.id) === selectedModelId
+                                )?.displayName || selectedModelId}
+                              </span>
+                            </div>
                             <div className="flex items-center justify-between pt-1 border-t border-purple-200">
                               <span className="font-medium">Mod:</span>
                               <span className="font-bold text-blue-600">
@@ -1035,6 +1589,8 @@ export default function DatasetDetailPage() {
                         }}
                         disabled={
                           generating ||
+                          configLoading ||
+                          !selectedModelId ||
                           selectedCategories.length === 0 ||
                           selectedContentTypes.length === 0
                         }
@@ -1060,6 +1616,474 @@ export default function DatasetDetailPage() {
                       </Button>
                     )}
                   </CardContent>
+                </Card>
+
+                {/* AI Configuration Card */}
+                <TooltipProvider>
+                  <Card className="border-0 shadow-md rounded-xl overflow-hidden bg-white">
+                    <Collapsible
+                      open={showConfigPanel}
+                      onOpenChange={setShowConfigPanel}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Settings className="h-4 w-4 text-purple-600" />
+                            <span className="text-sm font-semibold text-gray-900">
+                              AI Konfigürasyon
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-5"
+                            >
+                              {firestorePrompt ? "Firestore" : "Yükleniyor"}
+                            </Badge>
+                          </div>
+                          {showConfigPanel ? (
+                            <ChevronUp className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="p-4 pt-0 space-y-4 border-t border-gray-100">
+                          {/* Temperature Slider */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                                <Thermometer className="h-3.5 w-3.5 text-orange-500" />
+                                Temperature
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="h-3 w-3 text-gray-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="right"
+                                    className="max-w-[200px]"
+                                  >
+                                    <p className="text-xs">
+                                      Düşük = Tutarlı ve odaklı
+                                      <br />
+                                      Yüksek = Yaratıcı ve çeşitli
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </Label>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] h-5 px-2"
+                              >
+                                {temperature.toFixed(1)}
+                              </Badge>
+                            </div>
+                            <Slider
+                              value={[temperature]}
+                              onValueChange={(value) =>
+                                setTemperature(value[0])
+                              }
+                              max={1}
+                              min={0.1}
+                              step={0.1}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-400">
+                              <span>Tutarlı</span>
+                              <span>Yaratıcı</span>
+                            </div>
+                          </div>
+
+                          {/* Max Tokens Slider */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                                <Hash className="h-3.5 w-3.5 text-blue-500" />
+                                Max Tokens
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="h-3 w-3 text-gray-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="right"
+                                    className="max-w-[200px]"
+                                  >
+                                    <p className="text-xs">
+                                      AI yanıtının maksimum uzunluğu. Daha fazla
+                                      başlık için artırın.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </Label>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] h-5 px-2"
+                              >
+                                {maxTokens.toLocaleString()}
+                              </Badge>
+                            </div>
+                            <Slider
+                              value={[maxTokens]}
+                              onValueChange={(value) => setMaxTokens(value[0])}
+                              max={8192}
+                              min={1024}
+                              step={512}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-400">
+                              <span>1K</span>
+                              <span>8K</span>
+                            </div>
+                          </div>
+
+                          {/* Quick Presets */}
+                          <div className="pt-2 border-t border-gray-100">
+                            <Label className="text-xs font-medium text-gray-700 mb-2 block">
+                              Hızlı Preset
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                onClick={() => {
+                                  setTemperature(0.7);
+                                  setMaxTokens(2048);
+                                }}
+                                className="px-2 py-1.5 text-[10px] rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                              >
+                                🎯 Odaklı
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTemperature(0.9);
+                                  setMaxTokens(4096);
+                                }}
+                                className="px-2 py-1.5 text-[10px] rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                              >
+                                ⚡ Dengeli
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTemperature(1.0);
+                                  setMaxTokens(6144);
+                                }}
+                                className="px-2 py-1.5 text-[10px] rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                              >
+                                🎨 Yaratıcı
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Platform Prompts Section */}
+                          {hasPlatformPrompts && platformPromptsInfo && (
+                            <div className="pt-3 border-t border-gray-100">
+                              <Label className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                                <Layers className="h-3.5 w-3.5 text-purple-500" />
+                                Platform Bazlı Prompt'lar
+                                <Badge variant="outline" className="text-[9px] h-4 px-1.5 ml-1">
+                                  {Object.keys(platformPromptsInfo).length} platform
+                                </Badge>
+                              </Label>
+                              <div className="space-y-1.5 mt-2">
+                                {Object.entries(platformPromptsInfo).map(([plat, info]) => {
+                                  const platInfo = PLATFORMS.find(p => p.value === plat);
+                                  const Icon = platInfo?.icon || FileText;
+                                  return (
+                                    <div 
+                                      key={plat}
+                                      className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-xs"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Icon className="h-3.5 w-3.5 text-gray-600" />
+                                        <span className="font-medium text-gray-800">
+                                          {platInfo?.label || plat}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-gray-500 truncate max-w-[120px]">
+                                          {info.name}
+                                        </span>
+                                        {info.version && (
+                                          <Badge variant="secondary" className="text-[9px] h-4 px-1">
+                                            v{info.version}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-[10px] text-gray-400 mt-2">
+                                ✨ Her platform kendi özel prompt'unu kullanır
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </Card>
+                </TooltipProvider>
+
+                {/* Prompt Preview Card - Platform Bazlı */}
+                <Card className="border-0 shadow-md rounded-xl overflow-hidden bg-slate-50">
+                  <Collapsible
+                    open={showPromptPreview}
+                    onOpenChange={setShowPromptPreview}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-slate-600" />
+                          <span className="text-sm font-semibold text-slate-800">
+                            Canlı Prompt Önizleme
+                          </span>
+                          {hasPlatformPrompts && selectedPlatforms.length > 0 && (
+                            <Badge variant="outline" className="text-[9px] h-4 bg-purple-50 text-purple-600 border-purple-200">
+                              {selectedPlatforms.length} Platform
+                            </Badge>
+                          )}
+                          {loadingPreviewPrompts && (
+                            <Loader2 className="h-3 w-3 animate-spin text-purple-500" />
+                          )}
+                        </div>
+                        {showPromptPreview ? (
+                          <ChevronUp className="h-4 w-4 text-slate-500" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-slate-500" />
+                        )}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="p-4 pt-0 border-t border-slate-200">
+                        {loadingPreviewPrompts ? (
+                          <div className="flex items-center justify-center py-6 text-slate-500">
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <span className="text-xs">
+                              Platform prompt'ları yükleniyor...
+                            </span>
+                          </div>
+                        ) : hasPlatformPrompts && selectedPlatforms.length > 0 ? (
+                          /* Platform Bazlı Prompt Önizleme */
+                          <div className="space-y-4">
+                            <div className="text-xs text-purple-600 bg-purple-50 px-3 py-2 rounded-lg flex items-center gap-2">
+                              <Layers className="h-3.5 w-3.5" />
+                              <span>Her platform için özel prompt kullanılacak</span>
+                            </div>
+                            
+                            {selectedPlatforms.map((platform) => {
+                              const platformPrompt = previewPromptsByPlatform[platform];
+                              const platInfo = PLATFORMS.find(p => p.value === platform);
+                              const Icon = platInfo?.icon || FileText;
+                              
+                              // Bu platform için seçili content type'ları bul
+                              const platformContentTypes = selectedContentTypes
+                                .filter(ct => ct.startsWith(`${platform}:`))
+                                .map(ct => ct.split(':')[1]);
+                              
+                              return (
+                                <div key={platform} className="border border-slate-200 rounded-lg overflow-hidden">
+                                  {/* Platform Header */}
+                                  <div className={`px-3 py-2 bg-gradient-to-r ${platInfo?.color || 'from-gray-500 to-gray-600'} text-white flex items-center justify-between`}>
+                                    <div className="flex items-center gap-2">
+                                      <Icon className="h-4 w-4" />
+                                      <span className="text-sm font-semibold">{platInfo?.label || platform}</span>
+                                    </div>
+                                    {platformPrompt ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] opacity-90">{platformPrompt.name}</span>
+                                        {platformPrompt.version && (
+                                          <Badge variant="secondary" className="text-[9px] h-4 bg-white/20 text-white border-0">
+                                            v{platformPrompt.version}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] opacity-75">Varsayılan prompt</span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Prompt Content */}
+                                  <div className="p-3 space-y-2 bg-white">
+                                    {platformPrompt ? (
+                                      <>
+                                        {/* System Prompt */}
+                                        {platformPrompt.systemPrompt && (
+                                          <details className="group">
+                                            <summary className="cursor-pointer text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                              <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-medium">
+                                                SYSTEM
+                                              </span>
+                                              System Prompt
+                                            </summary>
+                                            <div className="mt-2 p-2 bg-slate-800 rounded-lg max-h-64 overflow-y-auto">
+                                              <pre className="text-[9px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                                                {platformPrompt.systemPrompt}
+                                              </pre>
+                                            </div>
+                                          </details>
+                                        )}
+                                        
+                                        {/* User Prompt */}
+                                        <details className="group" open>
+                                          <summary className="cursor-pointer text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                            <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[9px] font-medium">
+                                              USER
+                                            </span>
+                                            User Prompt
+                                          </summary>
+                                          <div className="mt-2 p-2 bg-slate-900 rounded-lg max-h-96 overflow-y-auto">
+                                            <pre className="text-[9px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                                              {applyPromptVariables({
+                                                category: selectedCategories[0] || "[kategori]",
+                                                categoryLabel: CATEGORIES.find(c => c.value === selectedCategories[0])?.label || "[kategori adı]",
+                                                categoryContext: selectedCategories[0] ? buildCategoryContext(selectedCategories[0]) : "[kategori context]",
+                                                platform: platform,
+                                                platformLabel: platInfo?.label || platform,
+                                                contentType: platformContentTypes[0] || "[içerik tipi]",
+                                                contentTypeLabel: platformContentTypes[0] || "[içerik tipi]",
+                                                count: count,
+                                                customPrompt: customPrompt ? `\n\n## EK TALİMAT\n${customPrompt}` : "",
+                                                targetAudience: selectedCategories[0] ? CATEGORY_CONTEXTS[selectedCategories[0]]?.targetAudience || "" : "",
+                                                usp: selectedCategories[0] ? CATEGORY_CONTEXTS[selectedCategories[0]]?.usp || "" : "",
+                                                keywords: selectedCategories[0] ? CATEGORY_CONTEXTS[selectedCategories[0]]?.keywords?.join(", ") || "" : "",
+                                              }, platformPrompt)}
+                                            </pre>
+                                          </div>
+                                        </details>
+                                      </>
+                                    ) : (
+                                      <div className="text-[11px] text-slate-500 py-2">
+                                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                                          ⚠️ Bu platform için özel prompt tanımlanmamış, varsayılan kullanılacak
+                                        </span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Platform içerik tipleri */}
+                                    {platformContentTypes.length > 0 && (
+                                      <div className="flex items-center gap-1 pt-2 border-t border-slate-100">
+                                        <span className="text-[10px] text-slate-400">İçerik:</span>
+                                        {platformContentTypes.map(ct => (
+                                          <Badge key={ct} variant="outline" className="text-[9px] h-4">
+                                            {ct}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            
+                            {/* Generation Stats */}
+                            <div className="flex items-center gap-3 pt-2 border-t border-slate-200 text-[10px] text-slate-500">
+                              <span>🎯 Temp: {temperature}</span>
+                              <span>📝 Tokens: {maxTokens}</span>
+                              <span>🔢 Adet: {count}</span>
+                              <span>📱 Platform: {selectedPlatforms.length}</span>
+                            </div>
+                          </div>
+                        ) : !firestorePrompt ? (
+                          <div className="flex items-center justify-center py-6 text-slate-500">
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <span className="text-xs">
+                              Firestore'dan prompt yükleniyor...
+                            </span>
+                          </div>
+                        ) : (
+                          /* Varsayılan Tek Prompt Önizleme */
+                          <div className="space-y-3">
+                            <div className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg flex items-center gap-2">
+                              <Info className="h-3.5 w-3.5" />
+                              <span>Platform seçin veya platform bazlı prompt'lar tanımlı değil</span>
+                            </div>
+                            
+                            {/* Prompt Info */}
+                            <div className="flex items-center justify-between text-xs text-slate-600">
+                              <span className="font-medium">
+                                {firestorePrompt.name}
+                              </span>
+                              <span className="text-slate-400">
+                                {firestorePrompt.category}
+                              </span>
+                            </div>
+
+                            {/* System Prompt Preview */}
+                            {firestorePrompt.systemPrompt && (
+                              <details className="group">
+                                <summary className="cursor-pointer text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                  <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-medium">
+                                    SYSTEM
+                                  </span>
+                                  System Prompt
+                                </summary>
+                                <div className="mt-2 p-3 bg-slate-800 rounded-lg max-h-32 overflow-y-auto">
+                                  <pre className="text-[10px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                                    {firestorePrompt.systemPrompt}
+                                  </pre>
+                                </div>
+                              </details>
+                            )}
+
+                            {/* User Prompt Preview */}
+                            <details className="group" open>
+                              <summary className="cursor-pointer text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[9px] font-medium">
+                                  USER
+                                </span>
+                                User Prompt (Değişkenlerle)
+                              </summary>
+                              <div className="mt-2 p-3 bg-slate-900 rounded-lg max-h-96 overflow-y-auto">
+                                <pre className="text-[10px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                                  {applyPromptVariables({
+                                    category:
+                                      selectedCategories[0] || "[kategori]",
+                                    categoryLabel:
+                                      CATEGORIES.find(
+                                        (c) => c.value === selectedCategories[0]
+                                      )?.label || "[kategori adı]",
+                                    categoryContext: selectedCategories[0] 
+                                      ? buildCategoryContext(selectedCategories[0]) 
+                                      : "[kategori context]",
+                                    platform:
+                                      selectedContentTypes[0]?.split(":")[0] ||
+                                      "[platform]",
+                                    platformLabel:
+                                      PLATFORMS.find(
+                                        (p) =>
+                                          p.value ===
+                                          selectedContentTypes[0]?.split(":")[0]
+                                      )?.label || "[platform adı]",
+                                    contentType:
+                                      selectedContentTypes[0]?.split(":")[1] ||
+                                      "[içerik tipi]",
+                                    contentTypeLabel: "[içerik tipi adı]",
+                                    count: count,
+                                    customPrompt: customPrompt
+                                      ? `\n\n## EK TALİMAT\n${customPrompt}`
+                                      : "",
+                                    targetAudience: selectedCategories[0] 
+                                      ? CATEGORY_CONTEXTS[selectedCategories[0]]?.targetAudience || "" 
+                                      : "",
+                                    usp: selectedCategories[0] 
+                                      ? CATEGORY_CONTEXTS[selectedCategories[0]]?.usp || "" 
+                                      : "",
+                                    keywords: selectedCategories[0] 
+                                      ? CATEGORY_CONTEXTS[selectedCategories[0]]?.keywords?.join(", ") || "" 
+                                      : "",
+                                  })}
+                                </pre>
+                              </div>
+                            </details>
+
+                            {/* Stats */}
+                            <div className="flex items-center gap-3 pt-2 border-t border-slate-200 text-[10px] text-slate-500">
+                              <span>🎯 Temp: {temperature}</span>
+                              <span>📝 Tokens: {maxTokens}</span>
+                              <span>🔢 Adet: {count}</span>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </Card>
 
                 {/* Platform Breakdown */}
@@ -1187,12 +2211,15 @@ export default function DatasetDetailPage() {
                             {contentInfo.icon} {contentInfo.label}
                           </span>
                           {title.usedPosts && title.usedPosts.length > 0 && (
-                            <Badge variant="outline" className="h-4 px-1.5 text-[9px] bg-green-50 text-green-700 border-green-200">
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1.5 text-[9px] bg-green-50 text-green-700 border-green-200"
+                            >
                               ✓ {title.usedPosts.length}x
                             </Badge>
                           )}
                         </div>
-                        <p 
+                        <p
                           className="text-xs text-gray-900 leading-relaxed line-clamp-2 mb-2"
                           onClick={() => handleViewDetails(title)}
                         >
@@ -1440,12 +2467,13 @@ export default function DatasetDetailPage() {
                                   {catInfo.icon} {catInfo.label}
                                 </Badge>
                               )}
-                              {title.usedPosts && title.usedPosts.length > 0 && (
-                                <Badge className="h-5 px-2 text-[10px] bg-green-500 hover:bg-green-600">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  {title.usedPosts.length} içerikte kullanıldı
-                                </Badge>
-                              )}
+                              {title.usedPosts &&
+                                title.usedPosts.length > 0 && (
+                                  <Badge className="h-5 px-2 text-[10px] bg-green-500 hover:bg-green-600">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    {title.usedPosts.length} içerikte kullanıldı
+                                  </Badge>
+                                )}
                             </div>
 
                             <DropdownMenu>
@@ -1459,20 +2487,30 @@ export default function DatasetDetailPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewDetails(title)}>
+                                <DropdownMenuItem
+                                  onClick={() => handleViewDetails(title)}
+                                >
                                   <Eye className="h-4 w-4 mr-2" />
                                   Detayları Gör
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleOpenInContentStudio(title)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleOpenInContentStudio(title)
+                                  }
+                                >
                                   <Sparkles className="h-4 w-4 mr-2" />
                                   Content Studio'da Aç
                                 </DropdownMenuItem>
-                                {title.usedPosts && title.usedPosts.length > 0 && (
-                                  <DropdownMenuItem onClick={() => handleViewDetails(title)}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Kullanıldığı İçerikleri Gör ({title.usedPosts.length})
-                                  </DropdownMenuItem>
-                                )}
+                                {title.usedPosts &&
+                                  title.usedPosts.length > 0 && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleViewDetails(title)}
+                                    >
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Kullanıldığı İçerikleri Gör (
+                                      {title.usedPosts.length})
+                                    </DropdownMenuItem>
+                                  )}
                                 {hasPermission("social_media.edit") && (
                                   <>
                                     {editingId === title.id ? (
@@ -1527,7 +2565,7 @@ export default function DatasetDetailPage() {
                             />
                           ) : (
                             <div>
-                              <p 
+                              <p
                                 className="text-sm text-gray-900 leading-relaxed cursor-pointer hover:text-purple-600 transition-colors"
                                 onClick={() => handleViewDetails(title)}
                               >
@@ -1579,7 +2617,9 @@ export default function DatasetDetailPage() {
                   {/* Header badges */}
                   <div className="flex items-center gap-2 flex-wrap">
                     {(() => {
-                      const Icon = getPlatformIcon(selectedTitleDetails.platform);
+                      const Icon = getPlatformIcon(
+                        selectedTitleDetails.platform
+                      );
                       const catInfo = CATEGORIES.find(
                         (c) => c.value === selectedTitleDetails.category
                       );
@@ -1589,9 +2629,16 @@ export default function DatasetDetailPage() {
                       );
                       return (
                         <>
-                          <Badge variant="outline" className="flex items-center gap-1">
+                          <Badge
+                            variant="outline"
+                            className="flex items-center gap-1"
+                          >
                             <Icon className="h-3 w-3" />
-                            {PLATFORMS.find(p => p.value === selectedTitleDetails.platform)?.label}
+                            {
+                              PLATFORMS.find(
+                                (p) => p.value === selectedTitleDetails.platform
+                              )?.label
+                            }
                           </Badge>
                           {catInfo && (
                             <Badge variant="outline">
@@ -1601,12 +2648,14 @@ export default function DatasetDetailPage() {
                           <Badge className={contentInfo.color}>
                             {contentInfo.icon} {contentInfo.label}
                           </Badge>
-                          {selectedTitleDetails.usedPosts && selectedTitleDetails.usedPosts.length > 0 && (
-                            <Badge className="bg-green-500 hover:bg-green-600">
-                              <Check className="h-3 w-3 mr-1" />
-                              {selectedTitleDetails.usedPosts.length} içerikte kullanıldı
-                            </Badge>
-                          )}
+                          {selectedTitleDetails.usedPosts &&
+                            selectedTitleDetails.usedPosts.length > 0 && (
+                              <Badge className="bg-green-500 hover:bg-green-600">
+                                <Check className="h-3 w-3 mr-1" />
+                                {selectedTitleDetails.usedPosts.length} içerikte
+                                kullanıldı
+                              </Badge>
+                            )}
                         </>
                       );
                     })()}
@@ -1622,7 +2671,9 @@ export default function DatasetDetailPage() {
                   {/* Description */}
                   {selectedTitleDetails.description && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-gray-700">Açıklama</Label>
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Açıklama
+                      </Label>
                       <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                         <p className="text-sm text-gray-700 leading-relaxed">
                           {selectedTitleDetails.description}
@@ -1634,7 +2685,9 @@ export default function DatasetDetailPage() {
                   {/* Emotional Hook */}
                   {selectedTitleDetails.emotionalHook && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-gray-700">Duygusal Çengel</Label>
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Duygusal Çengel
+                      </Label>
                       <div className="bg-pink-50 rounded-lg p-3 border border-pink-200">
                         <p className="text-sm text-gray-700">
                           {selectedTitleDetails.emotionalHook}
@@ -1646,7 +2699,9 @@ export default function DatasetDetailPage() {
                   {/* Visual Potential */}
                   {selectedTitleDetails.visualPotential && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-gray-700">Görsel Potansiyel</Label>
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Görsel Potansiyel
+                      </Label>
                       <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                         <p className="text-sm text-gray-700">
                           {selectedTitleDetails.visualPotential}
@@ -1658,7 +2713,9 @@ export default function DatasetDetailPage() {
                   {/* Trend Alignment */}
                   {selectedTitleDetails.trendAlignment && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-gray-700">Trend Uyumu</Label>
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Trend Uyumu
+                      </Label>
                       <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                         <p className="text-sm text-gray-700">
                           {selectedTitleDetails.trendAlignment}
@@ -1668,61 +2725,68 @@ export default function DatasetDetailPage() {
                   )}
 
                   {/* Used Posts */}
-                  {selectedTitleDetails.usedPosts && selectedTitleDetails.usedPosts.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-gray-700">
-                        Kullanıldığı İçerikler ({selectedTitleDetails.usedPosts.length})
-                      </Label>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {selectedTitleDetails.usedPosts.map((post, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-white rounded-lg p-3 border border-gray-200 hover:border-purple-300 transition-colors"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                {(() => {
-                                  const Icon = getPlatformIcon(post.platform);
-                                  return <Icon className="h-4 w-4 text-gray-600" />;
-                                })()}
-                                <Badge variant="outline" className="text-xs">
-                                  {post.contentType}
-                                </Badge>
+                  {selectedTitleDetails.usedPosts &&
+                    selectedTitleDetails.usedPosts.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Kullanıldığı İçerikler (
+                          {selectedTitleDetails.usedPosts.length})
+                        </Label>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {selectedTitleDetails.usedPosts.map((post, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white rounded-lg p-3 border border-gray-200 hover:border-purple-300 transition-colors"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const Icon = getPlatformIcon(post.platform);
+                                    return (
+                                      <Icon className="h-4 w-4 text-gray-600" />
+                                    );
+                                  })()}
+                                  <Badge variant="outline" className="text-xs">
+                                    {post.contentType}
+                                  </Badge>
+                                </div>
+                                {post.postId && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewContent(post.postId);
+                                    }}
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Görüntüle
+                                  </Button>
+                                )}
                               </div>
-                              {post.postId && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 px-2 text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewContent(post.postId);
-                                  }}
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Görüntüle
-                                </Button>
+                              {post.visualPotential && (
+                                <p className="text-xs text-gray-600">
+                                  {post.visualPotential}
+                                </p>
+                              )}
+                              {post.createdAt && (
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                  {new Date(post.createdAt).toLocaleDateString(
+                                    "tr-TR",
+                                    {
+                                      day: "2-digit",
+                                      month: "long",
+                                      year: "numeric",
+                                    }
+                                  )}
+                                </p>
                               )}
                             </div>
-                            {post.visualPotential && (
-                              <p className="text-xs text-gray-600">
-                                {post.visualPotential}
-                              </p>
-                            )}
-                            {post.createdAt && (
-                              <p className="text-[10px] text-gray-400 mt-1">
-                                {new Date(post.createdAt).toLocaleDateString('tr-TR', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Action Buttons */}
                   <div className="pt-4 border-t border-gray-200">
@@ -1855,9 +2919,9 @@ export default function DatasetDetailPage() {
                     <div className="col-span-2">
                       <div className="text-xs text-gray-600 mb-1">AI Model</div>
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {AI_MODELS.find(
-                          (m) => m.value === generationSummary.aiModel
-                        )?.label || generationSummary.aiModel}
+                        {PROVIDER_INFO[generationSummary.provider]?.icon ||
+                          "⚪"}{" "}
+                        {generationSummary.modelName}
                       </Badge>
                     </div>
                   </div>

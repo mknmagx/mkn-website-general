@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -54,25 +54,67 @@ import {
   Zap,
   Calendar,
   ExternalLink,
+  Info,
+  Settings,
+  BookOpen,
+  Brain,
+  Cpu,
 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import MobilePreview from "@/components/admin/mobile-preview";
 import ImageUploader from "@/components/admin/image-uploader";
+import VisualGenerationTab from "@/components/admin/content-studio/visual-generation-tab";
 import {
   InstagramPostRenderer,
   InstagramReelRenderer,
   InstagramCarouselRenderer,
 } from "@/components/admin/content-studio";
-import {
-  AI_MODELS,
-  PLATFORMS,
-  CONTENT_TYPES,
-} from "@/lib/constants/content-studio";
+import { PLATFORMS, CONTENT_TYPES } from "@/lib/constants/content-studio";
+// Unified AI Hook - Firestore'dan dinamik config
+import { useUnifiedAI, AI_CONTEXTS } from "@/hooks/use-unified-ai";
+import { PROVIDER_INFO } from "@/lib/ai-constants";
 import { useContentStudio } from "@/hooks/use-content-studio";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function ContentStudioPage() {
   const router = useRouter();
   const { hasPermission } = usePermissions();
+
+  // Unified AI Hook - Firestore'dan dinamik config
+  const {
+    config: aiConfig,
+    availableModels,
+    modelsByProvider,
+    selectedModel: currentModel,
+    currentProvider,
+    generateContent: unifiedGenerateContent,
+    selectModel,
+    loading: aiLoading,
+    configLoading,
+    error: aiError,
+    isReady: aiIsReady,
+    hasModels,
+    refresh: refreshAIConfig,
+    getProviderIcon,
+    prompt: firestorePrompt,
+    // Platform bazlı prompt desteği
+    platformPromptsInfo,
+    hasPlatformPrompts,
+    loadPromptForPlatform,
+    platformPromptCache,
+  } = useUnifiedAI(AI_CONTEXTS.CONTENT_STUDIO_GENERATION);
+
+  // State for AI config display
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+  const [previewPromptsByPlatformContent, setPreviewPromptsByPlatformContent] =
+    useState({});
+  const [loadingPreviewPrompts, setLoadingPreviewPrompts] = useState(false);
+  const [showAIConfigPanel, setShowAIConfigPanel] = useState(false);
+  const [temperature, setTemperature] = useState(0.8);
+  const [maxTokens, setMaxTokens] = useState(4096);
+  const [autoMaxTokens, setAutoMaxTokens] = useState(true);
+  const [showFullPromptDialog, setShowFullPromptDialog] = useState(false);
 
   // Use custom hook for all state and logic
   const {
@@ -102,6 +144,8 @@ export default function ContentStudioPage() {
     imagePreviews,
     customization,
     showCustomization,
+    visualGenerating,
+    aiGeneratedImages,
     setSelectedDataset,
     setSelectedTitle,
     setSelectedPlatform,
@@ -124,6 +168,8 @@ export default function ContentStudioPage() {
     setCustomization,
     setShowCustomization,
     setDialogOpen,
+    setVisualGenerating,
+    setAiGeneratedImages,
     loadDatasetTitles,
     selectPlatform,
     selectContentType,
@@ -134,6 +180,201 @@ export default function ContentStudioPage() {
     handleExport,
     editingContentId,
   } = useContentStudio();
+
+  // Platform+ContentType bazlı prompt key oluştur
+  const getPlatformContentKey = useCallback((platform, contentType) => {
+    if (!platform || !contentType) return null;
+    return `${platform.toLowerCase()}_${contentType.toLowerCase()}`;
+  }, []);
+
+  // Platform değiştiğinde prompt'ları yükle
+  useEffect(() => {
+    const loadCurrentPrompt = async () => {
+      if (!selectedPlatform || !selectedContentType || !hasPlatformPrompts)
+        return;
+
+      const platformContentKey = getPlatformContentKey(
+        selectedPlatform,
+        selectedContentType
+      );
+      if (!platformContentKey) return;
+
+      // Cache'de yoksa yükle
+      if (!platformPromptCache[platformContentKey]) {
+        await loadPromptForPlatform(platformContentKey);
+      }
+    };
+
+    loadCurrentPrompt();
+  }, [
+    selectedPlatform,
+    selectedContentType,
+    hasPlatformPrompts,
+    loadPromptForPlatform,
+    getPlatformContentKey,
+    platformPromptCache,
+  ]);
+
+  // Prompt önizleme için tüm platform promptlarını yükle
+  const loadAllPlatformPrompts = useCallback(async () => {
+    if (!hasPlatformPrompts || !platformPromptsInfo) return;
+
+    setLoadingPreviewPrompts(true);
+    try {
+      const promptsMap = {};
+      for (const [key, promptKey] of Object.entries(platformPromptsInfo)) {
+        if (!platformPromptCache[key]) {
+          await loadPromptForPlatform(key);
+        }
+        promptsMap[key] = platformPromptCache[key] || null;
+      }
+      setPreviewPromptsByPlatformContent(promptsMap);
+    } catch (error) {
+      console.error("Error loading platform prompts:", error);
+      toast.error("Promptlar yüklenirken hata oluştu");
+    } finally {
+      setLoadingPreviewPrompts(false);
+    }
+  }, [
+    hasPlatformPrompts,
+    platformPromptsInfo,
+    platformPromptCache,
+    loadPromptForPlatform,
+  ]);
+
+  // Prompt preview açıldığında yükle
+  useEffect(() => {
+    if (showPromptPreview && hasPlatformPrompts) {
+      loadAllPlatformPrompts();
+    }
+  }, [showPromptPreview, hasPlatformPrompts, loadAllPlatformPrompts]);
+
+  // Unified AI'dan model seçimi senkronize et
+  useEffect(() => {
+    if (currentModel && currentModel.id !== aiModel) {
+      setAiModel(currentModel.id);
+    }
+  }, [currentModel, aiModel, setAiModel]);
+
+  // Seçili modelin "thinking" model olup olmadığını kontrol et
+  const isThinkingModel = useCallback(() => {
+    const modelId = aiModel || currentModel?.modelId || currentModel?.id || "";
+    const modelName = (
+      currentModel?.name ||
+      currentModel?.displayName ||
+      ""
+    ).toLowerCase();
+
+    // Thinking/reasoning modelleri: gemini-3-pro, claude-opus, o1, o3 vb.
+    const thinkingPatterns = [
+      "gemini-3",
+      "gemini_pro_3",
+      "gemini-3-pro",
+      "opus",
+      "claude-opus",
+      "claude_opus",
+      "o1",
+      "o3", // OpenAI reasoning modelleri
+      "thinking",
+      "reasoning",
+      "deep",
+    ];
+
+    return thinkingPatterns.some(
+      (pattern) =>
+        modelId.toLowerCase().includes(pattern) || modelName.includes(pattern)
+    );
+  }, [aiModel, currentModel]);
+
+  // İçerik tipine göre tahmini token miktarı
+  const getEstimatedTokensForContentType = useCallback((contentType) => {
+    const tokenEstimates = {
+      post: 800, // Caption + hashtags + CTA
+      reel: 1200, // Script + scenes + hooks
+      story: 1500, // Multiple stories + interactive elements
+      carousel: 2000, // Multiple slides content
+      tweet: 400, // Short form
+      thread: 1500, // Multiple tweets
+      video: 1200, // Video script
+    };
+    return tokenEstimates[contentType?.toLowerCase()] || 1000;
+  }, []);
+
+  // User prompt template'indeki değişkenleri gerçek değerlerle değiştir
+  const replacePromptVariables = useCallback(
+    (template) => {
+      if (!template) return template;
+
+      const replacements = {
+        title: selectedTitle?.title || "[Başlık seçilmedi]",
+        platform: selectedPlatform || "[Platform seçilmedi]",
+        contentType: selectedContentType || "[İçerik tipi seçilmedi]",
+        categoryContext:
+          customization?.focusAngle || "Genel kozmetik ve cilt bakımı",
+        tone: customization?.tone || "profesyonel ve bilgilendirici",
+        customCTA: customization?.customCTA || "",
+        focusAngle: customization?.focusAngle || "",
+        additionalContext: customization?.additionalContext || "",
+        targetHashtags: Array.isArray(customization?.targetHashtags)
+          ? customization.targetHashtags.join(", ")
+          : customization?.targetHashtags || "",
+        length: customization?.length || "medium",
+        includeEmoji: customization?.includeEmoji !== false ? "Evet" : "Hayır",
+      };
+
+      let result = template;
+      Object.entries(replacements).forEach(([key, value]) => {
+        result = result.replace(
+          new RegExp(`\\{\\{${key}\\}\\}`, "g"),
+          value || `[${key}]`
+        );
+      });
+
+      return result;
+    },
+    [selectedTitle, selectedPlatform, selectedContentType, customization]
+  );
+
+  // Otomatik maxTokens hesapla - model türüne ve içerik tipine göre
+  const calculateAutoMaxTokens = useCallback(() => {
+    const baseTokens = getEstimatedTokensForContentType(selectedContentType);
+
+    // Thinking modelleri için ekstra token gerekli (düşünme için 2000-3000 token harcar)
+    if (isThinkingModel()) {
+      const thinkingOverhead = 2500;
+      const total = baseTokens + thinkingOverhead;
+      // Min 3000, max 8192
+      return Math.min(8192, Math.max(3000, Math.round(total)));
+    }
+
+    // Normal modeller için güvenlik çarpanı
+    const safetyMultiplier = 1.5;
+    const total = baseTokens * safetyMultiplier;
+    // Min 1500, max 6000
+    return Math.min(6000, Math.max(1500, Math.round(total)));
+  }, [selectedContentType, isThinkingModel, getEstimatedTokensForContentType]);
+
+  // Auto token hesaplama efekti
+  useEffect(() => {
+    if (autoMaxTokens && selectedContentType) {
+      setMaxTokens(calculateAutoMaxTokens());
+    }
+  }, [autoMaxTokens, selectedContentType, calculateAutoMaxTokens]);
+
+  // Config'ten gelen ayarları yükle
+  useEffect(() => {
+    if (aiConfig?.settings) {
+      if (aiConfig.settings.temperature) {
+        setTemperature(aiConfig.settings.temperature);
+      }
+      if (aiConfig.settings.maxTokens && autoMaxTokens) {
+        // Config'den gelen değer varsa bunu da dikkate al
+        const configMaxTokens = aiConfig.settings.maxTokens;
+        const calculatedMaxTokens = calculateAutoMaxTokens();
+        setMaxTokens(Math.max(configMaxTokens, calculatedMaxTokens));
+      }
+    }
+  }, [aiConfig, autoMaxTokens, calculateAutoMaxTokens]);
 
   // Update content helper function
   const updateContent = (field, value) => {
@@ -1393,6 +1634,16 @@ export default function ContentStudioPage() {
                     <FileText className="w-4 h-4 mr-2" />
                     Düzenle
                   </TabsTrigger>
+                  {generatedContents.length > 0 &&
+                    generatedContents[currentPreview]?.content && (
+                      <TabsTrigger
+                        value="visuals"
+                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white rounded-lg"
+                      >
+                        <ImageIcon className="w-4 h-4 mr-2" />
+                        AI Görseller
+                      </TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="generate" className="space-y-6">
@@ -2400,30 +2651,216 @@ export default function ContentStudioPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-6">
-                      {/* AI Model Selection */}
-                      <div className="space-y-2">
-                        <Label>AI Model</Label>
-                        <Select value={aiModel} onValueChange={setAiModel}>
-                          <SelectTrigger className="h-12 border-gray-200 focus:border-purple-500 focus:ring-purple-500 rounded-xl">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {AI_MODELS.map((model) => {
-                              const Icon = model.icon;
-                              return (
-                                <SelectItem
-                                  key={model.value}
-                                  value={model.value}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Icon className="h-4 w-4" />
-                                    {model.label}
+                      {/* AI Model Selection - Unified AI System */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                            AI Model
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() =>
+                                setShowPromptPreview(!showPromptPreview)
+                              }
+                              className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                            >
+                              <BookOpen className="h-3 w-3" />
+                              Prompt Önizle
+                            </button>
+                            <button
+                              onClick={refreshAIConfig}
+                              disabled={configLoading}
+                              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                            >
+                              <RefreshCw
+                                className={`h-3 w-3 ${
+                                  configLoading ? "animate-spin" : ""
+                                }`}
+                              />
+                              Yenile
+                            </button>
+                          </div>
+                        </div>
+
+                        {configLoading ? (
+                          <div className="h-24 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+                            <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+                          </div>
+                        ) : hasModels && availableModels?.length > 0 ? (
+                          <div className="space-y-3">
+                            {/* Provider grupları */}
+                            {Object.entries(modelsByProvider || {}).map(
+                              ([provider, models]) => {
+                                const providerInfo = PROVIDER_INFO[provider];
+                                return (
+                                  <div key={provider} className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                      <span>{providerInfo?.icon || "⚪"}</span>
+                                      <span>
+                                        {providerInfo?.name || provider}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {models.map((model) => {
+                                        const modelId =
+                                          model.modelId || model.id;
+                                        const isSelected = aiModel === modelId;
+                                        const isDefault =
+                                          aiConfig?.defaultModelId === modelId;
+                                        return (
+                                          <div
+                                            key={modelId}
+                                            onClick={() => {
+                                              setAiModel(modelId);
+                                              selectModel(modelId);
+                                            }}
+                                            className={`
+                                              relative cursor-pointer rounded-xl border-2 p-3 transition-all duration-200
+                                              ${
+                                                isSelected
+                                                  ? "border-purple-500 bg-purple-50 shadow-sm"
+                                                  : "border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/30"
+                                              }
+                                            `}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-base">
+                                                {model.icon ||
+                                                  providerInfo?.icon ||
+                                                  "⚪"}
+                                              </span>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-gray-900 truncate">
+                                                  {model.displayName ||
+                                                    model.name}
+                                                </div>
+                                                {isDefault && (
+                                                  <span className="text-xs text-purple-600">
+                                                    Önerilen
+                                                  </span>
+                                                )}
+                                              </div>
+                                              {isSelected && (
+                                                <Check className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                                );
+                              }
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-sm text-gray-400">
+                            <Info className="h-5 w-5 mb-2" />
+                            Model yüklenemedi
+                            <button
+                              onClick={refreshAIConfig}
+                              className="text-purple-600 hover:text-purple-700 mt-1 text-xs"
+                            >
+                              Tekrar dene
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Current Prompt Preview - Full Text */}
+                        {showPromptPreview &&
+                          selectedPlatform &&
+                          selectedContentType && (
+                            <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                                  <BookOpen className="h-4 w-4" />
+                                  {selectedPlatform} - {selectedContentType}{" "}
+                                  Prompt
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() =>
+                                      setShowFullPromptDialog(true)
+                                    }
+                                    className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    Tam Ekran
+                                  </button>
+                                  <button
+                                    onClick={() => setShowPromptPreview(false)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              {(() => {
+                                const key = getPlatformContentKey(
+                                  selectedPlatform,
+                                  selectedContentType
+                                );
+                                const cachedPrompt = platformPromptCache[key];
+                                if (cachedPrompt) {
+                                  return (
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="text-xs text-purple-600 font-medium flex items-center gap-2">
+                                          <Cpu className="h-3 w-3" />
+                                          {cachedPrompt.name ||
+                                            cachedPrompt.promptKey}
+                                          {cachedPrompt.version && (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[10px] py-0"
+                                            >
+                                              v{cachedPrompt.version}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* System Prompt */}
+                                      {cachedPrompt.systemPrompt && (
+                                        <div className="space-y-1">
+                                          <Label className="text-xs font-medium text-purple-700 flex items-center gap-1">
+                                            <Brain className="h-3 w-3" />
+                                            System Prompt
+                                          </Label>
+                                          <pre className="text-xs text-gray-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-purple-100 max-h-64 overflow-y-auto font-mono leading-relaxed">
+                                            {cachedPrompt.systemPrompt}
+                                          </pre>
+                                        </div>
+                                      )}
+                                      {/* User Prompt Template - Değişkenler değiştirilmiş */}
+                                      {(cachedPrompt.userPromptTemplate ||
+                                        cachedPrompt.content) && (
+                                        <div className="space-y-1">
+                                          <Label className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                                            <FileText className="h-3 w-3" />
+                                            User Prompt (Değerler Atanmış)
+                                          </Label>
+                                          <pre className="text-xs text-gray-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-blue-100 max-h-48 overflow-y-auto font-mono leading-relaxed">
+                                            {replacePromptVariables(
+                                              cachedPrompt.userPromptTemplate ||
+                                                cachedPrompt.content
+                                            )}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="text-xs text-gray-500 flex items-center gap-2">
+                                    <Info className="h-4 w-4" />
+                                    Prompt yükleniyor veya bu kombinasyon için
+                                    prompt tanımlı değil
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                       </div>
 
                       {/* Platform Selection */}
@@ -2789,9 +3226,281 @@ export default function ContentStudioPage() {
                         )}
                       </div>
 
+                      {/* AI Config Summary - Editable */}
+                      {aiIsReady && (
+                        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                              <Settings className="h-4 w-4" />
+                              AI Konfigürasyonu
+                            </span>
+                            <button
+                              onClick={() =>
+                                setShowAIConfigPanel(!showAIConfigPanel)
+                              }
+                              className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                            >
+                              {showAIConfigPanel
+                                ? "Basit Görünüm"
+                                : "Detaylı Ayarlar"}
+                            </button>
+                          </div>
+
+                          {/* Quick Summary */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            <div className="p-2 bg-white rounded-lg border border-purple-100 text-center">
+                              <div className="text-gray-500">Model</div>
+                              <div className="font-semibold text-gray-900 truncate">
+                                {currentModel?.displayName ||
+                                  currentModel?.name ||
+                                  aiModel}
+                              </div>
+                            </div>
+                            <div className="p-2 bg-white rounded-lg border border-purple-100 text-center">
+                              <div className="text-gray-500">Provider</div>
+                              <div className="font-semibold text-gray-900">
+                                {currentProvider?.icon}{" "}
+                                {currentProvider?.name || currentProvider?.id}
+                              </div>
+                            </div>
+                            <div className="p-2 bg-white rounded-lg border border-purple-100 text-center">
+                              <div className="text-gray-500">Temperature</div>
+                              <div className="font-semibold text-gray-900">
+                                {temperature.toFixed(2)}
+                              </div>
+                            </div>
+                            <div className="p-2 bg-white rounded-lg border border-purple-100 text-center">
+                              <div className="text-gray-500">Max Tokens</div>
+                              <div
+                                className={`font-semibold ${
+                                  isThinkingModel()
+                                    ? "text-amber-600"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {maxTokens.toLocaleString()}
+                                {isThinkingModel() && (
+                                  <Brain className="inline h-3 w-3 ml-1" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Badges */}
+                          <div className="flex flex-wrap gap-2">
+                            {selectedPlatform &&
+                              selectedContentType &&
+                              platformPromptCache[
+                                getPlatformContentKey(
+                                  selectedPlatform,
+                                  selectedContentType
+                                )
+                              ] && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-purple-100 text-purple-700"
+                                >
+                                  <BookOpen className="h-2.5 w-2.5 mr-1" />
+                                  Prompt Aktif
+                                </Badge>
+                              )}
+                            {isThinkingModel() && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-amber-100 text-amber-700"
+                              >
+                                <Brain className="h-2.5 w-2.5 mr-1" />
+                                Thinking Model
+                              </Badge>
+                            )}
+                            {autoMaxTokens && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-green-700"
+                              >
+                                <Zap className="h-2.5 w-2.5 mr-1" />
+                                Otomatik Token
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Detailed Settings Panel */}
+                          {showAIConfigPanel && (
+                            <div className="space-y-4 pt-3 border-t border-purple-200">
+                              {/* Thinking Model Warning */}
+                              {isThinkingModel() && (
+                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                  <div className="flex items-center gap-2 text-amber-700 text-xs font-medium">
+                                    <Brain className="h-4 w-4" />
+                                    Thinking Model Algılandı
+                                  </div>
+                                  <p className="text-xs text-amber-600 mt-1">
+                                    Bu model (Gemini 3 Pro, Claude Opus vb.)
+                                    "düşünme" aşaması için ekstra token harcar.
+                                    Otomatik hesaplamada +2500 token ekleniyor.
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Temperature Slider */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                    <Sparkles className="h-3 w-3 text-purple-500" />
+                                    Temperature (Yaratıcılık)
+                                  </Label>
+                                  <span className="text-xs font-mono text-purple-600">
+                                    {temperature.toFixed(2)}
+                                  </span>
+                                </div>
+                                <Slider
+                                  value={[temperature * 100]}
+                                  onValueChange={(value) =>
+                                    setTemperature(value[0] / 100)
+                                  }
+                                  max={100}
+                                  min={10}
+                                  step={5}
+                                  className="w-full"
+                                />
+                                <div className="flex justify-between text-[10px] text-gray-400">
+                                  <span>Tutarlı (0.1)</span>
+                                  <span>Dengeli (0.5)</span>
+                                  <span>Yaratıcı (1.0)</span>
+                                </div>
+                              </div>
+
+                              {/* Max Tokens */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                    <Zap className="h-3 w-3 text-yellow-500" />
+                                    Max Tokens
+                                  </Label>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-500">
+                                      Otomatik
+                                    </span>
+                                    <Switch
+                                      checked={autoMaxTokens}
+                                      onCheckedChange={setAutoMaxTokens}
+                                    />
+                                  </div>
+                                </div>
+
+                                {autoMaxTokens ? (
+                                  <div className="text-xs text-purple-700 bg-purple-100/50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2">
+                                      <Sparkles className="h-3 w-3" />
+                                      {isThinkingModel() ? (
+                                        <span>
+                                          Thinking Model:{" "}
+                                          {getEstimatedTokensForContentType(
+                                            selectedContentType
+                                          )}{" "}
+                                          base + 2500 thinking ={" "}
+                                          <strong>
+                                            {maxTokens.toLocaleString()}
+                                          </strong>{" "}
+                                          token
+                                        </span>
+                                      ) : (
+                                        <span>
+                                          {selectedContentType || "İçerik"}:{" "}
+                                          {getEstimatedTokensForContentType(
+                                            selectedContentType
+                                          )}{" "}
+                                          × 1.5 ={" "}
+                                          <strong>
+                                            {maxTokens.toLocaleString()}
+                                          </strong>{" "}
+                                          token
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Slider
+                                      value={[maxTokens]}
+                                      onValueChange={(value) =>
+                                        setMaxTokens(value[0])
+                                      }
+                                      max={8192}
+                                      min={1000}
+                                      step={256}
+                                      className="w-full"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-gray-400">
+                                      <span>1000</span>
+                                      <span className="font-medium text-purple-600">
+                                        {maxTokens.toLocaleString()} token
+                                      </span>
+                                      <span>8192</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Config Info */}
+                              {aiConfig && (
+                                <div className="pt-3 border-t border-purple-100">
+                                  <Label className="text-xs font-medium text-gray-700 mb-2 block">
+                                    Firestore Konfigürasyonu
+                                  </Label>
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="flex justify-between p-2 bg-white rounded border">
+                                      <span className="text-gray-500">
+                                        Context:
+                                      </span>
+                                      <span className="font-mono text-gray-700">
+                                        {aiConfig.contextId || aiConfig.context}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between p-2 bg-white rounded border">
+                                      <span className="text-gray-500">
+                                        Default Model:
+                                      </span>
+                                      <span className="font-mono text-gray-700">
+                                        {aiConfig.defaultModelId}
+                                      </span>
+                                    </div>
+                                    {aiConfig.promptKey && (
+                                      <div className="flex justify-between p-2 bg-white rounded border col-span-2">
+                                        <span className="text-gray-500">
+                                          Prompt Key:
+                                        </span>
+                                        <span className="font-mono text-gray-700">
+                                          {aiConfig.promptKey}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Platform Prompt Status */}
+                              {hasPlatformPrompts && (
+                                <div className="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg border border-green-100">
+                                  <span className="text-green-700 flex items-center gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Platform Bazlı Promptlar
+                                  </span>
+                                  <span className="text-green-600 font-medium">
+                                    Aktif
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Generate Button */}
                       <Button
-                        onClick={handleGenerate}
+                        onClick={() =>
+                          handleGenerate({ temperature, maxTokens })
+                        }
                         disabled={
                           generating ||
                           !selectedTitle ||
@@ -2964,7 +3673,7 @@ export default function ContentStudioPage() {
                                         variant="ghost"
                                         onClick={() => {
                                           const url = `/admin/social-media/calendar-view/${usage.calendarId}?date=${usage.date}`;
-                                          window.open(url, '_blank');
+                                          window.open(url, "_blank");
                                         }}
                                         className="ml-2 hover:bg-blue-50"
                                       >
@@ -2977,68 +3686,273 @@ export default function ContentStudioPage() {
                             )}
 
                           {/* AI Customization Info */}
-                          {customization && (customization.tone || customization.customCTA || customization.targetHashtags?.length > 0 || customization.focusAngle || customization.additionalContext) && (
-                            <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Sparkles className="h-4 w-4 text-purple-600" />
-                                <p className="text-xs font-semibold text-purple-700">
-                                  AI Özelleştirme Ayarları
-                                </p>
-                              </div>
-                              <div className="grid grid-cols-1 gap-3">
-                                {customization.tone && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">Ton:</span>
-                                    <span className="text-gray-900 capitalize">{customization.tone}</span>
-                                  </div>
-                                )}
-                                {customization.focusAngle && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">Fokus:</span>
-                                    <span className="text-gray-900 capitalize">{customization.focusAngle}</span>
-                                  </div>
-                                )}
-                                {customization.length && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">Uzunluk:</span>
-                                    <span className="text-gray-900 capitalize">{customization.length}</span>
-                                  </div>
-                                )}
-                                {customization.customCTA && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">CTA:</span>
-                                    <span className="text-gray-900">{customization.customCTA}</span>
-                                  </div>
-                                )}
-                                {customization.targetHashtags?.length > 0 && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">Hashtagler:</span>
-                                    <div className="flex flex-wrap gap-1">
-                                      {customization.targetHashtags.map((tag, idx) => (
-                                        <Badge key={idx} variant="secondary" className="text-xs bg-purple-100 text-purple-700">
-                                          {tag}
-                                        </Badge>
-                                      ))}
+                          {customization &&
+                            (customization.tone ||
+                              customization.customCTA ||
+                              customization.targetHashtags?.length > 0 ||
+                              customization.focusAngle ||
+                              customization.additionalContext) && (
+                              <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Sparkles className="h-4 w-4 text-purple-600" />
+                                  <p className="text-xs font-semibold text-purple-700">
+                                    AI Özelleştirme Ayarları
+                                  </p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3">
+                                  {customization.tone && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        Ton:
+                                      </span>
+                                      <span className="text-gray-900 capitalize">
+                                        {customization.tone}
+                                      </span>
                                     </div>
+                                  )}
+                                  {customization.focusAngle && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        Fokus:
+                                      </span>
+                                      <span className="text-gray-900 capitalize">
+                                        {customization.focusAngle}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {customization.length && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        Uzunluk:
+                                      </span>
+                                      <span className="text-gray-900 capitalize">
+                                        {customization.length}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {customization.customCTA && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        CTA:
+                                      </span>
+                                      <span className="text-gray-900">
+                                        {customization.customCTA}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {customization.targetHashtags?.length > 0 && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        Hashtagler:
+                                      </span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {customization.targetHashtags.map(
+                                          (tag, idx) => (
+                                            <Badge
+                                              key={idx}
+                                              variant="secondary"
+                                              className="text-xs bg-purple-100 text-purple-700"
+                                            >
+                                              {tag}
+                                            </Badge>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {customization.additionalContext && (
+                                    <div className="flex items-start gap-2 text-sm">
+                                      <span className="text-gray-600 font-medium min-w-[80px]">
+                                        Ek Not:
+                                      </span>
+                                      <span className="text-gray-900 italic bg-yellow-50 px-2 py-1 rounded border border-yellow-200">
+                                        "{customization.additionalContext}"
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 pt-2 border-t border-purple-100">
+                                    <Check className="h-3 w-3 text-green-600" />
+                                    <span>Bu ayarlarla oluşturuldu</span>
                                   </div>
-                                )}
-                                {customization.additionalContext && (
-                                  <div className="flex items-start gap-2 text-sm">
-                                    <span className="text-gray-600 font-medium min-w-[80px]">Ek Not:</span>
-                                    <span className="text-gray-900 italic bg-yellow-50 px-2 py-1 rounded border border-yellow-200">"{customization.additionalContext}"</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 pt-2 border-t border-purple-100">
-                                  <Check className="h-3 w-3 text-green-600" />
-                                  <span>Bu ayarlarla oluşturuldu</span>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
                           {/* Content Fields */}
                           {renderContentFields()}
                         </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="visuals" className="space-y-6">
+                  {!generatedContents ||
+                  generatedContents.length === 0 ||
+                  !generatedContents[currentPreview]?.content ? (
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                      <CardContent className="py-16 text-center">
+                        <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                          <ImageIcon className="h-10 w-10 text-purple-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                          İçerik Bulunamadı
+                        </h3>
+                        <p className="text-gray-500">
+                          Önce "İçerik Üret" sekmesinden içerik oluşturun
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                      <CardContent className="pt-6">
+                        <VisualGenerationTab
+                          content={generatedContents[currentPreview].content}
+                          platform={generatedContents[currentPreview].platform}
+                          contentType={
+                            generatedContents[currentPreview].contentType
+                          }
+                          onGenerateImage={async ({ message, settings, modelId }) => {
+                            if (!editingContentId) {
+                              toast.error("Lütfen önce içeriği kaydedin");
+                              return;
+                            }
+
+                            setVisualGenerating(true);
+                            try {
+                              const response = await fetch(
+                                "/api/admin/social-media/generate-visual",
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    chatId: `content-studio-${editingContentId}`,
+                                    message: message,
+                                    contentId: editingContentId,
+                                    settings: settings,
+                                    modelId: modelId,
+                                  }),
+                                }
+                              );
+
+                              if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(
+                                  error.error || "Görsel oluşturulamadı"
+                                );
+                              }
+
+                              const data = await response.json();
+
+                              if (
+                                data.generatedImageUrls &&
+                                data.generatedImageUrls.length > 0
+                              ) {
+                                const newImages = data.generatedImageUrls.map(
+                                  (url) => ({
+                                    url: url,
+                                    createdAt: new Date().toISOString(),
+                                    model: data.modelDisplayName || data.model,
+                                    provider: data.provider,
+                                  })
+                                );
+
+                                setAiGeneratedImages((prev) => [
+                                  ...prev,
+                                  ...newImages,
+                                ]);
+                                toast.success(
+                                  `${data.generatedImageUrls.length} görsel oluşturuldu!`
+                                );
+                              } else {
+                                toast.info(
+                                  "Görsel oluşturuldu ancak URL alınamadı"
+                                );
+                              }
+                            } catch (error) {
+                              toast.error(
+                                error.message || "Görsel oluşturma başarısız"
+                              );
+                            } finally {
+                              setVisualGenerating(false);
+                            }
+                          }}
+                          loading={visualGenerating}
+                          generatedImages={aiGeneratedImages}
+                          onDeleteImage={(index) => {
+                            setAiGeneratedImages((prev) =>
+                              prev.filter((_, i) => i !== index)
+                            );
+                            toast.success("Görsel listeden kaldırıldı");
+                          }}
+                          onSetAsMainImage={async (image, index) => {
+                            if (!editingContentId) {
+                              toast.error("İçerik ID bulunamadı");
+                              return;
+                            }
+
+                            const confirmed = window.confirm(
+                              "Bu görseli içeriğin ana görseli olarak ayarlamak istediğinize emin misiniz? Mevcut görsel değiştirilecektir."
+                            );
+
+                            if (!confirmed) return;
+
+                            try {
+                              // Extract filename from URL
+                              const urlParts = image.url.split("/");
+                              const filename = urlParts[urlParts.length - 1];
+
+                              // Create image object matching the structure
+                              const imageObject = {
+                                url: image.url,
+                                fileName: filename,
+                                path: `gemini-generated/${editingContentId}/${filename}`,
+                                type: "image/png",
+                                size: 0, // We don't have size info
+                              };
+
+                              // Update in Firestore
+                              const response = await fetch(
+                                `/api/admin/social-media/content/${editingContentId}`,
+                                {
+                                  method: "PATCH",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    image: imageObject,
+                                  }),
+                                }
+                              );
+
+                              if (!response.ok) {
+                                throw new Error("Görsel güncellenemedi");
+                              }
+
+                              // Update local state
+                              const updated = [...generatedContents];
+                              if (updated[currentPreview]) {
+                                updated[currentPreview].image = imageObject;
+                                setGeneratedContents(updated);
+                              }
+
+                              // Update preview
+                              setImagePreview(image.url);
+                              setSelectedImage({
+                                preview: image.url,
+                                ...imageObject,
+                              });
+
+                              toast.success("Ana görsel güncellendi!");
+                            } catch (error) {
+                              toast.error(
+                                "Ana görsel güncellenemedi: " + error.message
+                              );
+                            }
+                          }}
+                        />
                       </CardContent>
                     </Card>
                   )}
@@ -3098,6 +4012,197 @@ export default function ContentStudioPage() {
           </div>
         </div>
       </div>
+
+      {/* Full Prompt Preview Dialog */}
+      <Dialog
+        open={showFullPromptDialog}
+        onOpenChange={setShowFullPromptDialog}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-purple-700">
+              <BookOpen className="h-5 w-5" />
+              Prompt Önizleme - {selectedPlatform} / {selectedContentType}
+            </DialogTitle>
+            <DialogDescription>
+              AI modeline gönderilecek tam prompt içeriği. Bu içerik
+              Firestore'dan yüklenir.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            {(() => {
+              const key = getPlatformContentKey(
+                selectedPlatform,
+                selectedContentType
+              );
+              const cachedPrompt = platformPromptCache[key];
+
+              if (!cachedPrompt) {
+                return (
+                  <div className="p-6 text-center text-gray-500">
+                    <Info className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p>Bu platform ve içerik tipi için prompt tanımlı değil.</p>
+                    <p className="text-sm mt-1">
+                      Platform: {selectedPlatform}, İçerik:{" "}
+                      {selectedContentType}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {/* Prompt Info */}
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-3">
+                      <Cpu className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <div className="font-medium text-purple-900">
+                          {cachedPrompt.name || cachedPrompt.promptKey}
+                        </div>
+                        {cachedPrompt.description && (
+                          <div className="text-xs text-purple-600">
+                            {cachedPrompt.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {cachedPrompt.version && (
+                        <Badge variant="outline" className="text-xs">
+                          v{cachedPrompt.version}
+                        </Badge>
+                      )}
+                      {cachedPrompt.category && (
+                        <Badge variant="secondary" className="text-xs">
+                          {cachedPrompt.category}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* System Prompt */}
+                  {cachedPrompt.systemPrompt && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                        <Brain className="h-4 w-4" />
+                        System Prompt
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-normal"
+                        >
+                          {cachedPrompt.systemPrompt.length} karakter
+                        </Badge>
+                      </Label>
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                        <pre className="text-sm text-purple-900 whitespace-pre-wrap font-mono leading-relaxed">
+                          {cachedPrompt.systemPrompt}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* User Prompt Template - Değişkenler değiştirilmiş */}
+                  {(cachedPrompt.userPromptTemplate ||
+                    cachedPrompt.content) && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        User Prompt (Değerler Atanmış)
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-normal"
+                        >
+                          {
+                            replacePromptVariables(
+                              cachedPrompt.userPromptTemplate ||
+                                cachedPrompt.content
+                            ).length
+                          }{" "}
+                          karakter
+                        </Badge>
+                      </Label>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-[250px] overflow-y-auto">
+                        <pre className="text-sm text-blue-900 whitespace-pre-wrap font-mono leading-relaxed">
+                          {replacePromptVariables(
+                            cachedPrompt.userPromptTemplate ||
+                              cachedPrompt.content
+                          )}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Settings Summary */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Gönderilecek AI Ayarları
+                    </Label>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="text-center p-2 bg-white rounded border">
+                          <div className="text-xs text-gray-500">Model</div>
+                          <div className="font-medium text-gray-900 truncate">
+                            {currentModel?.displayName ||
+                              currentModel?.name ||
+                              aiModel}
+                          </div>
+                        </div>
+                        <div className="text-center p-2 bg-white rounded border">
+                          <div className="text-xs text-gray-500">Provider</div>
+                          <div className="font-medium text-gray-900">
+                            {currentProvider?.icon} {currentProvider?.name}
+                          </div>
+                        </div>
+                        <div className="text-center p-2 bg-white rounded border">
+                          <div className="text-xs text-gray-500">
+                            Temperature
+                          </div>
+                          <div className="font-medium text-gray-900">
+                            {temperature.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="text-center p-2 bg-white rounded border">
+                          <div className="text-xs text-gray-500">
+                            Max Tokens
+                          </div>
+                          <div
+                            className={`font-medium ${
+                              isThinkingModel()
+                                ? "text-amber-600"
+                                : "text-gray-900"
+                            }`}
+                          >
+                            {maxTokens.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      {isThinkingModel() && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700 flex items-center gap-1">
+                          <Brain className="h-3 w-3" />
+                          Thinking model: Düşünme aşaması için ekstra token
+                          ayrıldı.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setShowFullPromptDialog(false)}
+            >
+              Kapat
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PermissionGuard>
   );
 }

@@ -101,12 +101,6 @@ export default function AddPermissionModal({
       color: "text-purple-600 bg-purple-50",
     },
     {
-      value: "requests",
-      label: "Müşteri Talepleri",
-      icon: LucideIcons.MessageSquareText,
-      color: "text-cyan-600 bg-cyan-50",
-    },
-    {
       value: "content",
       label: "İçerik Yönetimi",
       icon: Edit,

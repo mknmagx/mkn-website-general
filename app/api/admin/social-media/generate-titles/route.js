@@ -1,15 +1,35 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { getTitleGenerationPrompt } from '@/lib/ai-prompts/social-media-prompts';
+import { unifiedAIService, applyPromptVariables, AI_CONTEXTS } from '@/lib/services/unified-ai-service';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Kategori label mapping
+const CATEGORY_LABELS = {
+  'fason-kozmetik': 'Fason Kozmetik Üretim',
+  'fason-gida': 'Fason Gıda Takviye',
+  'fason-temizlik': 'Fason Temizlik Ürünleri',
+  'kozmetik-ambalaj': 'Kozmetik Ambalaj',
+  'e-ticaret-operasyon': 'E-ticaret Operasyon',
+  'dijital-pazarlama': 'Dijital Pazarlama',
+  'marka-danismanlik': 'Marka Danışmanlık',
+  'sirket-haberleri': 'Şirket Haberleri'
+};
 
-const MODEL_MAP = {
-  'claude-sonnet-4': 'claude-sonnet-4-20250514',
-  'claude-opus-4': 'claude-opus-4-20250514',
-  'claude-haiku-4': 'claude-haiku-4-20250514'
+// Platform label mapping
+const PLATFORM_LABELS = {
+  'instagram': 'Instagram',
+  'facebook': 'Facebook',
+  'twitter': 'X (Twitter)',
+  'x': 'X (Twitter)',
+  'linkedin': 'LinkedIn'
+};
+
+// İçerik tipi label mapping
+const CONTENT_TYPE_LABELS = {
+  'post': 'Post',
+  'reel': 'Reel/Video',
+  'story': 'Story',
+  'carousel': 'Carousel/Thread',
+  'article': 'Makale',
+  'thread': 'Thread'
 };
 
 export async function POST(request) {
@@ -23,28 +43,56 @@ export async function POST(request) {
       );
     }
 
-    // Generate prompt with customPrompt parameter
-    const prompt = getTitleGenerationPrompt(category, platform, contentType, count, customPrompt || '');
-
-    // Call Claude API
-    const model = MODEL_MAP[aiModel] || MODEL_MAP['claude-sonnet-4'];
+    // Unified AI Service'den konfigürasyonu al (prompt dahil)
+    const aiContext = AI_CONTEXTS.SOCIAL_TITLE_GENERATION;
+    const config = await unifiedAIService.getConfiguration(aiContext);
     
-    const message = await anthropic.messages.create({
-      model: model,
-      max_tokens: 4096,
-      temperature: 0.9, // Higher creativity for topic generation
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      // Request JSON output for better parsing
-      system: "You are a social media expert specializing in topic generation. Always return valid JSON array format. Each topic title should be short (5-15 words), engaging, and suitable for the specified platform."
+    if (!config) {
+      return NextResponse.json(
+        { error: 'Configuration not found for social_title_generation' },
+        { status: 500 }
+      );
+    }
+
+    // Config içinden prompt bilgisini al
+    const promptData = config.prompt;
+
+    // Prompt değişkenlerini hazırla
+    const variables = {
+      category: category,
+      categoryLabel: CATEGORY_LABELS[category] || category,
+      platform: platform,
+      platformLabel: PLATFORM_LABELS[platform] || platform,
+      contentType: contentType,
+      contentTypeLabel: CONTENT_TYPE_LABELS[contentType] || contentType,
+      count: count || 5,
+      customPrompt: customPrompt ? `\n\n📝 ÖZEL TALİMATLAR:\n${customPrompt}` : ''
+    };
+
+    // Prompt'ları değişkenlerle doldur
+    const systemPrompt = applyPromptVariables(promptData?.systemPrompt || '', variables);
+    const userPrompt = applyPromptVariables(promptData?.userPromptTemplate || promptData?.content || '', variables);
+
+    // Request gelen aiModel'i veya config'den default modeli kullan
+    const selectedModel = aiModel || config?.model?.modelId || 'claude-sonnet-4';
+    
+    // Unified AI Service ile içerik üret
+    const result = await unifiedAIService.generateContent(aiContext, userPrompt, {
+      modelId: selectedModel,
+      systemPrompt: systemPrompt,
+      temperature: promptData?.defaultSettings?.temperature || config?.settings?.temperature || 0.9,
+      maxTokens: promptData?.defaultSettings?.maxTokens || config?.settings?.maxTokens || 4096
     });
 
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'AI generation failed', details: result.error },
+        { status: 500 }
+      );
+    }
+
     // Parse response
-    const responseText = message.content[0].text;
+    const responseText = result.content;
     
     // Try to extract JSON from the response
     let titles;
@@ -73,8 +121,9 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       titles: titles,
-      model: model,
-      tokensUsed: message.usage.input_tokens + message.usage.output_tokens
+      model: result.metadata?.model,
+      provider: result.metadata?.provider,
+      tokensUsed: 0 // Token bilgisi şu an provider'dan gelmiyor
     });
 
   } catch (error) {

@@ -19,9 +19,7 @@ import {
   FileText,
   Search,
   Filter,
-  MoreHorizontal,
   Eye,
-  Edit,
   Trash2,
   Clock,
   CheckCircle,
@@ -34,7 +32,6 @@ import {
   User,
   ChevronDown,
   RefreshCw,
-  PlusCircle,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -77,15 +74,10 @@ export default function QuotesPage() {
   const { hasPermission } = usePermissions();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [creatingRequest, setCreatingRequest] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [showCreateRequestModal, setShowCreateRequestModal] = useState(false);
-  const [requestPreview, setRequestPreview] = useState(null);
-  const [createCompany, setCreateCompany] = useState(false);
-  const [companyExists, setCompanyExists] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     new: 0,
@@ -185,156 +177,6 @@ export default function QuotesPage() {
       } catch (error) {
         // Error handling without console spam
       }
-    }
-  };
-
-  const handleCreateRequest = async (quote) => {
-    try {
-      const { REQUEST_PRIORITY, REQUEST_SOURCE, REQUEST_CATEGORIES } = await import("../../../lib/services/request-service");
-      
-      // Check if company exists
-      const companyName = quote.contactInfo?.company || "";
-      let existingCompany = false;
-      
-      if (companyName) {
-        const { getAllCompanies } = await import("../../../lib/services/companies-service");
-        const companies = await getAllCompanies();
-        existingCompany = companies.some(c => 
-          c.name.toLowerCase() === companyName.toLowerCase()
-        );
-      }
-      
-      setCompanyExists(existingCompany);
-      setCreateCompany(!existingCompany);
-      
-      // Map service area to category
-      const serviceAreaMapping = {
-        "fason-uretim": REQUEST_CATEGORIES.COSMETIC_MANUFACTURING,
-        "ambalaj": REQUEST_CATEGORIES.PACKAGING_SUPPLY,
-        "eticaret-operasyon": REQUEST_CATEGORIES.ECOMMERCE_OPERATIONS,
-        "dijital-pazarlama": REQUEST_CATEGORIES.DIGITAL_MARKETING,
-      };
-      
-      // Format technical info
-      let requirementsText = "";
-      if (quote.technicalInfo) {
-        const info = quote.technicalInfo;
-        const sections = [];
-        
-        if (info.productType) sections.push(`Ürün Tipi: ${info.productType}`);
-        if (info.consistency) sections.push(`Kıvam: ${info.consistency}`);
-        if (info.ingredients) sections.push(`İçerik:\n${info.ingredients}`);
-        if (info.packagingType && info.packagingType.length > 0) sections.push(`Ambalaj: ${info.packagingType.join(", ")}`);
-        if (info.quantity) sections.push(`Miktar: ${info.quantity}`);
-        if (info.certificates && info.certificates.length > 0) sections.push(`Sertifikalar: ${info.certificates.join(", ")}`);
-        
-        requirementsText = sections.join("\n");
-      }
-      
-      // Format additional notes
-      let additionalNotes = "";
-      if (quote.additionalInfo) {
-        const notes = [];
-        if (quote.additionalInfo.additionalServices && quote.additionalInfo.additionalServices.length > 0) {
-          notes.push(`Ek Hizmetler: ${quote.additionalInfo.additionalServices.join(", ")}`);
-        }
-        if (quote.additionalInfo.notes) notes.push(quote.additionalInfo.notes);
-        additionalNotes = notes.join("\n");
-      }
-      
-      const requestData = {
-        title: quote.projectInfo?.projectName || "Teklif Talebi",
-        description: quote.projectInfo?.projectDescription || "",
-        category: serviceAreaMapping[quote.projectInfo?.serviceArea] || REQUEST_CATEGORIES.COSMETIC_MANUFACTURING,
-        priority: REQUEST_PRIORITY.NORMAL,
-        source: REQUEST_SOURCE.WEBSITE_FORM,
-        companyId: "",
-        companyName: quote.contactInfo?.company || "",
-        contactPerson: `${quote.contactInfo?.firstName || ""} ${quote.contactInfo?.lastName || ""}`.trim(),
-        contactEmail: quote.contactInfo?.email || "",
-        contactPhone: quote.contactInfo?.phone || "",
-        estimatedValue: 0,
-        expectedDelivery: "",
-        requirements: requirementsText,
-        additionalNotes: additionalNotes,
-      };
-      
-      setRequestPreview({ quote, requestData });
-      setShowCreateRequestModal(true);
-    } catch (error) {
-      console.error("Error preparing request:", error);
-      toast({
-        title: "Hata",
-        description: "Talep hazırlanırken bir hata oluştu.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const confirmCreateRequest = async () => {
-    if (!requestPreview) return;
-    
-    setCreatingRequest(requestPreview.quote.id);
-    try {
-      const { RequestService } = await import("../../../lib/services/request-service");
-      
-      // Create company if needed
-      let companyId = requestPreview.requestData.companyId;
-      
-      if (createCompany && requestPreview.requestData.companyName && !companyExists) {
-        const { createCompany: createCompanyFn } = await import("../../../lib/services/companies-service");
-        
-        const newCompany = {
-          name: requestPreview.requestData.companyName,
-          email: requestPreview.requestData.contactEmail,
-          phone: requestPreview.requestData.contactPhone,
-          contactPerson: requestPreview.requestData.contactPerson,
-          status: "lead",
-          priority: "normal",
-          businessLine: "genel",
-          description: requestPreview.requestData.description || "",
-        };
-        
-        companyId = await createCompanyFn(newCompany);
-      }
-      
-      // Update request data with company ID
-      const finalRequestData = {
-        ...requestPreview.requestData,
-        companyId: companyId || "",
-      };
-      
-      const result = await RequestService.createRequest(finalRequestData);
-      
-      if (result.success) {
-        // Update quote status to in-progress
-        await updateQuoteStatus(requestPreview.quote.id, "in-progress");
-        
-        toast({
-          title: "Başarılı!",
-          description: "Talep başarıyla oluşturuldu.",
-        });
-        
-        setShowCreateRequestModal(false);
-        setRequestPreview(null);
-        await loadQuotes();
-        await loadStats();
-      } else {
-        toast({
-          title: "Hata",
-          description: "Talep oluşturulurken bir hata oluştu.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error creating request:", error);
-      toast({
-        title: "Hata",
-        description: "Talep oluşturulurken bir hata oluştu.",
-        variant: "destructive",
-      });
-    } finally {
-      setCreatingRequest(null);
     }
   };
 
@@ -449,18 +291,6 @@ export default function QuotesPage() {
               title="Görüntüle"
             >
               <Eye className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => handleCreateRequest(quote)}
-              disabled={creatingRequest === quote.id}
-              className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50"
-              title="Talep Oluştur"
-            >
-              {creatingRequest === quote.id ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <PlusCircle className="h-4 w-4" />
-              )}
             </button>
             <select
               value={quote.metadata?.status || "new"}
@@ -1100,161 +930,6 @@ export default function QuotesPage() {
             setSelectedQuote(null);
           }}
         />
-
-        {/* Create Request Preview Modal */}
-        {showCreateRequestModal && requestPreview && (
-          <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <div className="flex min-h-screen items-center justify-center p-4">
-              <div className="fixed inset-0" onClick={() => setShowCreateRequestModal(false)}></div>
-              
-              <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-10">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Talep Önizleme
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Bu quote'tan oluşturulacak talep bilgileri
-                  </p>
-                </div>
-
-                <div className="px-6 py-4 space-y-6">
-                  {/* Basic Info */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      Temel Bilgiler
-                    </h4>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Başlık:</span>
-                        <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.title}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Açıklama:</span>
-                        <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.description}</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kategori:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.category}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kaynak:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.source}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Company Info */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                        <Building className="h-4 w-4 text-blue-600" />
-                        Firma ve İletişim
-                      </h4>
-                      {requestPreview.requestData.companyName && (
-                        <div className="flex items-center gap-3">
-                          {companyExists ? (
-                            <div className="flex items-center gap-2 text-xs">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-green-600 font-medium">Firma sistemde kayıtlı</span>
-                            </div>
-                          ) : (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={createCompany}
-                                onChange={(e) => setCreateCompany(e.target.checked)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                              />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">
-                                Firmayı sisteme kaydet
-                              </span>
-                            </label>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Firma:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.companyName || "-"}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kişi:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.contactPerson}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">E-posta:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.contactEmail}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Telefon:</span>
-                          <p className="text-sm text-gray-900 dark:text-white mt-1">{requestPreview.requestData.contactPhone}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Requirements */}
-                  {requestPreview.requestData.requirements && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Özel Gereksinimler</h4>
-                      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                        <pre className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap font-mono">
-                          {requestPreview.requestData.requirements}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Additional Notes */}
-                  {requestPreview.requestData.additionalNotes && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Ek Notlar</h4>
-                      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                        <pre className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {requestPreview.requestData.additionalNotes}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setShowCreateRequestModal(false);
-                      setRequestPreview(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    İptal
-                  </button>
-                  <button
-                    onClick={confirmCreateRequest}
-                    disabled={creatingRequest}
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {creatingRequest ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Oluşturuluyor...
-                      </>
-                    ) : (
-                      <>
-                        <PlusCircle className="h-4 w-4" />
-                        Talebi Oluştur
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </PermissionGuard>
   );

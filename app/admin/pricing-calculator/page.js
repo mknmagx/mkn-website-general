@@ -62,7 +62,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
-import { useClaude } from "../../../hooks/use-claude";
+import { useUnifiedAI, AI_CONTEXTS } from "../../../hooks/use-unified-ai";
 import * as FormulaService from "../../../lib/services/formula-service";
 import * as PricingService from "../../../lib/services/pricing-service";
 import * as CompaniesService from "../../../lib/services/companies-service";
@@ -98,7 +98,41 @@ export default function PricingCalculatorPage() {
   const { user, loading: authLoading } = useAdminAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { sendMessage, loading: aiLoading } = useClaude();
+  // Unified AI - Pricing ve Formula generation için
+  const {
+    generateContent,
+    loading: aiLoading,
+    selectedModel: currentModel,
+    prompt: priceAnalysisPrompt, // Firestore'dan gelen prompt
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_PRICE_ANALYSIS);
+  
+  // Formula generation için ayrı hook
+  const {
+    generateContent: generateFormulaContent,
+    prompt: formulaGenerationPrompt, // Firestore'dan gelen formula prompt
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_GENERATION);
+  
+  // FormulaService fonksiyonları için wrapper - sendMessage imza uyumluluğu
+  const sendMessageWrapper = async (prompt, options = {}) => {
+    const result = await generateContent(prompt, {
+      maxTokens: options.maxTokens || 4000,
+      temperature: 0.7,
+      // ✅ FIX: System prompt'u ayrı olarak geç - token tekrarını önler
+      systemPrompt: options.systemPrompt,
+    });
+    return result?.content || result;
+  };
+  
+  // Formula generation için wrapper
+  const formulaMessageWrapper = async (prompt, options = {}) => {
+    const result = await generateFormulaContent(prompt, {
+      maxTokens: options.maxTokens || 4000,
+      temperature: 0.7,
+      // ✅ FIX: System prompt'u ayrı olarak geç - token tekrarını önler
+      systemPrompt: options.systemPrompt,
+    });
+    return result?.content || result;
+  };
 
   // Form state
   const [formData, setFormData] = useState(initialFormState);
@@ -277,10 +311,10 @@ JSON formatında şu bilgileri içer:
 }
 `;
 
-      const response = await sendMessage(prompt, {
+      const result = await generateContent(prompt, {
         maxTokens: 2000,
-        type: "generate",
       });
+      const response = result?.content || result;
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsedResponse = JSON.parse(jsonMatch[0]);
@@ -341,7 +375,8 @@ JSON formatında şu bilgileri içer:
 
       const parsedFormula = await FormulaService.generateAIFormula(
         productInfo,
-        sendMessage
+        formulaMessageWrapper,
+        formulaGenerationPrompt // Firestore'dan gelen prompt
       );
       setGeneratedFormula(parsedFormula);
       setShowFormulaDialog(true);
@@ -446,7 +481,8 @@ JSON formatında şu bilgileri içer:
 
       const priceData = await FormulaService.getAIIngredientPrice(
         ingredientInfo,
-        sendMessage
+        sendMessageWrapper,
+        priceAnalysisPrompt // Firestore'dan gelen prompt
       );
 
       if (priceData.estimatedPrice) {

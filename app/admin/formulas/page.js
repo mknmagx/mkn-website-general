@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Layers,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import * as FormulaService from "@/lib/services/formula-service";
 import { useToast } from "@/hooks/use-toast";
@@ -68,32 +69,44 @@ export default function FormulasPage() {
       setLoading(true);
       const data = await FormulaService.loadSavedFormulas();
       
-      // Calculate cost for each formula
+      // Calculate cost for each formula (v3.1 uyumlu)
       const formulasWithCost = data.map(formula => {
         let totalCost = 0;
+        let totalAmount = 0;
+        
         if (formula.ingredients) {
           formula.ingredients.forEach(ing => {
             const amount = parseFloat(ing.amount) || 0;
-            const price = parseFloat(ing.price) || 0;
-            let cost = 0;
+            totalAmount += amount;
             
-            if (ing.unit === 'g' || ing.unit === 'gram') {
-              cost = (amount / 1000) * price;
-            } else if (ing.unit === 'ml') {
-              cost = (amount / 1000) * price;
-            } else if (ing.unit === 'kg') {
-              cost = amount * price;
+            // v3.1 uyumu: estimatedCostTL varsa direkt kullan
+            if (ing.estimatedCostTL && parseFloat(ing.estimatedCostTL) > 0) {
+              totalCost += parseFloat(ing.estimatedCostTL);
             } else {
-              cost = amount * price;
+              // Eski format: price üzerinden hesapla
+              const price = parseFloat(ing.estimatedPriceTLperKg || ing.price) || 0;
+              let cost = 0;
+              
+              if (ing.unit === 'g' || ing.unit === 'gram') {
+                cost = (amount / 1000) * price;
+              } else if (ing.unit === 'ml') {
+                cost = (amount / 1000) * price;
+              } else if (ing.unit === 'kg') {
+                cost = amount * price;
+              } else {
+                cost = amount * price;
+              }
+              
+              totalCost += cost;
             }
-            
-            totalCost += cost;
           });
         }
         
         return {
           ...formula,
-          calculatedCost: totalCost.toFixed(2)
+          calculatedCost: totalCost.toFixed(2),
+          totalAmount: totalAmount.toFixed(2),
+          costPerGram: totalAmount > 0 ? (totalCost / totalAmount).toFixed(4) : '0.0000',
         };
       });
       
@@ -122,6 +135,10 @@ export default function FormulasPage() {
 
   const handleCreateNew = () => {
     router.push("/admin/formulas/create");
+  };
+
+  const handleCreateProfessional = () => {
+    router.push("/admin/formulas/professional");
   };
 
   const handleViewFormula = (id) => {
@@ -193,14 +210,25 @@ export default function FormulasPage() {
                 Kayıtlı formülleri görüntüleyin, düzenleyin ve yönetin
               </p>
             </div>
-            <Button 
-              onClick={handleCreateNew} 
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Yeni Formül Oluştur
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={handleCreateProfessional} 
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all"
+              >
+                <Sparkles className="h-5 w-5 mr-2" />
+                Profesyonel Formül
+              </Button>
+              <Button 
+                onClick={handleCreateNew} 
+                size="lg"
+                variant="outline"
+                className="border-2 border-blue-200 hover:bg-blue-50"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Hızlı Formül
+              </Button>
+            </div>
           </div>
         </div>
       </div>

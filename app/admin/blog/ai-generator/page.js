@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import { PermissionGuard } from "../../../../components/admin-route-guard";
-import useClaude from "../../../../hooks/use-claude";
+// Unified AI hook - dinamik Firestore konfigürasyonu
+import {
+  useUnifiedAI,
+  AI_CONTEXTS,
+  AI_PROVIDER_TYPES,
+} from "../../../../hooks/use-unified-ai";
 import {
   getAllBlogCategories,
   addBlogPost,
@@ -91,63 +96,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { SmartImageSelection } from "@/components/smart-image-selection";
 
-// AI Model Configurations - Claude Only
-const AI_MODELS = {
-  "claude-sonnet": {
-    id: "claude-sonnet",
-    name: "Claude Sonnet 4.5",
-    provider: "Anthropic",
-    description: "En akıllı model, karmaşık görevler ve kodlama için ideal",
-    apiId: "claude-sonnet-4-5-20250929",
-    alias: "claude-sonnet-4-5",
-    maxTokens: 4000,
-    versions: ["4.5"],
-    capabilities: [
-      "Karmaşık Analiz",
-      "Yaratıcı Yazım",
-      "Teknik İçerik",
-      "SEO Optimizasyonu",
-    ],
-    color: "bg-gradient-to-r from-purple-500 to-indigo-600",
-    icon: Brain,
-    recommended: false,
-  },
-  "claude-haiku": {
-    id: "claude-haiku",
-    name: "Claude Haiku 4.5",
-    provider: "Anthropic",
-    description: "En hızlı model, yakın-sınır zeka ile optimal performans",
-    apiId: "claude-haiku-4-5-20251001",
-    alias: "claude-haiku-4-5",
-    maxTokens: 3000,
-    versions: ["4.5"],
-    capabilities: [
-      "Hızlı Üretim",
-      "Blog Yazısı",
-      "İçerik Optimizasyonu",
-      "SEO",
-    ],
-    color: "bg-gradient-to-r from-green-500 to-emerald-600",
-    icon: Zap,
-    recommended: true,
-  },
-  "claude-opus": {
-    id: "claude-opus",
-    name: "Claude Opus 4.1",
-    provider: "Anthropic",
-    description: "Özel görevler için istisnai model, detaylı analiz",
-    apiId: "claude-opus-4-1-20250805",
-    alias: "claude-opus-4-1",
-    maxTokens: 3500,
-    versions: ["4.1"],
-    capabilities: ["Detaylı Analiz", "Araştırma", "Profesyonel İçerik"],
-    color: "bg-gradient-to-r from-blue-500 to-cyan-600",
-    icon: Cpu,
-    recommended: false,
-  },
-};
-
-// AI Content Settings
+// AI Content Settings - Bu ayarlar Firestore'daki contentSettings ile birleştirilecek
 const AI_CONTENT_SETTINGS = {
   creativity: {
     label: "Yaratıcılık Seviyesi",
@@ -189,7 +138,6 @@ import {
   generateSlug,
   generateTags,
   mockGeneratedBlog,
-  AI_PROMPTS,
   processBlogContent,
   convertMarkdownToHtml,
 } from "../../../../lib/services/ai-blog-service";
@@ -210,11 +158,49 @@ import {
 } from "../../../../lib/services/blog-title-service";
 import TitleUsageTracker from "../../../../components/admin/title-usage-tracker";
 
+// Provider renkleri ve ikonları
+const PROVIDER_COLORS = {
+  claude: "bg-gradient-to-r from-purple-500 to-indigo-600",
+  gemini: "bg-gradient-to-r from-blue-500 to-cyan-600",
+  openai: "bg-gradient-to-r from-green-500 to-emerald-600",
+};
+
+const PROVIDER_ICONS = {
+  claude: Brain,
+  gemini: Cpu,
+  openai: Zap,
+};
+
 export default function AIBlogGeneratorPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAdminAuth();
-  const { generateContent, loading: aiLoading, error: aiError } = useClaude();
   const { toast } = useToast();
+
+  // Unified AI Hook - Firestore'dan dinamik config
+  const {
+    config: aiConfig,
+    availableModels,
+    modelsByProvider,
+    selectedModel: currentModel,
+    currentProvider,
+    generateContent: unifiedGenerate,
+    selectModel,
+    loading: aiLoading,
+    configLoading,
+    error: aiError,
+    isReady: aiIsReady,
+    hasModels,
+    refresh: refreshAIConfig,
+    getProviderIcon,
+    prompt: firestorePrompt, // Firestore'dan gelen prompt
+  } = useUnifiedAI(AI_CONTEXTS.BLOG_GENERATION);
+
+  // Blog improvement için ayrı hook
+  const {
+    generateContent: improveContent,
+    loading: improvementLoading,
+    prompt: improvementPrompt, // Firestore'dan improvement prompt'u
+  } = useUnifiedAI(AI_CONTEXTS.BLOG_IMPROVEMENT);
 
   // Ana state'ler
   const [activeTab, setActiveTab] = useState("setup");
@@ -231,6 +217,8 @@ export default function AIBlogGeneratorPage() {
   const [useFirestoreTitles, setUseFirestoreTitles] = useState(true);
   const [loadingTitles, setLoadingTitles] = useState(false);
   const [generatedBlog, setGeneratedBlog] = useState(null);
+  const [aiMetadata, setAiMetadata] = useState(null); // AI üretim metadata'sı
+  const [finalPrompt, setFinalPrompt] = useState(null); // Final prompt (değişkenler uygulandıktan sonra)
   const [showPreview, setShowPreview] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -240,19 +228,119 @@ export default function AIBlogGeneratorPage() {
   const [showImproveModal, setShowImproveModal] = useState(false);
   const [improving, setImproving] = useState(false);
 
-  // AI Model Configuration
-  const [selectedModel, setSelectedModel] = useState("claude-haiku");
-  const [selectedVersion, setSelectedVersion] = useState("4.5");
-  const [maxTokens, setMaxTokens] = useState(3000);
-  const [temperature, setTemperature] = useState(0.7);
+  // AI Model Configuration - Firestore'dan gelen değerlerle senkronize
+  const [selectedModelId, setSelectedModelId] = useState(null);
+  const [maxTokens, setMaxTokens] = useState(4096);
+  const [temperature, setTemperature] = useState(0.8);
 
-  // AI Content Settings
+  // AI Content Settings - Firestore'dan gelen contentSettings ile merge edilir
   const [aiSettings, setAiSettings] = useState({
     creativity: 70,
     technicality: 60,
     seoOptimization: 80,
     readability: 75,
   });
+
+  /**
+   * Firestore'dan gelen prompt template'ine değişkenleri yerleştir
+   * Önce 'content' alanına, yoksa 'userPromptTemplate' alanına bakar
+   * @param {object} variables - Değişkenler objesi
+   * @returns {string} - Değişkenler uygulanmış prompt
+   */
+  const applyPromptVariables = useCallback(
+    (variables = {}) => {
+      // Prompt içeriğini al - content veya userPromptTemplate
+      const promptTemplate =
+        firestorePrompt?.content || firestorePrompt?.userPromptTemplate;
+
+      if (!promptTemplate) {
+        return "⚠️ Prompt yüklenemedi. Lütfen Firestore'da 'ai_prompts/blog_generation' dökümanını kontrol edin.";
+      }
+
+      let promptContent = promptTemplate;
+
+      // Değişkenleri uygula
+      const allVariables = {
+        topic: variables.topic || "[Konu seçilmedi]",
+        keywords: variables.keywords || "",
+        length: variables.length || "medium",
+        tone: variables.tone || "professional",
+        ...variables,
+      };
+
+      // {{variable}} formatındaki değişkenleri değiştir
+      Object.entries(allVariables).forEach(([key, value]) => {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "gi");
+        promptContent = promptContent.replace(regex, String(value));
+      });
+
+      // Conditional blocks için basit işleme
+      // {{#if length === 'short'}}...{{/if}} formatı
+      promptContent = promptContent.replace(
+        /\{\{#if length === 'short'\}\}([\s\S]*?)\{\{\/if\}\}/g,
+        allVariables.length === "short" ? "$1" : ""
+      );
+      promptContent = promptContent.replace(
+        /\{\{#if length === 'medium'\}\}([\s\S]*?)\{\{\/if\}\}/g,
+        allVariables.length === "medium" ? "$1" : ""
+      );
+      promptContent = promptContent.replace(
+        /\{\{#if length === 'long'\}\}([\s\S]*?)\{\{\/if\}\}/g,
+        allVariables.length === "long" ? "$1" : ""
+      );
+
+      return promptContent;
+    },
+    [firestorePrompt]
+  );
+
+  // Firestore config yüklendiğinde state'leri güncelle
+  useEffect(() => {
+    if (aiConfig) {
+      // Content settings
+      if (aiConfig.contentSettings) {
+        setAiSettings((prev) => ({
+          ...prev,
+          ...aiConfig.contentSettings,
+        }));
+      }
+      // Temperature ve maxTokens
+      if (aiConfig.settings) {
+        if (aiConfig.settings.temperature)
+          setTemperature(aiConfig.settings.temperature);
+        if (aiConfig.settings.maxTokens)
+          setMaxTokens(aiConfig.settings.maxTokens);
+      }
+    }
+    // Default model seçimi
+    if (currentModel && !selectedModelId) {
+      setSelectedModelId(currentModel.modelId);
+    }
+  }, [aiConfig, currentModel, selectedModelId]);
+
+  // Mevcut seçili model bilgisi - Firestore veya state'den
+  const activeModel = useMemo(() => {
+    if (!availableModels.length) return null;
+    const found = availableModels.find((m) => m.value === selectedModelId);
+    if (found) return found;
+    // Default model
+    return availableModels[0] || null;
+  }, [availableModels, selectedModelId]);
+
+  // Model değiştirme handler
+  const handleModelChange = async (modelId) => {
+    setSelectedModelId(modelId);
+    await selectModel(modelId);
+
+    // Model ayarlarını güncelle
+    const model = availableModels.find((m) => m.value === modelId);
+    if (model?.settings) {
+      if (model.settings.defaultMaxTokens)
+        setMaxTokens(model.settings.defaultMaxTokens);
+      if (model.settings.defaultTemperature)
+        setTemperature(model.settings.defaultTemperature);
+    }
+  };
 
   // Blog ayarları
   const [blogDetails, setBlogDetails] = useState({
@@ -294,7 +382,6 @@ export default function AIBlogGeneratorPage() {
       const categoriesData = await getAllBlogCategories();
       setCategories(categoriesData || []);
     } catch (error) {
-      console.error("Kategoriler yüklenirken hata:", error);
       toast({
         title: "Hata",
         description: "Kategoriler yüklenirken hata oluştu.",
@@ -315,7 +402,6 @@ export default function AIBlogGeneratorPage() {
         setSelectedDataset(datasets[0].id);
       }
     } catch (error) {
-      console.error("Title datasets yüklenirken hata:", error);
       toast({
         title: "Hata",
         description: "Başlık datasets yüklenirken hata oluştu.",
@@ -353,7 +439,6 @@ export default function AIBlogGeneratorPage() {
         setTitlesByCategory(grouped);
       }
     } catch (error) {
-      console.error("Başlıklar yüklenirken hata:", error);
       toast({
         title: "Hata",
         description: "Başlıklar yüklenirken hata oluştu.",
@@ -374,13 +459,13 @@ export default function AIBlogGeneratorPage() {
         blogPostId: blogData.id,
         blogSlug: blogData.slug,
         usageType: "blog_generation",
-        aiModel: selectedModel,
+        aiModel: selectedModelId,
       });
 
       // Başlıkları yenile
       await loadTitlesForDataset(selectedDataset);
     } catch (error) {
-      console.error("Başlık kullanım kaydı hatası:", error);
+      // Silent fail for usage tracking
     }
   };
 
@@ -388,8 +473,9 @@ export default function AIBlogGeneratorPage() {
   const loadMockData = () => {
     const mockData = {
       ...mockGeneratedBlog,
-      aiModel: selectedModel,
-      aiVersion: selectedVersion,
+      aiModel: selectedModelId,
+      aiModelName: activeModel?.label,
+      aiProvider: currentProvider?.id,
       aiSettings: aiSettings,
       generatedAt: new Date().toISOString(),
       readingTime: 5,
@@ -414,14 +500,16 @@ export default function AIBlogGeneratorPage() {
 
     toast({
       title: "🎉 Test Verisi Yüklendi!",
-      description: `${AI_MODELS[selectedModel].name} ile test blog verisi başarıyla yüklendi.`,
+      description: `${
+        activeModel?.label || "AI"
+      } ile test blog verisi başarıyla yüklendi.`,
       variant: "default",
       duration: 4000,
     });
   };
 
   // Modal tabanlı metin güzelleştirme fonksiyonu
-  const improveContent = async () => {
+  const handleImproveContent = async () => {
     if (!editableBlog.content) {
       toast({
         title: "Hata",
@@ -434,33 +522,49 @@ export default function AIBlogGeneratorPage() {
     setShowImproveModal(true);
   };
 
-  // AI ile içerik iyileştirme
+  // AI ile içerik iyileştirme - Unified AI Service kullanır
   const performContentImprovement = async () => {
     setImproving(true);
     setShowImproveModal(false);
 
     try {
-      const improvePrompt = AI_PROMPTS.contentImprovement(editableBlog.content);
-      const improvedContent = await generateContent(improvePrompt, {
-        systemPrompt:
-          "You are a professional content editor for MKN Group. Improve the given Turkish HTML content by making it more engaging, informative, and SEO-optimized while maintaining the original meaning and structure. Return only HTML content.",
-        maxTokens: 3000,
+      // Firestore'dan gelen improvement prompt'unu kullan
+      let improvePrompt = "";
+      if (improvementPrompt?.content) {
+        // Prompt template'ine içeriği ekle
+        improvePrompt = improvementPrompt.content.replace(
+          /\{\{content\}\}/gi,
+          editableBlog.content
+        );
+      } else {
+        // Fallback - basit prompt
+        improvePrompt = `Aşağıdaki blog içeriğini iyileştir. Daha akıcı, SEO uyumlu ve okunabilir hale getir. Sadece iyileştirilmiş HTML içeriği döndür:\n\n${editableBlog.content}`;
+      }
+
+      // Unified AI Service ile iyileştirme
+      const result = await improveContent(improvePrompt, {
         temperature: 0.5,
+        maxTokens: 4096,
       });
+
+      if (!result.success) {
+        throw new Error(result.error || "İçerik iyileştirilemedi");
+      }
 
       setEditableBlog({
         ...editableBlog,
-        content: improvedContent, // AI already returns HTML
-        readingTime: estimateReadingTime(improvedContent),
+        content: result.content,
+        readingTime: estimateReadingTime(result.content),
       });
 
       toast({
         title: "İçerik İyileştirildi",
-        description: "İçerik AI ile başarıyla güzelleştirildi!",
+        description: `${
+          result.metadata?.modelName || "AI"
+        } ile içerik başarıyla güzelleştirildi!`,
         variant: "default",
       });
     } catch (error) {
-      console.error("İçerik iyileştirme hatası:", error);
       toast({
         title: "Hata",
         description: "İçerik iyileştirme sırasında bir hata oluştu.",
@@ -508,6 +612,7 @@ export default function AIBlogGeneratorPage() {
   };
 
   // Enhanced blog generation with progress tracking and title usage
+  // Şimdi Unified AI Service kullanıyor - Firestore'dan dinamik config
   const generateBlog = async () => {
     if (
       !useFirestoreTitles &&
@@ -535,6 +640,16 @@ export default function AIBlogGeneratorPage() {
       return;
     }
 
+    // AI ready kontrolü
+    if (!aiIsReady) {
+      toast({
+        title: "⏳ Bekleyin",
+        description: "AI servisi hazırlanıyor, lütfen bekleyin...",
+        variant: "default",
+      });
+      return;
+    }
+
     const progressInterval = simulateProgress();
 
     try {
@@ -544,51 +659,90 @@ export default function AIBlogGeneratorPage() {
         allTopics.push(customTopic.trim());
       }
 
-      // Enhanced prompt with AI settings
-      const enhancedBlogDetails = {
-        ...blogDetails,
-        aiSettings,
-        model: selectedModel,
-        version: selectedVersion,
-        creativity: aiSettings.creativity / 100,
-        technicality: aiSettings.technicality / 100,
-        seoOptimization: aiSettings.seoOptimization / 100,
-        readability: aiSettings.readability / 100,
+      // Firestore prompt kontrolü
+      if (!firestorePrompt) {
+        toast({
+          title: "⏳ Bekleyin",
+          description:
+            "Prompt henüz yüklenmedi. Lütfen birkaç saniye bekleyip tekrar deneyin.",
+          variant: "default",
+        });
+        return;
+      }
+
+      // Firestore'dan gelen prompt'a değişkenleri uygula
+      const promptVariables = {
+        topic: allTopics.join(", "),
+        keywords: blogDetails.targetKeywords || "",
+        length: blogDetails.length,
+        tone: blogDetails.tone,
+        creativity: aiSettings.creativity,
+        technicality: aiSettings.technicality,
+        seoOptimization: aiSettings.seoOptimization,
+        readability: aiSettings.readability,
       };
 
-      const prompt = AI_PROMPTS.blogGeneration(allTopics, enhancedBlogDetails);
+      const prompt = applyPromptVariables(promptVariables);
 
-      const response = await generateContent(prompt, {
-        systemPrompt: `You are a professional content writer for MKN Group. Generate high-quality blog content in Turkish that is informative, engaging, and SEO-optimized. 
+      // Değişkenler uygulanmamışsa uyar
+      if (prompt.includes("{{topic}}") || prompt.includes("{{length}}")) {
+        toast({
+          title: "⚠️ Prompt Hatası",
+          description:
+            "Değişkenler uygulanamadı. Sayfayı yenileyip tekrar deneyin.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-Model: ${AI_MODELS[selectedModel].name}
-Creativity Level: ${aiSettings.creativity}%
-Technical Detail: ${aiSettings.technicality}%
-SEO Focus: ${aiSettings.seoOptimization}%
-Readability: ${aiSettings.readability}%
+      // Final prompt'u kaydet (UI'da gösterilecek)
+      setFinalPrompt(prompt);
 
-${
-  useFirestoreTitles
-    ? "The user selected titles from our Firestore database. Make sure to incorporate the essence of these titles into the content."
-    : ""
-}
+      // Uzunluğa göre dinamik maxTokens hesapla
+      // Türkçe: 1 kelime ≈ 2-2.5 token + JSON overhead
+      // short: ~700 kelime ≈ 2000 token + 1000 overhead = 4096
+      // medium: ~1250 kelime ≈ 3500 token + 1000 overhead = 6144
+      // long: ~2200 kelime ≈ 6000 token + 2000 overhead = 12000
+      const dynamicMaxTokens =
+        blogDetails.length === "long"
+          ? Math.max(maxTokens, 16384)
+          : blogDetails.length === "medium"
+          ? Math.max(maxTokens, 10240)
+          : Math.max(maxTokens, 6144);
 
-Always respond with valid JSON format.`,
-        maxTokens: maxTokens,
+      // Unified AI Service ile içerik üret
+      const result = await unifiedGenerate(prompt, {
+        modelId: selectedModelId,
+        maxTokens: dynamicMaxTokens,
         temperature: temperature,
+        variables: {
+          topic: allTopics.join(", "),
+          keywords: blogDetails.targetKeywords,
+          length: blogDetails.length,
+          tone: blogDetails.tone,
+        },
       });
+
+      if (!result.success) {
+        throw new Error(result.error || "AI yanıtı alınamadı");
+      }
+
+      // AI Metadata'yı kaydet (UI'da gösterilecek)
+      if (result.aiMetadata) {
+        setAiMetadata(result.aiMetadata);
+      }
 
       let blogData;
       try {
-        blogData = parseAiJsonResponse(response);
+        blogData = parseAiJsonResponse(result.content);
         blogData = validateBlogData(blogData);
       } catch (parseError) {
-        console.error("❌ AI Response parsing error:", parseError);
-        console.error("Raw AI Response:", response);
         throw new Error(`AI yanıtı işlenemedi: ${parseError.message}`);
       }
 
       // Process blog content with AI settings
+      // NOT: Model bilgisini API sonucundan al (result.aiMetadata), seçili modelden değil!
+      const actualModel = result.aiMetadata?.model;
       const processedBlog = {
         ...blogData,
         slug: generateSlug(blogData.title),
@@ -599,9 +753,23 @@ Always respond with valid JSON format.`,
         useFirestoreTitles,
         selectedDataset,
         selectedCategory,
-        aiModel: selectedModel,
-        aiVersion: selectedVersion,
+        // Gerçek kullanılan model bilgisi (API sonucundan)
+        aiModel: actualModel?.id || result.model || selectedModelId,
+        aiModelName:
+          actualModel?.name || result.apiModel || activeModel?.displayName,
+        aiProvider:
+          actualModel?.provider || result.provider || currentProvider?.id,
+        aiProviderName: actualModel?.providerName || currentProvider?.name,
+        aiApiId: actualModel?.apiId || result.apiModel,
+        // Kullanılan ayarlar (API'ye gönderilen değerler)
+        usedSettings: {
+          temperature: temperature,
+          maxTokens: dynamicMaxTokens,
+          length: blogDetails.length,
+          tone: blogDetails.tone,
+        },
         aiSettings: aiSettings,
+        aiMetadata: result.aiMetadata, // Detaylı AI bilgisi
         generatedAt: new Date().toISOString(),
       };
 
@@ -615,7 +783,7 @@ Always respond with valid JSON format.`,
         toast({
           title: "🎉 Blog Oluşturuldu!",
           description: `${
-            AI_MODELS[selectedModel].name
+            activeModel?.displayName || activeModel?.name || "AI"
           } ile blog yazısı başarıyla oluşturuldu.${
             useFirestoreTitles && selectedTopics.length > 0
               ? ` ${selectedTopics.length} başlık kullanıldı.`
@@ -628,9 +796,8 @@ Always respond with valid JSON format.`,
     } catch (error) {
       clearInterval(progressInterval);
       setGenerationProgress(0);
-      console.error("❌ Blog üretilirken hata:", error);
       toast({
-        title: "❌ Hata",
+        title: "Hata",
         description: `Blog üretilirken hata oluştu: ${error.message}`,
         variant: "destructive",
       });
@@ -673,9 +840,7 @@ Always respond with valid JSON format.`,
 
         try {
           await Promise.all(titleUsagePromises);
-          console.log("✅ Title usage tracking completed");
         } catch (usageError) {
-          console.warn("⚠️ Title usage tracking failed:", usageError);
           // Don't fail the entire save operation for usage tracking errors
         }
       }
@@ -715,7 +880,6 @@ Always respond with valid JSON format.`,
 
       router.push("/admin/blog");
     } catch (error) {
-      console.error("Blog kaydedilirken hata:", error);
       toast({
         title: "Hata",
         description: `Blog kaydedilirken hata oluştu: ${error.message}`,
@@ -795,8 +959,7 @@ Always respond with valid JSON format.`,
         }
       }
     } catch (error) {
-      console.error("Otomatik görsel seçimi hatası:", error);
-      // Hata durumunda toast gösterme, sessizce devam et
+      // Hata durumunda sessizce devam et
     }
   };
 
@@ -895,16 +1058,20 @@ Always respond with valid JSON format.`,
                 </div>
               </div>
 
-              {/* AI Model Status Bar */}
-              {selectedModel && (
+              {/* AI Model Status Bar - Dinamik */}
+              {activeModel && (
                 <div className="mt-4 p-4 bg-white rounded-xl shadow-sm border border-purple-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div
-                        className={`p-2 rounded-lg ${AI_MODELS[selectedModel].color}`}
+                        className={`p-2 rounded-lg ${
+                          PROVIDER_COLORS[activeModel.provider] ||
+                          "bg-gradient-to-r from-gray-500 to-gray-600"
+                        }`}
                       >
                         {(() => {
-                          const IconComponent = AI_MODELS[selectedModel].icon;
+                          const IconComponent =
+                            PROVIDER_ICONS[activeModel.provider] || Cpu;
                           return (
                             <IconComponent className="h-4 w-4 text-white" />
                           );
@@ -912,11 +1079,11 @@ Always respond with valid JSON format.`,
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">
-                          {AI_MODELS[selectedModel].name} v{selectedVersion}
+                          {activeModel.label} {activeModel.icon}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {AI_MODELS[selectedModel].provider} • {maxTokens}{" "}
-                          tokens
+                          {currentProvider?.name || activeModel.provider} •{" "}
+                          {maxTokens} tokens
                         </div>
                       </div>
                     </div>
@@ -929,14 +1096,53 @@ Always respond with valid JSON format.`,
                         <span className="font-medium">SEO:</span>{" "}
                         {aiSettings.seoOptimization}%
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className="bg-green-100 text-green-800"
+                      {configLoading ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-yellow-100 text-yellow-800"
+                        >
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Yükleniyor
+                        </Badge>
+                      ) : aiIsReady ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-green-100 text-green-800"
+                        >
+                          <Zap className="h-3 w-3 mr-1" />
+                          Hazır
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="bg-red-100 text-red-800"
+                        >
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Bağlantı Yok
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={refreshAIConfig}
+                        className="h-8 w-8 p-0"
+                        title="AI ayarlarını yenile"
                       >
-                        <Zap className="h-3 w-3 mr-1" />
-                        Hazır
-                      </Badge>
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Config Loading State */}
+              {configLoading && !activeModel && (
+                <div className="mt-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                    <span className="text-gray-600">
+                      AI konfigürasyonu yükleniyor...
+                    </span>
                   </div>
                 </div>
               )}
@@ -991,100 +1197,157 @@ Always respond with valid JSON format.`,
               {/* AI Setup Sekmesi */}
               <TabsContent value="setup" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* AI Model Selection */}
+                  {/* AI Model Selection - Dinamik Firestore */}
                   <Card className="border-purple-200 shadow-lg">
                     <CardHeader>
                       <CardTitle className="flex items-center text-purple-700">
                         <Cpu className="mr-2 h-5 w-5" />
                         AI Model Seçimi
+                        {configLoading && (
+                          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        )}
                       </CardTitle>
                       <CardDescription>
                         Blog üretimi için kullanılacak AI modelini seçin
+                        {aiConfig?.name && (
+                          <span className="block mt-1 text-xs text-purple-600">
+                            📋 Konfigürasyon: {aiConfig.name}
+                          </span>
+                        )}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {Object.values(AI_MODELS).map((model) => (
-                        <div
-                          key={model.id}
-                          className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
-                            selectedModel === model.id
-                              ? "border-purple-500 bg-purple-50 shadow-md scale-[1.02]"
-                              : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
-                          }`}
-                          onClick={() => {
-                            setSelectedModel(model.id);
-                            setSelectedVersion(model.versions[0]);
-                            setMaxTokens(model.maxTokens);
-                          }}
-                        >
-                          {model.recommended && (
-                            <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                              <Sparkles className="h-3 w-3 mr-1" />
-                              Önerilen
-                            </Badge>
-                          )}
-                          <div className="flex items-start space-x-3">
-                            <div className={`p-2 rounded-lg ${model.color}`}>
-                              {(() => {
-                                const IconComponent = model.icon;
-                                return (
-                                  <IconComponent className="h-5 w-5 text-white" />
-                                );
-                              })()}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <h3 className="font-semibold text-gray-900">
-                                  {model.name}
-                                </h3>
-                                <Badge variant="outline" className="text-xs">
-                                  {model.provider}
+                      {/* Provider Filter */}
+                      {hasModels && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {Object.keys(modelsByProvider || {}).map(
+                            (providerId) => {
+                              const providerNames = {
+                                claude: "Anthropic Claude",
+                                gemini: "Google Gemini",
+                                openai: "OpenAI",
+                              };
+                              return (
+                                <Badge
+                                  key={providerId}
+                                  variant="outline"
+                                  className={`cursor-default ${
+                                    activeModel?.provider === providerId
+                                      ? "bg-purple-100 border-purple-500"
+                                      : ""
+                                  }`}
+                                >
+                                  {getProviderIcon(providerId)}{" "}
+                                  {providerNames[providerId] || providerId}
                                 </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {model.description}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {model.capabilities.map((cap, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {cap}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                            {selectedModel === model.id && (
-                              <CheckCircle className="h-6 w-6 text-purple-500 flex-shrink-0" />
-                            )}
-                          </div>
+                              );
+                            }
+                          )}
                         </div>
-                      ))}
+                      )}
 
-                      {/* Model Versiyonu */}
-                      {selectedModel && (
-                        <div className="space-y-2 pt-4 border-t">
-                          <Label>Model Versiyonu</Label>
-                          <Select
-                            value={selectedVersion}
-                            onValueChange={setSelectedVersion}
-                          >
-                            <SelectTrigger className="border-purple-200 focus:border-purple-500">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {AI_MODELS[selectedModel].versions.map(
-                                (version) => (
-                                  <SelectItem key={version} value={version}>
-                                    {AI_MODELS[selectedModel].name} v{version}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
+                      {/* Model List */}
+                      {configLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                          <span className="ml-2 text-gray-500">
+                            Modeller yükleniyor...
+                          </span>
                         </div>
+                      ) : !hasModels ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Database className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                          <p>Henüz model tanımlı değil.</p>
+                          <p className="text-sm mt-1">
+                            Firestore'da ai_configurations/blog_generation
+                            ayarlayın.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={refreshAIConfig}
+                          >
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Yenile
+                          </Button>
+                        </div>
+                      ) : (
+                        availableModels.map((model) => (
+                          <div
+                            key={model.id || model.modelId}
+                            className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                              selectedModelId === (model.id || model.modelId)
+                                ? "border-purple-500 bg-purple-50 shadow-md scale-[1.02]"
+                                : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
+                            }`}
+                            onClick={() =>
+                              handleModelChange(model.id || model.modelId)
+                            }
+                          >
+                            {model.recommended && (
+                              <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Önerilen
+                              </Badge>
+                            )}
+                            <div className="flex items-start space-x-3">
+                              <div
+                                className={`p-2 rounded-lg ${
+                                  PROVIDER_COLORS[model.provider] ||
+                                  "bg-gray-500"
+                                }`}
+                              >
+                                {(() => {
+                                  const IconComponent =
+                                    PROVIDER_ICONS[model.provider] || Cpu;
+                                  return (
+                                    <IconComponent className="h-5 w-5 text-white" />
+                                  );
+                                })()}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <h3 className="font-semibold text-gray-900">
+                                    {model.icon}{" "}
+                                    {model.displayName || model.name}
+                                  </h3>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
+                                    {model.provider}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {model.description}
+                                </p>
+                                {model.capabilities && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {Object.entries(model.capabilities)
+                                      .filter(([_, v]) => v === true)
+                                      .slice(0, 4)
+                                      .map(([cap, _], idx) => (
+                                        <Badge
+                                          key={idx}
+                                          variant="secondary"
+                                          className="text-xs capitalize"
+                                        >
+                                          {cap
+                                            .replace(/([A-Z])/g, " $1")
+                                            .trim()}
+                                        </Badge>
+                                      ))}
+                                  </div>
+                                )}
+                              </div>
+                              {selectedModelId ===
+                                (model.id || model.modelId) && (
+                                <CheckCircle className="h-6 w-6 text-purple-500 flex-shrink-0" />
+                              )}
+                            </div>
+                          </div>
+                        ))
                       )}
                     </CardContent>
                   </Card>
@@ -1110,31 +1373,46 @@ Always respond with valid JSON format.`,
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>
-                                Üretilecek içeriğin maksimum uzunluğunu belirler
+                                Üretilecek içeriğin maksimum uzunluğunu
+                                belirler.
+                                <br />
+                                Uzun içerik için en az 8192 token önerilir.
                               </p>
                             </TooltipContent>
                           </Tooltip>
+                          {blogDetails.length === "long" &&
+                            maxTokens < 8192 && (
+                              <Badge
+                                variant="destructive"
+                                className="ml-2 text-xs"
+                              >
+                                ⚠️ Uzun içerik için yetersiz!
+                              </Badge>
+                            )}
                         </Label>
                         <Slider
                           value={[maxTokens]}
                           onValueChange={(value) => setMaxTokens(value[0])}
-                          max={
-                            selectedModel
-                              ? AI_MODELS[selectedModel].maxTokens
-                              : 4000
-                          }
-                          min={1000}
-                          step={100}
+                          max={16384}
+                          min={2000}
+                          step={256}
                           className="w-full"
                         />
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>1,000</span>
-                          <span className="font-medium">{maxTokens}</span>
-                          <span>
-                            {selectedModel
-                              ? AI_MODELS[selectedModel].maxTokens
-                              : 4000}
+                          <span>2,000</span>
+                          <span className="font-medium text-blue-600">
+                            {maxTokens.toLocaleString()}
                           </span>
+                          <span>16,384</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          💡 Önerilen: Kısa=4096, Orta=6144, Uzun=8192+ (
+                          {blogDetails.length === "long"
+                            ? "8192+"
+                            : blogDetails.length === "medium"
+                            ? "6144"
+                            : "4096"}{" "}
+                          öneriliyor)
                         </div>
                       </div>
 
@@ -1214,6 +1492,76 @@ Always respond with valid JSON format.`,
                           )
                         )}
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Live Prompt Preview */}
+                  <Card className="border-slate-200 shadow-lg bg-slate-50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-slate-700">
+                        <FileText className="mr-2 h-5 w-5" />
+                        Canlı Prompt Önizleme
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {firestorePrompt ? "Firestore" : "Yükleniyor..."}
+                        </Badge>
+                        {firestorePrompt?.version && (
+                          <Badge variant="secondary" className="ml-1 text-xs">
+                            v{firestorePrompt.version}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        {firestorePrompt
+                          ? `"${firestorePrompt.name}" - Seçimlerinize göre AI'a gönderilecek prompt`
+                          : "Prompt yükleniyor..."}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {!firestorePrompt ? (
+                        <div className="flex items-center justify-center p-8 text-slate-500">
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Firestore'dan prompt yükleniyor...
+                        </div>
+                      ) : (
+                        <details className="group">
+                          <summary className="cursor-pointer text-sm text-slate-600 hover:text-slate-800 flex items-center p-2 rounded-lg hover:bg-slate-100">
+                            <Eye className="h-4 w-4 mr-2" />
+                            Prompt'u Genişlet (Tıkla)
+                          </summary>
+                          <div className="mt-3 p-4 bg-slate-900 rounded-lg border border-slate-700 max-h-80 overflow-y-auto">
+                            <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                              {applyPromptVariables({
+                                topic:
+                                  selectedTopics.length > 0
+                                    ? selectedTopics.join(", ")
+                                    : customTopic || "[Konu seçilmedi]",
+                                keywords: blogDetails.targetKeywords || "",
+                                length: blogDetails.length,
+                                tone: blogDetails.tone,
+                                creativity: aiSettings.creativity,
+                                technicality: aiSettings.technicality,
+                                seoOptimization: aiSettings.seoOptimization,
+                                readability: aiSettings.readability,
+                              })}
+                            </pre>
+                          </div>
+                          <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+                            <span>
+                              📊 Yaklaşık{" "}
+                              {applyPromptVariables({
+                                topic:
+                                  selectedTopics.length > 0
+                                    ? selectedTopics.join(", ")
+                                    : "test",
+                                length: blogDetails.length,
+                              }).length.toLocaleString()}{" "}
+                              karakter
+                            </span>
+                            <span>🎯 Temperature: {temperature}</span>
+                            <span>📝 Max Tokens: {maxTokens}</span>
+                          </div>
+                        </details>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -1732,12 +2080,22 @@ Always respond with valid JSON format.`,
                             <Label>İçerik Uzunluğu</Label>
                             <Select
                               value={blogDetails.length}
-                              onValueChange={(value) =>
+                              onValueChange={(value) => {
                                 setBlogDetails({
                                   ...blogDetails,
                                   length: value,
-                                })
-                              }
+                                });
+                                // Uzunluğa göre önerilen maxTokens ayarla
+                                const recommendedTokens =
+                                  value === "long"
+                                    ? 8192
+                                    : value === "medium"
+                                    ? 6144
+                                    : 4096;
+                                if (maxTokens < recommendedTokens) {
+                                  setMaxTokens(recommendedTokens);
+                                }
+                              }}
                             >
                               <SelectTrigger className="border-blue-200 focus:border-blue-500">
                                 <SelectValue />
@@ -1936,8 +2294,8 @@ Always respond with valid JSON format.`,
                               <div>
                                 <div className="text-gray-600">Model</div>
                                 <div className="font-medium text-gray-900">
-                                  {AI_MODELS[selectedModel]?.name} v
-                                  {selectedVersion}
+                                  {activeModel?.label || "AI Model"}{" "}
+                                  {activeModel?.icon}
                                 </div>
                               </div>
                               <div>
@@ -2034,18 +2392,192 @@ Always respond with valid JSON format.`,
                         <Eye className="mr-2 h-5 w-5" />
                         Blog Önizlemesi
                         <Badge className="ml-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                          {generatedBlog.aiModel?.toUpperCase()} AI
+                          {/* Gerçek kullanılan model - API sonucundan */}
+                          {generatedBlog.aiMetadata?.model?.name ||
+                            generatedBlog.aiModelName ||
+                            generatedBlog.aiModel ||
+                            "AI"}
                         </Badge>
                       </CardTitle>
                       <CardDescription>
-                        {
-                          AI_MODELS[generatedBlog.aiModel || selectedModel]
-                            ?.name
-                        }{" "}
+                        {/* Gerçek kullanılan model */}
+                        {generatedBlog.aiMetadata?.model?.name ||
+                          generatedBlog.aiModelName ||
+                          "AI"}{" "}
                         ile üretilen blog yazısını inceleyin
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                      {/* AI Metadata Panel - Kullanılan AI Ayarları */}
+                      {(aiMetadata || generatedBlog.aiMetadata) && (
+                        <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-slate-700 text-white mb-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold flex items-center">
+                              <Cpu className="mr-2 h-5 w-5 text-cyan-400" />
+                              AI Üretim Detayları
+                            </h3>
+                            <Badge className="bg-green-500 text-white">
+                              ✓ Başarılı
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Model Bilgisi */}
+                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+                              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                                Model
+                              </div>
+                              <div className="font-semibold text-cyan-400">
+                                {(aiMetadata || generatedBlog.aiMetadata)?.model
+                                  ?.name || generatedBlog.aiModelName}
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1">
+                                API:{" "}
+                                {(aiMetadata || generatedBlog.aiMetadata)?.model
+                                  ?.apiId || generatedBlog.aiModel}
+                              </div>
+                            </div>
+
+                            {/* Provider */}
+                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+                              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                                Provider
+                              </div>
+                              <div className="font-semibold">
+                                <span
+                                  className={`${
+                                    (aiMetadata || generatedBlog.aiMetadata)
+                                      ?.model?.provider === "openai"
+                                      ? "text-green-400"
+                                      : (aiMetadata || generatedBlog.aiMetadata)
+                                          ?.model?.provider === "claude"
+                                      ? "text-purple-400"
+                                      : (aiMetadata || generatedBlog.aiMetadata)
+                                          ?.model?.provider === "gemini"
+                                      ? "text-blue-400"
+                                      : "text-gray-400"
+                                  }`}
+                                >
+                                  {(aiMetadata || generatedBlog.aiMetadata)
+                                    ?.model?.provider === "openai"
+                                    ? "🟢 "
+                                    : (aiMetadata || generatedBlog.aiMetadata)
+                                        ?.model?.provider === "claude"
+                                    ? "🟣 "
+                                    : (aiMetadata || generatedBlog.aiMetadata)
+                                        ?.model?.provider === "gemini"
+                                    ? "🔵 "
+                                    : ""}
+                                  {(aiMetadata || generatedBlog.aiMetadata)
+                                    ?.model?.providerName ||
+                                    generatedBlog.aiProvider}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Süre */}
+                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+                              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                                Üretim Süresi
+                              </div>
+                              <div className="font-semibold text-amber-400">
+                                ⚡{" "}
+                                {(aiMetadata || generatedBlog.aiMetadata)
+                                  ?.performance?.duration || "N/A"}
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1">
+                                {new Date(
+                                  (aiMetadata || generatedBlog.aiMetadata)
+                                    ?.performance?.timestamp ||
+                                    generatedBlog.generatedAt
+                                ).toLocaleTimeString("tr-TR")}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Ayarlar */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-700">
+                            <div className="text-center">
+                              <div className="text-xs text-slate-400">
+                                Temperature
+                              </div>
+                              <div className="font-mono text-sm text-yellow-400">
+                                {(aiMetadata || generatedBlog.aiMetadata)
+                                  ?.settings?.temperature || temperature}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-slate-400">
+                                Max Tokens
+                              </div>
+                              <div className="font-mono text-sm text-blue-400">
+                                {(aiMetadata || generatedBlog.aiMetadata)
+                                  ?.settings?.maxTokens || maxTokens}
+                              </div>
+                            </div>
+                            {(aiMetadata || generatedBlog.aiMetadata)
+                              ?.prompt && (
+                              <>
+                                <div className="text-center">
+                                  <div className="text-xs text-slate-400">
+                                    Prompt
+                                  </div>
+                                  <div className="text-sm text-green-400 truncate">
+                                    {
+                                      (aiMetadata || generatedBlog.aiMetadata)
+                                        ?.prompt?.name
+                                    }
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xs text-slate-400">
+                                    Config
+                                  </div>
+                                  <div className="text-sm text-pink-400 truncate">
+                                    {
+                                      (aiMetadata || generatedBlog.aiMetadata)
+                                        ?.config?.name
+                                    }
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Final Prompt Görüntüleme */}
+                          {finalPrompt && (
+                            <details className="mt-4 pt-4 border-t border-slate-700">
+                              <summary className="cursor-pointer text-sm text-cyan-400 hover:text-cyan-300 flex items-center">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Final Prompt'u Görüntüle (
+                                {finalPrompt.length.toLocaleString()} karakter)
+                              </summary>
+                              <div className="mt-3 p-4 bg-slate-950 rounded-lg border border-slate-600 max-h-96 overflow-y-auto">
+                                <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                                  {finalPrompt}
+                                </pre>
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs border-slate-600 text-slate-300 hover:bg-slate-700"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(finalPrompt);
+                                    toast({
+                                      title: "📋 Kopyalandı",
+                                      description: "Prompt panoya kopyalandı",
+                                    });
+                                  }}
+                                >
+                                  📋 Kopyala
+                                </Button>
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
+
                       {/* İstatistik kartları - Daha görsel */}
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
@@ -2175,11 +2707,15 @@ Always respond with valid JSON format.`,
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={improveContent}
-                          disabled={improving || !editableBlog.content}
+                          onClick={handleImproveContent}
+                          disabled={
+                            improving ||
+                            improvementLoading ||
+                            !editableBlog.content
+                          }
                           className="border-emerald-300 hover:bg-emerald-100"
                         >
-                          {improving ? (
+                          {improving || improvementLoading ? (
                             <>
                               <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                               İyileştiriliyor...

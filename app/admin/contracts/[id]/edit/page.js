@@ -472,10 +472,10 @@ export default function EditContractPage() {
       /\[SIGNATURE_SECTION\]([\s\S]*?)\[\/SIGNATURE_SECTION\]/g;
     content = content.replace(signatureRegex, (match, sectionContent) => {
       // MKN GROUP bilgileri
-      const mknCompanyName =
+      const mknCompanyName = mknGroupInfo?.companyName ||
         "MKNGROUP (TONGZİ BERTUG MULTİNATİONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LİMİTED ŞİRKETİ)";
-      const mknAuthorizedPerson = "Mahammad Nadirov";
-      const mknTitle = "Firma Sahibi";
+      const mknAuthorizedPerson = mknGroupInfo?.contactPerson || "Mahammad Nadirov";
+      const mknTitle = mknGroupInfo?.contactPosition || "Firma Sahibi";
 
       // Müşteri bilgileri
       const customerCompanyName =
@@ -1225,6 +1225,14 @@ export default function EditContractPage() {
                       {contract.companyInfo.contactPerson}
                     </p>
                   </div>
+                  {contract.companyInfo.contactPosition && (
+                    <div>
+                      <span className="text-gray-600 text-xs">Pozisyon:</span>
+                      <p className="text-gray-900">
+                        {contract.companyInfo.contactPosition}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <span className="text-gray-600 text-xs">Telefon:</span>
                     <p className="text-gray-900">

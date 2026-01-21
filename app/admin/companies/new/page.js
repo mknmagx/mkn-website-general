@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PermissionGuard } from "../../../../components/admin-route-guard";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminAuth } from "../../../../hooks/use-admin-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createCompany } from "../../../../lib/services/companies-service";
@@ -35,6 +35,7 @@ import Link from "next/link";
 
 export default function NewCompanyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAdminAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -82,6 +83,51 @@ export default function NewCompanyPage() {
       twitter: "",
     },
   });
+
+  // URL parametrelerinden pre-fill
+  useEffect(() => {
+    if (searchParams) {
+      const prefillData = {};
+      
+      // Desteklenen parametreler
+      const paramMappings = {
+        name: 'name',
+        email: 'email',
+        phone: 'phone',
+        contactPerson: 'contactPerson',
+        contactEmail: 'contactEmail',
+        contactPhone: 'contactPhone',
+        website: 'website',
+        address: 'address',
+        taxNumber: 'taxNumber',
+        mersisNumber: 'mersisNumber',
+        businessLine: 'businessLine',
+        description: 'description',
+      };
+
+      Object.entries(paramMappings).forEach(([param, field]) => {
+        const value = searchParams.get(param);
+        if (value) {
+          prefillData[field] = value;
+        }
+      });
+
+      // Eğer contactEmail/contactPhone yoksa email/phone'dan kopyala
+      if (prefillData.email && !prefillData.contactEmail) {
+        prefillData.contactEmail = prefillData.email;
+      }
+      if (prefillData.phone && !prefillData.contactPhone) {
+        prefillData.contactPhone = prefillData.phone;
+      }
+
+      if (Object.keys(prefillData).length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          ...prefillData,
+        }));
+      }
+    }
+  }, [searchParams]);
 
   const handleInputChange = (field, value) => {
     if (field.includes(".")) {

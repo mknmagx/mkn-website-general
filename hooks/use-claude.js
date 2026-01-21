@@ -27,7 +27,7 @@ export function useClaude() {
     setError(null);
 
     try {
-      const response = await fetch("/api/claude", {
+      const response = await fetch("/api/admin/ai/claude", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

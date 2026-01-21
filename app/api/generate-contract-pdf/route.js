@@ -258,9 +258,9 @@ function generateContractPDFHTML(
     signatureRegex,
     (match, content) => {
       // MKN GROUP bilgileri
-      const mknCompanyName = "MKNGROUP (TONGZİ BERTUG MULTİNATİONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LİMİTED ŞİRKETİ)";
-      const mknAuthorizedPerson = "Mahammad Nadirov";
-      const mknTitle = "Firma Sahibi";
+      const mknCompanyName = contract.mknGroupInfo?.companyName || "MKNGROUP (TONGZİ BERTUG MULTİNATİONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LİMİTED ŞİRKETİ)";
+      const mknAuthorizedPerson = contract.mknGroupInfo?.contactPerson || "Mahammad Nadirov";
+      const mknTitle = contract.mknGroupInfo?.contactPosition || "Firma Sahibi";
 
       // Müşteri bilgileri
       const customerCompanyName = contract.companyInfo?.companyName || contract.fields?.musteri_firma || "MÜŞTERİ FİRMASI";

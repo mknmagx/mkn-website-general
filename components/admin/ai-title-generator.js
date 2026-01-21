@@ -51,49 +51,36 @@ import {
   Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import useClaude from "@/hooks/use-claude";
 import {
   DEFAULT_TITLE_CATEGORIES,
   createTitleDataset,
   validateTitleDataset,
 } from "@/lib/services/blog-title-service";
 
-// AI Models Configuration - Claude Only
-const AI_MODELS = {
-  "claude-sonnet": {
-    id: "claude-sonnet",
-    name: "Claude Sonnet 4.5",
-    description: "En akıllı model, yaratıcı ve çeşitli başlıklar",
-    icon: Brain,
-    recommended: false,
-    color: "bg-gradient-to-r from-purple-500 to-indigo-600",
-  },
-  "claude-haiku": {
-    id: "claude-haiku",
-    name: "Claude Haiku 4.5",
-    description: "Hızlı ve etkili başlık üretimi",
-    icon: Zap,
-    recommended: true,
-    color: "bg-gradient-to-r from-green-500 to-emerald-600",
-  },
-  "claude-opus": {
-    id: "claude-opus",
-    name: "Claude Opus 4.1",
-    description: "Profesyonel ve detaylı başlıklar",
-    icon: Cpu,
-    recommended: false,
-    color: "bg-gradient-to-r from-blue-500 to-cyan-600",
-  },
-};
+// Yeni merkezi AI sistemi
+import { useUnifiedAI, AI_CONTEXTS } from "@/hooks/use-unified-ai";
+import { PROVIDER_INFO, getProviderIcon } from "@/lib/ai-constants";
 
 const AITitleGenerator = ({ onDatasetCreated, className }) => {
   const { toast } = useToast();
-  const { generateContent, loading: aiLoading } = useClaude();
+
+  // Yeni unified AI hook - BLOG_TITLE_DATASET context'i kullan (toplu üretim için)
+  const {
+    generateContent,
+    availableModels,
+    selectedModel: hookSelectedModel,
+    selectModel,
+    prompt: firestorePrompt, // Firestore'dan gelen system prompt
+    config: firestoreConfig, // Firestore'dan gelen konfigürasyon
+    loading: aiLoading,
+    configLoading,
+    isReady,
+  } = useUnifiedAI(AI_CONTEXTS.BLOG_TITLE_DATASET);
 
   // States
   const [datasetName, setDatasetName] = useState("");
   const [datasetDescription, setDatasetDescription] = useState("");
-  const [selectedModel, setSelectedModel] = useState("claude-haiku");
+  const [selectedModelId, setSelectedModelId] = useState(null);
   const [titlesPerCategory, setTitlesPerCategory] = useState(10);
   const [creativity, setCreativity] = useState(70);
   const [targetAudience, setTargetAudience] = useState("professional");
@@ -107,53 +94,156 @@ const AITitleGenerator = ({ onDatasetCreated, className }) => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+
+  // AI Config States - düzenlenebilir
+  const [maxTokens, setMaxTokens] = useState(1500);
+  const [autoMaxTokens, setAutoMaxTokens] = useState(true);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+  // Hook'tan gelen default model'i kullan
+  useEffect(() => {
+    if (hookSelectedModel && !selectedModelId) {
+      setSelectedModelId(hookSelectedModel.modelId || hookSelectedModel.id);
+    }
+  }, [hookSelectedModel, selectedModelId]);
+
+  // Config'ten gelen ayarları yükle
+  useEffect(() => {
+    if (firestoreConfig?.settings) {
+      if (firestoreConfig.settings.maxTokens && autoMaxTokens) {
+        setMaxTokens(firestoreConfig.settings.maxTokens);
+      }
+      if (firestoreConfig.settings.temperature) {
+        setCreativity(Math.round(firestoreConfig.settings.temperature * 100));
+      }
+    }
+  }, [firestoreConfig, autoMaxTokens]);
 
   // Initialize with all categories selected
   useEffect(() => {
     setSelectedCategories(DEFAULT_TITLE_CATEGORIES.map((cat) => cat.key));
   }, []);
 
-  const generateTitlePrompt = (categoryData, count) => {
-    return `MKN Group için "${
-      categoryData.name
-    }" kategorisinde ${count} adet blog başlığı üret.
+  // Seçili modelin "thinking" model olup olmadığını kontrol et
+  const isThinkingModel = () => {
+    const modelId =
+      selectedModelId ||
+      hookSelectedModel?.modelId ||
+      hookSelectedModel?.id ||
+      "";
+    const modelName = (
+      hookSelectedModel?.name ||
+      hookSelectedModel?.displayName ||
+      ""
+    ).toLowerCase();
 
-KATEGORİ BİLGİSİ:
-- Kategori: ${categoryData.name} 
-- Açıklama: ${categoryData.description}
+    // Thinking/reasoning modelleri: gemini-3-pro, claude-opus, o1, o3 vb.
+    const thinkingPatterns = [
+      "gemini-3",
+      "gemini_pro_3",
+      "gemini-3-pro",
+      "opus",
+      "claude-opus",
+      "claude_opus",
+      "o1",
+      "o3", // OpenAI reasoning modelleri
+      "thinking",
+      "reasoning",
+      "deep",
+    ];
 
-BAŞLIK GEREKSİNİMLERİ:
-- Türkçe olmalı
-- SEO dostu ve anahtar kelime içermeli
-- ${
+    return thinkingPatterns.some(
+      (pattern) =>
+        modelId.toLowerCase().includes(pattern) || modelName.includes(pattern)
+    );
+  };
+
+  // Otomatik maxTokens hesapla - model türüne ve başlık sayısına göre
+  const calculateAutoMaxTokens = () => {
+    // Her başlık ortalama 15-20 token
+    const estimatedTokensPerTitle = 20;
+    const baseTokens = titlesPerCategory * estimatedTokensPerTitle;
+
+    // Thinking modelleri için ekstra token gerekli (düşünme için 500-2000 token harcar)
+    if (isThinkingModel()) {
+      // Thinking modeli: base + 2000 thinking overhead
+      const thinkingOverhead = 2000;
+      const total = baseTokens + thinkingOverhead;
+      // Min 2500, max 8000
+      return Math.min(8000, Math.max(2500, Math.round(total)));
+    }
+
+    // Normal modeller için
+    const safetyMultiplier = 2;
+    const total = baseTokens * safetyMultiplier;
+    // Min 1000, max 4000
+    return Math.min(4000, Math.max(1000, Math.round(total)));
+  };
+
+  // Auto token hesaplama efekti
+  useEffect(() => {
+    if (autoMaxTokens) {
+      setMaxTokens(calculateAutoMaxTokens());
+    }
+  }, [titlesPerCategory, autoMaxTokens, selectedModelId, hookSelectedModel]);
+
+  // Firestore prompt'unu template olarak kullan, placeholder'ları değiştir
+  const buildPromptFromTemplate = (template, variables) => {
+    if (!template) return "";
+    let result = template;
+    Object.entries(variables).forEach(([key, value]) => {
+      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+    });
+    return result;
+  };
+
+  // Prompt değişkenlerini hazırla
+  const getPromptVariables = (categoryData, count) => ({
+    categoryName: categoryData.name,
+    categoryDescription: categoryData.description,
+    count: count.toString(),
+    targetAudience:
       targetAudience === "professional"
         ? "Profesyonel ve güvenilir ton"
         : targetAudience === "casual"
         ? "Rahat ve samimi ton"
-        : "Meraklı ve öğretici ton"
+        : "Meraklı ve öğretici ton",
+    creativity: creativity.toString(),
+    includeNumbers: includeNumbers
+      ? "Sayılar ve istatistikler içerebilir"
+      : "Sayılardan kaçın",
+    includeEmoji: includeEmoji
+      ? "Uygun emoji kullanabilirsin"
+      : "Emoji kullanma",
+  });
+
+  // Prompt oluştur - Sadece Firestore'dan
+  const generatePrompts = (categoryData, count) => {
+    if (!firestorePrompt) {
+      throw new Error(
+        "Firestore'da prompt bulunamadı. Lütfen AI Ayarlarından 'blog_title_dataset_generation' prompt'unu yükleyin."
+      );
     }
-- Yaratıcılık seviyesi: %${creativity}
-- ${includeNumbers ? "Sayılar ve istatistikler içerebilir" : "Sayılardan kaçın"}
-- ${includeEmoji ? "Uygun emoji kullanabilirsin" : "Emoji kullanma"}
-- Başlık uzunluğu: 40-60 karakter arası ideal
-- Tıklanabilir ve merak uyandırıcı
 
-MKN GROUP HİZMETLERİ:
-- Kozmetik fason üretimi (GMP, Halal sertifikalı)
-- Gıda takviyesi üretimi (HACCP sertifikalı)  
-- Temizlik ürünleri üretimi
-- Ambalaj tasarımı ve üretimi (Airless, premium)
-- E-ticaret operasyon hizmetleri (3PL, fulfillment)
+    if (!firestorePrompt.systemPrompt || !firestorePrompt.userPromptTemplate) {
+      throw new Error(
+        "Prompt eksik: systemPrompt veya userPromptTemplate tanımlı değil."
+      );
+    }
 
-ÇIKTI FORMATI:
-Sadece başlıkları listele, her satırda bir başlık. Hiçbir açıklama ekleme.
+    const variables = getPromptVariables(categoryData, count);
 
-ÖRNEK ÇIKTI:
-MKN Group'tan Kozmetik Fason Üretimde Başarı Rehberi
-GMP Sertifikalı Üretimin İş Büyütme Etkisi
-Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
-
-Şimdi "${categoryData.name}" için ${count} başlık üret:`;
+    return {
+      systemPrompt: buildPromptFromTemplate(
+        firestorePrompt.systemPrompt,
+        variables
+      ),
+      userPrompt: buildPromptFromTemplate(
+        firestorePrompt.userPromptTemplate,
+        variables
+      ),
+    };
   };
 
   const simulateProgress = (categoryCount) => {
@@ -206,20 +296,53 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
 
         setCurrentCategory(categoryData.name);
 
-        const prompt = generateTitlePrompt(categoryData, titlesPerCategory);
+        // Firestore prompt'ları template olarak kullan, yoksa fallback
+        const { systemPrompt, userPrompt } = generatePrompts(
+          categoryData,
+          titlesPerCategory
+        );
 
-        const response = await generateContent(prompt, {
-          systemPrompt: `Sen MKN Group için blog başlığı üreticisisin. Türkçe, SEO dostu, tıklanabilir başlıklar üret. Sadece başlık listesi döndür, başka açıklama ekleme.`,
-          maxTokens: 1500,
+        // Unified AI ile generate et
+        const result = await generateContent(userPrompt, {
+          systemPrompt,
+          maxTokens: maxTokens,
           temperature: creativity / 100,
+          modelId: selectedModelId,
         });
 
-        // Parse titles from response
-        const titles = response
+        // Hata kontrolü
+        if (!result || result.success === false) {
+          console.error(
+            "AI üretim hatası:",
+            result?.error || "Bilinmeyen hata"
+          );
+          continue; // Sonraki kategoriye geç
+        }
+
+        // Parse titles from response - result yapısını kontrol et
+        let responseText = "";
+        if (typeof result === "string") {
+          responseText = result;
+        } else if (result?.content && typeof result.content === "string") {
+          responseText = result.content;
+        } else if (result?.text && typeof result.text === "string") {
+          responseText = result.text;
+        } else if (result?.response && typeof result.response === "string") {
+          responseText = result.response;
+        } else {
+          console.warn("Beklenmeyen result yapısı:", result);
+          continue; // Sonraki kategoriye geç
+        }
+
+        const titles = responseText
           .split("\n")
           .map((line) => line.trim())
           .filter(
-            (line) => line && !line.startsWith("-") && !line.startsWith("*")
+            (line) =>
+              line &&
+              !line.startsWith("-") &&
+              !line.startsWith("*") &&
+              line.length > 5
           )
           .slice(0, titlesPerCategory);
 
@@ -236,7 +359,7 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
         description: datasetDescription,
         categories: generatedCategories,
         isActive: true,
-        aiModel: selectedModel,
+        aiModel: selectedModelId || hookSelectedModel?.modelId,
         generatedBy: "ai_generator",
         aiSettings: {
           titlesPerCategory,
@@ -383,51 +506,374 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
               </div>
             </div>
 
-            {/* AI Model Selection */}
+            {/* AI Model Selection - Firestore'dan gelen modeller */}
             <div className="space-y-4">
-              <Label className="text-base font-medium">AI Model Seçimi</Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Object.values(AI_MODELS).map((model) => (
-                  <div
-                    key={model.id}
-                    className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
-                      selectedModel === model.id
-                        ? "border-purple-500 bg-purple-50 shadow-md scale-[1.02]"
-                        : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
-                    }`}
-                    onClick={() => setSelectedModel(model.id)}
-                  >
-                    {model.recommended && (
-                      <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Önerilen
-                      </Badge>
-                    )}
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${model.color}`}>
-                        {(() => {
-                          const IconComponent = model.icon;
-                          return (
-                            <IconComponent className="h-5 w-5 text-white" />
-                          );
-                        })()}
+              <Label className="text-base font-medium flex items-center gap-2">
+                AI Model Seçimi
+                {configLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </Label>
+
+              {availableModels.length === 0 && !configLoading ? (
+                <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div className="flex items-center gap-2 text-red-700 text-sm font-medium">
+                    <Info className="h-4 w-4" />
+                    Model Bulunamadı
+                  </div>
+                  <p className="text-xs text-red-600 mt-1">
+                    Firestore'da{" "}
+                    <code className="bg-red-100 px-1 rounded">
+                      blog_title_dataset
+                    </code>{" "}
+                    konfigürasyonu veya izin verilen modeller tanımlı değil.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {availableModels.map((model) => {
+                    const modelId = model.modelId || model.id;
+                    const isSelected = selectedModelId === modelId;
+                    const providerInfo = PROVIDER_INFO[model.provider] || {};
+
+                    return (
+                      <div
+                        key={modelId}
+                        className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 ${
+                          isSelected
+                            ? "border-purple-500 bg-purple-50 shadow-md scale-[1.02]"
+                            : "border-gray-200 hover:border-purple-300 hover:shadow-sm"
+                        }`}
+                        onClick={() => {
+                          setSelectedModelId(modelId);
+                          selectModel(modelId);
+                        }}
+                      >
+                        {model.isDefault && (
+                          <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Varsayılan
+                          </Badge>
+                        )}
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`p-2 rounded-lg bg-gradient-to-r ${
+                              providerInfo.gradient ||
+                              "from-gray-500 to-gray-600"
+                            }`}
+                          >
+                            <span className="text-lg">
+                              {providerInfo.icon || "🤖"}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900 text-sm">
+                              {model.displayName || model.name}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {model.description?.slice(0, 50) ||
+                                providerInfo.name}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle className="absolute bottom-2 right-2 h-5 w-5 text-purple-500" />
+                        )}
                       </div>
-                      <div>
-                        <div className="font-semibold text-gray-900 text-sm">
-                          {model.name}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {model.description}
-                        </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* AI Model Config - Gelişmiş Ayarlar */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  AI Konfigürasyonu
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  className="text-purple-600 hover:text-purple-800"
+                >
+                  {showAdvancedSettings ? "Gizle" : "Göster"}
+                </Button>
+              </div>
+
+              {/* Özet Bilgi */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 bg-gray-50 rounded-lg border">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Max Tokens</div>
+                  <div className="font-semibold text-gray-900">{maxTokens}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Temperature</div>
+                  <div className="font-semibold text-gray-900">
+                    {(creativity / 100).toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Provider</div>
+                  <div className="font-semibold text-gray-900">
+                    {hookSelectedModel?.provider ||
+                      firestoreConfig?.defaultProvider ||
+                      "-"}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Model</div>
+                  <div className="font-semibold text-gray-900 text-xs truncate">
+                    {hookSelectedModel?.displayName ||
+                      hookSelectedModel?.name ||
+                      selectedModelId ||
+                      "-"}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500">Tip</div>
+                  <div
+                    className={`font-semibold text-xs ${
+                      isThinkingModel() ? "text-amber-600" : "text-green-600"
+                    }`}
+                  >
+                    {isThinkingModel() ? "🧠 Thinking" : "⚡ Normal"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Gelişmiş Ayarlar Paneli */}
+              {showAdvancedSettings && (
+                <div className="space-y-4 p-4 bg-purple-50/50 rounded-lg border border-purple-200">
+                  {/* Thinking Model Uyarısı */}
+                  {isThinkingModel() && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
+                        <Brain className="h-4 w-4" />
+                        Thinking Model Algılandı
+                      </div>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Bu model (Gemini 3 Pro, Claude Opus vb.) "düşünme"
+                        aşaması için ekstra token harcar. Otomatik hesaplamada
+                        +2000 token ekleniyor.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Max Tokens */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-yellow-600" />
+                        Max Tokens
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-4 w-4 text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>AI'ın üretebileceği maksimum token sayısı.</p>
+                            <p className="mt-1">• Her başlık ~20 token</p>
+                            <p>• Thinking modeller +2000 token harcar</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Otomatik</span>
+                        <Switch
+                          checked={autoMaxTokens}
+                          onCheckedChange={setAutoMaxTokens}
+                        />
                       </div>
                     </div>
-                    {selectedModel === model.id && (
-                      <CheckCircle className="absolute bottom-2 right-2 h-5 w-5 text-purple-500" />
+
+                    {autoMaxTokens ? (
+                      <div className="text-sm text-purple-700 bg-purple-100 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          {isThinkingModel() ? (
+                            <span>
+                              Thinking Model: {titlesPerCategory} başlık × 20
+                              token + 2000 (thinking) ={" "}
+                              <strong>{maxTokens}</strong> token
+                            </span>
+                          ) : (
+                            <span>
+                              Normal Model: {titlesPerCategory} başlık × 20
+                              token × 2 = <strong>{maxTokens}</strong> token
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Slider
+                          value={[maxTokens]}
+                          onValueChange={(value) => setMaxTokens(value[0])}
+                          max={8000}
+                          min={500}
+                          step={100}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>500</span>
+                          <span className="font-medium text-purple-700">
+                            {maxTokens} token
+                          </span>
+                          <span>8000</span>
+                        </div>
+                      </>
                     )}
                   </div>
-                ))}
-              </div>
+
+                  {/* Firestore Config Bilgisi */}
+                  {firestoreConfig && (
+                    <div className="pt-3 border-t border-purple-200">
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Firestore Konfigürasyonu
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between p-2 bg-white rounded border">
+                          <span className="text-gray-500">Context:</span>
+                          <span className="font-mono">
+                            {firestoreConfig.contextId ||
+                              firestoreConfig.context}
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-2 bg-white rounded border">
+                          <span className="text-gray-500">Operation:</span>
+                          <span className="font-mono">
+                            {firestoreConfig.operation}
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-2 bg-white rounded border">
+                          <span className="text-gray-500">Default Model:</span>
+                          <span className="font-mono">
+                            {firestoreConfig.defaultModelId}
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-2 bg-white rounded border">
+                          <span className="text-gray-500">Prompt Key:</span>
+                          <span className="font-mono">
+                            {firestoreConfig.promptKey}
+                          </span>
+                        </div>
+                        {firestoreConfig.settings?.temperature && (
+                          <div className="flex justify-between p-2 bg-white rounded border">
+                            <span className="text-gray-500">
+                              DB Temperature:
+                            </span>
+                            <span className="font-mono">
+                              {firestoreConfig.settings.temperature}
+                            </span>
+                          </div>
+                        )}
+                        {firestoreConfig.settings?.maxTokens && (
+                          <div className="flex justify-between p-2 bg-white rounded border">
+                            <span className="text-gray-500">DB MaxTokens:</span>
+                            <span className="font-mono">
+                              {firestoreConfig.settings.maxTokens}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {firestoreConfig.allowedModelIds?.length > 0 && (
+                        <div className="mt-2 p-2 bg-white rounded border">
+                          <span className="text-gray-500 text-xs">
+                            İzin Verilen Modeller:{" "}
+                          </span>
+                          <span className="font-mono text-xs">
+                            {firestoreConfig.allowedModelIds.join(", ")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Model Limitleri */}
+                  {hookSelectedModel?.limits && (
+                    <div className="pt-3 border-t border-purple-200">
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Model Limitleri
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {hookSelectedModel.limits.maxTokens && (
+                          <div className="flex justify-between p-2 bg-white rounded border">
+                            <span className="text-gray-500">Max Output:</span>
+                            <span className="font-mono">
+                              {hookSelectedModel.limits.maxTokens.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        {hookSelectedModel.limits.contextWindow && (
+                          <div className="flex justify-between p-2 bg-white rounded border">
+                            <span className="text-gray-500">
+                              Context Window:
+                            </span>
+                            <span className="font-mono">
+                              {hookSelectedModel.limits.contextWindow.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Aktif System Prompt Bilgisi */}
+            {firestorePrompt ? (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium">
+                    <FileText className="h-4 w-4" />
+                    Aktif Prompt: {firestorePrompt.name || firestorePrompt.key}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPromptPreview(true)}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  >
+                    <Lightbulb className="h-4 w-4 mr-1" />
+                    Önizle
+                  </Button>
+                </div>
+                <div className="text-xs text-blue-600 space-y-1 mt-2">
+                  {firestorePrompt.systemPrompt && (
+                    <p className="line-clamp-1">
+                      <strong>System:</strong>{" "}
+                      {firestorePrompt.systemPrompt?.slice(0, 80)}...
+                    </p>
+                  )}
+                  {firestorePrompt.userPromptTemplate && (
+                    <p className="line-clamp-1">
+                      <strong>User:</strong>{" "}
+                      {firestorePrompt.userPromptTemplate?.slice(0, 80)}...
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              !configLoading && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-700 text-sm font-medium">
+                    <Info className="h-4 w-4" />
+                    Prompt Bulunamadı
+                  </div>
+                  <p className="text-xs text-red-600 mt-1">
+                    Firestore'da{" "}
+                    <code className="bg-red-100 px-1 rounded">
+                      blog_title_dataset_generation
+                    </code>{" "}
+                    prompt'u tanımlı değil. AI Ayarlarından prompt'ları
+                    yükleyin.
+                  </p>
+                </div>
+              )
+            )}
 
             {/* Generation Settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -618,15 +1064,30 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
                 onClick={generateDataset}
                 disabled={
                   generating ||
+                  aiLoading ||
+                  configLoading ||
+                  !isReady ||
+                  !firestorePrompt ||
                   selectedCategories.length === 0 ||
-                  !datasetName.trim()
+                  !datasetName.trim() ||
+                  availableModels.length === 0
                 }
                 className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white px-8"
               >
-                {generating ? (
+                {generating || aiLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Üretiliyor...
+                  </>
+                ) : configLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Yükleniyor...
+                  </>
+                ) : !firestorePrompt ? (
+                  <>
+                    <Info className="mr-2 h-4 w-4" />
+                    Prompt Gerekli
                   </>
                 ) : (
                   <>
@@ -700,7 +1161,9 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
                   <div>
                     <div className="text-green-600 font-medium">AI Model</div>
                     <div className="text-green-800">
-                      {AI_MODELS[selectedModel].name}
+                      {hookSelectedModel?.displayName ||
+                        hookSelectedModel?.name ||
+                        selectedModelId}
                     </div>
                   </div>
                 </div>
@@ -808,7 +1271,10 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
                   (sum, cat) => sum + cat.titles.length,
                   0
                 )}
-                <br />• AI Model: {AI_MODELS[selectedModel].name}
+                <br />• AI Model:{" "}
+                {hookSelectedModel?.displayName ||
+                  hookSelectedModel?.name ||
+                  selectedModelId}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -830,6 +1296,141 @@ Halal Kozmetik Üretimi: Neden Tercih Edilmeli?
                   </>
                 )}
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Prompt Preview Dialog */}
+        <AlertDialog
+          open={showPromptPreview}
+          onOpenChange={setShowPromptPreview}
+        >
+          <AlertDialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center">
+                <Lightbulb className="mr-2 h-5 w-5 text-purple-600" />
+                Prompt Önizleme
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Değişkenler yerine örnek değerler konulmuş prompt. Seçili
+                kategori ve ayarlara göre dinamik olarak güncellenir.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="flex-1 overflow-y-auto space-y-4 py-4">
+              {/* System Prompt */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <Cpu className="h-4 w-4" />
+                  System Prompt
+                </Label>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <pre className="text-xs text-purple-900 whitespace-pre-wrap font-mono leading-relaxed">
+                    {firestorePrompt?.systemPrompt
+                      ? buildPromptFromTemplate(
+                          firestorePrompt.systemPrompt,
+                          getPromptVariables(
+                            selectedCategories.length > 0
+                              ? DEFAULT_TITLE_CATEGORIES.find(
+                                  (c) => c.key === selectedCategories[0]
+                                ) || {
+                                  name: "Örnek Kategori",
+                                  description: "Örnek açıklama",
+                                }
+                              : {
+                                  name: "Örnek Kategori",
+                                  description: "Örnek açıklama",
+                                },
+                            titlesPerCategory
+                          )
+                        )
+                      : "System prompt tanımlı değil"}
+                  </pre>
+                </div>
+              </div>
+
+              {/* User Prompt */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  User Prompt (İlk Kategori Örneği)
+                </Label>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <pre className="text-xs text-blue-900 whitespace-pre-wrap font-mono leading-relaxed">
+                    {firestorePrompt?.userPromptTemplate
+                      ? buildPromptFromTemplate(
+                          firestorePrompt.userPromptTemplate,
+                          getPromptVariables(
+                            selectedCategories.length > 0
+                              ? DEFAULT_TITLE_CATEGORIES.find(
+                                  (c) => c.key === selectedCategories[0]
+                                ) || {
+                                  name: "Örnek Kategori",
+                                  description: "Örnek açıklama",
+                                }
+                              : {
+                                  name: "Örnek Kategori",
+                                  description: "Örnek açıklama",
+                                },
+                            titlesPerCategory
+                          )
+                        )
+                      : "User prompt template tanımlı değil"}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Değişkenler Tablosu */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Aktif Değişkenler
+                </Label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Başlık Sayısı:</span>
+                      <span className="font-medium">{titlesPerCategory}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Yaratıcılık:</span>
+                      <span className="font-medium">%{creativity}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Hedef Kitle:</span>
+                      <span className="font-medium">
+                        {targetAudience === "professional"
+                          ? "B2B"
+                          : targetAudience === "casual"
+                          ? "B2C"
+                          : "Teknik"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Emoji:</span>
+                      <span className="font-medium">
+                        {includeEmoji ? "Evet" : "Hayır"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sayılar:</span>
+                      <span className="font-medium">
+                        {includeNumbers ? "Evet" : "Hayır"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Kategori:</span>
+                      <span className="font-medium">
+                        {selectedCategories.length} seçili
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Kapat</AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

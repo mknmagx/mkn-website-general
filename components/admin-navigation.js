@@ -4,11 +4,11 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAdminAuth } from "../hooks/use-admin-auth";
 import { usePermissions } from "./admin-route-guard";
+import { useNavigationSettings } from "../hooks/use-navigation-settings";
 import {
   LayoutDashboard,
   FileText,
   MessageSquare,
-  MessageSquareText,
   Users,
   Building2,
   Settings,
@@ -25,10 +25,6 @@ import {
   Calculator,
   FlaskConical,
   ChevronDown,
-  ChevronRight,
-  Folder,
-  ShoppingCart,
-  Wrench,
   BookOpen,
   Sparkles,
   FolderTree,
@@ -37,86 +33,398 @@ import {
   Briefcase,
   Box,
   Plug,
-  Database,
   Bug,
   Bell,
   Mail,
   Calendar as CalendarIcon,
   FileSignature,
+  Brain,
+  Bot,
+  Pin,
+  PinOff,
+  GripVertical,
+  PanelLeftClose,
+  PanelLeft,
+  ShoppingCart,
+  Wrench,
+  Database,
+  Star,
+  PiggyBank,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  CreditCard,
+  HandCoins,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useMemo, useCallback, memo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 
+// ============================================
+// ANIMATION VARIANTS
+// ============================================
+const sidebarVariants = {
+  expanded: { width: 256, transition: { duration: 0.25, ease: "easeInOut" } },
+  collapsed: { width: 72, transition: { duration: 0.25, ease: "easeInOut" } },
+};
+
+// ============================================
+// COLLAPSIBLE SUBMENU COMPONENT (CSS Grid based - no layout shift)
+// ============================================
+const CollapsibleSubmenu = memo(function CollapsibleSubmenu({ isOpen, children }) {
+  return (
+    <div 
+      className="grid transition-[grid-template-rows] duration-200 ease-out"
+      style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+    >
+      <div className="overflow-hidden min-h-0">
+        {children}
+      </div>
+    </div>
+  );
+});
+
+// ============================================
+// SUBMENU ITEM COMPONENT (Memoized)
+// ============================================
+const SubmenuItem = memo(function SubmenuItem({
+  item,
+  isActive,
+  isPinned,
+  onNavigate,
+  onTogglePin,
+}) {
+  const SubIcon = item.icon;
+  return (
+    <div className="group/subitem relative">
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all duration-200 ${
+          isActive
+            ? "bg-gray-900 text-white font-medium shadow-sm"
+            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+        }`}
+      >
+        <SubIcon className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}`} />
+        <span className="truncate">{item.name}</span>
+      </Link>
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onTogglePin(item.id);
+        }}
+        className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover/subitem:opacity-100 transition-all ${
+          isPinned ? "text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+        }`}
+      >
+        {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+      </button>
+    </div>
+  );
+});
+
+// ============================================
+// MENU WITH ITEMS COMPONENT (Memoized - Main accordion component)
+// ============================================
+const MenuWithItemsComponent = memo(function MenuWithItemsComponent({
+  menu,
+  isExpanded,
+  hasActiveChild,
+  isCollapsed,
+  isMobile,
+  pathname,
+  onToggleExpanded,
+  onTogglePin,
+  isMenuPinned,
+  onNavigate,
+  isItemActive,
+}) {
+  const Icon = menu.icon;
+  const shouldShowExpanded = isExpanded || hasActiveChild;
+
+  // Stable toggle handler
+  const handleToggle = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleExpanded(menu.id);
+  }, [menu.id, onToggleExpanded]);
+
+  if (isCollapsed && !isMobile) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex justify-center">
+              <button
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${
+                  hasActiveChild
+                    ? "text-gray-900 bg-gray-50"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {hasActiveChild && (
+                  <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-4 bg-gray-900 rounded-full" />
+                )}
+              </button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="right" 
+            align="start" 
+            className="p-0 w-52 bg-white border border-gray-200 shadow-lg rounded-xl" 
+            sideOffset={8}
+          >
+            <div className="py-2">
+              <div className="px-3 py-2 border-b border-gray-100">
+                <span className="font-semibold text-sm text-gray-900">{menu.name}</span>
+              </div>
+              {menu.items.map((item) => {
+                const SubIcon = item.icon;
+                const isSubActive = isItemActive(item.href, menu.items);
+                const isSubPinned = isMenuPinned(item.id);
+                return (
+                  <div key={item.id} className="group/item flex items-center">
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        isSubActive
+                          ? "bg-gray-900 text-white mx-2 my-0.5 rounded-lg"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      <SubIcon className={`h-4 w-4 ${isSubActive ? "text-white" : "text-gray-400"}`} />
+                      <span className="truncate">{item.name}</span>
+                    </Link>
+                    {!isSubActive && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(item.id);
+                        }}
+                        className={`mr-2 p-1 rounded opacity-0 group-hover/item:opacity-100 transition-opacity ${
+                          isSubPinned ? "text-amber-500" : "text-gray-400 hover:text-gray-600"
+                        }`}
+                      >
+                        {isSubPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+          shouldShowExpanded 
+            ? "bg-gray-50 text-gray-900" 
+            : "text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <Icon className={`h-[18px] w-[18px] flex-shrink-0 ${shouldShowExpanded ? "text-gray-600" : "text-gray-400"}`} />
+          <span className="truncate">{menu.name}</span>
+        </div>
+        <ChevronDown 
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${shouldShowExpanded ? "rotate-180" : ""}`} 
+        />
+        {hasActiveChild && !shouldShowExpanded && (
+          <span className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-gray-900 rounded-full" />
+        )}
+      </button>
+
+      <CollapsibleSubmenu isOpen={shouldShowExpanded}>
+        <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-0.5 py-1">
+          {menu.items.map((item) => {
+            const isSubActive = isItemActive(item.href, menu.items);
+            const isSubPinned = isMenuPinned(item.id);
+            return (
+              <SubmenuItem
+                key={item.id}
+                item={item}
+                isActive={isSubActive}
+                isPinned={isSubPinned}
+                onNavigate={onNavigate}
+                onTogglePin={onTogglePin}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleSubmenu>
+    </div>
+  );
+});
+
+// ============================================
+// SORTABLE PINNED ITEM (for drag & drop)
+// ============================================
+const SortablePinnedItem = memo(function SortablePinnedItem({ 
+  item, 
+  isCollapsed, 
+  pathname, 
+  onUnpin,
+  onNavigate 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const Icon = item.icon;
+  // Exact match veya bu path ile başlayıp / ile devam eden yollar
+  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+
+  if (isCollapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div ref={setNodeRef} style={style} className="w-full flex justify-center">
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${
+                  isDragging ? "opacity-50 scale-105" : ""
+                } ${
+                  isActive
+                    ? "bg-gray-900 text-white shadow-md"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+              </Link>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="flex items-center gap-2">
+            <span className="font-medium">{item.name}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnpin(item.id);
+              }}
+              className="p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
+            >
+              <PinOff className="h-3 w-3" />
+            </button>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-1 ${isDragging ? "opacity-50" : ""}`}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className={`flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? "bg-gray-900 text-white shadow-md"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        }`}
+      >
+        <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}`} />
+        <span className="truncate text-[13px]">{item.name}</span>
+      </Link>
+      <button
+        onClick={() => onUnpin(item.id)}
+        className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+        title="Favorilerden Kaldır"
+      >
+        <PinOff className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+});
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function AdminNavigation() {
   const pathname = usePathname();
   const { user, signOut, userRole } = useAdminAuth();
   const { hasPermission, hasRole, hasAnyRole } = usePermissions();
+  const {
+    isCollapsed,
+    pinnedMenus,
+    toggleCollapsed,
+    toggleMenuExpanded,
+    togglePin,
+    unpinMenu,
+    reorderPinnedMenus,
+    isMenuPinned,
+    expandedMenus,
+  } = useNavigationSettings();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openMenus, setOpenMenus] = useState({});
+  
+  // Scroll pozisyonunu korumak için ref
+  const navScrollRef = useRef(null);
 
-  // Aktif menüyü otomatik olarak aç
-  useEffect(() => {
-    const menuStructure = getMenuStructure();
-    const activeMenu = menuStructure.find((menu) => {
-      if (menu.href) {
-        return pathname.startsWith(menu.href);
-      }
-      if (menu.items) {
-        return menu.items.some((item) => pathname.startsWith(item.href));
-      }
-      return false;
-    });
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-    if (activeMenu && activeMenu.items) {
-      // Sadece aktif menüyü aç, diğerlerini kapat
-      setOpenMenus({ [activeMenu.id]: true });
-    } else {
-      // Hiçbir alt menü yoksa hepsini kapat
-      setOpenMenus({});
-    }
-  }, [pathname]);
-
-  const getRoleBadgeColor = (role) => {
-    switch (role) {
-      case "super_admin":
-        return "bg-purple-600 text-white";
-      case "admin":
-        return "bg-blue-600 text-white";
-      case "moderator":
-        return "bg-green-600 text-white";
-      default:
-        return "bg-gray-600 text-white";
-    }
-  };
-
-  const getRoleDisplayName = (role) => {
-    switch (role) {
-      case "super_admin":
-        return "Süper Admin";
-      case "admin":
-        return "Admin";
-      case "moderator":
-        return "Moderatör";
-      default:
-        return "Kullanıcı";
-    }
-  };
-
-  const toggleMenu = (menuId) => {
-    setOpenMenus((prev) => {
-      // Eğer açılmak istenen menü zaten açıksa kapat
-      if (prev[menuId]) {
-        return { [menuId]: false };
-      }
-      // Değilse, sadece bu menüyü aç, diğerlerini kapat
-      return { [menuId]: true };
-    });
-  };
-
-  const isMenuActive = (items) => {
-    return items.some((item) => pathname.startsWith(item.href));
-  };
-
-  const getMenuStructure = () => [
+  // ============================================
+  // MENU STRUCTURE
+  // ============================================
+  const getMenuStructure = useCallback(() => [
     {
       id: "dashboard",
       name: "Dashboard",
@@ -130,36 +438,11 @@ export default function AdminNavigation() {
       icon: Edit3,
       show: hasPermission("blog.read"),
       items: [
-        {
-          name: "Tüm Blog Yazıları",
-          href: "/admin/blog",
-          icon: BookOpen,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Yeni Blog Oluştur",
-          href: "/admin/blog/new",
-          icon: FileText,
-          show: hasPermission("blog.write"),
-        },
-        {
-          name: "AI Blog Oluşturucu",
-          href: "/admin/blog/ai-generator",
-          icon: Sparkles,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Kategoriler",
-          href: "/admin/blog/categories",
-          icon: FolderTree,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Başlık Yönetimi",
-          href: "/admin/blog/title-management",
-          icon: StickyNote,
-          show: hasPermission("blog.read"),
-        },
+        { id: "blog-list", name: "Tüm Yazılar", href: "/admin/blog", icon: BookOpen, show: hasPermission("blog.read") },
+        { id: "blog-new", name: "Yeni Yazı", href: "/admin/blog/new", icon: FileText, show: hasPermission("blog.write") },
+        { id: "blog-ai", name: "AI Oluşturucu", href: "/admin/blog/ai-generator", icon: Sparkles, show: hasPermission("blog.read") },
+        { id: "blog-categories", name: "Kategoriler", href: "/admin/blog/categories", icon: FolderTree, show: hasPermission("blog.read") },
+        { id: "blog-titles", name: "Başlıklar", href: "/admin/blog/title-management", icon: StickyNote, show: hasPermission("blog.read") },
       ],
     },
     {
@@ -168,666 +451,654 @@ export default function AdminNavigation() {
       icon: Share2,
       show: hasPermission("blog.read"),
       items: [
-        {
-          name: "Dashboard",
-          href: "/admin/social-media",
-          icon: LayoutDashboard,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "Başlık Kütüphanesi",
-          href: "/admin/social-media/title-library",
-          icon: StickyNote,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "İçerik Planlama",
-          href: "/admin/social-media/calendar-view",
-          icon: CalendarIcon,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "İçerik Stüdyosu",
-          href: "/admin/social-media/content-studio",
-          icon: Sparkles,
-          show: hasPermission("blog.read"),
-        },
-        {
-          name: "İçerik Kütüphanesi",
-          href: "/admin/social-media/content-list",
-          icon: Database,
-          show: hasPermission("blog.read"),
-        },
+        { id: "sm-dashboard", name: "Dashboard", href: "/admin/social-media", icon: LayoutDashboard, show: hasPermission("blog.read") },
+        { id: "sm-titles", name: "Başlık Kütüphanesi", href: "/admin/social-media/title-library", icon: StickyNote, show: hasPermission("blog.read") },
+        { id: "sm-calendar", name: "İçerik Planlama", href: "/admin/social-media/calendar-view", icon: CalendarIcon, show: hasPermission("blog.read") },
+        { id: "sm-studio", name: "İçerik Stüdyosu", href: "/admin/social-media/content-studio", icon: Sparkles, show: hasPermission("blog.read") },
+        { id: "sm-library", name: "Kütüphane", href: "/admin/social-media/content-list", icon: Database, show: hasPermission("blog.read") },
       ],
     },
     {
       id: "customers",
-      name: "Müşteri Yönetimi",
+      name: "Müşteriler",
       icon: Building2,
-      show:
-        hasPermission("companies.view") ||
-        hasPermission("contracts.view") ||
-        hasPermission("quotes.view") ||
-        hasPermission("contacts.view") ||
-        hasPermission("requests.view"),
+      show: hasPermission("companies.view") || hasPermission("contracts.view") || hasPermission("quotes.view") || hasPermission("contacts.view"),
       items: [
-        {
-          name: "Firmalar",
-          href: "/admin/companies",
-          icon: Building2,
-          show: hasPermission("companies.view"),
-        },
-        {
-          name: "Contracts",
-          href: "/admin/contracts",
-          icon: FileSignature,
-          show: hasPermission("contracts.view"),
-        },
-        {
-          name: "Quote İstekleri",
-          href: "/admin/quotes",
-          icon: FileText,
-          show: hasPermission("quotes.view"),
-        },
-        {
-          name: "İletişim Mesajları",
-          href: "/admin/contacts",
-          icon: MessageSquare,
-          show: hasPermission("contacts.view"),
-        },
-        {
-          name: "Müşteri Talepleri",
-          href: "/admin/requests",
-          icon: MessageSquareText,
-          show:
-            hasPermission("requests.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
+        { id: "crm-v2", name: "CRM v2", href: "/admin/crm-v2", icon: Briefcase, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "companies", name: "Firmalar", href: "/admin/companies", icon: Building2, show: hasPermission("companies.view") },
+        { id: "contracts", name: "Sözleşmeler", href: "/admin/contracts", icon: FileSignature, show: hasPermission("contracts.view") },
+        { id: "quotes", name: "Teklifler", href: "/admin/quotes", icon: FileText, show: hasPermission("quotes.view") },
+        { id: "contacts", name: "Mesajlar", href: "/admin/contacts", icon: MessageSquare, show: hasPermission("contacts.view") },
       ],
     },
     {
       id: "sales",
-      name: "Satış & Fiyatlandırma",
+      name: "Satış",
       icon: DollarSign,
-      show:
-        hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]),
+      show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
-        {
-          name: "Proformalar",
-          href: "/admin/proformas",
-          icon: FileText,
-          show:
-            hasPermission("proformas.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
-        {
-          name: "Fiyat Hesaplama",
-          href: "/admin/pricing-calculator",
-          icon: Calculator,
-          show:
-            hasPermission("proformas.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
-        {
-          name: "Hesaplama Geçmişi",
-          href: "/admin/pricing-calculations",
-          icon: Activity,
-          show:
-            hasPermission("proformas.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
-        {
-          name: "Formüller",
-          href: "/admin/formulas",
-          icon: FlaskConical,
-          show:
-            hasPermission("proformas.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
+        { id: "proformas", name: "Proformalar", href: "/admin/proformas", icon: FileText, show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "pricing-calc", name: "Fiyat Hesapla", href: "/admin/pricing-calculator", icon: Calculator, show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "pricing-list", name: "Hesaplamalar", href: "/admin/pricing-calculations", icon: Activity, show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "formulas", name: "Formüller", href: "/admin/formulas", icon: FlaskConical, show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]) },
+      ],
+    },
+    {
+      id: "finance",
+      name: "Finans",
+      icon: PiggyBank,
+      show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]),
+      items: [
+        { id: "finance-dashboard", name: "Dashboard", href: "/admin/finance", icon: LayoutDashboard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-accounts", name: "Hesaplar", href: "/admin/finance/accounts", icon: Wallet, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-income", name: "Gelirler", href: "/admin/finance/income", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-expenses", name: "Giderler", href: "/admin/finance/expenses", icon: TrendingDown, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-receivables", name: "Alacaklar", href: "/admin/finance/receivables", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-payables", name: "Borçlar", href: "/admin/finance/payables", icon: TrendingDown, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-personnel", name: "Personel", href: "/admin/finance/personnel", icon: Users, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-salaries", name: "Maaşlar", href: "/admin/finance/salaries", icon: HandCoins, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-advances", name: "Avanslar", href: "/admin/finance/advances", icon: CreditCard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-reports", name: "Raporlar", href: "/admin/finance/reports", icon: Activity, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },
     {
       id: "warehouse",
-      name: "Depo Yönetimi",
+      name: "Depo",
       icon: Box,
-      show:
-        hasPermission("packaging.view") ||
-        hasPermission("deliveries.view") ||
-        hasAnyRole(["admin", "super_admin"]),
+      show: hasPermission("packaging.view") || hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
-        {
-          name: "Ambalajlar",
-          href: "/admin/packaging",
-          icon: Package,
-          show:
-            hasPermission("packaging.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
-        {
-          name: "İrsaliyeler",
-          href: "/admin/deliveries",
-          icon: Truck,
-          show:
-            hasPermission("deliveries.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
+        { id: "packaging", name: "Ambalajlar", href: "/admin/packaging", icon: Package, show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "deliveries", name: "İrsaliyeler", href: "/admin/deliveries", icon: Truck, show: hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]) },
+      ],
+    },
+    {
+      id: "ai",
+      name: "AI Asistanlar",
+      icon: Brain,
+      show: hasPermission("gemini.read") || hasPermission("claude.read") || hasPermission("chatgpt.read") || hasAnyRole(["admin", "super_admin"]),
+      items: [
+        { id: "ai-chatgpt", name: "ChatGPT", href: "/admin/ai/chatgpt", icon: Bot, show: hasPermission("chatgpt.read") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "ai-gemini", name: "Gemini", href: "/admin/ai/gemini", icon: Sparkles, show: hasPermission("gemini.read") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "ai-claude", name: "Claude", href: "/admin/ai/claude", icon: Bot, show: hasPermission("claude.read") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },
     {
       id: "integrations",
       name: "Entegrasyonlar",
       icon: Plug,
-      show:
-        hasPermission("integrations.view") ||
-        hasAnyRole(["admin", "super_admin"]),
+      show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
-        {
-          name: "E-ticaret",
-          href: "/admin/integrations",
-          icon: ShoppingCart,
-          show:
-            hasPermission("integrations.view") ||
-            hasAnyRole(["admin", "super_admin"]),
-        },
+        { id: "ecommerce", name: "E-ticaret", href: "/admin/integrations", icon: ShoppingCart, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },
     {
+      id: "outlook",
+      name: "Outlook",
+      icon: Mail,
+      href: "/admin/outlook",
+      show: hasPermission("outlook.view"),
+    },
+    {
       id: "users",
-      name: "Kullanıcılar & Yetkiler",
+      name: "Kullanıcılar",
       icon: Users,
-      show:
-        hasPermission("users.view") ||
-        hasPermission("users.manage_roles") ||
-        hasPermission("users.manage_permissions"),
+      show: hasPermission("users.view") || hasPermission("users.manage_roles") || hasPermission("users.manage_permissions"),
       items: [
-        {
-          name: "Kullanıcılar",
-          href: "/admin/users",
-          icon: Users,
-          show: hasPermission("users.view"),
-        },
-        {
-          name: "Adminler",
-          href: "/admin/admins",
-          icon: UserCheck,
-          show: hasPermission("users.manage_roles"),
-        },
-        {
-          name: "Yetkiler",
-          href: "/admin/permissions",
-          icon: Shield,
-          show:
-            hasPermission("users.manage_permissions") ||
-            hasPermission("users.manage_roles") ||
-            hasRole("super_admin"),
-        },
+        { id: "users-list", name: "Kullanıcılar", href: "/admin/users", icon: Users, show: hasPermission("users.view") },
+        { id: "admins", name: "Adminler", href: "/admin/admins", icon: UserCheck, show: hasPermission("users.manage_roles") },
+        { id: "permissions", name: "Yetkiler", href: "/admin/permissions", icon: Shield, show: hasPermission("users.manage_permissions") || hasPermission("users.manage_roles") || hasRole("super_admin") },
       ],
     },
     {
       id: "system",
       name: "Sistem",
       icon: Settings,
-      show:
-        hasPermission("system.logs") ||
-        hasPermission("system.settings") ||
-        hasRole("super_admin"),
+      show: hasPermission("system.logs") || hasPermission("system.settings") || hasRole("super_admin"),
       items: [
-        {
-          name: "Loglar",
-          href: "/admin/logs",
-          icon: Activity,
-          show: hasPermission("system.logs"),
-        },
-        {
-          name: "Ayarlar",
-          href: "/admin/settings",
-          icon: Wrench,
-          show: hasPermission("system.settings"),
-        },
-        {
-          name: "Debug",
-          href: "/admin/debug",
-          icon: Bug,
-          show: hasRole("super_admin"),
-        },
+        { id: "ai-settings", name: "AI Ayarları", href: "/admin/settings/ai", icon: Bot, show: hasRole("super_admin") || hasPermission("system.settings") },
+        { id: "logs", name: "Loglar", href: "/admin/logs", icon: Activity, show: hasPermission("system.logs") },
+        { id: "general-settings", name: "Genel Ayarlar", href: "/admin/settings/general", icon: Wrench, show: hasPermission("system.settings") },
+        { id: "debug", name: "Debug", href: "/admin/debug", icon: Bug, show: hasRole("super_admin") },
       ],
     },
-  ];
+  ], [hasPermission, hasRole, hasAnyRole]);
 
-  const menuStructure = getMenuStructure()
-    .filter((menu) => menu.show)
-    .map((menu) => {
-      if (menu.items) {
-        return {
-          ...menu,
-          items: menu.items.filter((item) => item.show),
-        };
+  // Filtered menu structure
+  const menuStructure = useMemo(() => {
+    return getMenuStructure()
+      .filter((menu) => menu.show)
+      .map((menu) =>
+        menu.items ? { ...menu, items: menu.items.filter((item) => item.show) } : menu
+      )
+      .filter((menu) => !menu.items || menu.items.length > 0);
+  }, [getMenuStructure]);
+
+  // Create a flat map of all menu items (including sub-items) for pinning
+  const allMenuItemsMap = useMemo(() => {
+    const map = new Map();
+    menuStructure.forEach((menu) => {
+      if (menu.href) {
+        map.set(menu.id, { ...menu, parentId: null });
       }
-      return menu;
-    })
-    .filter((menu) => !menu.items || menu.items.length > 0);
+      if (menu.items) {
+        menu.items.forEach((item) => {
+          map.set(item.id, { ...item, parentId: menu.id, parentName: menu.name });
+        });
+      }
+    });
+    return map;
+  }, [menuStructure]);
 
-  const handleSignOut = async () => {
+  // Pinned items resolved from IDs
+  const pinnedItems = useMemo(() => {
+    return pinnedMenus
+      .map((id) => allMenuItemsMap.get(id))
+      .filter(Boolean);
+  }, [pinnedMenus, allMenuItemsMap]);
+
+  // Handle drag end
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = pinnedMenus.indexOf(active.id);
+      const newIndex = pinnedMenus.indexOf(over.id);
+      reorderPinnedMenus(arrayMove(pinnedMenus, oldIndex, newIndex));
+    }
+  }, [pinnedMenus, reorderPinnedMenus]);
+
+  const handleSignOut = useCallback(async () => {
     try {
       await signOut();
     } catch (error) {
-      // Sign out error handling
+      console.error("Sign out error:", error);
     }
-  };
+  }, [signOut]);
 
-  return (
-    <>
-      <style jsx>{`
-        /* Modern thin scrollbar for desktop navigation */
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
+  const getRoleBadgeStyle = useCallback((role) => {
+    const styles = {
+      super_admin: "bg-violet-100 text-violet-700 border-violet-200",
+      admin: "bg-blue-100 text-blue-700 border-blue-200",
+      moderator: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    };
+    return styles[role] || "bg-gray-100 text-gray-700 border-gray-200";
+  }, []);
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #e0e7ff 0%, #c7d2fe 100%);
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
+  const getRoleDisplayName = useCallback((role) => {
+    const names = {
+      super_admin: "Süper Admin",
+      admin: "Admin",
+      moderator: "Moderatör",
+    };
+    return names[role] || "Kullanıcı";
+  }, []);
 
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #c7d2fe 0%, #a5b4fc 100%);
-        }
+  // Aktif sayfa kontrolü - alt menü itemları için daha akıllı kontrol (STABLE)
+  const isItemActive = useCallback((href, parentItems = null) => {
+    // Eğer parent items varsa (bu bir alt menü item'ı), 
+    // diğer kardeş itemlarla karşılaştır
+    if (parentItems) {
+      // Tam eşleşme kontrolü
+      if (pathname === href) return true;
+      
+      // Bu item'ın href'i ile başlayan ama başka bir kardeş item'ın href'i ile başlamayan
+      if (pathname.startsWith(href)) {
+        // Başka bir kardeş daha spesifik mi?
+        const moreSpecificSibling = parentItems.find(
+          sibling => sibling.href !== href && 
+                     pathname.startsWith(sibling.href) && 
+                     sibling.href.length > href.length
+        );
+        return !moreSpecificSibling;
+      }
+      return false;
+    }
+    
+    // Tek menü item'ı için (alt menüsü olmayan)
+    return pathname === href || pathname.startsWith(href + "/");
+  }, [pathname]);
 
-        /* For Firefox */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #c7d2fe transparent;
-        }
+  // ============================================
+  // SUB-COMPONENTS
+  // ============================================
+  
+  // Single Menu Item (no sub-items)
+  const SingleMenuItem = memo(function SingleMenuItem({ menu, isMobile = false }) {
+    const Icon = menu.icon;
+    const isActive = isItemActive(menu.href);
+    const isPinned = isMenuPinned(menu.id);
 
-        /* Mobile menu scrollbar */
-        .mobile-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-
-        .mobile-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .mobile-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
-          border-radius: 10px;
-        }
-
-        .mobile-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
-        }
-
-        .mobile-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #94a3b8 transparent;
-        }
-      `}</style>
-
-      {/* Desktop Navigation */}
-      <nav className="custom-scrollbar hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:bg-gradient-to-b lg:from-white lg:to-gray-50 lg:pt-5 lg:pb-4 lg:overflow-y-auto">
-        <div className="flex items-center justify-between flex-shrink-0 px-6 pb-4 mb-2 border-b border-gray-200">
-          <Link
-            href="/admin/dashboard"
-            className="flex items-center gap-2 group"
-          >
-            <img
-              className="h-6 w-auto transition-all duration-200 group-hover:scale-105"
-              src="/MKN-GROUP-LOGO.png"
-              alt="MKN Group"
-            />
-            <span className="text-xs font-bold text-gray-800">MKN - Panel</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            <button
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
-              title="Bildirimler"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-            </button>
-            <button
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
-              title="Mesajlar"
-            >
-              <Mail className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white"></span>
-            </button>
-          </div>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="mt-5 flex-1 px-3 space-y-1.5">
-          {menuStructure.map((menu) => {
-            const Icon = menu.icon;
-            const isOpen = openMenus[menu.id];
-            const isActive = menu.href
-              ? pathname.startsWith(menu.href)
-              : menu.items && isMenuActive(menu.items);
-
-            // Single menu item (no submenu)
-            if (!menu.items) {
-              return (
+    if (isCollapsed && !isMobile) {
+      return (
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex justify-center">
                 <Link
-                  key={menu.id}
                   href={menu.href}
-                  className={`${
+                  onClick={isMobile ? closeMobileMenu : undefined}
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
-                      : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
-                  } group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200`}
-                >
-                  <Icon
-                    className={`${
-                      isActive
-                        ? "text-white"
-                        : "text-gray-400 group-hover:text-gray-600"
-                    } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
-                  />
-                  <span>{menu.name}</span>
-                </Link>
-              );
-            }
-
-            // Menu with submenu
-            return (
-              <div key={menu.id} className="space-y-1">
-                <button
-                  onClick={() => toggleMenu(menu.id)}
-                  className={`${
-                    isActive
-                      ? "bg-gray-100 text-gray-900 shadow-sm"
-                      : "text-gray-700 hover:bg-gray-50"
-                  } group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200`}
-                >
-                  <div className="flex items-center">
-                    <Icon
-                      className={`${
-                        isActive
-                          ? "text-blue-600"
-                          : "text-gray-400 group-hover:text-gray-600"
-                      } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
-                    />
-                    <span>{menu.name}</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 text-gray-400 transition-all duration-300 ${
-                      isOpen ? "rotate-0 text-blue-600" : "-rotate-90"
-                    }`}
-                  />
-                </button>
-                <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                      ? "bg-gray-900 text-white shadow-md"
+                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                 >
-                  <div className="ml-5 pl-4 border-l-2 border-blue-200 space-y-1 py-1.5">
-                    {menu.items.map((item) => {
-                      const SubIcon = item.icon;
-                      const isSubActive = pathname.startsWith(item.href);
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`${
-                            isSubActive
-                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
-                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                          } group flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200`}
-                        >
-                          <SubIcon
-                            className={`${
-                              isSubActive
-                                ? "text-white"
-                                : "text-gray-400 group-hover:text-gray-600"
-                            } flex-shrink-0 mr-3 h-4 w-4 transition-colors`}
-                          />
-                          <span className="text-xs font-medium">
-                            {item.name}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
+                  <Icon className="h-5 w-5" />
+                </Link>
               </div>
-            );
-          })}
-        </nav>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="flex items-center gap-2">
+              <span className="font-medium">{menu.name}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePin(menu.id);
+                }}
+                className={`p-1 rounded ${isPinned ? "text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:bg-gray-100"}`}
+              >
+                {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+              </button>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
 
-        {/* User Info & Role Badge - Bottom */}
-        <div className="flex-shrink-0 mx-3 mb-3 p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-indigo-50 border border-blue-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-2 ring-blue-100">
-                <span className="text-base font-semibold text-white">
-                  {user?.displayName?.charAt(0)?.toUpperCase() ||
-                    user?.email?.charAt(0)?.toUpperCase() ||
-                    "A"}
-                </span>
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
+    return (
+      <div className="group relative">
+        <Link
+          href={menu.href}
+          onClick={isMobile ? closeMobileMenu : undefined}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+            isActive
+              ? "bg-gray-900 text-white shadow-md"
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+        >
+          <Icon className={`h-[18px] w-[18px] flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}`} />
+          <span className="truncate">{menu.name}</span>
+        </Link>
+        <button
+          onClick={() => togglePin(menu.id)}
+          className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+            isPinned ? "text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+    );
+  });
+
+  // User Card
+  const UserCard = ({ compact = false }) => {
+    // Collapsed modda minimal görünüm
+    if (isCollapsed) {
+      return (
+        <div className="flex flex-col items-center gap-2">
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="relative cursor-pointer">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-lg">
+                    <span className="text-sm font-semibold text-white">
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "A"}
+                    </span>
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 rounded-full border-2 border-white" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="p-3">
+                <div className="space-y-1">
+                  <p className="font-semibold text-gray-900">{user?.displayName || "Admin User"}</p>
+                  <p className="text-xs text-gray-500">{user?.email || "admin@mkngroup.com"}</p>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${getRoleBadgeStyle(userRole)}`}>
+                    <Shield className="w-2.5 h-2.5" />
+                    {getRoleDisplayName(userRole)}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleSignOut}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Çıkış Yap</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    }
+
+    // Normal (expanded) görünüm
+    return (
+      <div className={`bg-white rounded-xl border border-gray-200 ${compact ? "p-3" : "p-4"} transition-all`}>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0">
+            <div className={`${compact ? "h-9 w-9" : "h-10 w-10"} rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-lg`}>
+              <span className={`${compact ? "text-xs" : "text-sm"} font-semibold text-white`}>
+                {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "A"}
+              </span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 truncate">
-                {user?.displayName || "Admin User"}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.email || "admin@mkngroup.com"}
-              </p>
-            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 rounded-full border-2 border-white" />
           </div>
-          <div className="mt-3 pt-3 border-t border-blue-100 flex items-center justify-between">
-            <span
-              className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm ${getRoleBadgeColor(
-                userRole
-              )}`}
-            >
-              <Shield className="w-3.5 h-3.5 mr-1.5" />
-              {getRoleDisplayName(userRole)}
-            </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {user?.displayName || "Admin User"}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {user?.email || "admin@mkngroup.com"}
+            </p>
+          </div>
+          {!compact && (
             <button
               onClick={handleSignOut}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
               title="Çıkış Yap"
             >
               <LogOut className="h-4 w-4" />
             </button>
-          </div>
+          )}
         </div>
-      </nav>
-
-      {/* Mobile Navigation */}
-      <div className="lg:hidden">
-        {/* Mobile menu button */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-white to-gray-50 border-b border-gray-200 px-4 py-3 sticky top-0 z-50 shadow-sm">
-          <div className="flex items-center gap-2">
-            <img
-              className="h-6 w-auto"
-              src="/MKN-GROUP-LOGO.png"
-              alt="MKN Group"
-            />
-            <span className="text-xs font-bold text-gray-800">Panel</span>
-          </div>
-          <div className="flex items-center gap-1">
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${getRoleBadgeStyle(userRole)}`}>
+            <Shield className="w-3 h-3" />
+            {getRoleDisplayName(userRole)}
+          </span>
+          {compact && (
             <button
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
-              title="Bildirimler"
+              onClick={handleSignOut}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Çıkış Yap"
             >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+              <LogOut className="h-4 w-4" />
             </button>
-            <button
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
-              title="Mesajlar"
-            >
-              <Mail className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white"></span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={isCollapsed ? "collapsed" : "expanded"}
+        variants={sidebarVariants}
+        className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:bg-gray-50/95 lg:backdrop-blur-xl lg:border-r lg:border-gray-200 overflow-hidden z-40"
+      >
+        {/* Header */}
+        <div className={`h-16 flex items-center border-b border-gray-200/80 bg-white flex-shrink-0 ${isCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
+          {isCollapsed ? (
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggleCollapsed}
+                    className="p-2.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                  >
+                    <PanelLeft className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Menüyü Genişlet</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <>
+              <Link href="/admin/dashboard" className="flex items-center gap-3 min-w-0 group">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                  <span className="text-white font-bold text-sm">M</span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[13px] font-semibold text-gray-900 leading-tight">MKN Group</span>
+                  <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Admin Panel</span>
+                </div>
+              </Link>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all relative">
+                  <Bell className="h-[18px] w-[18px]" />
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white" />
+                </button>
+                <button
+                  onClick={toggleCollapsed}
+                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all"
+                  title="Daralt"
+                >
+                  <PanelLeftClose className="h-[18px] w-[18px]" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav 
+          ref={navScrollRef}
+          className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${isCollapsed ? "px-1.5" : "px-3"} py-4`}
+        >
+          {/* Pinned Section */}
+          {pinnedItems.length > 0 && (
+            <div className="mb-4">
+              {!isCollapsed && (
+                <div className="px-2 mb-2 flex items-center gap-2">
+                  <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                    Favoriler
+                  </span>
+                </div>
+              )}
+              {isCollapsed && (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex justify-center mb-2">
+                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Favoriler</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={pinnedMenus} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1">
+                    {pinnedItems.map((item) => (
+                      <SortablePinnedItem
+                        key={item.id}
+                        item={item}
+                        isCollapsed={isCollapsed}
+                        pathname={pathname}
+                        onUnpin={unpinMenu}
+                        onNavigate={() => {}}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              {!isCollapsed && <div className="mt-3 mx-3 border-b border-gray-200" />}
+              {isCollapsed && <div className="mt-2 w-6 mx-auto border-b border-gray-300" />}
+            </div>
+          )}
+
+          {/* Main Menu */}
+          {!isCollapsed && pinnedItems.length > 0 && (
+            <div className="px-2 mb-2">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                Menü
+              </span>
+            </div>
+          )}
+          <div className="space-y-1">
+            {menuStructure.map((menu) => (
+              menu.items ? (
+                <MenuWithItemsComponent
+                  key={menu.id}
+                  menu={menu}
+                  isExpanded={expandedMenus[menu.id] || false}
+                  hasActiveChild={menu.items.some((item) => isItemActive(item.href, menu.items))}
+                  isCollapsed={isCollapsed}
+                  isMobile={false}
+                  pathname={pathname}
+                  onToggleExpanded={toggleMenuExpanded}
+                  onTogglePin={togglePin}
+                  isMenuPinned={isMenuPinned}
+                  onNavigate={undefined}
+                  isItemActive={isItemActive}
+                />
+              ) : (
+                <SingleMenuItem key={menu.id} menu={menu} />
+              )
+            ))}
+          </div>
+        </nav>
+
+        {/* User Section */}
+        <div className={`${isCollapsed ? "px-2 py-3" : "p-3"} border-t border-gray-200 bg-white/90 backdrop-blur-sm flex-shrink-0 ${isCollapsed ? "flex justify-center" : ""}`}>
+          <UserCard />
+        </div>
+      </motion.aside>
+
+      {/* Mobile Header & Menu */}
+      <div className="lg:hidden">
+        {/* Mobile Header */}
+        <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200/80 flex items-center justify-between px-4 z-50">
+          <Link href="/admin/dashboard" className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-xs">M</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-gray-900 leading-tight">MKN Group</span>
+              <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wider">Admin</span>
+            </div>
+          </Link>
+          <div className="flex items-center gap-1">
+            <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all relative">
+              <Bell className="h-[18px] w-[18px]" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white" />
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
             >
-              {isMobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Mobile menu */}
-        {isMobileMenuOpen && (
-          <div className="mobile-scrollbar bg-gradient-to-b from-white to-gray-50 border-b border-gray-200 shadow-xl max-h-[calc(100vh-64px)] overflow-y-auto">
-            <nav className="px-3 py-4 space-y-1.5">
-              {menuStructure.map((menu) => {
-                const Icon = menu.icon;
-                const isOpen = openMenus[menu.id];
-                const isActive = menu.href
-                  ? pathname.startsWith(menu.href)
-                  : menu.items && isMenuActive(menu.items);
-
-                // Single menu item (no submenu)
-                if (!menu.items) {
-                  return (
-                    <Link
-                      key={menu.id}
-                      href={menu.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`${
-                        isActive
-                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
-                          : "text-gray-700 hover:bg-gray-100 hover:shadow-sm"
-                      } group flex items-center px-3 py-3 text-base font-medium rounded-xl transition-all duration-200`}
-                    >
-                      <Icon
-                        className={`${
-                          isActive
-                            ? "text-white"
-                            : "text-gray-400 group-hover:text-gray-600"
-                        } flex-shrink-0 mr-3 h-6 w-6 transition-colors`}
-                      />
-                      {menu.name}
-                    </Link>
-                  );
-                }
-
-                // Menu with submenu
-                return (
-                  <div key={menu.id} className="space-y-1">
-                    <button
-                      onClick={() => toggleMenu(menu.id)}
-                      className={`${
-                        isActive
-                          ? "bg-gray-100 text-gray-900 shadow-sm"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } group w-full flex items-center justify-between px-3 py-3 text-base font-medium rounded-xl transition-all duration-200`}
-                    >
-                      <div className="flex items-center">
-                        <Icon
-                          className={`${
-                            isActive
-                              ? "text-blue-600"
-                              : "text-gray-400 group-hover:text-gray-600"
-                          } flex-shrink-0 mr-3 h-6 w-6 transition-colors`}
-                        />
-                        <span>{menu.name}</span>
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+                onClick={closeMobileMenu}
+              />
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="fixed top-14 right-0 bottom-0 w-80 bg-white/98 backdrop-blur-xl border-l border-gray-200 z-50 shadow-2xl flex flex-col"
+              >
+                <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+                  {/* Mobile Pinned */}
+                  {pinnedItems.length > 0 && (
+                    <div className="mb-4">
+                      <div className="px-2 mb-2 flex items-center gap-2">
+                        <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Favoriler
+                        </span>
                       </div>
-                      <ChevronDown
-                        className={`h-5 w-5 text-gray-400 transition-all duration-300 ${
-                          isOpen ? "rotate-0 text-blue-600" : "-rotate-90"
-                        }`}
-                      />
-                    </button>
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        isOpen
-                          ? "max-h-[500px] opacity-100"
-                          : "max-h-0 opacity-0"
-                      }`}
-                    >
-                      <div className="ml-5 pl-4 border-l-2 border-blue-200 space-y-1 py-1.5">
-                        {menu.items.map((item) => {
-                          const SubIcon = item.icon;
-                          const isSubActive = pathname.startsWith(item.href);
+                      <div className="space-y-1">
+                        {pinnedItems.map((item) => {
+                          const Icon = item.icon;
+                          const isActive = pathname.startsWith(item.href);
                           return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className={`${
-                                isSubActive
-                                  ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200"
-                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                              } group flex items-center px-3 py-2.5 text-sm rounded-lg transition-all duration-200`}
-                            >
-                              <SubIcon
-                                className={`${
-                                  isSubActive
-                                    ? "text-white"
-                                    : "text-gray-400 group-hover:text-gray-600"
-                                } flex-shrink-0 mr-3 h-5 w-5 transition-colors`}
-                              />
-                              <span className="font-medium">{item.name}</span>
-                            </Link>
+                            <div key={item.id} className="group flex items-center gap-1">
+                              <Link
+                                href={item.href}
+                                onClick={closeMobileMenu}
+                                className={`flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                  isActive
+                                    ? "bg-gray-900 text-white"
+                                    : "text-gray-600 hover:bg-gray-100"
+                                }`}
+                              >
+                                <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-gray-400"}`} />
+                                <span className="truncate">{item.name}</span>
+                              </Link>
+                              <button
+                                onClick={() => unpinMenu(item.id)}
+                                className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <PinOff className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
+                      <div className="mt-3 mx-3 border-b border-gray-200" />
                     </div>
-                  </div>
-                );
-              })}
-            </nav>
+                  )}
 
-            {/* Mobile User Info - Bottom */}
-            <div className="p-3 border-t border-gray-200 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-              <div className="p-4 rounded-2xl bg-white border border-blue-100 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg ring-2 ring-blue-100">
-                      <span className="text-base font-semibold text-white">
-                        {user?.displayName?.charAt(0)?.toUpperCase() ||
-                          user?.email?.charAt(0)?.toUpperCase() ||
-                          "A"}
-                      </span>
-                    </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-bold text-gray-900 truncate">
-                      {user?.displayName || "Admin User"}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
-                      {user?.email || "admin@mkngroup.com"}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-                    title="Çıkış Yap"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </button>
+                  {/* Mobile Main Menu */}
+                  {menuStructure.map((menu) => (
+                    menu.items ? (
+                      <MenuWithItemsComponent
+                        key={menu.id}
+                        menu={menu}
+                        isExpanded={expandedMenus[menu.id] || false}
+                        hasActiveChild={menu.items.some((item) => isItemActive(item.href, menu.items))}
+                        isCollapsed={false}
+                        isMobile={true}
+                        pathname={pathname}
+                        onToggleExpanded={toggleMenuExpanded}
+                        onTogglePin={togglePin}
+                        isMenuPinned={isMenuPinned}
+                        onNavigate={closeMobileMenu}
+                        isItemActive={isItemActive}
+                      />
+                    ) : (
+                      <SingleMenuItem key={menu.id} menu={menu} isMobile />
+                    )
+                  ))}
+                </nav>
+                <div className="p-3 border-t border-gray-200 bg-white/90">
+                  <UserCard compact />
                 </div>
-                <div className="mt-3 pt-3 border-t border-blue-100">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm ${getRoleBadgeColor(
-                      userRole
-                    )}`}
-                  >
-                    <Shield className="w-3.5 h-3.5 mr-1.5" />
-                    {getRoleDisplayName(userRole)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* Spacer for main content */}
+      <div className={`hidden lg:block flex-shrink-0 transition-all duration-300 ${isCollapsed ? "w-[72px]" : "w-64"}`} />
     </>
   );
 }
