@@ -57,6 +57,14 @@ import {
   getReplyStatusDot,
   getReplyStatusIcon,
 } from "../../../../../lib/services/crm-v2/schema";
+// Local Settings (localStorage-based file upload limits)
+import {
+  getMaxFileSizeBytes,
+  getMaxFileSizeMB,
+  validateFileSize,
+  needsLargeUploadConfirmation,
+  formatFileSize,
+} from "../../../../../lib/services/crm-v2/local-settings-service";
 import { formatDistanceToNow, format, addDays, addHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../../lib/utils";
@@ -1044,21 +1052,33 @@ export default function ConversationDetailPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const maxSize = 10 * 1024 * 1024; // 10MB limit
+    // LocalStorage'dan dosya boyutu limitini al
+    const maxSizeMB = getMaxFileSizeMB();
+    const maxSize = getMaxFileSizeBytes();
 
     for (const file of files) {
-      if (file.size > maxSize) {
+      // Dosya boyutu kontrolü
+      const validation = validateFileSize(file.size);
+      if (!validation.valid) {
         toast({
           title: "Dosya çok büyük",
-          description: `${file.name} 10MB'dan büyük.`,
+          description: `${file.name} (${formatFileSize(file.size)}) ${maxSizeMB}MB limitini aşıyor.`,
           variant: "destructive",
         });
         continue;
       }
 
+      // Büyük dosya uyarısı
+      if (needsLargeUploadConfirmation(file.size)) {
+        const confirmed = window.confirm(
+          `${file.name} (${formatFileSize(file.size)}) büyük bir dosya.\n\nYüklemek istediğinizden emin misiniz?`
+        );
+        if (!confirmed) continue;
+      }
+
       toast({
         title: "Yükleniyor",
-        description: `${file.name} yükleniyor...`,
+        description: `${file.name} (${formatFileSize(file.size)}) yükleniyor...`,
       });
 
       try {

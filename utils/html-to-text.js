@@ -143,13 +143,21 @@ export const stripHtmlTags = (html) => {
   text = text.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '');
   text = text.replace(/<!--[\s\S]*?-->/g, ''); // HTML yorumları
   
-  // Email alıntı yapılarını temizle
+  // Email alıntı yapılarını temizle - SADECE gerçek alıntıları kaldır
+  // NOT: gmail_quote bazen orijinal mesaj içeriğini de sarabilir, dikkatli olmalıyız
   text = text.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '');
-  text = text.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/gi, '');
+  // gmail_signature'ı kaldır (imza)
   text = text.replace(/<div[^>]*class="[^"]*gmail_signature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+  // Outlook'un iletilen/yanıtlanan mesaj işaretçisi
   text = text.replace(/<div[^>]*id="divRplyFwdMsg"[^>]*>[\s\S]*$/gi, '');
+  // Mozilla alıntı öneki
   text = text.replace(/<div[^>]*class="[^"]*moz-cite-prefix[^"]*"[^>]*>[\s\S]*$/gi, '');
+  // Yahoo alıntı
   text = text.replace(/<div[^>]*class="[^"]*yahoo_quoted[^"]*"[^>]*>[\s\S]*$/gi, '');
+  
+  // NOT: gmail_quote'u KALDIRMIYORUZ çünkü bazen orijinal mesaj içeriği bu div içinde
+  // Bunun yerine sadece "On ... wrote:" pattern'ini içeren alıntıları kaldırıyoruz
+  // text = text.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/gi, '');
   
   // Blok elementleri yeni satıra çevir
   text = text.replace(/<br\s*\/?>/gi, '\n');

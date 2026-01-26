@@ -36,6 +36,16 @@ import {
   SYNC_STATUS,
   getSyncStatusLabel,
   getSyncStatusColor,
+  // Manuel Email Import
+  searchOutlookEmails,
+  importSingleEmailById,
+  importMultipleEmails,
+  reimportEmailById,
+  // Local Settings (localStorage)
+  getLocalSettings,
+  saveLocalSettings,
+  DEFAULT_LOCAL_SETTINGS,
+  resetLocalSettings,
 } from "../../../../lib/services/crm-v2";
 
 // UI Components
@@ -109,6 +119,9 @@ import {
   Info,
   FileText,
   MessageCircle,
+  HardDrive,
+  Upload,
+  FileUp,
 } from "lucide-react";
 
 import { cn } from "../../../../lib/utils";
@@ -174,11 +187,66 @@ export default function CrmSettingsPage() {
   // Message Count Recalculation state
   const [recalculatingCounts, setRecalculatingCounts] = useState(false);
 
+  // Manuel Email Import state
+  const [showEmailImportDialog, setShowEmailImportDialog] = useState(false);
+  const [emailImportQuery, setEmailImportQuery] = useState('');
+  const [emailImportResults, setEmailImportResults] = useState([]);
+  const [emailImportLoading, setEmailImportLoading] = useState(false);
+  const [emailImporting, setEmailImporting] = useState(false);
+  const [selectedEmailIds, setSelectedEmailIds] = useState([]);
+
+  // Local Settings state (localStorage tabanlı)
+  const [localSettings, setLocalSettings] = useState(DEFAULT_LOCAL_SETTINGS);
+  const [savingLocalSettings, setSavingLocalSettings] = useState(false);
+
   // Load settings
   useEffect(() => {
     loadSettings();
     loadCompanySyncStatus();
+    loadLocalSettings();
   }, []);
+
+  // LocalStorage ayarlarını yükle
+  const loadLocalSettings = () => {
+    const settings = getLocalSettings();
+    setLocalSettings(settings);
+  };
+
+  // LocalStorage ayarlarını kaydet
+  const handleSaveLocalSettings = () => {
+    setSavingLocalSettings(true);
+    try {
+      saveLocalSettings(localSettings);
+      toast({
+        title: "✅ Kaydedildi",
+        description: "Yerel ayarlar başarıyla kaydedildi.",
+      });
+    } catch (error) {
+      console.error("Error saving local settings:", error);
+      toast({
+        title: "Hata",
+        description: "Yerel ayarlar kaydedilemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingLocalSettings(false);
+    }
+  };
+
+  // LocalStorage ayarlarını sıfırla
+  const handleResetLocalSettings = () => {
+    const confirmed = window.confirm(
+      "Yerel ayarları varsayılanlara sıfırlamak istediğinizden emin misiniz?"
+    );
+    if (!confirmed) return;
+    
+    resetLocalSettings();
+    setLocalSettings(DEFAULT_LOCAL_SETTINGS);
+    toast({
+      title: "✅ Sıfırlandı",
+      description: "Yerel ayarlar varsayılanlara döndürüldü.",
+    });
+  };
 
   const loadSettings = async () => {
     try {
@@ -811,6 +879,169 @@ export default function CrmSettingsPage() {
     }
   };
 
+  // ============================================================================
+  // MANUEL EMAIL IMPORT HANDLERS
+  // ============================================================================
+  
+  const handleSearchOutlookEmails = async () => {
+    if (!emailImportQuery.trim()) {
+      toast({
+        title: "Hata",
+        description: "Arama sorgusu giriniz (konu, gönderen e-posta vb.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setEmailImportLoading(true);
+    setEmailImportResults([]);
+    setSelectedEmailIds([]);
+    
+    try {
+      const result = await searchOutlookEmails(emailImportQuery.trim());
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      setEmailImportResults(result.emails || []);
+      
+      toast({
+        title: "✅ Arama Tamamlandı",
+        description: `${result.emails?.length || 0} email bulundu.`,
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Arama Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setEmailImportLoading(false);
+    }
+  };
+  
+  const handleToggleEmailSelection = (emailId) => {
+    setSelectedEmailIds(prev => 
+      prev.includes(emailId) 
+        ? prev.filter(id => id !== emailId)
+        : [...prev, emailId]
+    );
+  };
+  
+  const handleSelectAllEmails = () => {
+    const importableEmails = emailImportResults.filter(e => !e.isInCrm);
+    if (selectedEmailIds.length === importableEmails.length) {
+      setSelectedEmailIds([]);
+    } else {
+      setSelectedEmailIds(importableEmails.map(e => e.id));
+    }
+  };
+  
+  const handleImportSelectedEmails = async () => {
+    if (selectedEmailIds.length === 0) {
+      toast({
+        title: "Hata",
+        description: "En az bir email seçiniz.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const confirmed = window.confirm(
+      `${selectedEmailIds.length} email CRM'e aktarılacak.\n\nDevam etmek istiyor musunuz?`
+    );
+    
+    if (!confirmed) return;
+    
+    setEmailImporting(true);
+    try {
+      const result = await importMultipleEmails(selectedEmailIds, user?.uid);
+      
+      toast({
+        title: "✅ Import Tamamlandı",
+        description: `${result.success} başarılı, ${result.skipped} zaten mevcut, ${result.failed} başarısız.`,
+      });
+      
+      // Listeyi yenile
+      setSelectedEmailIds([]);
+      await handleSearchOutlookEmails();
+    } catch (error) {
+      console.error("Import error:", error);
+      toast({
+        title: "Import Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setEmailImporting(false);
+    }
+  };
+  
+  const handleImportSingleEmail = async (emailId) => {
+    setEmailImporting(true);
+    try {
+      const result = await importSingleEmailById(emailId, user?.uid);
+      
+      if (result.success) {
+        toast({
+          title: "✅ Email Aktarıldı",
+          description: `${result.action === 'new_conversation' ? 'Yeni conversation oluşturuldu' : 'Mevcut thread\'e eklendi'}: ${result.subject}`,
+        });
+        
+        // Listeyi yenile
+        await handleSearchOutlookEmails();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      toast({
+        title: "Import Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setEmailImporting(false);
+    }
+  };
+
+  // CRM'de mevcut email'in içeriğini yeniden al (üzerine yaz)
+  const handleReimportEmail = async (emailId) => {
+    setEmailImporting(true);
+    try {
+      const result = await reimportEmailById(emailId, user?.uid);
+      
+      if (result.success) {
+        toast({
+          title: "✅ İçerik Güncellendi",
+          description: `Email içeriği yeniden alındı (${result.contentLength} karakter): ${result.subject}`,
+        });
+        
+        // Listeyi yenile
+        await handleSearchOutlookEmails();
+      } else if (result.notFound) {
+        toast({
+          title: "Bulunamadı",
+          description: "Bu email CRM'de bulunamadı. Önce import etmeyi deneyin.",
+          variant: "destructive",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error("Reimport error:", error);
+      toast({
+        title: "Güncelleme Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setEmailImporting(false);
+    }
+  };
+
   const handleDeleteSingleMessage = async (messageId) => {
     const confirmed = window.confirm(
       "Bu mesaj kalıcı olarak silinecek.\n\nBu işlem GERİ ALINAMAZ!\n\nDevam etmek istiyor musunuz?"
@@ -993,6 +1224,164 @@ export default function CrmSettingsPage() {
             <div className="flex justify-end pt-4">
               <Button onClick={handleSaveSyncSettings} disabled={saving}>
                 {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Kaydet
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dosya Yükleme Ayarları - LocalStorage */}
+        <Card className="bg-white border-cyan-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-50 rounded-lg">
+                <FileUp className="h-5 w-5 text-cyan-600" />
+              </div>
+              <div>
+                <CardTitle>Dosya Yükleme Ayarları</CardTitle>
+                <CardDescription>
+                  Dosya ve belge yükleme limitleri (Bu ayarlar tarayıcınızda saklanır)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+              <p className="text-xs text-cyan-700">
+                <Info className="h-3 w-3 inline mr-1" />
+                Bu ayarlar sadece bu tarayıcıda geçerlidir ve localStorage&apos;da saklanır.
+              </p>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Maksimum Dosya Boyutu */}
+              <div className="space-y-2">
+                <Label htmlFor="maxFileSizeMB" className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4 text-slate-500" />
+                  Maksimum Dosya Boyutu
+                </Label>
+                <Select
+                  value={localSettings.fileUpload?.maxFileSizeMB?.toString() || "500"}
+                  onValueChange={(v) => setLocalSettings({
+                    ...localSettings,
+                    fileUpload: { ...localSettings.fileUpload, maxFileSizeMB: parseInt(v) }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Limit seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 MB</SelectItem>
+                    <SelectItem value="25">25 MB</SelectItem>
+                    <SelectItem value="50">50 MB</SelectItem>
+                    <SelectItem value="100">100 MB</SelectItem>
+                    <SelectItem value="250">250 MB</SelectItem>
+                    <SelectItem value="500">500 MB</SelectItem>
+                    <SelectItem value="1000">1 GB</SelectItem>
+                    <SelectItem value="2000">2 GB</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Tek bir dosya için maksimum boyut limiti
+                </p>
+              </div>
+
+              {/* Toplam Yükleme Limiti */}
+              <div className="space-y-2">
+                <Label htmlFor="maxTotalSizeMB" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-slate-500" />
+                  Toplam Yükleme Limiti
+                </Label>
+                <Select
+                  value={localSettings.fileUpload?.maxTotalSizeMB?.toString() || "2000"}
+                  onValueChange={(v) => setLocalSettings({
+                    ...localSettings,
+                    fileUpload: { ...localSettings.fileUpload, maxTotalSizeMB: parseInt(v) }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Limit seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="100">100 MB</SelectItem>
+                    <SelectItem value="500">500 MB</SelectItem>
+                    <SelectItem value="1000">1 GB</SelectItem>
+                    <SelectItem value="2000">2 GB</SelectItem>
+                    <SelectItem value="5000">5 GB</SelectItem>
+                    <SelectItem value="10000">10 GB</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Tek seferde toplam yükleme limiti
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Büyük Dosya Uyarı Eşiği */}
+              <div className="space-y-2">
+                <Label htmlFor="largeUploadThresholdMB" className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-slate-500" />
+                  Büyük Dosya Uyarı Eşiği
+                </Label>
+                <Select
+                  value={localSettings.ui?.largeUploadThresholdMB?.toString() || "100"}
+                  onValueChange={(v) => setLocalSettings({
+                    ...localSettings,
+                    ui: { ...localSettings.ui, largeUploadThresholdMB: parseInt(v) }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Eşik seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 MB</SelectItem>
+                    <SelectItem value="50">50 MB</SelectItem>
+                    <SelectItem value="100">100 MB</SelectItem>
+                    <SelectItem value="200">200 MB</SelectItem>
+                    <SelectItem value="500">500 MB</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Bu boyutun üstünde onay istenir
+                </p>
+              </div>
+
+              {/* Büyük Dosya Onayı */}
+              <div className="flex items-center justify-between p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <div>
+                  <Label className="text-sm font-medium">Büyük Dosya Onayı</Label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Eşik üstü dosyalarda onay iste
+                  </p>
+                </div>
+                <Switch
+                  checked={localSettings.ui?.confirmLargeUploads ?? true}
+                  onCheckedChange={(v) => setLocalSettings({
+                    ...localSettings,
+                    ui: { ...localSettings.ui, confirmLargeUploads: v }
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleResetLocalSettings}
+                className="text-slate-600"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Varsayılanlara Sıfırla
+              </Button>
+              <Button onClick={handleSaveLocalSettings} disabled={savingLocalSettings}>
+                {savingLocalSettings ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
@@ -1363,6 +1752,38 @@ export default function CrmSettingsPage() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Manuel Email Import */}
+        <Card className="bg-white border-sky-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-sky-50 rounded-lg">
+                <Mail className="h-5 w-5 text-sky-600" />
+              </div>
+              <div>
+                <CardTitle>Manuel Email Import</CardTitle>
+                <CardDescription>
+                  Kaçırılan veya eksik kalan email'leri Outlook'tan manuel olarak çekin
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
+              <p className="text-sm text-sky-700 mb-4">
+                Outlook inbox'ınızda olup CRM'e aktarılmamış email'leri arayıp import edebilirsiniz.
+                Gönderen email, konu veya içerik ile arama yapabilirsiniz.
+              </p>
+              <Button
+                onClick={() => setShowEmailImportDialog(true)}
+                className="bg-sky-600 hover:bg-sky-700"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Email Ara ve Import Et
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -1779,6 +2200,184 @@ export default function CrmSettingsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMessageManagerDialog(false)}>
+              Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manuel Email Import Dialog */}
+      <Dialog open={showEmailImportDialog} onOpenChange={setShowEmailImportDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-sky-600" />
+              Manuel Email Import
+            </DialogTitle>
+            <DialogDescription>
+              Outlook inbox&apos;ınızda email arayın ve CRM&apos;e aktarın
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+            {/* Search Box */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Konu, gönderen veya içerik ile arayın..."
+                value={emailImportQuery}
+                onChange={(e) => setEmailImportQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchOutlookEmails()}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSearchOutlookEmails}
+                disabled={emailImportLoading}
+                className="bg-sky-600 hover:bg-sky-700"
+              >
+                {emailImportLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            {/* Results */}
+            {emailImportResults.length > 0 && (
+              <>
+                {/* Bulk Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedEmailIds.length > 0 && selectedEmailIds.length === emailImportResults.filter(e => !e.isInCrm).length}
+                      onCheckedChange={handleSelectAllEmails}
+                    />
+                    <span className="text-sm text-slate-600">
+                      {selectedEmailIds.length > 0 
+                        ? `${selectedEmailIds.length} seçili` 
+                        : `${emailImportResults.filter(e => !e.isInCrm).length} import edilebilir`}
+                    </span>
+                  </div>
+                  {selectedEmailIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleImportSelectedEmails}
+                      disabled={emailImporting}
+                      className="bg-sky-600 hover:bg-sky-700"
+                    >
+                      {emailImporting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Seçilenleri Import Et
+                    </Button>
+                  )}
+                </div>
+
+                {/* Email List */}
+                <ScrollArea className="flex-1 -mx-6 px-6">
+                  <div className="space-y-2">
+                    {emailImportResults.map((email) => (
+                      <div
+                        key={email.id}
+                        className={cn(
+                          "p-3 rounded-lg border transition-colors",
+                          email.isInCrm 
+                            ? "bg-green-50 border-green-200" 
+                            : selectedEmailIds.includes(email.id)
+                              ? "bg-sky-50 border-sky-300"
+                              : "bg-white border-slate-200 hover:border-slate-300"
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          {!email.isInCrm && (
+                            <Checkbox
+                              checked={selectedEmailIds.includes(email.id)}
+                              onCheckedChange={() => handleToggleEmailSelection(email.id)}
+                              className="mt-1"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-slate-900 truncate">
+                                {email.fromName || email.from}
+                              </span>
+                              {email.isInCrm && (
+                                <Badge className="bg-green-100 text-green-700 border-green-200">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  CRM&apos;de Mevcut
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-700 truncate">{email.subject}</p>
+                            <p className="text-xs text-slate-500 truncate mt-1">{email.bodyPreview}...</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {new Date(email.receivedDateTime).toLocaleString('tr-TR')}
+                            </p>
+                          </div>
+                          {email.isInCrm ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReimportEmail(email.id)}
+                              disabled={emailImporting}
+                              className="flex-shrink-0 text-amber-600 border-amber-300 hover:bg-amber-50"
+                              title="İçeriği Outlook'tan yeniden al"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleImportSingleEmail(email.id)}
+                              disabled={emailImporting}
+                              className="flex-shrink-0"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+
+            {/* Empty State */}
+            {!emailImportLoading && emailImportResults.length === 0 && emailImportQuery && (
+              <div className="text-center py-8 text-slate-500">
+                <Mail className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Email bulunamadı</p>
+                <p className="text-sm mt-1">Farklı bir arama terimi deneyin</p>
+              </div>
+            )}
+
+            {/* Initial State */}
+            {!emailImportLoading && emailImportResults.length === 0 && !emailImportQuery && (
+              <div className="text-center py-8 text-slate-500">
+                <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Outlook inbox&apos;ınızda email arayın</p>
+                <p className="text-sm mt-1">Konu, gönderen email veya içerik ile arama yapabilirsiniz</p>
+              </div>
+            )}
+
+            {/* Help Text */}
+            <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg text-sm text-sky-800">
+              <strong>💡 İpucu:</strong> PeraPole, Gratis gibi şirketlerden gelen email&apos;leri 
+              gönderen adresiyle (örn: &quot;perapole&quot; veya &quot;gratis&quot;) arayabilirsiniz.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowEmailImportDialog(false);
+              setEmailImportQuery('');
+              setEmailImportResults([]);
+              setSelectedEmailIds([]);
+            }}>
               Kapat
             </Button>
           </DialogFooter>
