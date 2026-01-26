@@ -27,6 +27,7 @@ import {
   forceDeleteMessage,
   approveAndSendMessage,
   MESSAGE_STATUS,
+  recalculateMessageCounts,
   // Company-CRM Sync
   initialBidirectionalSync,
   getSyncStatus,
@@ -170,6 +171,9 @@ export default function CrmSettingsPage() {
   const [runningSync, setRunningSync] = useState(false);
   const [syncPhase, setSyncPhase] = useState('');
 
+  // Message Count Recalculation state
+  const [recalculatingCounts, setRecalculatingCounts] = useState(false);
+
   // Load settings
   useEffect(() => {
     loadSettings();
@@ -287,6 +291,41 @@ export default function CrmSettingsPage() {
         description: "Hızlı yanıt silinemedi.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Message Count Recalculation handler
+  const handleRecalculateMessageCounts = async () => {
+    if (recalculatingCounts) return;
+    
+    const confirmed = window.confirm(
+      "🔧 Mesaj Sayısı Düzeltme\n\n" +
+      "Bu işlem tüm conversation'ların messageCount değerini gerçek mesaj sayısına göre düzeltecek.\n\n" +
+      "• Yanlış sayılar düzeltilir\n" +
+      "• Son mesaj tarihleri güncellenir\n" +
+      "• Veriler korunur, sadece sayaçlar düzeltilir\n\n" +
+      "Devam etmek istiyor musunuz?"
+    );
+    
+    if (!confirmed) return;
+    
+    setRecalculatingCounts(true);
+    try {
+      const result = await recalculateMessageCounts();
+      
+      toast({
+        title: "✅ Düzeltme Tamamlandı",
+        description: `Toplam ${result.total} conversation kontrol edildi. ${result.fixed} düzeltildi, ${result.alreadyCorrect} zaten doğruydu.`,
+      });
+    } catch (error) {
+      console.error("Recalculate error:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRecalculatingCounts(false);
     }
   };
 
@@ -1362,6 +1401,32 @@ export default function CrmSettingsPage() {
                     <Download className="h-4 w-4 mr-2" />
                   )}
                   {importing ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-blue-900">Mesaj Sayılarını Düzelt</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Conversation'ların messageCount değerlerini gerçek mesaj sayısına göre düzelt
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  onClick={handleRecalculateMessageCounts}
+                  disabled={recalculatingCounts}
+                >
+                  {recalculatingCounts ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {recalculatingCounts ? "Düzeltiliyor..." : "Düzelt"}
                 </Button>
               </div>
             </div>

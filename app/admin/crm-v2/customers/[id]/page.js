@@ -20,11 +20,16 @@ import {
   getOrderTypeLabel,
   getOrderTypeColor,
 } from "../../../../../lib/services/crm-v2/order-schema";
-import { getInboxConversations } from "../../../../../lib/services/crm-v2/conversation-service";
+import { 
+  getInboxConversations, 
+  createConversation, 
+  addMessage 
+} from "../../../../../lib/services/crm-v2/conversation-service";
 import {
   CUSTOMER_TYPE,
   PRIORITY,
   CASE_STATUS,
+  CHANNEL,
   getCustomerTypeLabel,
   getCustomerTypeColor,
   getCaseStatusLabel,
@@ -38,6 +43,20 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../../lib/utils";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "../../../../../lib/firebase";
+import { ProformaService, PROFORMA_STATUS_LABELS } from "../../../../../lib/services/proforma-service";
+import * as PricingService from "../../../../../lib/services/pricing-service";
+
+// HTML to Text utility - Mesaj temizleme
+import { htmlToText } from "../../../../../utils/html-to-text";
 
 // UI Components
 import { Button } from "../../../../../components/ui/button";
@@ -108,28 +127,21 @@ import {
   RefreshCw,
   ShoppingCart,
   Package,
+  Receipt,
+  Calculator,
+  Link2,
+  Eye,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 
 /**
  * HTML içeriğinden düz metin çıkar (preview için)
+ * html-to-text utility'sini kullanır
  */
 const stripHtmlToText = (html) => {
-  if (!html) return "";
-  if (!html.includes("<") && !html.includes("&")) return html;
-
-  return html
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<\/p>/gi, " ")
-    .replace(/<\/div>/gi, " ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+  if (!html) return '';
+  return htmlToText(html, { removeQuotes: true, removeSignature: true });
 };
 
 export default function CustomerDetailPage() {
@@ -152,11 +164,27 @@ export default function CustomerDetailPage() {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // Linked Documents State (Company üzerinden)
+  const [linkedProformas, setLinkedProformas] = useState([]);
+  const [linkedContracts, setLinkedContracts] = useState([]);
+  const [linkedCalculations, setLinkedCalculations] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [linkedCompany, setLinkedCompany] = useState(null);
+
   // Modals
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [reminderForm, setReminderForm] = useState({ title: "", dueDate: "" });
+  
+  // New Conversation Modal
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [newConversationForm, setNewConversationForm] = useState({
+    channel: CHANNEL.MANUAL,
+    subject: "",
+    message: "",
+  });
+  const [creatingConversation, setCreatingConversation] = useState(false);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -222,9 +250,115 @@ export default function CustomerDetailPage() {
     }
   }, [customerId, router, toast]);
 
+  // Load linked documents from Company (proformas, contracts, calculations)
+  const loadLinkedDocuments = useCallback(async (companyId) => {
+    if (!companyId) {
+      setLinkedProformas([]);
+      setLinkedContracts([]);
+      setLinkedCalculations([]);
+      setLinkedCompany(null);
+      return;
+    }
+
+    try {
+      setDocumentsLoading(true);
+
+      // Load Company info
+      const { getDoc, doc } = await import("firebase/firestore");
+      const companyDoc = await getDoc(doc(db, "companies", companyId));
+      if (companyDoc.exists()) {
+        setLinkedCompany({ id: companyDoc.id, ...companyDoc.data() });
+      }
+
+      // Load Proformas
+      try {
+        const proformasQuery = query(
+          collection(db, "proformas"),
+          where("companyId", "==", companyId),
+          orderBy("createdAt", "desc"),
+          limit(20)
+        );
+        const proformasSnapshot = await getDocs(proformasQuery);
+        const proformasData = proformasSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLinkedProformas(proformasData);
+      } catch (error) {
+        console.error("Error loading linked proformas:", error);
+        setLinkedProformas([]);
+      }
+
+      // Load Contracts
+      try {
+        const contractsQuery = query(
+          collection(db, "contracts"),
+          where("companyId", "==", companyId),
+          orderBy("createdAt", "desc"),
+          limit(20)
+        );
+        const contractsSnapshot = await getDocs(contractsQuery);
+        const contractsData = contractsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLinkedContracts(contractsData);
+      } catch (error) {
+        console.error("Error loading linked contracts:", error);
+        setLinkedContracts([]);
+      }
+
+      // Load Calculations - İKİ KAYNAKTAN:
+      // 1. pricingCalculations koleksiyonunda linkedCompanies içinde companyId olanlar
+      // 2. companies koleksiyonundaki pricingCalculations array'i
+      try {
+        const allCalculations = await PricingService.getPricingCalculations();
+        
+        // Kaynak 1: linkedCompanies içinde companyId olanlar
+        const linkedFromCalcCollection = allCalculations.filter(
+          (calc) => calc.linkedCompanies && calc.linkedCompanies.includes(companyId)
+        );
+        
+        // Kaynak 2: Firma dokümanındaki pricingCalculations array'i
+        const companyDoc = await getDoc(doc(db, "companies", companyId));
+        let linkedFromCompanyDoc = [];
+        if (companyDoc.exists()) {
+          const companyData = companyDoc.data();
+          const companyCalcIds = (companyData.pricingCalculations || []).map(c => c.calculationId || c.id);
+          // Bu ID'lere karşılık gelen hesaplamaları bul
+          linkedFromCompanyDoc = allCalculations.filter(calc => companyCalcIds.includes(calc.id));
+        }
+        
+        // İki kaynağı birleştir (duplicate'leri kaldır)
+        const combinedCalcs = [...linkedFromCalcCollection];
+        for (const calc of linkedFromCompanyDoc) {
+          if (!combinedCalcs.some(c => c.id === calc.id)) {
+            combinedCalcs.push(calc);
+          }
+        }
+        
+        setLinkedCalculations(combinedCalcs);
+      } catch (error) {
+        console.error("Error loading linked calculations:", error);
+        setLinkedCalculations([]);
+      }
+    } catch (error) {
+      console.error("Error loading linked documents:", error);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Load linked documents when customer changes
+  useEffect(() => {
+    if (customer?.linkedCompanyId) {
+      loadLinkedDocuments(customer.linkedCompanyId);
+    }
+  }, [customer?.linkedCompanyId, loadLinkedDocuments]);
 
   // Save changes
   const handleSave = async () => {
@@ -292,6 +426,68 @@ export default function CustomerDetailPage() {
         description: "Hatırlatma oluşturulamadı.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Create new conversation
+  const handleCreateConversation = async () => {
+    if (!newConversationForm.subject.trim()) {
+      toast({
+        title: "Hata",
+        description: "Konu alanı zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreatingConversation(true);
+    try {
+      // Create the conversation
+      const conversationData = {
+        channel: newConversationForm.channel,
+        subject: newConversationForm.subject,
+        name: customer.name,
+        email: customer.email || "",
+        phone: customer.phone || "",
+        company: customer.company?.name || "",
+        customerId: customerId,
+        message: newConversationForm.message || "",
+        createdBy: user?.uid,
+      };
+
+      const newConversation = await createConversation(conversationData);
+
+      // If there's a message and this is a new conversation (not duplicate)
+      if (newConversationForm.message.trim() && newConversation?.id && !newConversation.skipped) {
+        // First message is added by createConversation, but if we need to add an outbound message
+        // we can add it separately if the form channel is manual and we want it as internal note
+      }
+
+      toast({ 
+        title: "Başarılı", 
+        description: newConversation.skipped 
+          ? "Mevcut konuşmaya yönlendiriliyorsunuz." 
+          : "Yeni iletişim oluşturuldu." 
+      });
+      
+      setShowNewConversationModal(false);
+      setNewConversationForm({
+        channel: CHANNEL.MANUAL,
+        subject: "",
+        message: "",
+      });
+      
+      // Navigate to the conversation
+      router.push(`/admin/crm-v2/inbox/${newConversation.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast({
+        title: "Hata",
+        description: "İletişim oluşturulamadı.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingConversation(false);
     }
   };
 
@@ -437,6 +633,15 @@ export default function CustomerDetailPage() {
               >
                 Siparişler ({orders.length})
               </TabsTrigger>
+              {customer?.linkedCompanyId && (
+                <TabsTrigger
+                  value="documents"
+                  className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
+                >
+                  <Link2 className="h-3.5 w-3.5 mr-1.5" />
+                  Belgeler ({linkedProformas.length + linkedContracts.length + linkedCalculations.length})
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Overview Tab */}
@@ -750,6 +955,17 @@ export default function CustomerDetailPage() {
 
             {/* Conversations Tab */}
             <TabsContent value="conversations" className="space-y-4 mt-6">
+              {/* New Conversation Button */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setShowNewConversationModal(true)}
+                  className="bg-slate-800 hover:bg-slate-900 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Yeni İletişim Başlat
+                </Button>
+              </div>
+              
               {conversations.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
@@ -757,6 +973,9 @@ export default function CustomerDetailPage() {
                   </div>
                   <p className="text-slate-500 font-medium">
                     Henüz konuşma yok
+                  </p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Yukarıdaki butona tıklayarak yeni iletişim başlatabilirsiniz.
                   </p>
                 </div>
               ) : (
@@ -891,6 +1110,283 @@ export default function CustomerDetailPage() {
                 ))
               )}
             </TabsContent>
+
+            {/* Documents Tab - Linked from Company */}
+            {customer?.linkedCompanyId && (
+              <TabsContent value="documents" className="space-y-6 mt-6">
+                {/* Company Link Info */}
+                {linkedCompany && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-blue-600 font-medium">Bağlı Firma</p>
+                          <p className="text-base font-semibold text-blue-900">{linkedCompany.name}</p>
+                        </div>
+                      </div>
+                      <Link href={`/admin/companies/${linkedCompany.id}`}>
+                        <Button size="sm" variant="outline" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Firmaya Git
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {documentsLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-32 w-full bg-slate-100" />
+                    <Skeleton className="h-32 w-full bg-slate-100" />
+                    <Skeleton className="h-32 w-full bg-slate-100" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Proformas Section */}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          <Receipt className="h-4 w-4 text-blue-500" />
+                          Proformalar
+                          <Badge variant="secondary" className="ml-2 bg-blue-50 text-blue-700">
+                            {linkedProformas.length}
+                          </Badge>
+                        </h3>
+                        {linkedCompany && (
+                          <Link href={`/admin/proformas/new?companyId=${linkedCompany.id}`}>
+                            <Button size="sm" variant="outline" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Yeni
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        {linkedProformas.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                              <Receipt className="h-6 w-6 text-slate-400" />
+                            </div>
+                            <p className="text-sm text-slate-500">Henüz proforma yok</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {linkedProformas.map((proforma) => (
+                              <div
+                                key={proforma.id}
+                                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-9 w-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <Receipt className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-800 text-sm">
+                                      {proforma.proformaNumber || `#${proforma.id?.slice(0, 8)}`}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {proforma.createdAt && format(
+                                        proforma.createdAt?.toDate?.() || new Date(proforma.createdAt),
+                                        "dd MMM yyyy",
+                                        { locale: tr }
+                                      )}
+                                      {proforma.totals?.grandTotal && (
+                                        <span className="ml-2 font-medium text-emerald-600">
+                                          {formatCurrency(proforma.totals.grandTotal)}
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-xs",
+                                      proforma.status === "accepted" && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                      proforma.status === "sent" && "bg-blue-50 text-blue-700 border-blue-200",
+                                      proforma.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200",
+                                      proforma.status === "rejected" && "bg-red-50 text-red-700 border-red-200",
+                                      proforma.status === "expired" && "bg-amber-50 text-amber-700 border-amber-200"
+                                    )}
+                                  >
+                                    {PROFORMA_STATUS_LABELS[proforma.status] || proforma.status}
+                                  </Badge>
+                                  <Link href={`/admin/proformas/${proforma.id}`}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                      <Eye className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Contracts Section */}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-green-500" />
+                          Sözleşmeler
+                          <Badge variant="secondary" className="ml-2 bg-green-50 text-green-700">
+                            {linkedContracts.length}
+                          </Badge>
+                        </h3>
+                        {linkedCompany && (
+                          <Link href={`/admin/contracts/new?companyId=${linkedCompany.id}`}>
+                            <Button size="sm" variant="outline" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Yeni
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        {linkedContracts.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                              <FileText className="h-6 w-6 text-slate-400" />
+                            </div>
+                            <p className="text-sm text-slate-500">Henüz sözleşme yok</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {linkedContracts.map((contract) => (
+                              <div
+                                key={contract.id}
+                                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-800 text-sm">
+                                      {contract.contractNumber || `#${contract.id?.slice(0, 8)}`}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {contract.contractType && (
+                                        <span className="mr-2">{contract.contractType}</span>
+                                      )}
+                                      {contract.createdAt && format(
+                                        contract.createdAt?.toDate?.() || new Date(contract.createdAt),
+                                        "dd MMM yyyy",
+                                        { locale: tr }
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-xs",
+                                      contract.status === "active" && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                      contract.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200",
+                                      contract.status === "completed" && "bg-blue-50 text-blue-700 border-blue-200",
+                                      contract.status === "cancelled" && "bg-red-50 text-red-700 border-red-200"
+                                    )}
+                                  >
+                                    {contract.status === "active" ? "Aktif" :
+                                     contract.status === "draft" ? "Taslak" :
+                                     contract.status === "completed" ? "Tamamlandı" :
+                                     contract.status === "cancelled" ? "İptal" : contract.status}
+                                  </Badge>
+                                  <Link href={`/admin/contracts/${contract.id}`}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                      <Eye className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Calculations Section */}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          <Calculator className="h-4 w-4 text-purple-500" />
+                          Fiyat Hesaplamaları
+                          <Badge variant="secondary" className="ml-2 bg-purple-50 text-purple-700">
+                            {linkedCalculations.length}
+                          </Badge>
+                        </h3>
+                        <Link href="/admin/pricing">
+                          <Button size="sm" variant="outline" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-50">
+                            <Plus className="h-4 w-4 mr-1" />
+                            Hesaplama Yap
+                          </Button>
+                        </Link>
+                      </div>
+                      <div className="p-4">
+                        {linkedCalculations.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                              <Calculator className="h-6 w-6 text-slate-400" />
+                            </div>
+                            <p className="text-sm text-slate-500">Henüz hesaplama yok</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {linkedCalculations.map((calc) => (
+                              <div
+                                key={calc.id}
+                                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-9 w-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                                    <Calculator className="h-4 w-4 text-purple-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-800 text-sm">
+                                      {calc.productName || calc.name || "Hesaplama"}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {calc.createdAt && format(
+                                        calc.createdAt?.toDate?.() || new Date(calc.createdAt),
+                                        "dd MMM yyyy",
+                                        { locale: tr }
+                                      )}
+                                      {calc.totalCost && (
+                                        <span className="ml-2 font-medium text-purple-600">
+                                          {formatCurrency(calc.totalCost)}
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {calc.productType && (
+                                    <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                      {calc.productType}
+                                    </Badge>
+                                  )}
+                                  <Link href={`/admin/pricing?id=${calc.id}`}>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                      <Eye className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
@@ -1157,6 +1653,95 @@ export default function CustomerDetailPage() {
             >
               <Bell className="h-4 w-4 mr-2" />
               Oluştur
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Conversation Modal */}
+      <Dialog open={showNewConversationModal} onOpenChange={setShowNewConversationModal}>
+        <DialogContent className="bg-white border-slate-200 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-slate-800 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-slate-600" />
+              Yeni İletişim Başlat
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              {customer?.name} ile yeni bir iletişim başlatın.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-slate-600 text-sm">Kanal</Label>
+              <Select
+                value={newConversationForm.channel}
+                onValueChange={(v) =>
+                  setNewConversationForm({ ...newConversationForm, channel: v })
+                }
+              >
+                <SelectTrigger className="bg-slate-50 border-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value={CHANNEL.MANUAL}>Manuel</SelectItem>
+                  <SelectItem value={CHANNEL.EMAIL}>E-posta</SelectItem>
+                  <SelectItem value={CHANNEL.PHONE}>Telefon</SelectItem>
+                  <SelectItem value={CHANNEL.WHATSAPP}>WhatsApp</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-600 text-sm">Konu *</Label>
+              <Input
+                placeholder="İletişim konusu"
+                value={newConversationForm.subject}
+                onChange={(e) =>
+                  setNewConversationForm({ ...newConversationForm, subject: e.target.value })
+                }
+                className="bg-slate-50 border-slate-200 focus:bg-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-600 text-sm">İlk Mesaj (Opsiyonel)</Label>
+              <Textarea
+                placeholder="İletişim için ilk not veya mesaj..."
+                value={newConversationForm.message}
+                onChange={(e) =>
+                  setNewConversationForm({ ...newConversationForm, message: e.target.value })
+                }
+                rows={4}
+                className="bg-slate-50 border-slate-200 focus:bg-white"
+              />
+              <p className="text-xs text-slate-400">
+                Bu mesaj iletişim kaydına dahili not olarak eklenecektir.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewConversationModal(false)}
+              className="bg-white border-slate-200 text-slate-600"
+              disabled={creatingConversation}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleCreateConversation}
+              disabled={!newConversationForm.subject.trim() || creatingConversation}
+              className="bg-slate-800 hover:bg-slate-900 text-white"
+            >
+              {creatingConversation ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Oluşturuluyor...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  İletişim Başlat
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

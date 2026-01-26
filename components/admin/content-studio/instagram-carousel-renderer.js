@@ -6,6 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, ImageIcon, Sparkles, Layers, Zap } from "lucide-react";
 
+// Helper function to safely render any value (handles objects, arrays, strings)
+const safeRenderValue = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item, idx) => (
+      <div key={idx} className="mb-1">
+        {typeof item === 'object' ? (
+          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+            {JSON.stringify(item, null, 2)}
+          </span>
+        ) : (
+          <span>• {String(item)}</span>
+        )}
+      </div>
+    ));
+  }
+  if (typeof value === 'object') {
+    // Handle nested objects like {slide1: '...', slide2: '...'}
+    const entries = Object.entries(value);
+    if (entries.length === 0) return '';
+    
+    return (
+      <div className="space-y-2">
+        {entries.map(([key, val]) => (
+          <div key={key} className="flex items-start gap-2 p-2 bg-white rounded-lg">
+            <Badge className="bg-gradient-to-r from-pink-500 to-purple-500 text-white shrink-0 capitalize">
+              {key.replace(/([A-Z])/g, ' $1').replace(/([0-9]+)/g, ' $1').trim()}
+            </Badge>
+            <span className="text-sm text-gray-700">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return String(value);
+};
+
 export function InstagramCarouselRenderer({ content, updateContent, handleCopy }) {
   return (
     <div className="space-y-6">
@@ -146,9 +191,11 @@ export function InstagramCarouselRenderer({ content, updateContent, handleCopy }
                         <Badge className="bg-gradient-to-r from-pink-500 to-purple-500 text-white shrink-0">
                           {idx + 1}
                         </Badge>
-                        <p className="text-sm text-gray-700">{slide}</p>
+                        <p className="text-sm text-gray-700">{typeof slide === 'object' ? JSON.stringify(slide) : slide}</p>
                       </div>
                     ))
+                  ) : typeof content.visualSuggestions.carouselIdea === 'object' ? (
+                    safeRenderValue(content.visualSuggestions.carouselIdea)
                   ) : (
                     <p className="text-sm text-gray-700">
                       {content.visualSuggestions.carouselIdea}

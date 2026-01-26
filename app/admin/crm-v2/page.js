@@ -9,14 +9,6 @@ import {
   getCaseStatistics,
   getCustomerStatistics,
   getRecentActivities,
-  getUpcomingReminders,
-  // Birleşik Sync fonksiyonları
-  autoSyncIfNeeded,
-  manualSync,
-  getLastSyncTime,
-  formatSyncStatus,
-  // Sync Lock fonksiyonları
-  getSyncLockStatus,
 } from "../../../lib/services/crm-v2";
 import {
   CASE_STATUS,
@@ -41,7 +33,6 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { Progress } from "../../../components/ui/progress";
 import { ScrollArea } from "../../../components/ui/scroll-area";
@@ -56,7 +47,6 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Bell,
   Plus,
   RefreshCw,
   BarChart3,
@@ -67,8 +57,6 @@ import {
   Mail,
   Phone,
   Loader2,
-  RefreshCcw,
-  Settings,
 } from "lucide-react";
 
 export default function CrmV2DashboardPage() {
@@ -76,25 +64,21 @@ export default function CrmV2DashboardPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState(null);
   
   const [data, setData] = useState({
     inboxCounts: null,
     caseStats: null,
     customerStats: null,
     recentActivities: [],
-    upcomingReminders: [],
   });
 
   const loadDashboardData = async () => {
     try {
-      const [inboxCounts, caseStats, customerStats, recentActivities, upcomingReminders] = await Promise.all([
+      const [inboxCounts, caseStats, customerStats, recentActivities] = await Promise.all([
         getUnifiedInboxCounts({ assignedTo: null }),
         getCaseStatistics(),
         getCustomerStatistics(),
         getRecentActivities({ limitCount: 10 }),
-        getUpcomingReminders(user?.uid, { limitCount: 5 }),
       ]);
 
       setData({
@@ -102,7 +86,6 @@ export default function CrmV2DashboardPage() {
         caseStats,
         customerStats,
         recentActivities,
-        upcomingReminders,
       });
     } catch (error) {
       console.error("Error loading dashboard data:", error);
@@ -116,135 +99,9 @@ export default function CrmV2DashboardPage() {
     loadDashboardData();
   }, []);
 
-  // Sync durumunu yükle ve otomatik sync kontrolü yap
-  useEffect(() => {
-    const initSync = async () => {
-      try {
-        // Sync durumunu al
-        const syncData = await getLastSyncTime();
-        setSyncStatus(syncData);
-        
-        // Otomatik birleşik sync kontrolü (15 dakika geçtiyse)
-        if (user?.uid) {
-          console.log("[CRM Dashboard] Checking auto-sync (forms + emails)...");
-          const result = await autoSyncIfNeeded(user.uid);
-          
-          if (result && !result.skipped && result.summary) {
-            const { imported, threadUpdates, forms, emails } = result.summary;
-            
-            if (imported > 0 || threadUpdates > 0) {
-              let description = '';
-              if (forms > 0) description += `${forms} form`;
-              if (emails > 0) description += `${description ? ', ' : ''}${emails} email`;
-              
-              toast({
-                title: "Otomatik Senkronizasyon",
-                description: `${description} senkronize edildi.`,
-              });
-              // Verileri yenile
-              loadDashboardData();
-            }
-            
-            // Sync durumunu güncelle
-            const updatedSyncData = await getLastSyncTime();
-            setSyncStatus(updatedSyncData);
-          }
-        }
-      } catch (error) {
-        console.error("[CRM Dashboard] Init sync error:", error);
-      }
-    };
-    
-    initSync();
-  }, [user?.uid]);
-
   const handleRefresh = () => {
     setRefreshing(true);
     loadDashboardData();
-  };
-
-  // Manuel senkronizasyon (formlar + emailler - birleşik)
-  const handleManualSync = async () => {
-    if (syncing) return;
-    
-    // 🔒 Önce lock durumunu kontrol et
-    const lockStatus = getSyncLockStatus();
-    if (lockStatus.isLocked) {
-      const elapsedSec = Math.round((lockStatus.elapsed || 0) / 1000);
-      toast({
-        title: "⏳ Senkronizasyon Devam Ediyor",
-        description: `Başka bir senkronizasyon işlemi çalışıyor (${elapsedSec}s). Lütfen bekleyin.`,
-        variant: "default",
-      });
-      return;
-    }
-    
-    setSyncing(true);
-    try {
-      console.log('[CRM Dashboard] Starting unified sync (forms + emails)...');
-      const result = await manualSync(user?.uid);
-      
-      // Lock nedeniyle skip edildiyse
-      if (result.skipReason === 'sync_locked') {
-        toast({
-          title: "⏳ Senkronizasyon Bekleniyor",
-          description: result.message || "Başka bir işlem devam ediyor.",
-          variant: "default",
-        });
-        return;
-      }
-      
-      if (result.skipped) {
-        toast({
-          title: "Senkronizasyon Atlandı",
-          description: result.message || "Son 15 dakikada senkronize edilmiş.",
-        });
-      } else if (result.summary) {
-        const { imported, threadUpdates, forms, emails, errors } = result.summary;
-        
-        let description = '';
-        
-        if (imported > 0 || threadUpdates > 0) {
-          const parts = [];
-          if (forms > 0) parts.push(`${forms} form`);
-          if (emails > 0) parts.push(`${emails} email`);
-          description = parts.join(', ') + ' senkronize edildi.';
-        } else {
-          description = 'Yeni veri bulunamadı.';
-        }
-        
-        if (errors > 0) {
-          description += ` ${errors} hata.`;
-          console.error('[CRM Dashboard] Sync errors:', result.results);
-        }
-        
-        toast({
-          title: (imported > 0 || threadUpdates > 0) 
-            ? "✅ Senkronizasyon Tamamlandı" 
-            : "Kontrol Edildi",
-          description,
-        });
-        
-        // Verileri yenile
-        if (imported > 0 || threadUpdates > 0) {
-          loadDashboardData();
-        }
-      }
-      
-      // Sync durumunu güncelle
-      const updatedSyncData = await getLastSyncTime();
-      setSyncStatus(updatedSyncData);
-      
-    } catch (error) {
-      console.error("Sync error:", error);
-      toast({
-        title: "Senkronizasyon Hatası",
-        description: "Veriler senkronize edilirken bir hata oluştu.",
-        variant: "destructive",
-      });
-    } finally {
-      setSyncing(false);
-    }
   };
 
   const formatCurrency = (value) => {
@@ -287,30 +144,6 @@ export default function CrmV2DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Birleşik Sync Status & Button */}
-            <div className="flex items-center gap-2">
-              {syncStatus && (
-                <span className={`text-xs ${formatSyncStatus(syncStatus).color}`}>
-                  {formatSyncStatus(syncStatus).label}
-                </span>
-              )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleManualSync} 
-                disabled={syncing}
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
-                title="Formları ve Outlook emaillerini senkronize et"
-              >
-                {syncing ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCcw className="h-4 w-4 mr-2" />
-                )}
-                {syncing ? "Senkronize..." : "Senkronize Et"}
-              </Button>
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
             <Button 
               variant="ghost" 
               size="sm" 
@@ -319,12 +152,6 @@ export default function CrmV2DashboardPage() {
               title="Yenile"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/admin/crm-v2/settings">
-                <Settings className="h-4 w-4 mr-2" />
-                Ayarlar
-              </Link>
             </Button>
             <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
               <Link href="/admin/crm-v2/inbox">
@@ -524,52 +351,6 @@ export default function CrmV2DashboardPage() {
                   </Link>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Upcoming Reminders */}
-          <Card className="bg-white border-slate-200">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="flex items-center gap-2 text-slate-900">
-                <Bell className="h-5 w-5 text-slate-600" />
-                Hatırlatmalar
-              </CardTitle>
-              <CardDescription className="text-slate-500">Yaklaşan hatırlatmalarınız</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {data.upcomingReminders.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="p-3 bg-slate-50 rounded-full w-fit mx-auto mb-3">
-                    <Bell className="h-8 w-8 text-slate-300" />
-                  </div>
-                  <p className="text-sm text-slate-500">Yaklaşan hatırlatma yok</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {data.upcomingReminders.map((reminder) => (
-                    <div
-                      key={reminder.id}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
-                    >
-                      <div className="p-2 rounded-lg bg-amber-50">
-                        <Bell className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">
-                          {reminder.metadata?.title || "Hatırlatma"}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {reminder.metadata?.dueDate &&
-                            formatDistanceToNow(reminder.metadata.dueDate.toDate(), {
-                              addSuffix: true,
-                              locale: tr,
-                            })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

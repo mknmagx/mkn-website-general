@@ -91,6 +91,7 @@ const initialFormState = {
   notes: "",
   sourceFormulaId: null,
   sourceFormulaName: null,
+  sourceFormulaProductionQuantity: null, // Formül yazılırken seçilen kutu içindeki adet
   selectedCompanyIds: [], // Seçili müşteriler
 };
 
@@ -558,6 +559,7 @@ JSON formatında şu bilgileri içer:
         // CRITICAL: Always preserve formula reference if it exists
         sourceFormulaId: formData.sourceFormulaId || null,
         sourceFormulaName: formData.sourceFormulaName || null,
+        sourceFormulaProductionQuantity: formData.sourceFormulaProductionQuantity || null, // Kutu içindeki adet
       };
 
       const calculationData = {
@@ -737,14 +739,28 @@ JSON formatında şu bilgileri içer:
         function: mapFunctionToFormValue(ing.function),
       }));
 
+      // Formül notlarını oluştur - AI önerisi varsa ekle
+      const formulaNotesParts = [];
+   
+      if (formulaData.suggestions) {
+        formulaNotesParts.push(`${formulaData.suggestions}`);
+      }
+      if (formulaData.recommendations) {
+        formulaNotesParts.push(`Öneriler: ${formulaData.recommendations}`);
+      }
+      const combinedNotes = formulaNotesParts.join("\n\n");
+
       setFormData((prev) => ({
         ...prev,
+        productName: formulaData.name || prev.productName, // Formül adını ürün ismine yaz
         productType: formulaData.productType || prev.productType,
         productVolume: formulaData.productVolume || prev.productVolume,
         ingredients: mappedIngredients,
-        notes: formulaData.notes || "",
+        description: formulaData.productDescription || "", // Pazarlama içeriğini ürün açıklamasına yaz
+        notes: combinedNotes, // Formül notları + AI önerisi
         sourceFormulaId: formulaId,
         sourceFormulaName: formulaData.name,
+        sourceFormulaProductionQuantity: formulaData.productionQuantity || null, // Kutu içindeki adet
       }));
 
       setShowLoadFormulaDialog(false);
@@ -1114,6 +1130,14 @@ JSON formatında şu bilgileri içer:
                               {formData.sourceFormulaName}
                             </Badge>
                           )}
+                        {formData.sourceFormulaProductionQuantity && (
+                          <Badge
+                            variant="outline"
+                            className="ml-1 bg-green-50 text-green-700 border-green-200"
+                          >
+                            {formData.sourceFormulaProductionQuantity} adet/kutu
+                          </Badge>
+                        )}
                       </CardTitle>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {formData.ingredients.filter((i) => i.name).length}{" "}
@@ -1122,6 +1146,11 @@ JSON formatında şu bilgileri içer:
                         {formData.sourceFormulaId && (
                           <span className="text-blue-600 ml-2">
                             • Formülden yüklendi
+                          </span>
+                        )}
+                        {formData.sourceFormulaProductionQuantity && (
+                          <span className="text-green-600 ml-2">
+                            • {formData.sourceFormulaProductionQuantity} adet × birim maliyet
                           </span>
                         )}
                       </p>
@@ -1361,12 +1390,19 @@ JSON formatında şu bilgileri içer:
                                   </td>
                                   <td className="px-4 py-3">
                                     {calculatedCost > 0 ? (
-                                      <Badge
-                                        variant="outline"
-                                        className="bg-green-50 text-green-700 border-green-200 font-semibold"
-                                      >
-                                        {calculatedCost} ₺
-                                      </Badge>
+                                      <div className="flex flex-col">
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-green-50 text-green-700 border-green-200 font-semibold"
+                                        >
+                                          {calculatedCost} ₺
+                                        </Badge>
+                                        {formData.sourceFormulaProductionQuantity > 1 && (
+                                          <span className="text-xs text-gray-500 mt-1">
+                                            1 adet: {(Number(calculatedCost) / formData.sourceFormulaProductionQuantity).toFixed(4)} ₺
+                                          </span>
+                                        )}
+                                      </div>
                                     ) : (
                                       <span className="text-gray-400 text-sm">
                                         -
@@ -1393,19 +1429,31 @@ JSON formatında şu bilgileri içer:
                                 <span className="text-sm font-bold text-purple-900 dark:text-purple-100 uppercase tracking-wide">
                                   Toplam Hammadde Maliyeti:
                                 </span>
+                                {formData.sourceFormulaProductionQuantity && (
+                                  <span className="text-xs text-purple-600 ml-2">
+                                    ({formData.sourceFormulaProductionQuantity} adet × birim maliyet)
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-4">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-gradient-to-r from-purple-600 to-purple-700 text-white border-0 font-bold text-base px-4 py-2 shadow-md"
-                                >
-                                  {calculatePrice?.ingredientsCostTotal
-                                    ? Number(
-                                        calculatePrice.ingredientsCostTotal
-                                      ).toFixed(2)
-                                    : "0.00"}{" "}
-                                  ₺
-                                </Badge>
+                                <div className="flex flex-col items-start">
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-gradient-to-r from-purple-600 to-purple-700 text-white border-0 font-bold text-base px-4 py-2 shadow-md"
+                                  >
+                                    {calculatePrice?.ingredientsCostPerUnit
+                                      ? Number(
+                                          calculatePrice.ingredientsCostPerUnit
+                                        ).toFixed(2)
+                                      : "0.00"}{" "}
+                                    ₺
+                                  </Badge>
+                                  {formData.sourceFormulaProductionQuantity > 1 && calculatePrice?.ingredientsCostPerUnit && (
+                                    <span className="text-xs text-purple-600 mt-1">
+                                      1 adet: {(Number(calculatePrice.ingredientsCostPerUnit) / formData.sourceFormulaProductionQuantity).toFixed(4)} ₺
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td></td>
                             </tr>
@@ -2200,6 +2248,11 @@ JSON formatında şu bilgileri içer:
                 <div className="space-y-3">
                   <h4 className="font-semibold text-green-900 text-sm uppercase tracking-wide">
                     Birim Maliyetler
+                    {formData.sourceFormulaProductionQuantity && (
+                      <span className="text-xs font-normal text-green-600 ml-1">
+                        ({formData.sourceFormulaProductionQuantity} adet/kutu)
+                      </span>
+                    )}
                   </h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">

@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useEffect, use, useMemo } from "react";
+import { useState, useEffect, use, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { PermissionGuard } from "@/components/admin-route-guard";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -51,11 +45,15 @@ import {
   Tag,
   Users,
   Percent,
-  AlertCircle,
   FileText,
   TrendingUp,
   Beaker,
   Building2,
+  RefreshCw,
+  AlertTriangle,
+  Globe,
+  Clock,
+  Box,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -93,6 +91,14 @@ export default function PricingCalculationDetailPage({ params }) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Currency conversion states
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [loadingRate, setLoadingRate] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const [savingCurrency, setSavingCurrency] = useState(false);
+  const [showCurrencyWarning, setShowCurrencyWarning] = useState(false);
+
   useEffect(() => {
     loadCalculation();
   }, [id]);
@@ -109,13 +115,33 @@ export default function PricingCalculationDetailPage({ params }) {
       const data = await PricingService.getPricingCalculation(id);
       setCalculation(data);
 
-      // Initialize form data from calculation
       if (data.formData) {
-        // Ensure arrays exist
         const initializedFormData = {
           ...data.formData,
           packaging: data.formData.packaging || [],
           otherCosts: data.formData.otherCosts || [],
+          boxes:
+            data.formData.boxes ||
+            (data.formData.boxType
+              ? [
+                  {
+                    type: data.formData.boxType,
+                    quantity: data.formData.boxQuantity,
+                    price: data.formData.boxPrice,
+                  },
+                ]
+              : []),
+          labels:
+            data.formData.labels ||
+            (data.formData.labelType
+              ? [
+                  {
+                    type: data.formData.labelType,
+                    quantity: data.formData.labelQuantity,
+                    price: data.formData.labelPrice,
+                  },
+                ]
+              : []),
         };
         setFormData(initializedFormData);
       }
@@ -152,6 +178,103 @@ export default function PricingCalculationDetailPage({ params }) {
     }
   };
 
+  // Fetch exchange rate from API
+  const fetchExchangeRate = useCallback(async () => {
+    setLoadingRate(true);
+    try {
+      const response = await fetch(
+        `https://api.exchangerate-api.com/v4/latest/${selectedCurrency}`,
+      );
+      const data = await response.json();
+      const tryRate = data.rates?.TRY;
+      if (tryRate) {
+        setExchangeRate(tryRate.toFixed(4));
+      } else {
+        throw new Error("Rate not found");
+      }
+    } catch (error) {
+      console.error("Exchange rate fetch error:", error);
+      toast({
+        title: "Uyarı",
+        description: "Döviz kuru alınamadı. Manuel girebilirsiniz.",
+        variant: "destructive",
+      });
+      const fallbackRates = { USD: "35.00", EUR: "38.00", GBP: "44.00" };
+      setExchangeRate(fallbackRates[selectedCurrency] || "35.00");
+    } finally {
+      setLoadingRate(false);
+    }
+  }, [selectedCurrency, toast]);
+
+  useEffect(() => {
+    if (showCurrencyModal) {
+      fetchExchangeRate();
+    }
+  }, [selectedCurrency, showCurrencyModal, fetchExchangeRate]);
+
+  const handleOpenCurrencyModal = () => {
+    if (calculation?.currencyData?.currency) {
+      setShowCurrencyWarning(true);
+    } else {
+      setShowCurrencyModal(true);
+    }
+  };
+
+  const handleCurrencyWarningConfirm = () => {
+    setShowCurrencyWarning(false);
+    setShowCurrencyModal(true);
+  };
+
+  const handleSaveCurrency = async () => {
+    if (!exchangeRate || parseFloat(exchangeRate) <= 0) {
+      toast({
+        title: "Hata",
+        description: "Geçerli bir kur değeri giriniz.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSavingCurrency(true);
+
+      const rate = parseFloat(exchangeRate);
+      const unitPriceTRY = calculation.calculations?.unitPrice || 0;
+      const totalPriceTRY = calculation.calculations?.totalPrice || 0;
+
+      const currencyData = {
+        currency: selectedCurrency,
+        exchangeRate: rate,
+        unitPriceConverted: (unitPriceTRY / rate).toFixed(2),
+        totalPriceConverted: (totalPriceTRY / rate).toFixed(2),
+        convertedAt: new Date().toISOString(),
+        convertedAtTimestamp: Timestamp.now(),
+      };
+
+      await updateDoc(doc(db, "pricingCalculations", id), {
+        currencyData,
+        updatedAt: Timestamp.now(),
+      });
+
+      toast({
+        title: "Başarılı",
+        description: `Döviz bilgisi kaydedildi. Birim: ${currencyData.unitPriceConverted} ${selectedCurrency}`,
+      });
+
+      setShowCurrencyModal(false);
+      loadCalculation();
+    } catch (error) {
+      console.error("Currency save error:", error);
+      toast({
+        title: "Hata",
+        description: "Döviz bilgisi kaydedilemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingCurrency(false);
+    }
+  };
+
   const handleAddCompanyToCalculation = async () => {
     if (!selectedCompanyToAdd) return;
 
@@ -174,7 +297,7 @@ export default function PricingCalculationDetailPage({ params }) {
 
       await CompaniesService.addPricingCalculationToCompany(
         selectedCompanyToAdd,
-        calculationInfo
+        calculationInfo,
       );
 
       toast({
@@ -197,12 +320,12 @@ export default function PricingCalculationDetailPage({ params }) {
 
   const handleRemoveCompanyFromCalculation = async (
     companyId,
-    calculationRecordId
+    calculationRecordId,
   ) => {
     try {
       await CompaniesService.removePricingCalculationFromCompany(
         companyId,
-        calculationRecordId
+        calculationRecordId,
       );
 
       toast({
@@ -242,13 +365,11 @@ export default function PricingCalculationDetailPage({ params }) {
     }
   };
 
-  // Calculate pricing from form data
   const calculatedPrice = useMemo(() => {
     if (!formData) return null;
     return PricingService.calculatePricing(formData);
   }, [formData]);
 
-  // Form update functions
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -277,7 +398,7 @@ export default function PricingCalculationDetailPage({ params }) {
   };
 
   const removeIngredient = (index) => {
-    if (formData.ingredients.length > 1) {
+    if (formData.ingredients.length > 0) {
       setFormData((prev) => ({
         ...prev,
         ingredients: prev.ingredients.filter((_, i) => i !== index),
@@ -309,12 +430,54 @@ export default function PricingCalculationDetailPage({ params }) {
   };
 
   const removePackaging = (index) => {
-    if (formData.packaging.length > 1) {
+    if (formData.packaging.length > 0) {
       setFormData((prev) => ({
         ...prev,
         packaging: prev.packaging.filter((_, i) => i !== index),
       }));
     }
+  };
+
+  // Box functions
+  const updateBox = (index, field, value) => {
+    const newBoxes = [...(formData.boxes || [])];
+    newBoxes[index] = { ...newBoxes[index], [field]: value };
+    setFormData((prev) => ({ ...prev, boxes: newBoxes }));
+  };
+
+  const addBox = () => {
+    setFormData((prev) => ({
+      ...prev,
+      boxes: [...(prev.boxes || []), { type: "", quantity: "", price: "" }],
+    }));
+  };
+
+  const removeBox = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      boxes: (prev.boxes || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Label functions
+  const updateLabel = (index, field, value) => {
+    const newLabels = [...(formData.labels || [])];
+    newLabels[index] = { ...newLabels[index], [field]: value };
+    setFormData((prev) => ({ ...prev, labels: newLabels }));
+  };
+
+  const addLabel = () => {
+    setFormData((prev) => ({
+      ...prev,
+      labels: [...(prev.labels || []), { type: "", quantity: "", price: "" }],
+    }));
+  };
+
+  const removeLabel = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      labels: (prev.labels || []).filter((_, i) => i !== index),
+    }));
   };
 
   const updateOtherCost = (index, field, value) => {
@@ -346,24 +509,23 @@ export default function PricingCalculationDetailPage({ params }) {
     try {
       setSaving(true);
 
-      // Validation: Ensure formula reference is preserved if it exists
       if (formData.sourceFormulaId && !formData.sourceFormulaName) {
         toast({
           title: "Eksik Bilgi",
-          description: "Formül referansı eksik. Lütfen sayfayı yenileyin.",
+          description: "Formül referansı eksik.",
           variant: "destructive",
         });
         setSaving(false);
         return;
       }
 
-      // Clean form data
       const cleanFormData = {
         ...formData,
         ingredients: formData.ingredients.filter((ing) => ing.name),
         packaging: formData.packaging.filter((pkg) => pkg.type),
+        boxes: (formData.boxes || []).filter((box) => box.type),
+        labels: (formData.labels || []).filter((label) => label.type),
         otherCosts: formData.otherCosts.filter((cost) => cost.description),
-        // CRITICAL: Always preserve formula reference if it exists
         sourceFormulaId: formData.sourceFormulaId || null,
         sourceFormulaName: formData.sourceFormulaName || null,
       };
@@ -386,18 +548,14 @@ export default function PricingCalculationDetailPage({ params }) {
 
       await updateDoc(doc(db, "pricingCalculations", id), updatedData);
 
-      toast({
-        title: "Kaydedildi",
-        description: "Değişiklikler başarıyla kaydedildi.",
-      });
-
+      toast({ title: "Kaydedildi", description: "Değişiklikler kaydedildi." });
       setEditMode(false);
       loadCalculation();
     } catch (error) {
       console.error("Save error:", error);
       toast({
         title: "Hata",
-        description: "Kaydetme sırasında hata oluştu.",
+        description: "Kaydetme hatası.",
         variant: "destructive",
       });
     } finally {
@@ -407,10 +565,7 @@ export default function PricingCalculationDetailPage({ params }) {
 
   const handleCancelEdit = () => {
     setEditMode(false);
-    // Reset form data to original calculation
-    if (calculation.formData) {
-      setFormData(calculation.formData);
-    }
+    if (calculation.formData) setFormData(calculation.formData);
   };
 
   const formatDate = (timestamp) => {
@@ -431,10 +586,48 @@ export default function PricingCalculationDetailPage({ params }) {
     }
   };
 
+  const calculateIngredientCost = (ing, boxQuantityMultiplier = 1) => {
+    const amount = parseFloat(ing.amount) || 0;
+    const price = parseFloat(ing.price) || 0;
+    const unit = ing.unit || "gram";
+
+    // 1 birim için maliyet
+    let costPerSingleUnit = 0;
+    if (unit === "adet") {
+      costPerSingleUnit = amount * price;
+    } else {
+      const kg =
+        unit === "gram"
+          ? amount / 1000
+          : unit === "kg"
+            ? amount
+            : unit === "ml"
+              ? amount / 1000
+              : unit === "litre"
+                ? amount
+                : amount / 1000;
+      costPerSingleUnit = kg * price;
+    }
+
+    // Kutu başına maliyet (kutu içerik adedi ile çarp)
+    return costPerSingleUnit * boxQuantityMultiplier;
+  };
+
+  // Kutu içerik adedi (formülden gelen, örn: 60 kapsül/kutu)
+  const boxQuantityMultiplier =
+    parseFloat(calculation?.formData?.sourceFormulaProductionQuantity) || 1;
+
+  const getCurrencySymbol = (currency) => {
+    return currency === "USD" ? "$" : currency === "EUR" ? "€" : "£";
+  };
+
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-sm text-slate-500">Yükleniyor...</p>
+        </div>
       </div>
     );
   }
@@ -443,90 +636,77 @@ export default function PricingCalculationDetailPage({ params }) {
 
   return (
     <PermissionGuard requiredPermission="proformas.view" showMessage={true}>
-      <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-        {/* Modern Header with Glass Effect */}
-        <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 border-b border-gray-200">
-          <div className="container mx-auto px-6 py-6">
-            <div className="mb-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/admin/pricing-calculations")}
-                className="hover:bg-gray-100"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Geri Dön
-              </Button>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+        {/* Header */}
+        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <button
+              onClick={() => router.push("/admin/pricing-calculations")}
+              className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri Dön
+            </button>
 
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
-                    <Calculator className="h-7 w-7 text-white" />
-                  </div>
-                  {calculation.productName}
-                </h1>
-                <div className="flex gap-2 flex-wrap mt-3 ml-14">
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-700 border-blue-200"
-                  >
-                    {calculation.productType || "Genel"}
-                  </Badge>
-                  {calculation.quantity && (
-                    <Badge variant="outline" className="border-gray-300">
-                      {calculation.quantity} adet
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                  <Calculator className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {calculation.productName}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge className="bg-blue-50 text-blue-700 border-0">
+                      {calculation.productType || "Genel"}
                     </Badge>
-                  )}
-                  {calculation.productVolume && (
-                    <Badge variant="outline" className="border-gray-300">
-                      {calculation.productVolume} ml
-                    </Badge>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className="flex items-center gap-1 border-gray-300"
-                  >
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(calculation.createdAt)}
-                  </Badge>
-                  {calculation.formData?.sourceFormulaId &&
-                    calculation.formData?.sourceFormulaName && (
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-700 border-blue-200"
-                      >
-                        <Beaker className="h-3 w-3 mr-1" />
-                        {calculation.formData.sourceFormulaName}
+                    <Badge variant="outline">{calculation.quantity} adet</Badge>
+                    {calculation.productVolume && (
+                      <Badge variant="outline">
+                        {calculation.productVolume} ml
                       </Badge>
                     )}
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(calculation.createdAt)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {!editMode ? (
                   <>
+                    <Button
+                      onClick={handleOpenCurrencyModal}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Döviz Çevir
+                    </Button>
                     <PricingCalculationPDFExport
                       calculation={calculation}
-                      fileName={`maliyet-hesaplama-${
-                        calculation.productName?.replace(/[^a-z0-9]/gi, "_") ||
-                        "urun"
-                      }.pdf`}
+                      fileName={`maliyet-${calculation.productName?.replace(/[^a-z0-9]/gi, "_")}.pdf`}
                     />
                     <Button
                       onClick={() => setEditMode(true)}
                       variant="outline"
-                      className="border-2 border-blue-300 hover:bg-blue-50"
+                      size="sm"
+                      className="gap-2"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
+                      <Edit className="h-4 w-4" />
                       Düzenle
                     </Button>
                     <Button
                       onClick={() => setDeleteDialog(true)}
                       variant="outline"
-                      className="border-2 border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700"
+                      size="sm"
+                      className="gap-2 border-red-200 text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-4 w-4" />
                       Sil
                     </Button>
                   </>
@@ -535,22 +715,24 @@ export default function PricingCalculationDetailPage({ params }) {
                     <Button
                       onClick={handleSave}
                       disabled={saving}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      size="sm"
+                      className="gap-2 bg-blue-600 hover:bg-blue-700"
                     >
                       {saving ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className="h-4 w-4" />
                       )}
                       Kaydet
                     </Button>
                     <Button
                       onClick={handleCancelEdit}
                       variant="outline"
+                      size="sm"
                       disabled={saving}
-                      className="border-2"
+                      className="gap-2"
                     >
-                      <X className="h-4 w-4 mr-2" />
+                      <X className="h-4 w-4" />
                       İptal
                     </Button>
                   </>
@@ -558,1676 +740,1702 @@ export default function PricingCalculationDetailPage({ params }) {
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="container mx-auto px-6 py-8 max-w-7xl">
-          {/* Formula Reference Warning in Edit Mode */}
-          {editMode &&
-            formData.sourceFormulaId &&
-            formData.sourceFormulaName && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-                <Beaker className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-blue-900 mb-1">
-                    Bu hesaplama bir formülden oluşturuldu
-                  </h4>
-                  <p className="text-sm text-blue-700">
-                    <strong>{formData.sourceFormulaName}</strong> formülü baz
-                    alınarak oluşturulmuştur. Değişiklikleriniz kaydedildiğinde
-                    formül bağlantısı korunacaktır.
-                  </p>
-                  <Link
-                    href={`/admin/formulas/${formData.sourceFormulaId}`}
-                    className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline"
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Formula Reference */}
+          {formData?.sourceFormulaId && formData?.sourceFormulaName && (
+            <div className="mb-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl flex items-start gap-3">
+              <Beaker className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-900">
+                  <span className="font-medium">
+                    {formData.sourceFormulaName}
+                  </span>{" "}
+                  formülünden oluşturuldu
+                </p>
+                <Link
+                  href={`/admin/formulas/${formData.sourceFormulaId}`}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  Formülü görüntüle →
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[
+              {
+                label: "Birim Fiyat",
+                value:
+                  editMode && calculatedPrice
+                    ? calculatedPrice.unitPrice
+                    : calculation.calculations?.unitPrice?.toFixed(2),
+                icon: DollarSign,
+                color: "blue",
+              },
+              {
+                label: "Toplam Fiyat",
+                value:
+                  editMode && calculatedPrice
+                    ? calculatedPrice.totalPrice
+                    : calculation.calculations?.totalPrice?.toFixed(2),
+                icon: Package,
+                color: "emerald",
+              },
+              {
+                label: "Birim Maliyet",
+                value:
+                  editMode && calculatedPrice
+                    ? calculatedPrice.totalCostPerUnit
+                    : calculation.calculations?.totalCostPerUnit?.toFixed(2),
+                icon: Tag,
+                color: "amber",
+              },
+              {
+                label: "Birim Kar",
+                value:
+                  editMode && calculatedPrice
+                    ? calculatedPrice.profitPerUnit
+                    : calculation.calculations?.profitPerUnit?.toFixed(2),
+                icon: TrendingUp,
+                color: "violet",
+                isProfit: true,
+              },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className={`w-10 h-10 bg-${item.color}-100 rounded-xl flex items-center justify-center`}
                   >
-                    <Beaker className="h-4 w-4" />
-                    Formülü görüntüle
-                  </Link>
+                    <item.icon className={`h-5 w-5 text-${item.color}-600`} />
+                  </div>
+                  <span className="text-sm text-slate-500">{item.label}</span>
                 </div>
+                <p
+                  className={`text-2xl font-bold ${item.isProfit ? "text-emerald-600" : "text-slate-900"}`}
+                >
+                  {item.isProfit && "+"}₺{item.value || "0.00"}
+                </p>
               </div>
-            )}
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 hover:shadow-2xl transition-all duration-300 border border-blue-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-blue-500 rounded-xl p-3">
-                  <DollarSign className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div className="text-sm font-medium text-blue-600 mb-1">
-                Birim Fiyat
-              </div>
-              <div className="text-3xl font-bold tracking-tight text-blue-700">
-                ₺
-                {editMode && calculatedPrice
-                  ? calculatedPrice.unitPrice
-                  : calculation.calculations?.unitPrice?.toFixed(2) || "0.00"}
-              </div>
-              <div className="text-sm mt-2 text-blue-600">Satış fiyatı</div>
-            </div>
-
-            <div className="group bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 hover:shadow-2xl transition-all duration-300 border border-green-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-green-500 rounded-xl p-3">
-                  <Package className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div className="text-sm font-medium text-green-600 mb-1">
-                Toplam Fiyat
-              </div>
-              <div className="text-3xl font-bold tracking-tight text-green-700">
-                ₺
-                {editMode && calculatedPrice
-                  ? calculatedPrice.totalPrice
-                  : calculation.calculations?.totalPrice?.toFixed(2) || "0.00"}
-              </div>
-              <div className="text-sm mt-2 text-green-600">
-                {calculation.quantity} adet için
-              </div>
-            </div>
-
-            <div className="group bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 hover:shadow-2xl transition-all duration-300 border border-orange-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-orange-500 rounded-xl p-3">
-                  <Tag className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div className="text-sm font-medium text-orange-600 mb-1">
-                Birim Maliyet
-              </div>
-              <div className="text-3xl font-bold tracking-tight text-orange-700">
-                ₺
-                {editMode && calculatedPrice
-                  ? calculatedPrice.totalCostPerUnit
-                  : calculation.calculations?.totalCostPerUnit?.toFixed(2) ||
-                    "0.00"}
-              </div>
-              <div className="text-sm mt-2 text-orange-600">Toplam maliyet</div>
-            </div>
-
-            <div className="group bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 hover:shadow-2xl transition-all duration-300 border border-purple-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-purple-500 rounded-xl p-3">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div className="text-sm font-medium text-purple-600 mb-1">
-                Birim Kar
-              </div>
-              <div className="text-3xl font-bold tracking-tight text-purple-700">
-                ₺
-                {editMode && calculatedPrice
-                  ? calculatedPrice.profitPerUnit
-                  : calculation.calculations?.profitPerUnit?.toFixed(2) ||
-                    "0.00"}
-              </div>
-              <div className="text-sm mt-2 text-purple-600">Kar marjı</div>
-            </div>
+            ))}
           </div>
 
-          {/* Linked Companies Card */}
-          <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Bağlı Müşteriler
-                  <Badge variant="secondary" className="ml-2">
-                    {linkedCompanies.length}
-                  </Badge>
-                </CardTitle>
-                <Button
-                  onClick={() => {
-                    loadAllCompanies();
-                    setShowAddCompanyDialog(true);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="border-2 border-blue-300 hover:bg-blue-50"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Müşteri Ekle
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {loadingCompanies ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-              ) : linkedCompanies.length === 0 ? (
-                <div className="text-center py-8">
-                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600 mb-4">
-                    Bu hesaplama henüz hiç müşteriye atanmamış
-                  </p>
-                  <Button
-                    onClick={() => {
-                      loadAllCompanies();
-                      setShowAddCompanyDialog(true);
-                    }}
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    İlk Müşteriyi Ekle
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {linkedCompanies.map((company) => {
-                    // Bu company'de bu hesaplamayı bul
-                    const calcInCompany = (
-                      company.pricingCalculations || []
-                    ).find((calc) => calc.calculationId === id);
-
-                    return (
-                      <div
-                        key={company.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <Link
-                            href={`/admin/companies/${company.id}`}
-                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                          >
-                            {company.name}
-                          </Link>
-                          <div className="flex items-center gap-2 mt-1">
-                            {company.email && (
-                              <span className="text-sm text-gray-500">
-                                {company.email}
+          {/* Main Grid */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Cost Analysis */}
+              {!editMode && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calculator className="h-5 w-5 text-blue-600" />
+                      Maliyet Analizi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="grid md:grid-cols-2 gap-8">
+                      {/* Per Unit */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                          <Package className="h-4 w-4 text-blue-500" />
+                          Birim Maliyetler
+                        </h4>
+                        <div className="space-y-3">
+                          {[
+                            {
+                              label: `İçerik/Hammadde${boxQuantityMultiplier > 1 ? ` (${boxQuantityMultiplier} adet/kutu)` : ""}`,
+                              value: (calculation.formData?.ingredients || [])
+                                .reduce(
+                                  (sum, ing) =>
+                                    sum +
+                                    calculateIngredientCost(
+                                      ing,
+                                      boxQuantityMultiplier,
+                                    ),
+                                  0,
+                                )
+                                .toFixed(2),
+                            },
+                            {
+                              label: "Ambalaj",
+                              value: (calculation.formData?.packaging || [])
+                                .reduce(
+                                  (sum, pkg) =>
+                                    sum +
+                                    (parseFloat(pkg.quantity) || 0) *
+                                      (parseFloat(pkg.price) || 0),
+                                  0,
+                                )
+                                .toFixed(2),
+                            },
+                            {
+                              label: "Kutu",
+                              value: (
+                                (parseFloat(
+                                  calculation.formData?.boxQuantity,
+                                ) || 0) *
+                                (parseFloat(calculation.formData?.boxPrice) ||
+                                  0)
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "Etiket",
+                              value: (
+                                (parseFloat(
+                                  calculation.formData?.labelQuantity,
+                                ) || 0) *
+                                (parseFloat(calculation.formData?.labelPrice) ||
+                                  0)
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "İşçilik",
+                              value: parseFloat(
+                                calculation.formData?.laborCostPerUnit || 0,
+                              ).toFixed(2),
+                            },
+                          ].map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-slate-500">
+                                {item.label}
                               </span>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {company.status}
-                            </Badge>
-                            {calcInCompany && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs text-blue-600"
-                              >
-                                {new Date(
-                                  calcInCompany.addedAt
-                                ).toLocaleDateString("tr-TR")}
-                              </Badge>
-                            )}
+                              <span className="font-medium tabular-nums">
+                                {item.value} TL
+                              </span>
+                            </div>
+                          ))}
+                          <div className="h-px bg-slate-200 my-2" />
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span className="text-slate-700">
+                              Birim Maliyet
+                            </span>
+                            <span className="text-blue-600 tabular-nums">
+                              {calculation.calculations?.totalCostPerUnit?.toFixed(
+                                2,
+                              ) || "0.00"}{" "}
+                              TL
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-emerald-600">Birim Kar</span>
+                            <span className="font-medium text-emerald-600 tabular-nums">
+                              +
+                              {calculation.calculations?.profitPerUnit?.toFixed(
+                                2,
+                              ) || "0.00"}{" "}
+                              TL
+                            </span>
+                          </div>
+                          <div className="flex justify-between bg-blue-50 -mx-2 px-3 py-3 rounded-xl mt-2">
+                            <span className="font-bold text-slate-900">
+                              Birim Satış
+                            </span>
+                            <span className="font-bold text-xl text-blue-600 tabular-nums">
+                              {calculation.calculations?.unitPrice?.toFixed(
+                                2,
+                              ) || "0.00"}{" "}
+                              TL
+                            </span>
                           </div>
                         </div>
-                        <Button
-                          onClick={() =>
-                            handleRemoveCompanyFromCalculation(
-                              company.id,
-                              calcInCompany?.id
-                            )
-                          }
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Total */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-emerald-500" />
+                          Toplam ({calculation.quantity} adet)
+                        </h4>
+                        <div className="space-y-3">
+                          {[
+                            {
+                              label: `İçerik/Hammadde${boxQuantityMultiplier > 1 ? ` (${boxQuantityMultiplier} adet/kutu)` : ""}`,
+                              value: (
+                                (
+                                  calculation.formData?.ingredients || []
+                                ).reduce(
+                                  (sum, ing) =>
+                                    sum +
+                                    calculateIngredientCost(
+                                      ing,
+                                      boxQuantityMultiplier,
+                                    ),
+                                  0,
+                                ) * calculation.quantity
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "Ambalaj",
+                              value: (
+                                (calculation.formData?.packaging || []).reduce(
+                                  (sum, pkg) =>
+                                    sum +
+                                    (parseFloat(pkg.quantity) || 0) *
+                                      (parseFloat(pkg.price) || 0),
+                                  0,
+                                ) * calculation.quantity
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "Kutu",
+                              value: (
+                                (parseFloat(
+                                  calculation.formData?.boxQuantity,
+                                ) || 0) *
+                                (parseFloat(calculation.formData?.boxPrice) ||
+                                  0) *
+                                calculation.quantity
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "Etiket",
+                              value: (
+                                (parseFloat(
+                                  calculation.formData?.labelQuantity,
+                                ) || 0) *
+                                (parseFloat(calculation.formData?.labelPrice) ||
+                                  0) *
+                                calculation.quantity
+                              ).toFixed(2),
+                            },
+                            {
+                              label: "İşçilik",
+                              value: (
+                                parseFloat(
+                                  calculation.formData?.laborCostPerUnit || 0,
+                                ) * calculation.quantity
+                              ).toFixed(2),
+                            },
+                          ].map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-slate-500">
+                                {item.label}
+                              </span>
+                              <span className="font-medium tabular-nums">
+                                {item.value} TL
+                              </span>
+                            </div>
+                          ))}
+                          <div className="h-px bg-slate-200 my-2" />
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span className="text-slate-700">
+                              Toplam Maliyet
+                            </span>
+                            <span className="text-blue-600 tabular-nums">
+                              {(
+                                (calculation.calculations?.totalCostPerUnit ||
+                                  0) * calculation.quantity
+                              ).toFixed(2)}{" "}
+                              TL
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-emerald-600">Toplam Kar</span>
+                            <span className="font-medium text-emerald-600 tabular-nums">
+                              +
+                              {(
+                                (calculation.calculations?.profitPerUnit || 0) *
+                                calculation.quantity
+                              ).toFixed(2)}{" "}
+                              TL
+                            </span>
+                          </div>
+                          <div className="flex justify-between bg-emerald-50 -mx-2 px-3 py-3 rounded-xl mt-2">
+                            <span className="font-bold text-slate-900">
+                              Toplam Satış
+                            </span>
+                            <span className="font-bold text-xl text-emerald-600 tabular-nums">
+                              {calculation.calculations?.totalPrice?.toFixed(
+                                2,
+                              ) || "0.00"}{" "}
+                              TL
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Description */}
-          {!editMode && calculation.description && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardContent className="pt-6">
-                <p className="text-gray-700">{calculation.description}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Edit Mode: Description */}
-          {editMode && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  Ürün Açıklaması
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Açıklama
-                  </Label>
-                  <Textarea
-                    value={formData.description || ""}
-                    onChange={(e) => updateField("description", e.target.value)}
-                    rows={3}
-                    placeholder="Ürün açıklaması..."
-                    className="border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Basic Info in Edit Mode */}
-          {editMode && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Temel Bilgiler
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Ürün Adı *
-                    </Label>
-                    <Input
-                      value={formData.productName || ""}
-                      onChange={(e) =>
-                        updateField("productName", e.target.value)
-                      }
-                      className="h-11 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Ürün Tipi
-                    </Label>
-                    <Select
-                      value={formData.productType || ""}
-                      onValueChange={(value) =>
-                        updateField("productType", value)
-                      }
-                    >
-                      <SelectTrigger className="h-11 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                        <SelectValue placeholder="Seçiniz" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kozmetik">Kozmetik</SelectItem>
-                        <SelectItem value="gida">Gıda Takviyesi</SelectItem>
-                        <SelectItem value="temizlik">Temizlik Ürünü</SelectItem>
-                        <SelectItem value="kisisel-bakim">
-                          Kişisel Bakım
-                        </SelectItem>
-                        <SelectItem value="diger">Diğer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Üretim Miktarı *
-                    </Label>
-                    <Input
-                      type="number"
-                      value={formData.quantity || ""}
-                      onChange={(e) => updateField("quantity", e.target.value)}
-                      className="h-11 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Hacim (ml)
-                    </Label>
-                    <Input
-                      type="number"
-                      value={formData.productVolume || ""}
-                      onChange={(e) =>
-                        updateField("productVolume", e.target.value)
-                      }
-                      className="h-11 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Ingredients */}
-          {(calculation.formData?.ingredients?.filter((i) => i.name).length >
-            0 ||
-            editMode) && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardContent className="p-0">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="ingredients" className="border-0">
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <div className="flex items-center justify-between w-full pr-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Package className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                          <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              {/* Ingredients */}
+              {(calculation.formData?.ingredients?.filter((i) => i.name)
+                .length > 0 ||
+                editMode) && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <Accordion
+                    type="single"
+                    collapsible
+                    defaultValue="ingredients"
+                  >
+                    <AccordionItem value="ingredients" className="border-0">
+                      <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                            <Package className="h-4 w-4 text-violet-600" />
+                          </div>
+                          <span className="font-semibold text-slate-900">
                             Hammaddeler
                           </span>
                           <Badge
                             variant="secondary"
-                            className="ml-2 bg-purple-100 text-purple-700 border-purple-200"
+                            className="bg-violet-100 text-violet-700"
                           >
                             {editMode
                               ? formData.ingredients?.filter((i) => i.name)
                                   .length || 0
                               : calculation.formData.ingredients?.filter(
-                                  (i) => i.name
+                                  (i) => i.name,
                                 ).length || 0}{" "}
                             adet
                           </Badge>
-                          {!editMode &&
-                            calculation.formData?.sourceFormulaId && (
-                              <Link
-                                href={`/admin/formulas/${calculation.formData.sourceFormulaId}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="ml-2 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950 rounded cursor-pointer transition-colors"
-                              >
-                                <Beaker className="h-3 w-3" />
-                                {calculation.formData.sourceFormulaName}{" "}
-                                Formülünden
-                              </Link>
-                            )}
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    {editMode && formData && (
-                      <div className="px-6 pb-2">
-                        <Button
-                          onClick={addIngredient}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Ekle
-                        </Button>
-                      </div>
-                    )}
-                    <AccordionContent className="px-6 pb-4">
-                      {!editMode ? (
-                        <Accordion type="multiple" className="w-full">
-                          {calculation.formData.ingredients
-                            .filter((i) => i.name)
-                            .map((ing, idx) => {
-                              return (
-                                <AccordionItem
-                                  key={idx}
-                                  value={`view-ingredient-${idx}`}
-                                >
-                                  <AccordionTrigger className="hover:no-underline">
-                                    <div className="flex items-center justify-between w-full pr-4">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-sm font-medium text-gray-700">
-                                          {ing.name}
-                                        </span>
-                                        {ing.function && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs"
-                                          >
-                                            {ing.function}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-sm text-gray-600">
-                                          {ing.amount} {ing.unit}
-                                        </span>
-                                        {ing.price && (
-                                          <span className="text-sm font-medium text-blue-600">
-                                            {parseFloat(ing.price).toFixed(2)}{" "}
-                                            TL/kg
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                        <div>
-                                          <span className="text-gray-600">
-                                            Miktar:
-                                          </span>
-                                          <p className="font-medium">
-                                            {ing.amount} {ing.unit}
-                                          </p>
-                                        </div>
-                                        <div>
-                                          <span className="text-gray-600">
-                                            Birim Fiyat:
-                                          </span>
-                                          <p className="font-medium">
-                                            {parseFloat(ing.price).toFixed(2)}{" "}
-                                            TL/kg
-                                          </p>
-                                        </div>
-                                        {ing.supplier && (
-                                          <div>
-                                            <span className="text-gray-600">
-                                              Tedarikçi:
-                                            </span>
-                                            <p className="font-medium">
-                                              {ing.supplier}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {ing.function && (
-                                          <div>
-                                            <span className="text-gray-600">
-                                              Fonksiyon:
-                                            </span>
-                                            <p className="font-medium">
-                                              {ing.function}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </AccordionContent>
-                                </AccordionItem>
-                              );
-                            })}
-                        </Accordion>
-                      ) : (
-                        <Accordion type="multiple" className="w-full">
-                          {formData.ingredients.map((ingredient, index) => (
-                            <AccordionItem
-                              key={index}
-                              value={`ingredient-${index}`}
+                          {boxQuantityMultiplier > 1 && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700 border-blue-200"
                             >
-                              <AccordionTrigger>
-                                <div className="flex items-center justify-between w-full pr-4">
-                                  <span>
-                                    Hammadde #{index + 1}{" "}
-                                    {ingredient.name && `- ${ingredient.name}`}
+                              {boxQuantityMultiplier} adet/kutu
+                            </Badge>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      {editMode && (
+                        <div className="px-6 pb-3">
+                          <Button
+                            onClick={addIngredient}
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Hammadde Ekle
+                          </Button>
+                        </div>
+                      )}
+                      <AccordionContent className="px-6 pb-6">
+                        {!editMode ? (
+                          <div className="space-y-2">
+                            {boxQuantityMultiplier > 1 && (
+                              <div className="mb-3 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+                                Kutu içerik: {boxQuantityMultiplier} adet •
+                                Maliyet = miktar × fiyat ×{" "}
+                                {boxQuantityMultiplier}
+                              </div>
+                            )}
+                            {calculation.formData.ingredients
+                              .filter((i) => i.name)
+                              .map((ing, idx) => {
+                                const singleUnitCost = calculateIngredientCost(
+                                  ing,
+                                  1,
+                                );
+                                const totalCost = calculateIngredientCost(
+                                  ing,
+                                  boxQuantityMultiplier,
+                                );
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+                                  >
+                                    <div>
+                                      <p className="font-medium text-slate-900">
+                                        {ing.name}
+                                      </p>
+                                      <p className="text-sm text-slate-500">
+                                        {ing.amount} {ing.unit}
+                                        {ing.function && ` • ${ing.function}`}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-medium tabular-nums">
+                                        {parseFloat(ing.price).toFixed(2)}{" "}
+                                        {ing.unit === "adet"
+                                          ? "TL/adet"
+                                          : "TL/kg"}
+                                      </p>
+                                      <p className="text-xs text-slate-400 tabular-nums">
+                                        1 adet: {singleUnitCost.toFixed(4)} TL
+                                      </p>
+                                      <p className="text-sm text-blue-600 tabular-nums font-medium">
+                                        {totalCost.toFixed(2)} TL
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {formData.ingredients.map((ingredient, index) => (
+                              <div
+                                key={index}
+                                className="p-4 bg-slate-50 rounded-xl space-y-4"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">
+                                    #{index + 1} {ingredient.name || "Yeni"}
                                   </span>
+                                  <Button
+                                    onClick={() => removeIngredient(index)}
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-red-500"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <div className="p-4 space-y-4 bg-gray-50 rounded-lg">
-                                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                                    <div className="space-y-2 md:col-span-3">
-                                      <Label className="text-sm font-medium text-gray-700">
-                                        Hammadde Adı *
-                                      </Label>
-                                      <Input
-                                        value={ingredient.name || ""}
-                                        onChange={(e) =>
-                                          updateIngredient(
-                                            index,
-                                            "name",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="h-10 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-                                      />
-                                    </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  <div className="col-span-2 space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Ad
+                                    </Label>
+                                    <Input
+                                      value={ingredient.name || ""}
+                                      onChange={(e) =>
+                                        updateIngredient(
+                                          index,
+                                          "name",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Miktar
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={ingredient.amount || ""}
+                                      onChange={(e) =>
+                                        updateIngredient(
+                                          index,
+                                          "amount",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Birim
+                                    </Label>
+                                    <Select
+                                      value={ingredient.unit || "gram"}
+                                      onValueChange={(value) =>
+                                        updateIngredient(index, "unit", value)
+                                      }
+                                    >
+                                      <SelectTrigger className="h-9">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="gram">
+                                          Gram
+                                        </SelectItem>
+                                        <SelectItem value="kg">Kg</SelectItem>
+                                        <SelectItem value="ml">ml</SelectItem>
+                                        <SelectItem value="litre">
+                                          Litre
+                                        </SelectItem>
+                                        <SelectItem value="adet">
+                                          Adet
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Fiyat
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={ingredient.price || ""}
+                                      onChange={(e) =>
+                                        updateIngredient(
+                                          index,
+                                          "price",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
+              )}
 
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium text-gray-700">
-                                        Miktar *
-                                      </Label>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        value={ingredient.amount || ""}
-                                        onChange={(e) =>
-                                          updateIngredient(
-                                            index,
-                                            "amount",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="h-10 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-                                      />
-                                    </div>
+              {/* Packaging */}
+              {(calculation.formData?.packaging?.filter((p) => p.type).length >
+                0 ||
+                editMode) && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <Accordion type="single" collapsible defaultValue="packaging">
+                    <AccordionItem value="packaging" className="border-0">
+                      <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <Box className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <span className="font-semibold text-slate-900">
+                            Ambalaj
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="bg-orange-100 text-orange-700"
+                          >
+                            {editMode
+                              ? formData.packaging?.filter((p) => p.type)
+                                  .length || 0
+                              : calculation.formData.packaging?.filter(
+                                  (p) => p.type,
+                                ).length || 0}{" "}
+                            adet
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      {editMode && (
+                        <div className="px-6 pb-3">
+                          <Button
+                            onClick={addPackaging}
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Ambalaj Ekle
+                          </Button>
+                        </div>
+                      )}
+                      <AccordionContent className="px-6 pb-6">
+                        {!editMode ? (
+                          <div className="space-y-2">
+                            {calculation.formData.packaging
+                              .filter((p) => p.type)
+                              .map((pkg, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+                                >
+                                  <div>
+                                    <p className="font-medium text-slate-900">
+                                      {pkg.type}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                      {pkg.material && `${pkg.material} • `}
+                                      {pkg.quantity} {pkg.unit || "adet"}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-medium tabular-nums">
+                                      {parseFloat(pkg.price).toFixed(2)} TL/
+                                      {pkg.unit || "adet"}
+                                    </p>
+                                    <p className="text-sm text-orange-600 tabular-nums">
+                                      {(
+                                        (parseFloat(pkg.quantity) || 0) *
+                                        (parseFloat(pkg.price) || 0)
+                                      ).toFixed(2)}{" "}
+                                      TL
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {formData.packaging.map((pkg, index) => (
+                              <div
+                                key={index}
+                                className="p-4 bg-slate-50 rounded-xl space-y-4"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">
+                                    #{index + 1} {pkg.type || "Yeni"}
+                                  </span>
+                                  {formData.packaging.length > 0 && (
+                                    <Button
+                                      onClick={() => removePackaging(index)}
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 text-red-500"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                  <div className="col-span-2 space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Tip
+                                    </Label>
+                                    <Input
+                                      value={pkg.type || ""}
+                                      onChange={(e) =>
+                                        updatePackaging(
+                                          index,
+                                          "type",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                      placeholder="Örn: Şişe, Kavanoz"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Malzeme
+                                    </Label>
+                                    <Input
+                                      value={pkg.material || ""}
+                                      onChange={(e) =>
+                                        updatePackaging(
+                                          index,
+                                          "material",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                      placeholder="Örn: Cam, Plastik"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Birim
+                                    </Label>
+                                    <Select
+                                      value={pkg.unit || "adet"}
+                                      onValueChange={(value) =>
+                                        updatePackaging(index, "unit", value)
+                                      }
+                                    >
+                                      <SelectTrigger className="h-9">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="adet">
+                                          Adet
+                                        </SelectItem>
+                                        <SelectItem value="kg">Kg</SelectItem>
+                                        <SelectItem value="metre">
+                                          Metre
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Miktar
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={pkg.quantity || ""}
+                                      onChange={(e) =>
+                                        updatePackaging(
+                                          index,
+                                          "quantity",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Fiyat
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={pkg.price || ""}
+                                      onChange={(e) =>
+                                        updatePackaging(
+                                          index,
+                                          "price",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                  <div className="col-span-2 space-y-1.5">
+                                    <Label className="text-xs text-slate-500">
+                                      Tedarikçi
+                                    </Label>
+                                    <Input
+                                      value={pkg.supplier || ""}
+                                      onChange={(e) =>
+                                        updatePackaging(
+                                          index,
+                                          "supplier",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="h-9"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
+              )}
 
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium text-gray-700">
-                                        Birim
-                                      </Label>
-                                      <Select
-                                        value={ingredient.unit || "gram"}
-                                        onValueChange={(value) =>
-                                          updateIngredient(index, "unit", value)
-                                        }
+              {/* Box & Label */}
+              {(calculation.formData?.boxes?.length > 0 ||
+                calculation.formData?.labels?.length > 0 ||
+                calculation.formData?.boxType ||
+                calculation.formData?.labelType ||
+                editMode) && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <Accordion type="single" collapsible defaultValue="boxlabel">
+                    <AccordionItem value="boxlabel" className="border-0">
+                      <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-slate-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                            <Tag className="h-4 w-4 text-pink-600" />
+                          </div>
+                          <span className="font-semibold text-slate-900">
+                            Kutu ve Etiket
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6">
+                        {!editMode ? (
+                          <div className="space-y-4">
+                            {/* Boxes */}
+                            {(calculation.formData?.boxes?.length > 0 ||
+                              calculation.formData?.boxType) && (
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-700 mb-3">
+                                  Kutular
+                                </h4>
+                                <div className="space-y-2">
+                                  {calculation.formData?.boxes?.map(
+                                    (box, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
                                       >
-                                        <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="gram">
-                                            Gram
-                                          </SelectItem>
-                                          <SelectItem value="kg">
-                                            Kilogram (kg)
-                                          </SelectItem>
-                                          <SelectItem value="ml">
-                                            Mililitre (ml)
-                                          </SelectItem>
-                                          <SelectItem value="litre">
-                                            Litre
-                                          </SelectItem>
-                                          <SelectItem value="adet">
-                                            Adet
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                        <div>
+                                          <p className="font-medium text-slate-900">
+                                            {box.type}
+                                          </p>
+                                          <p className="text-sm text-slate-500">
+                                            {box.quantity} adet
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-medium tabular-nums">
+                                            {parseFloat(box.price).toFixed(2)}{" "}
+                                            TL/adet
+                                          </p>
+                                          <p className="text-sm text-blue-600 tabular-nums">
+                                            {(
+                                              (parseFloat(box.quantity) || 0) *
+                                              (parseFloat(box.price) || 0)
+                                            ).toFixed(2)}{" "}
+                                            TL
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                  {/* Fallback for old data structure */}
+                                  {!calculation.formData?.boxes?.length &&
+                                    calculation.formData?.boxType && (
+                                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                        <div>
+                                          <p className="font-medium text-slate-900">
+                                            {calculation.formData.boxType}
+                                          </p>
+                                          <p className="text-sm text-slate-500">
+                                            {calculation.formData.boxQuantity}{" "}
+                                            adet
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-medium tabular-nums">
+                                            {parseFloat(
+                                              calculation.formData.boxPrice,
+                                            ).toFixed(2)}{" "}
+                                            TL/adet
+                                          </p>
+                                          <p className="text-sm text-blue-600 tabular-nums">
+                                            {(
+                                              (parseFloat(
+                                                calculation.formData
+                                                  .boxQuantity,
+                                              ) || 0) *
+                                              (parseFloat(
+                                                calculation.formData.boxPrice,
+                                              ) || 0)
+                                            ).toFixed(2)}{" "}
+                                            TL
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+                            )}
+                            {/* Labels */}
+                            {(calculation.formData?.labels?.length > 0 ||
+                              calculation.formData?.labelType) && (
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-700 mb-3">
+                                  Etiketler
+                                </h4>
+                                <div className="space-y-2">
+                                  {calculation.formData?.labels?.map(
+                                    (label, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+                                      >
+                                        <div>
+                                          <p className="font-medium text-slate-900">
+                                            {label.type}
+                                          </p>
+                                          <p className="text-sm text-slate-500">
+                                            {label.quantity} adet
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-medium tabular-nums">
+                                            {parseFloat(label.price).toFixed(2)}{" "}
+                                            TL/adet
+                                          </p>
+                                          <p className="text-sm text-violet-600 tabular-nums">
+                                            {(
+                                              (parseFloat(label.quantity) ||
+                                                0) *
+                                              (parseFloat(label.price) || 0)
+                                            ).toFixed(2)}{" "}
+                                            TL
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                  {/* Fallback for old data structure */}
+                                  {!calculation.formData?.labels?.length &&
+                                    calculation.formData?.labelType && (
+                                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                        <div>
+                                          <p className="font-medium text-slate-900">
+                                            {calculation.formData.labelType}
+                                          </p>
+                                          <p className="text-sm text-slate-500">
+                                            {calculation.formData.labelQuantity}{" "}
+                                            adet
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="font-medium tabular-nums">
+                                            {parseFloat(
+                                              calculation.formData.labelPrice,
+                                            ).toFixed(2)}{" "}
+                                            TL/adet
+                                          </p>
+                                          <p className="text-sm text-violet-600 tabular-nums">
+                                            {(
+                                              (parseFloat(
+                                                calculation.formData
+                                                  .labelQuantity,
+                                              ) || 0) *
+                                              (parseFloat(
+                                                calculation.formData.labelPrice,
+                                              ) || 0)
+                                            ).toFixed(2)}{" "}
+                                            TL
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Boxes Edit */}
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-medium text-slate-700">
+                                  Kutular
+                                </h4>
+                                <Button
+                                  onClick={addBox}
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2 h-8"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Kutu Ekle
+                                </Button>
+                              </div>
+                              <div className="space-y-3">
+                                {(formData.boxes || []).map((box, index) => (
+                                  <div
+                                    key={index}
+                                    className="p-3 bg-slate-50 rounded-xl"
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <span className="text-xs font-medium text-slate-500">
+                                        #{index + 1}
+                                      </span>
+                                      <Button
+                                        onClick={() => removeBox(index)}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-red-500"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
                                     </div>
-
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium text-gray-700">
-                                        Fiyat (TL/kg) *
-                                      </Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <Input
+                                        value={box.type || ""}
+                                        onChange={(e) =>
+                                          updateBox(
+                                            index,
+                                            "type",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Tip"
+                                        className="h-8 text-sm"
+                                      />
+                                      <Input
+                                        type="number"
+                                        value={box.quantity || ""}
+                                        onChange={(e) =>
+                                          updateBox(
+                                            index,
+                                            "quantity",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Miktar"
+                                        className="h-8 text-sm"
+                                      />
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        value={ingredient.price || ""}
+                                        value={box.price || ""}
                                         onChange={(e) =>
-                                          updateIngredient(
+                                          updateBox(
                                             index,
                                             "price",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
-                                        className="h-10 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                                        placeholder="Fiyat"
+                                        className="h-8 text-sm"
                                       />
                                     </div>
                                   </div>
-
-                                  {formData.ingredients.length > 1 && (
-                                    <div className="flex justify-end pt-2">
+                                ))}
+                                {(!formData.boxes ||
+                                  formData.boxes.length === 0) && (
+                                  <p className="text-sm text-slate-400 text-center py-4">
+                                    Henüz kutu eklenmedi
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {/* Labels Edit */}
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-medium text-slate-700">
+                                  Etiketler
+                                </h4>
+                                <Button
+                                  onClick={addLabel}
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2 h-8"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Etiket Ekle
+                                </Button>
+                              </div>
+                              <div className="space-y-3">
+                                {(formData.labels || []).map((label, index) => (
+                                  <div
+                                    key={index}
+                                    className="p-3 bg-slate-50 rounded-xl"
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <span className="text-xs font-medium text-slate-500">
+                                        #{index + 1}
+                                      </span>
                                       <Button
-                                        onClick={() => removeIngredient(index)}
+                                        onClick={() => removeLabel(index)}
                                         size="sm"
-                                        variant="outline"
-                                        className="text-red-600"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-red-500"
                                       >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Sil
+                                        <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </div>
-                                  )}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          ))}
-                        </Accordion>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Packaging */}
-          {(calculation.formData?.packaging?.filter((p) => p.type).length > 0 ||
-            editMode) && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Package className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                  Ambalaj Malzemeleri
-                </CardTitle>
-              </CardHeader>
-              {editMode && formData && (
-                <div className="px-6 pt-4">
-                  <Button onClick={addPackaging} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ekle
-                  </Button>
-                </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <Input
+                                        value={label.type || ""}
+                                        onChange={(e) =>
+                                          updateLabel(
+                                            index,
+                                            "type",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Tip"
+                                        className="h-8 text-sm"
+                                      />
+                                      <Input
+                                        type="number"
+                                        value={label.quantity || ""}
+                                        onChange={(e) =>
+                                          updateLabel(
+                                            index,
+                                            "quantity",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Miktar"
+                                        className="h-8 text-sm"
+                                      />
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={label.price || ""}
+                                        onChange={(e) =>
+                                          updateLabel(
+                                            index,
+                                            "price",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Fiyat"
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                                {(!formData.labels ||
+                                  formData.labels.length === 0) && (
+                                  <p className="text-sm text-slate-400 text-center py-4">
+                                    Henüz etiket eklenmedi
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </Card>
               )}
-              <CardContent>
-                {!editMode ? (
-                  <div className="space-y-3">
-                    {calculation.formData.packaging
-                      .filter((p) => p.type)
-                      .map((pkg, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {pkg.type}
-                            </p>
-                            {pkg.material && (
-                              <p className="text-sm text-gray-500">
-                                {pkg.material}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-900">
-                              {pkg.quantity} {pkg.unit}
-                            </p>
-                            {pkg.price && (
-                              <p className="text-sm text-gray-500">
-                                {parseFloat(pkg.price).toFixed(2)} TL
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.packaging.map((pkg, index) => (
-                      <div
-                        key={index}
-                        className="p-4 border rounded-lg space-y-3 bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">
-                            Ambalaj #{index + 1}
-                          </span>
-                          {formData.packaging.length > 1 && (
-                            <Button
-                              onClick={() => removePackaging(index)}
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">
-                              Tip
-                            </Label>
-                            <Input
-                              value={pkg.type || ""}
-                              onChange={(e) =>
-                                updatePackaging(index, "type", e.target.value)
-                              }
-                              className="h-10 border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">
-                              Malzeme
-                            </Label>
-                            <Input
-                              value={pkg.material || ""}
-                              onChange={(e) =>
-                                updatePackaging(
-                                  index,
-                                  "material",
-                                  e.target.value
-                                )
-                              }
-                              className="h-10 border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">
-                              Miktar
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={pkg.quantity || ""}
-                              onChange={(e) =>
-                                updatePackaging(
-                                  index,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                              className="h-10 border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">
-                              Fiyat (TL)
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={pkg.price || ""}
-                              onChange={(e) =>
-                                updatePackaging(index, "price", e.target.value)
-                              }
-                              className="h-10 border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Box and Label */}
-          <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-pink-300 dark:hover:border-pink-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <Tag className="h-5 w-5 text-pink-600 dark:text-pink-400" />
-                Kutu ve Etiket
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6">
-              {!editMode ? (
-                <>
-                  {/* Box Info */}
-                  {calculation.formData?.boxType && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Kutu Bilgileri
-                      </h4>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {calculation.formData.boxType}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              Miktar: {calculation.formData.boxQuantity} adet
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Birim Fiyat</p>
-                            <p className="text-lg font-bold text-blue-600">
-                              {parseFloat(
-                                calculation.formData.boxPrice
-                              ).toFixed(2)}{" "}
-                              TL
-                            </p>
-                          </div>
+              {/* Labor & Profit */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {(calculation.formData?.laborCostPerUnit || editMode) && (
+                  <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                    <CardHeader className="border-b border-slate-100">
+                      <CardTitle className="text-base flex items-center gap-3">
+                        <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                          <Users className="h-4 w-4 text-cyan-600" />
                         </div>
-                        <div className="mt-3 pt-3 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Toplam Kutu Maliyeti:
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              {(
-                                parseFloat(calculation.formData.boxQuantity) *
-                                parseFloat(calculation.formData.boxPrice)
-                              ).toFixed(2)}{" "}
-                              TL
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Label Info */}
-                  {calculation.formData?.labelType && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Etiket Bilgileri
-                      </h4>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {calculation.formData.labelType}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              Miktar: {calculation.formData.labelQuantity} adet
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Birim Fiyat</p>
-                            <p className="text-lg font-bold text-purple-600">
-                              {parseFloat(
-                                calculation.formData.labelPrice
-                              ).toFixed(2)}{" "}
-                              TL
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">
-                              Toplam Etiket Maliyeti:
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              {(
-                                parseFloat(calculation.formData.labelQuantity) *
-                                parseFloat(calculation.formData.labelPrice)
-                              ).toFixed(2)}{" "}
-                              TL
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Kutu Bilgileri</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Kutu Tipi</Label>
-                        <Input
-                          value={formData.boxType || ""}
-                          onChange={(e) =>
-                            updateField("boxType", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Miktar</Label>
-                        <Input
-                          type="number"
-                          value={formData.boxQuantity || ""}
-                          onChange={(e) =>
-                            updateField("boxQuantity", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Birim Fiyat (TL)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.boxPrice || ""}
-                          onChange={(e) =>
-                            updateField("boxPrice", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Etiket Bilgileri</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Etiket Tipi</Label>
-                        <Input
-                          value={formData.labelType || ""}
-                          onChange={(e) =>
-                            updateField("labelType", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Miktar</Label>
-                        <Input
-                          type="number"
-                          value={formData.labelQuantity || ""}
-                          onChange={(e) =>
-                            updateField("labelQuantity", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Birim Fiyat (TL)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={formData.labelPrice || ""}
-                          onChange={(e) =>
-                            updateField("labelPrice", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Labor Cost */}
-          {calculation.formData?.laborCostPerUnit && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-cyan-300 dark:hover:border-cyan-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Users className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                  İşçilik Maliyeti
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!editMode ? (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          Birim İşçilik Maliyeti
-                        </p>
-                        <p className="text-2xl font-bold text-gray-900 mt-1">
-                          {parseFloat(
-                            calculation.formData.laborCostPerUnit
-                          ).toFixed(2)}{" "}
-                          TL
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">
-                          Toplam ({calculation.quantity} adet)
-                        </p>
-                        <p className="text-xl font-bold text-blue-600 mt-1">
-                          {(
-                            parseFloat(calculation.formData.laborCostPerUnit) *
-                            calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </p>
-                      </div>
-                    </div>
-                    {calculation.formData.laborNotes && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-sm text-gray-600">Notlar:</p>
-                        <p className="text-sm text-gray-700 mt-1">
-                          {calculation.formData.laborNotes}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Birim İşçilik Maliyeti (TL)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.laborCostPerUnit || ""}
-                        onChange={(e) =>
-                          updateField("laborCostPerUnit", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Notlar</Label>
-                      <Textarea
-                        value={formData.laborNotes || ""}
-                        onChange={(e) =>
-                          updateField("laborNotes", e.target.value)
-                        }
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Other Costs */}
-          {(calculation.formData?.otherCosts?.filter((c) => c.description)
-            .length > 0 ||
-            editMode) && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <DollarSign className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                  Diğer Masraflar
-                </CardTitle>
-              </CardHeader>
-              {editMode && formData && (
-                <div className="px-6 pt-4">
-                  <Button onClick={addOtherCost} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ekle
-                  </Button>
-                </div>
-              )}
-              <CardContent>
-                {!editMode ? (
-                  <div className="space-y-3">
-                    {calculation.formData.otherCosts
-                      .filter((c) => c.description)
-                      .map((cost, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {cost.description}
-                            </p>
-                            {cost.category && (
-                              <p className="text-sm text-gray-500 capitalize">
-                                {cost.category}
-                              </p>
-                            )}
-                          </div>
-                          <p className="font-medium text-gray-900">
-                            {parseFloat(cost.amount || 0).toFixed(2)} TL
+                        İşçilik
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      {!editMode ? (
+                        <div className="text-center">
+                          <p className="text-3xl font-bold tabular-nums">
+                            {parseFloat(
+                              calculation.formData.laborCostPerUnit,
+                            ).toFixed(2)}{" "}
+                            TL
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Birim başına
                           </p>
                         </div>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.otherCosts.map((cost, index) => (
-                      <div
-                        key={index}
-                        className="p-4 border rounded-lg space-y-3 bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">
-                            Masraf #{index + 1}
-                          </span>
-                          {formData.otherCosts.length > 1 && (
-                            <Button
-                              onClick={() => removeOtherCost(index)}
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="space-y-2">
-                            <Label>Açıklama</Label>
-                            <Input
-                              value={cost.description || ""}
-                              onChange={(e) =>
-                                updateOtherCost(
-                                  index,
-                                  "description",
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Kategori</Label>
-                            <Select
-                              value={cost.category || "genel"}
-                              onValueChange={(value) =>
-                                updateOtherCost(index, "category", value)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="genel">
-                                  Genel Gider
-                                </SelectItem>
-                                <SelectItem value="nakliye">Nakliye</SelectItem>
-                                <SelectItem value="vergi">Vergi</SelectItem>
-                                <SelectItem value="depo">Depolama</SelectItem>
-                                <SelectItem value="diger">Diğer</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Tutar (TL)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={cost.amount || ""}
-                              onChange={(e) =>
-                                updateOtherCost(index, "amount", e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ) : (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.laborCostPerUnit || ""}
+                          onChange={(e) =>
+                            updateField("laborCostPerUnit", e.target.value)
+                          }
+                          className="h-10"
+                          placeholder="Birim İşçilik (TL)"
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
-          )}
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-slate-100">
+                    <CardTitle className="text-base flex items-center gap-3">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                        <Percent className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      Kar Marjı
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {!editMode ? (
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-emerald-600 tabular-nums">
+                          {calculation.formData?.profitType === "percentage"
+                            ? `%${calculation.formData?.profitMarginPercent}`
+                            : `${calculation.formData?.profitAmountPerUnit} TL`}
+                        </p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          {calculation.formData?.profitType === "percentage"
+                            ? "Yüzde"
+                            : "Sabit"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Select
+                          value={formData.profitType || "percentage"}
+                          onValueChange={(value) =>
+                            updateField("profitType", value)
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">
+                              Yüzde (%)
+                            </SelectItem>
+                            <SelectItem value="fixed">Sabit (TL)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {formData.profitType === "percentage" ? (
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={formData.profitMarginPercent || ""}
+                            onChange={(e) =>
+                              updateField("profitMarginPercent", e.target.value)
+                            }
+                            className="h-9"
+                            placeholder="%"
+                          />
+                        ) : (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.profitAmountPerUnit || ""}
+                            onChange={(e) =>
+                              updateField("profitAmountPerUnit", e.target.value)
+                            }
+                            className="h-9"
+                            placeholder="TL"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Profit Margin */}
-          <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <Percent className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                Kar Marjı Bilgileri
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {!editMode ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-green-700">Kar Türü</p>
-                      <p className="text-lg font-bold text-green-900 mt-1">
-                        {calculation.formData?.profitType === "percentage"
-                          ? "Yüzde (%)"
-                          : "Sabit Tutar (TL)"}
-                      </p>
+              {/* Edit Mode: Basic Info */}
+              {editMode && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-slate-100">
+                    <CardTitle className="text-base flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-blue-600" />
+                      </div>
+                      Temel Bilgiler
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="col-span-2 space-y-1.5">
+                        <Label className="text-xs text-slate-500">
+                          Ürün Adı
+                        </Label>
+                        <Input
+                          value={formData.productName || ""}
+                          onChange={(e) =>
+                            updateField("productName", e.target.value)
+                          }
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-slate-500">
+                          Ürün Tipi
+                        </Label>
+                        <Select
+                          value={formData.productType || ""}
+                          onValueChange={(value) =>
+                            updateField("productType", value)
+                          }
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Seçiniz" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="kozmetik">Kozmetik</SelectItem>
+                            <SelectItem value="gida">Gıda Takviyesi</SelectItem>
+                            <SelectItem value="temizlik">Temizlik</SelectItem>
+                            <SelectItem value="kisisel-bakim">
+                              Kişisel Bakım
+                            </SelectItem>
+                            <SelectItem value="diger">Diğer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-slate-500">Miktar</Label>
+                        <Input
+                          type="number"
+                          value={formData.quantity || ""}
+                          onChange={(e) =>
+                            updateField("quantity", e.target.value)
+                          }
+                          className="h-10"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-green-700">
-                        {calculation.formData?.profitType === "percentage"
-                          ? "Kar Marjı"
-                          : "Birim Kar Tutarı"}
-                      </p>
-                      <p className="text-lg font-bold text-green-900 mt-1">
-                        {calculation.formData?.profitType === "percentage"
-                          ? `%${calculation.formData?.profitMarginPercent}`
-                          : `${calculation.formData?.profitAmountPerUnit} TL`}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-green-700">Birim Kar</p>
-                      <p className="text-lg font-bold text-green-900 mt-1">
-                        {calculation.calculations?.profitPerUnit?.toFixed(2) ||
-                          "0.00"}{" "}
-                        TL
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Kar Türü</Label>
-                    <Select
-                      value={formData.profitType || "percentage"}
-                      onValueChange={(value) =>
-                        updateField("profitType", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">Yüzde (%)</SelectItem>
-                        <SelectItem value="fixed">Sabit Tutar (TL)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.profitType === "percentage" ? (
-                    <div className="space-y-2">
-                      <Label>Kar Marjı (%)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={formData.profitMarginPercent || ""}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-slate-500">Açıklama</Label>
+                      <Textarea
+                        value={formData.description || ""}
                         onChange={(e) =>
-                          updateField("profitMarginPercent", e.target.value)
+                          updateField("description", e.target.value)
                         }
+                        rows={2}
+                        className="resize-none"
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Linked Companies */}
+              <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-3">
+                      <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      Müşteriler
+                      <Badge variant="secondary">
+                        {linkedCompanies.length}
+                      </Badge>
+                    </CardTitle>
+                    <Button
+                      onClick={() => {
+                        loadAllCompanies();
+                        setShowAddCompanyDialog(true);
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                  {loadingCompanies ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    </div>
+                  ) : linkedCompanies.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Building2 className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                      <p className="text-sm text-slate-500">
+                        Henüz müşteri yok
+                      </p>
+                      <Button
+                        onClick={() => {
+                          loadAllCompanies();
+                          setShowAddCompanyDialog(true);
+                        }}
+                        size="sm"
+                        variant="link"
+                        className="mt-2"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ekle
+                      </Button>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Label>Birim Kar Tutarı (TL)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.profitAmountPerUnit || ""}
-                        onChange={(e) =>
-                          updateField("profitAmountPerUnit", e.target.value)
-                        }
-                      />
+                      {linkedCompanies.map((company) => {
+                        const calcInCompany = (
+                          company.pricingCalculations || []
+                        ).find((calc) => calc.calculationId === id);
+                        return (
+                          <div
+                            key={company.id}
+                            className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group hover:bg-slate-100"
+                          >
+                            <Link
+                              href={`/admin/companies/${company.id}`}
+                              className="flex-1 min-w-0"
+                            >
+                              <p className="font-medium text-slate-900 truncate hover:text-blue-600">
+                                {company.name}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {calcInCompany &&
+                                  new Date(
+                                    calcInCompany.addedAt,
+                                  ).toLocaleDateString("tr-TR")}
+                              </p>
+                            </Link>
+                            <Button
+                              onClick={() =>
+                                handleRemoveCompanyFromCalculation(
+                                  company.id,
+                                  calcInCompany?.id,
+                                )
+                              }
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* Currency Data */}
+              {calculation.currencyData && (
+                <Card className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-slate-100">
+                    <CardTitle className="text-base flex items-center gap-3">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                        <DollarSign className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      Döviz ({calculation.currencyData.currency})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-emerald-600 tabular-nums">
+                          {getCurrencySymbol(calculation.currencyData.currency)}
+                          {calculation.currencyData.unitPriceConverted}
+                        </p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Birim Fiyat
+                        </p>
+                      </div>
+                      <div className="h-px bg-slate-100" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Toplam</span>
+                        <span className="font-semibold text-emerald-600 tabular-nums">
+                          {getCurrencySymbol(calculation.currencyData.currency)}
+                          {calculation.currencyData.totalPriceConverted}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Kur</span>
+                        <span className="font-medium tabular-nums">
+                          {calculation.currencyData.exchangeRate}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(
+                            calculation.currencyData.convertedAt,
+                          ).toLocaleString("tr-TR")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Detailed Cost Breakdown - View Mode Only */}
-          {!editMode && (
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-900">
-                  <Calculator className="h-5 w-5" />
-                  Detaylı Maliyet Analizi
-                </CardTitle>
-                <CardDescription className="text-blue-700">
-                  Ürün başına ve toplam maliyet dağılımı
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Per Unit Costs */}
-                  <div className="bg-white rounded-lg p-5 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-blue-600" />
-                      Birim Maliyetler
-                    </h4>
+              {/* Live Calculation */}
+              {editMode && calculatedPrice && (
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-blue-100">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-900">
+                      <Calculator className="h-4 w-4" />
+                      Güncel Hesaplama
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
                     <div className="space-y-3 text-sm">
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">İçerik/Hammadde:</span>
-                        <span className="font-medium">
-                          {(calculation.formData?.ingredients || [])
-                            .reduce((sum, ing) => {
-                              const amount = parseFloat(ing.amount) || 0;
-                              const price = parseFloat(ing.price) || 0;
-                              const unit = ing.unit || "gram";
-                              const kg =
-                                unit === "gram"
-                                  ? amount / 1000
-                                  : unit === "kg"
-                                  ? amount
-                                  : amount / 1000;
-                              return sum + kg * price;
-                            }, 0)
-                            .toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Ambalaj:</span>
-                        <span className="font-medium">
-                          {(calculation.formData?.packaging || [])
-                            .reduce((sum, pkg) => {
-                              return (
-                                sum +
-                                (parseFloat(pkg.quantity) || 0) *
-                                  (parseFloat(pkg.price) || 0)
-                              );
-                            }, 0)
-                            .toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Kutu:</span>
-                        <span className="font-medium">
-                          {(
-                            (parseFloat(calculation.formData?.boxQuantity) ||
-                              0) *
-                            (parseFloat(calculation.formData?.boxPrice) || 0)
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Etiket:</span>
-                        <span className="font-medium">
-                          {(
-                            (parseFloat(calculation.formData?.labelQuantity) ||
-                              0) *
-                            (parseFloat(calculation.formData?.labelPrice) || 0)
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">İşçilik:</span>
-                        <span className="font-medium">
-                          {parseFloat(
-                            calculation.formData?.laborCostPerUnit || 0
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-3 border-t-2 border-blue-200">
-                        <span className="font-semibold text-gray-900">
-                          Birim Maliyet:
-                        </span>
-                        <span className="font-bold text-blue-600">
-                          {calculation.calculations?.totalCostPerUnit?.toFixed(
-                            2
-                          ) || "0.00"}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-green-700 font-medium">
-                          Birim Kar:
-                        </span>
-                        <span className="font-semibold text-green-700">
-                          +
-                          {calculation.calculations?.profitPerUnit?.toFixed(
-                            2
-                          ) || "0.00"}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-2 border-t-2 border-blue-300 bg-blue-50 p-3 rounded -mx-2">
-                        <span className="font-bold text-gray-900">
-                          Birim Satış Fiyatı:
-                        </span>
-                        <span className="font-bold text-xl text-blue-600">
-                          {calculation.calculations?.unitPrice?.toFixed(2) ||
-                            "0.00"}{" "}
-                          TL
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Total Costs */}
-                  <div className="bg-white rounded-lg p-5 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      Toplam Maliyetler ({calculation.quantity} adet)
-                    </h4>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">İçerik/Hammadde:</span>
-                        <span className="font-medium">
-                          {(
-                            (calculation.formData?.ingredients || []).reduce(
-                              (sum, ing) => {
-                                const amount = parseFloat(ing.amount) || 0;
-                                const price = parseFloat(ing.price) || 0;
-                                const unit = ing.unit || "gram";
-                                const kg =
-                                  unit === "gram"
-                                    ? amount / 1000
-                                    : unit === "kg"
-                                    ? amount
-                                    : amount / 1000;
-                                return sum + kg * price;
-                              },
-                              0
-                            ) * calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Ambalaj:</span>
-                        <span className="font-medium">
-                          {(
-                            (calculation.formData?.packaging || []).reduce(
-                              (sum, pkg) => {
-                                return (
-                                  sum +
-                                  (parseFloat(pkg.quantity) || 0) *
-                                    (parseFloat(pkg.price) || 0)
-                                );
-                              },
-                              0
-                            ) * calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Kutu:</span>
-                        <span className="font-medium">
-                          {(
-                            (parseFloat(calculation.formData?.boxQuantity) ||
-                              0) *
-                            (parseFloat(calculation.formData?.boxPrice) || 0) *
-                            calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">Etiket:</span>
-                        <span className="font-medium">
-                          {(
-                            (parseFloat(calculation.formData?.labelQuantity) ||
-                              0) *
-                            (parseFloat(calculation.formData?.labelPrice) ||
-                              0) *
-                            calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-gray-600">İşçilik:</span>
-                        <span className="font-medium">
-                          {(
-                            parseFloat(
-                              calculation.formData?.laborCostPerUnit || 0
-                            ) * calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-3 border-t-2 border-blue-200">
-                        <span className="font-semibold text-gray-900">
-                          Toplam Maliyet:
-                        </span>
-                        <span className="font-bold text-blue-600">
-                          {(
-                            (calculation.calculations?.totalCostPerUnit || 0) *
-                            calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pb-2">
-                        <span className="text-green-700 font-medium">
-                          Toplam Kar:
-                        </span>
-                        <span className="font-semibold text-green-700">
-                          +
-                          {(
-                            (calculation.calculations?.profitPerUnit || 0) *
-                            calculation.quantity
-                          ).toFixed(2)}{" "}
-                          TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-2 border-t-2 border-green-300 bg-green-50 p-3 rounded -mx-2">
-                        <span className="font-bold text-gray-900">
-                          Toplam Satış Fiyatı:
-                        </span>
-                        <span className="font-bold text-xl text-green-600">
-                          {calculation.calculations?.totalPrice?.toFixed(2) ||
-                            "0.00"}{" "}
-                          TL
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Notes */}
-          {(calculation.formData?.notes || editMode) && (
-            <Card className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="text-gray-900 dark:text-white">
-                  Notlar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {!editMode ? (
-                  <p className="text-gray-700 whitespace-pre-line">
-                    {calculation.formData.notes}
-                  </p>
-                ) : (
-                  <Textarea
-                    value={formData.notes || ""}
-                    onChange={(e) => updateField("notes", e.target.value)}
-                    rows={4}
-                    placeholder="Özel notlar..."
-                  />
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Live Calculation Display in Edit Mode */}
-          {editMode && calculatedPrice && (
-            <Card className="mb-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-800 hover:shadow-2xl transition-all duration-300 rounded-xl overflow-hidden">
-              <CardHeader className="border-b border-blue-200 dark:border-blue-700">
-                <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
-                  <Calculator className="h-5 w-5" />
-                  Güncel Hesaplama
-                </CardTitle>
-                <CardDescription className="text-blue-700 dark:text-blue-300">
-                  Değişikliklerinize göre anlık hesaplama sonuçları
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-blue-900">
-                      Birim Maliyetler
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">İçerik:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.ingredientsCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Ambalaj:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.packagingCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Kutu:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.boxCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Etiket:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.labelCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">İşçilik:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.laborCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Diğer:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.otherCostPerUnit} TL
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-blue-300 flex justify-between">
-                        <span className="font-medium text-blue-900">
-                          Toplam Maliyet:
-                        </span>
-                        <span className="font-bold text-blue-900">
+                      {[
+                        {
+                          label: "İçerik",
+                          value: calculatedPrice.ingredientsCostPerUnit,
+                        },
+                        {
+                          label: "Ambalaj",
+                          value: calculatedPrice.packagingCostPerUnit,
+                        },
+                        {
+                          label: "Kutu",
+                          value: calculatedPrice.boxCostPerUnit,
+                        },
+                        {
+                          label: "Etiket",
+                          value: calculatedPrice.labelCostPerUnit,
+                        },
+                        {
+                          label: "İşçilik",
+                          value: calculatedPrice.laborCostPerUnit,
+                        },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <span className="text-blue-700">{item.label}</span>
+                          <span className="font-medium text-blue-900 tabular-nums">
+                            {item.value} TL
+                          </span>
+                        </div>
+                      ))}
+                      <div className="h-px bg-blue-200" />
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-blue-900">Maliyet</span>
+                        <span className="text-blue-900 tabular-nums">
                           {calculatedPrice.totalCostPerUnit} TL
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-blue-700">Kar:</span>
-                        <span className="font-medium text-green-700">
+                        <span className="text-emerald-600">Kar</span>
+                        <span className="font-medium text-emerald-600 tabular-nums">
                           +{calculatedPrice.profitPerUnit} TL
                         </span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between bg-blue-100 -mx-2 px-3 py-2 rounded-lg">
                         <span className="font-bold text-blue-900">
-                          Birim Fiyat:
+                          Birim Fiyat
                         </span>
-                        <span className="font-bold text-lg text-blue-900">
+                        <span className="font-bold text-lg text-blue-600 tabular-nums">
                           {calculatedPrice.unitPrice} TL
                         </span>
                       </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-blue-900">
-                      Toplam ({calculatedPrice.quantity} adet)
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">İçerik:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.ingredientsCostTotal} TL
+                      <div className="flex justify-between bg-emerald-100 -mx-2 px-3 py-2 rounded-lg">
+                        <span className="font-bold text-emerald-900">
+                          Toplam ({calculatedPrice.quantity})
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Ambalaj:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.packagingCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Kutu:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.boxCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Etiket:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.labelCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">İşçilik:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.laborCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Diğer:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.otherCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-blue-300 flex justify-between">
-                        <span className="font-medium text-blue-900">
-                          Toplam Maliyet:
-                        </span>
-                        <span className="font-bold text-blue-900">
-                          {calculatedPrice.totalCostTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Kar:</span>
-                        <span className="font-medium text-green-700">
-                          +{calculatedPrice.profitTotal} TL
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-blue-900">
-                          Toplam Fiyat:
-                        </span>
-                        <span className="font-bold text-lg text-blue-900">
+                        <span className="font-bold text-lg text-emerald-600 tabular-nums">
                           {calculatedPrice.totalPrice} TL
                         </span>
                       </div>
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-blue-900">Özet</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Ürün Hacmi:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.totalProductVolume}g
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Kar Türü:</span>
-                        <span className="font-medium text-blue-900">
-                          {calculatedPrice.profitType === "percentage"
-                            ? `%${calculatedPrice.profitMarginPercent}`
-                            : "Sabit Tutar"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Kar Marjı:</span>
-                        <span className="font-medium text-green-700">
-                          {calculatedPrice.profitType === "percentage"
-                            ? `${(
-                                (parseFloat(calculatedPrice.profitPerUnit) /
-                                  parseFloat(
-                                    calculatedPrice.totalCostPerUnit
-                                  )) *
-                                100
-                              ).toFixed(1)}%`
-                            : `${calculatedPrice.profitPerUnit} TL/adet`}
-                        </span>
-                      </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* Currency Modal */}
+        <Dialog open={showCurrencyModal} onOpenChange={setShowCurrencyModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-emerald-600" />
+                Döviz Çevirimi
+              </DialogTitle>
+              <DialogDescription>Birim fiyatı dövize çevirin</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label>Döviz Cinsi</Label>
+                <Select
+                  value={selectedCurrency}
+                  onValueChange={setSelectedCurrency}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="GBP">GBP (£)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Kur (1 {selectedCurrency} = ? TL)</Label>
+                  <Button
+                    onClick={fetchExchangeRate}
+                    size="sm"
+                    variant="ghost"
+                    disabled={loadingRate}
+                    className="h-8 text-xs gap-1"
+                  >
+                    {loadingRate ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Güncelle
+                  </Button>
+                </div>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  placeholder="35.50"
+                />
+                <p className="text-xs text-slate-500">
+                  API'den çekilen kur. Manuel düzenleyebilirsiniz.
+                </p>
+              </div>
+              {exchangeRate && parseFloat(exchangeRate) > 0 && (
+                <div className="p-4 bg-emerald-50 rounded-xl space-y-3">
+                  <h4 className="text-sm font-semibold text-emerald-900">
+                    Hesaplanan
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-emerald-700">Birim</p>
+                      <p className="text-xl font-bold text-emerald-600 tabular-nums">
+                        {getCurrencySymbol(selectedCurrency)}
+                        {(
+                          (calculation.calculations?.unitPrice || 0) /
+                          parseFloat(exchangeRate)
+                        ).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-700">Toplam</p>
+                      <p className="text-xl font-bold text-emerald-600 tabular-nums">
+                        {getCurrencySymbol(selectedCurrency)}
+                        {(
+                          (calculation.calculations?.totalPrice || 0) /
+                          parseFloat(exchangeRate)
+                        ).toFixed(2)}
+                      </p>
                     </div>
                   </div>
+                  <p className="text-xs text-emerald-600">
+                    Tarih: {new Date().toLocaleString("tr-TR")}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              )}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSaveCurrency}
+                  disabled={
+                    savingCurrency ||
+                    !exchangeRate ||
+                    parseFloat(exchangeRate) <= 0
+                  }
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {savingCurrency ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Kaydet
+                </Button>
+                <Button
+                  onClick={() => setShowCurrencyModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  İptal
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-        {/* Add Company Dialog */}
+        {/* Currency Warning */}
+        <AlertDialog
+          open={showCurrencyWarning}
+          onOpenChange={setShowCurrencyWarning}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Mevcut Döviz Kaydı
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Zaten kayıtlı:{" "}
+                <strong>{calculation.currencyData?.currency}</strong> - Kur:{" "}
+                {calculation.currencyData?.exchangeRate}
+                <br />
+                <span className="text-sm text-slate-500">
+                  {calculation.currencyData?.convertedAt &&
+                    new Date(
+                      calculation.currencyData.convertedAt,
+                    ).toLocaleString("tr-TR")}
+                </span>
+                <br />
+                <br />
+                Yeni kur ile güncellemek istiyor musunuz?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>İptal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleCurrencyWarningConfirm}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Güncelle
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Add Company */}
         <Dialog
           open={showAddCompanyDialog}
           onOpenChange={setShowAddCompanyDialog}
@@ -2235,57 +2443,38 @@ export default function PricingCalculationDetailPage({ params }) {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
+                <Building2 className="h-5 w-5 text-indigo-600" />
                 Müşteri Ekle
               </DialogTitle>
               <DialogDescription>
-                Bu hesaplamayı eklemek istediğiniz müşteriyi seçin
+                Hesaplamayı ekleyeceğiniz müşteriyi seçin
               </DialogDescription>
             </DialogHeader>
-
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="company-select">Müşteri Seçin</Label>
-                <Select
-                  value={selectedCompanyToAdd}
-                  onValueChange={setSelectedCompanyToAdd}
-                >
-                  <SelectTrigger id="company-select">
-                    <SelectValue placeholder="Bir müşteri seçin..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allCompanies
-                      .filter(
-                        (company) =>
-                          !linkedCompanies.some((lc) => lc.id === company.id)
-                      )
-                      .map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{company.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {company.status}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {allCompanies.filter(
-                (company) => !linkedCompanies.some((lc) => lc.id === company.id)
-              ).length === 0 && (
-                <div className="text-center py-4 text-sm text-gray-500">
-                  Tüm müşteriler bu hesaplamaya zaten eklenmiş
-                </div>
-              )}
-
+              <Select
+                value={selectedCompanyToAdd}
+                onValueChange={setSelectedCompanyToAdd}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Müşteri seçin..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allCompanies
+                    .filter(
+                      (c) => !linkedCompanies.some((lc) => lc.id === c.id),
+                    )
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
               <div className="flex gap-3 pt-4">
                 <Button
                   onClick={handleAddCompanyToCalculation}
                   disabled={!selectedCompanyToAdd}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Ekle
@@ -2305,16 +2494,13 @@ export default function PricingCalculationDetailPage({ params }) {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Dialog */}
+        {/* Delete */}
         <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-          <AlertDialogContent className="bg-white dark:bg-gray-800">
+          <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
-                Hesaplamayı Sil
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
-                Bu hesaplamayı silmek istediğinizden emin misiniz? Bu işlem geri
-                alınamaz ve tüm bağlı müşteri kayıtları da kaldırılacaktır.
+              <AlertDialogTitle>Hesaplamayı Sil</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bu işlem geri alınamaz. Silmek istediğinizden emin misiniz?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -2326,7 +2512,7 @@ export default function PricingCalculationDetailPage({ params }) {
               >
                 {deleting ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Siliniyor...
                   </>
                 ) : (

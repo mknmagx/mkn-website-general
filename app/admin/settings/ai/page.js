@@ -92,6 +92,10 @@ import {
   Sparkles,
   Zap,
   Brain,
+  Database,
+  FlaskConical,
+  CheckCircle2,
+  XCircle,
   Image as ImageIcon,
   MessageSquare,
   Search,
@@ -136,6 +140,16 @@ import {
   getPromptStatistics,
   PROMPT_CATEGORIES as SEED_PROMPT_CATEGORIES,
 } from "@/lib/services/ai-prompts-seed";
+
+import {
+  seedCaseSummarySettings,
+  checkCaseSummarySettingsSeeded,
+} from "@/lib/services/crm-case-summary-seed";
+
+import {
+  seedFormulaPromptsV4,
+  checkFormulaPromptsV4Seeded,
+} from "@/lib/services/formula-prompts-v4";
 
 // ============================================================================
 // PROVIDER CARD COMPONENT
@@ -1893,6 +1907,98 @@ export default function AiSettingsPage() {
 
   const [seedingAll, setSeedingAll] = useState(false);
   const [resettingAll, setResettingAll] = useState(false);
+  const [seedingCaseSummary, setSeedingCaseSummary] = useState(false);
+  const [caseSummarySeeded, setCaseSummarySeeded] = useState(false);
+  
+  // Formula v4.0 seed states
+  const [seedingFormulaV4, setSeedingFormulaV4] = useState(false);
+  const [formulaV4Seeded, setFormulaV4Seeded] = useState({ allSeeded: false, seeded: 0, total: 4 });
+
+  // CRM Case Summary seed durumunu kontrol et
+  useEffect(() => {
+    const checkCaseSummary = async () => {
+      try {
+        const isSeeded = await checkCaseSummarySettingsSeeded();
+        setCaseSummarySeeded(isSeeded);
+      } catch (error) {
+        console.error("Case summary seed kontrolü hatası:", error);
+      }
+    };
+    checkCaseSummary();
+  }, []);
+
+  // Formula v4.0 seed durumunu kontrol et
+  useEffect(() => {
+    const checkFormulaV4 = async () => {
+      try {
+        const result = await checkFormulaPromptsV4Seeded();
+        setFormulaV4Seeded(result);
+      } catch (error) {
+        console.error("Formula v4 seed kontrolü hatası:", error);
+      }
+    };
+    checkFormulaV4();
+  }, []);
+
+  /**
+   * CRM CASE SUMMARY AYARLARINI YÜKLE
+   */
+  const handleSeedCaseSummary = async () => {
+    setSeedingCaseSummary(true);
+    try {
+      const result = await seedCaseSummarySettings();
+      if (result.success) {
+        toast({
+          title: "🎉 CRM Case Summary Ayarları Yüklendi!",
+          description: result.message,
+        });
+        setCaseSummarySeeded(true);
+        loadData();
+      } else {
+        throw new Error(result.error || "Bilinmeyen hata");
+      }
+    } catch (error) {
+      console.error("CRM Case Summary seed hatası:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingCaseSummary(false);
+    }
+  };
+
+  /**
+   * FORMÜL V4.0 PROMPTLARINI YÜKLE
+   */
+  const handleSeedFormulaV4 = async () => {
+    setSeedingFormulaV4(true);
+    try {
+      const result = await seedFormulaPromptsV4();
+      if (result.success) {
+        toast({
+          title: "🎉 Formül v4.0 Prompt'ları Yüklendi!",
+          description: result.message,
+        });
+        // Durumu güncelle
+        const checkResult = await checkFormulaPromptsV4Seeded();
+        setFormulaV4Seeded(checkResult);
+        loadData();
+      } else {
+        throw new Error(result.error || "Bilinmeyen hata");
+      }
+    } catch (error) {
+      console.error("Formula v4 seed hatası:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingFormulaV4(false);
+    }
+  };
 
   /**
    * TÜM AI VERİLERİNİ YÜKLE
@@ -2350,6 +2456,39 @@ export default function AiSettingsPage() {
                 </AlertDialog>
               </PermissionGuard>
 
+              {/* CRM Case Summary Ayarlarını Yükle */}
+              <PermissionGuard requiredPermission="ai_settings.write">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleSeedCaseSummary}
+                        disabled={seedingCaseSummary}
+                        variant={caseSummarySeeded ? "outline" : "default"}
+                        className={caseSummarySeeded 
+                          ? "border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                          : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
+                        }
+                      >
+                        {seedingCaseSummary ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : caseSummarySeeded ? (
+                          <Check className="mr-2 h-4 w-4" />
+                        ) : (
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                        )}
+                        {caseSummarySeeded ? "CRM Özet ✓" : "CRM Özet Yükle"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-slate-800 text-white border-0">
+                      <p>
+                        CRM Case Summary AI ayarlarını (prompt + konfigürasyon) yükler
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </PermissionGuard>
+
               <Button 
                 variant="outline" 
                 onClick={loadData}
@@ -2439,6 +2578,13 @@ export default function AiSettingsPage() {
               >
                 <Sliders className="h-4 w-4" />
                 Konfigürasyonlar ({configurations.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                value="seed-operations" 
+                className="gap-2 rounded-lg data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-800 dark:data-[state=active]:text-slate-100"
+              >
+                <Database className="h-4 w-4" />
+                Seed İşlemleri
               </TabsTrigger>
             </TabsList>
 
@@ -3012,6 +3158,180 @@ export default function AiSettingsPage() {
                   </p>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Seed İşlemleri Tab */}
+            <TabsContent value="seed-operations">
+              <div className="space-y-6">
+                {/* Info Card */}
+                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                  <CardContent className="flex items-start gap-4 py-4">
+                    <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl shrink-0">
+                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-blue-800 dark:text-blue-200">Seed İşlemleri Hakkında</p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                        Bu bölümde özel prompt ve konfigürasyon paketlerini veritabanına yükleyebilirsiniz. 
+                        Her paket bağımsız çalışır ve mevcut verileri bozmadan güncelleme yapar.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Seed Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Formula v4.0 Prompts */}
+                  <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-violet-100 dark:bg-violet-900/50 rounded-xl">
+                            <FlaskConical className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                              Formül v4.0 Prompt'ları
+                            </CardTitle>
+                            <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
+                              Kategori bazlı profesyonel formül prompt'ları
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={formulaV4Seeded.allSeeded 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                          }
+                        >
+                          {formulaV4Seeded.seeded}/{formulaV4Seeded.total}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">İçerik:</p>
+                        <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                          <li className="flex items-center gap-2">
+                            {formulaV4Seeded.details?.find(d => d.key === "formula_cosmetic_pro")?.exists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Kozmetik Formül Üretimi
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {formulaV4Seeded.details?.find(d => d.key === "formula_dermocosmetic_pro")?.exists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Dermokozmetik Formül Üretimi
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {formulaV4Seeded.details?.find(d => d.key === "formula_cleaning_pro")?.exists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Temizlik Ürünleri Formül Üretimi
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {formulaV4Seeded.details?.find(d => d.key === "formula_supplement_pro")?.exists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Gıda Takviyesi Formül Üretimi
+                          </li>
+                        </ul>
+                      </div>
+                      <Button
+                        onClick={handleSeedFormulaV4}
+                        disabled={seedingFormulaV4}
+                        className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                      >
+                        {seedingFormulaV4 ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {formulaV4Seeded.allSeeded ? "Güncelle" : "Yükle"}
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* CRM Case Summary */}
+                  <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+                            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                              CRM Talep Özeti
+                            </CardTitle>
+                            <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
+                              Konuşma özeti AI konfigürasyonu
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={caseSummarySeeded?.isSeeded 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                          }
+                        >
+                          {caseSummarySeeded?.isSeeded ? "Yüklendi" : "Yüklenmedi"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">İçerik:</p>
+                        <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                          <li className="flex items-center gap-2">
+                            {caseSummarySeeded?.hasConfiguration 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            AI Konfigürasyonu
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {caseSummarySeeded?.hasDetailedPrompt 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Detaylı Özet Prompt'u
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {caseSummarySeeded?.hasQuickPrompt 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Hızlı Özet Prompt'u
+                          </li>
+                        </ul>
+                      </div>
+                      <Button
+                        onClick={handleSeedCaseSummary}
+                        disabled={seedingCaseSummary}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {seedingCaseSummary ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {caseSummarySeeded?.isSeeded ? "Güncelle" : "Yükle"}
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </main>

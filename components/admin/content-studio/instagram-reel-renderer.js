@@ -6,6 +6,49 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, FileText, MessageCircle } from "lucide-react";
 
+// Helper function to safely render any value (handles objects, arrays, strings)
+const safeRenderValue = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item, idx) => (
+      <div key={idx} className="mb-1">
+        {typeof item === 'object' ? (
+          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+            {JSON.stringify(item, null, 2)}
+          </span>
+        ) : (
+          <span>• {String(item)}</span>
+        )}
+      </div>
+    ));
+  }
+  if (typeof value === 'object') {
+    // Handle nested objects
+    const entries = Object.entries(value);
+    if (entries.length === 0) return '';
+    
+    return (
+      <div className="space-y-1">
+        {entries.map(([key, val]) => (
+          <div key={key} className="text-sm">
+            <span className="font-medium text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').replace(/([0-9]+)/g, ' $1').trim()}: </span>
+            <span className="text-gray-700">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return String(value);
+};
+
 export function InstagramReelRenderer({ content, updateContent, handleCopy }) {
   return (
     <div className="space-y-6">
@@ -15,10 +58,10 @@ export function InstagramReelRenderer({ content, updateContent, handleCopy }) {
           <p className="text-xs font-semibold text-pink-700 mb-2">
             Reel Konsepti
           </p>
-          <p className="text-sm text-gray-700">{content.reelConcept}</p>
+          <div className="text-sm text-gray-700">{safeRenderValue(content.reelConcept)}</div>
           {content.duration && (
             <p className="text-xs text-gray-500 mt-2">
-              Süre: {content.duration}
+              Süre: {safeRenderValue(content.duration)}
             </p>
           )}
         </div>
@@ -290,7 +333,7 @@ export function InstagramReelRenderer({ content, updateContent, handleCopy }) {
           <p className="text-xs font-semibold text-emerald-700 mb-2">
             Beklenen Performans
           </p>
-          <p className="text-sm text-gray-700">{content.expectedPerformance}</p>
+          <div className="text-sm text-gray-700">{safeRenderValue(content.expectedPerformance)}</div>
         </div>
       )}
     </div>

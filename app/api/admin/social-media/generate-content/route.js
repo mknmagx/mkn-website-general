@@ -190,11 +190,56 @@ export async function POST(request) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
     // 8. Response'u parse et
+    // Provider response formatları:
+    // - Gemini: { text: string, metadata: object, ... }
+    // - Claude: { content: string, metadata: object }
+    // - OpenAI: { content: string, metadata: object }
+    // - Or plain string if returnMetadata=false
     let content;
     let parseWarning = null;
     
+    // Extract text from response - handle all provider formats
+    const extractTextFromResponse = (res) => {
+      // If already a string, return directly
+      if (typeof res === 'string') {
+        return res;
+      }
+      
+      // If null or undefined
+      if (!res) {
+        console.error('❌ Response is null or undefined');
+        return '';
+      }
+      
+      // Gemini format: { text: string, ... }
+      if (typeof res.text === 'string') {
+        return res.text;
+      }
+      
+      // Claude/OpenAI format: { content: string, ... }
+      if (typeof res.content === 'string') {
+        return res.content;
+      }
+      
+      // If response has candidates array (raw Gemini API response - shouldn't happen but safety check)
+      if (res.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return res.candidates[0].content.parts[0].text;
+      }
+      
+      // If response has choices array (raw OpenAI API response - shouldn't happen but safety check)
+      if (res.choices?.[0]?.message?.content) {
+        return res.choices[0].message.content;
+      }
+      
+      // Last resort: try to stringify (but log warning)
+      console.warn('⚠️ Unknown response format, attempting JSON stringify:', typeof res, Object.keys(res || {}));
+      return JSON.stringify(res);
+    };
+    
+    let responseText = extractTextFromResponse(response);
+    
     try {
-      let cleanedText = response.trim();
+      let cleanedText = responseText.trim();
       cleanedText = cleanedText.replace(/^```json\s*/i, "").replace(/^```\s*/, "");
       cleanedText = cleanedText.replace(/\s*```\s*$/, "");
       cleanedText = cleanedText.trim();
@@ -240,12 +285,12 @@ export async function POST(request) {
       }
     } catch (parseError) {
       console.error("❌ Failed to parse AI response:", parseError);
-      console.error("Response text:", response.substring(0, 200));
+      console.error("Response text:", responseText.substring(0, 200));
 
       // Fallback structure
       content = {
-        caption: response.substring(0, 500),
-        fullText: response,
+        caption: responseText.substring(0, 500),
+        fullText: responseText,
         hashtags: [],
         cta: "Daha fazla bilgi için bizi takip edin!",
       };

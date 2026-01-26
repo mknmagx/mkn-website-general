@@ -2,18 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -21,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Loader2,
   Plus,
@@ -32,10 +30,12 @@ import {
   TrendingUp,
   DollarSign,
   Eye,
-  ArrowRight,
   Layers,
   Trash2,
   Sparkles,
+  MoreVertical,
+  Calculator,
+  FlaskConical,
 } from "lucide-react";
 import * as FormulaService from "@/lib/services/formula-service";
 import { useToast } from "@/hooks/use-toast";
@@ -57,59 +57,125 @@ export default function FormulasPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: "" });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    id: null,
+    name: "",
+  });
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadFormulas();
   }, []);
 
+  // Akıllı birim formatlaması (gram → kg/g)
+  const formatVolume = (gramValue) => {
+    const value = parseFloat(gramValue) || 0;
+    
+    if (value >= 1000) {
+      // 1000g ve üzeri → kg
+      const kgValue = value / 1000;
+      return `${kgValue % 1 === 0 ? kgValue.toFixed(0) : kgValue.toFixed(2)} kg`;
+    } else if (value > 0) {
+      // 0'dan büyük tüm değerler gram olarak göster
+      // Tam sayıysa ondalık gösterme, değilse uygun hassasiyette göster
+      if (value % 1 === 0) {
+        return `${value.toFixed(0)} g`;
+      } else if (value >= 0.1) {
+        return `${value.toFixed(1)} g`;
+      } else {
+        return `${value.toFixed(2)} g`;
+      }
+    }
+    return "0 g";
+  };
+
+  // Detay sayfasıyla aynı hesaplama mantığı
+  const calculateIngredientCost = (ing) => {
+    const amount = parseFloat(ing.amount) || 0;
+    const unit = ing.unit || "gram";
+    // price veya estimatedPriceTLperKg her zaman KG başına fiyattır
+    const pricePerKg = parseFloat(ing.price) || parseFloat(ing.estimatedPriceTLperKg) || 0;
+
+    let cost = 0;
+
+    switch (unit) {
+      case "adet":
+        // Adet: miktar × adet başına fiyat (bu durumda price adet fiyatıdır)
+        cost = amount * pricePerKg;
+        break;
+      case "mg":
+        // mg: (mg / 1,000,000) × pricePerKg
+        cost = (amount / 1000000) * pricePerKg;
+        break;
+      case "kg":
+        // kg: kg × pricePerKg
+        cost = amount * pricePerKg;
+        break;
+      case "ml":
+        // ml: (ml / 1000) × pricePerKg (1ml ≈ 1g varsayımı)
+        cost = (amount / 1000) * pricePerKg;
+        break;
+      case "L":
+        // L: L × pricePerKg (1L ≈ 1000g)
+        cost = amount * pricePerKg;
+        break;
+      case "g":
+      case "gram":
+      default:
+        // gram: (gram / 1000) × pricePerKg
+        cost = (amount / 1000) * pricePerKg;
+        break;
+    }
+
+    return cost;
+  };
+
   const loadFormulas = async () => {
     try {
       setLoading(true);
       const data = await FormulaService.loadSavedFormulas();
-      
-      // Calculate cost for each formula (v3.1 uyumlu)
-      const formulasWithCost = data.map(formula => {
+
+      // Calculate cost for each formula
+      const formulasWithCost = data.map((formula) => {
         let totalCost = 0;
         let totalAmount = 0;
-        
+
         if (formula.ingredients) {
-          formula.ingredients.forEach(ing => {
+          formula.ingredients.forEach((ing) => {
             const amount = parseFloat(ing.amount) || 0;
-            totalAmount += amount;
+            const unit = ing.unit || "gram";
             
-            // v3.1 uyumu: estimatedCostTL varsa direkt kullan
-            if (ing.estimatedCostTL && parseFloat(ing.estimatedCostTL) > 0) {
-              totalCost += parseFloat(ing.estimatedCostTL);
-            } else {
-              // Eski format: price üzerinden hesapla
-              const price = parseFloat(ing.estimatedPriceTLperKg || ing.price) || 0;
-              let cost = 0;
-              
-              if (ing.unit === 'g' || ing.unit === 'gram') {
-                cost = (amount / 1000) * price;
-              } else if (ing.unit === 'ml') {
-                cost = (amount / 1000) * price;
-              } else if (ing.unit === 'kg') {
-                cost = amount * price;
-              } else {
-                cost = amount * price;
-              }
-              
-              totalCost += cost;
+            // adet birimli hammaddeler gram hesabına dahil edilmez
+            if (unit !== "adet") {
+              // Gram'a dönüştür
+              let gramAmount = amount;
+              if (unit === "mg") gramAmount = amount / 1000;
+              else if (unit === "kg") gramAmount = amount * 1000;
+              else if (unit === "ml") gramAmount = amount;
+              else if (unit === "L") gramAmount = amount * 1000;
+              totalAmount += gramAmount;
             }
+
+            // Maliyet hesapla (detay sayfasıyla aynı mantık)
+            totalCost += calculateIngredientCost(ing);
           });
         }
-        
+
+        // Her zaman hesaplanan totalAmount kullan (adet hariç, gram cinsinden)
+        // Firestore'daki totalAmount adet dahil olabilir, bu yüzden kullanmıyoruz
+        const displayVolume = totalAmount;
+
         return {
           ...formula,
           calculatedCost: totalCost.toFixed(2),
-          totalAmount: totalAmount.toFixed(2),
-          costPerGram: totalAmount > 0 ? (totalCost / totalAmount).toFixed(4) : '0.0000',
+          totalAmount: totalAmount, // Ham değer (gram cinsinden, adet hariç)
+          displayVolume: displayVolume, // Gösterim için (gram cinsinden)
+          costPerGram:
+            displayVolume > 0 ? (totalCost / displayVolume).toFixed(4) : "0.0000",
         };
       });
-      
+
       setFormulas(formulasWithCost);
     } catch (error) {
       console.error("Error loading formulas:", error);
@@ -123,7 +189,6 @@ export default function FormulasPage() {
     }
   };
 
-  // Filter and search
   const filteredFormulas = formulas.filter((formula) => {
     const matchesSearch = formula.name
       .toLowerCase()
@@ -133,28 +198,16 @@ export default function FormulasPage() {
     return matchesSearch && matchesType;
   });
 
-  const handleCreateNew = () => {
-    router.push("/admin/formulas/create");
-  };
-
-  const handleCreateProfessional = () => {
-    router.push("/admin/formulas/professional");
-  };
-
-  const handleViewFormula = (id) => {
-    router.push(`/admin/formulas/${id}`);
-  };
-
   const handleDelete = async () => {
     try {
       setDeleting(true);
       await FormulaService.deleteFormula(deleteDialog.id);
-      
+
       toast({
         title: "Başarılı",
         description: "Formül başarıyla silindi.",
       });
-      
+
       await loadFormulas();
       setDeleteDialog({ open: false, id: null, name: "" });
     } catch (error) {
@@ -169,448 +222,486 @@ export default function FormulasPage() {
     }
   };
 
-  // Calculate stats
-  const totalFormulas = formulas.length;
-  const totalCost = formulas.reduce((sum, f) => sum + parseFloat(f.calculatedCost || 0), 0);
-  const avgCost = totalFormulas > 0 ? (totalCost / totalFormulas).toFixed(2) : 0;
-  const totalIngredients = formulas.reduce((sum, f) => sum + (f.ingredients?.length || 0), 0);
-  const totalActiveIngredients = formulas.reduce((sum, f) => {
-    const activeCount = f.ingredients?.filter(ing => 
-      ing.function === "Active Ingredient" || 
-      ing.functionTr === "Aktif Madde"
-    ).length || 0;
-    return sum + activeCount;
-  }, 0);
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+    try {
+      const date = timestamp.toDate
+        ? timestamp.toDate()
+        : new Date(timestamp.seconds * 1000);
+      return date.toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
+    }
+  };
+
+  // Stats
+  const stats = {
+    total: formulas.length,
+    totalCost: formulas.reduce(
+      (sum, f) => sum + parseFloat(f.calculatedCost || 0),
+      0
+    ),
+    totalIngredients: formulas.reduce(
+      (sum, f) => sum + (f.ingredients?.length || 0),
+      0
+    ),
+    avgCost:
+      formulas.length > 0
+        ? formulas.reduce(
+            (sum, f) => sum + parseFloat(f.calculatedCost || 0),
+            0
+          ) / formulas.length
+        : 0,
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Formüller yükleniyor...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
+          <p className="text-sm text-slate-500">Formüller yükleniyor...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Modern Header with Glass Effect */}
-      <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 border-b border-gray-200">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-2.5 shadow-lg">
-                  <Beaker className="h-7 w-7 text-white" />
-                </div>
-                Ürün Formülleri
-              </h1>
-              <p className="text-gray-600 mt-2 ml-14">
-                Kayıtlı formülleri görüntüleyin, düzenleyin ve yönetin
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                onClick={handleCreateProfessional} 
-                size="lg"
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all"
-              >
-                <Sparkles className="h-5 w-5 mr-2" />
-                Profesyonel Formül
-              </Button>
-              <Button 
-                onClick={handleCreateNew} 
-                size="lg"
-                variant="outline"
-                className="border-2 border-blue-200 hover:bg-blue-50"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Hızlı Formül
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        {/* Stats Cards - Modern Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <Package className="h-8 w-8 opacity-80" />
-              <div className="text-xs font-medium opacity-90">TOPLAM</div>
-            </div>
-            <div className="text-3xl font-bold tracking-tight">{totalFormulas}</div>
-            <div className="text-sm mt-2 opacity-80">Kayıtlı Formül</div>
-          </div>
-
-          <div className="group bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign className="h-8 w-8 opacity-80" />
-              <div className="text-xs font-medium opacity-90">ORT. MALİYET</div>
-            </div>
-            <div className="text-3xl font-bold tracking-tight">₺{avgCost}</div>
-            <div className="text-sm mt-2 opacity-80">Formül başına</div>
-          </div>
-
-          <div className="group bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <Layers className="h-8 w-8 opacity-80" />
-              <div className="text-xs font-medium opacity-90">HAMMADDE</div>
-            </div>
-            <div className="text-3xl font-bold tracking-tight">{totalIngredients}</div>
-            <div className="text-sm mt-2 opacity-80">Toplam kullanım</div>
-            {totalActiveIngredients > 0 && (
-              <div className="text-xs mt-1 opacity-70">
-                ({totalActiveIngredients} aktif madde)
-              </div>
-            )}
-          </div>
-
-          <div className="group bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="h-8 w-8 opacity-80" />
-              <div className="text-xs font-medium opacity-90">TOPLAM</div>
-            </div>
-            <div className="text-3xl font-bold tracking-tight">₺{totalCost.toFixed(2)}</div>
-            <div className="text-sm mt-2 opacity-80">Toplam maliyet</div>
-          </div>
-        </div>
-
-        {/* Search and Filter Section */}
-        <Card className="mb-8 border-0 shadow-md rounded-2xl overflow-hidden">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    placeholder="Formül adı ile arama yapın..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-base"
-                  />
-                </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/25">
+                <Beaker className="h-6 w-6 text-white" />
               </div>
               <div>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="h-12 border-gray-200 focus:border-blue-500 rounded-xl">
-                    <Filter className="h-4 w-4 mr-2 text-gray-500" />
-                    <SelectValue placeholder="Ürün tipi" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Tipler</SelectItem>
-                    <SelectItem value="kozmetik">Kozmetik</SelectItem>
-                    <SelectItem value="gida">Gıda</SelectItem>
-                    <SelectItem value="temizlik">Temizlik</SelectItem>
-                    <SelectItem value="kisisel-bakim">Kişisel Bakım</SelectItem>
-                    <SelectItem value="diger">Diğer</SelectItem>
-                  </SelectContent>
-                </Select>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  Ürün Formülleri
+                </h1>
+                <p className="text-sm text-slate-500">{stats.total} formül</p>
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => router.push("/admin/formulas/professional")}
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-600/25"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Profesyonel
+              </Button>
+              <Button
+                onClick={() => router.push("/admin/formulas/create")}
+                variant="outline"
+                className="border-violet-200 text-violet-700 hover:bg-violet-50"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Hızlı Oluştur
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-            {/* Active Filters Display */}
-            {(searchTerm || filterType !== "all") && (
-              <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
-                <span className="text-sm text-gray-600 font-medium">Aktif Filtreler:</span>
-                {searchTerm && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 font-normal">
-                    Arama: "{searchTerm}"
-                  </Badge>
-                )}
-                {filterType !== "all" && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 font-normal">
-                    Tip: {filterType}
-                  </Badge>
-                )}
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setFilterType("all");
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium ml-auto"
-                >
-                  Filtreleri Temizle
-                </button>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                  <FlaskConical className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Toplam Formül</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {stats.total}
+                  </p>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Results Count */}
-        {filteredFormulas.length > 0 && (
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold text-gray-900">{filteredFormulas.length}</span> formül listeleniyor
-              {filteredFormulas.length !== totalFormulas && (
-                <span className="text-gray-500"> (toplam {totalFormulas} içinden)</span>
-              )}
-            </p>
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Ort. Maliyet</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    ₺{stats.avgCost.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Layers className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Hammadde</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {stats.totalIngredients}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Toplam Maliyet</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    ₺{stats.totalCost.toFixed(0)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search & Filter */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Formül adı ile ara..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-white border-slate-200 rounded-xl"
+            />
+          </div>
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-[180px] h-10 bg-white border-slate-200 rounded-xl">
+              <Filter className="h-4 w-4 mr-2 text-slate-400" />
+              <SelectValue placeholder="Tüm tipler" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm Tipler</SelectItem>
+              <SelectItem value="kozmetik">Kozmetik</SelectItem>
+              <SelectItem value="gida">Gıda Takviyesi</SelectItem>
+              <SelectItem value="temizlik">Temizlik</SelectItem>
+              <SelectItem value="kisisel-bakim">Kişisel Bakım</SelectItem>
+              <SelectItem value="diger">Diğer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filter tags */}
+        {(searchTerm || filterType !== "all") && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-slate-500">Filtreler:</span>
+            {searchTerm && (
+              <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                &quot;{searchTerm}&quot;
+              </Badge>
+            )}
+            {filterType !== "all" && (
+              <Badge variant="secondary" className="bg-violet-100 text-violet-700">
+                {filterType}
+              </Badge>
+            )}
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setFilterType("all");
+              }}
+              className="text-xs text-violet-600 hover:underline ml-2"
+            >
+              Temizle
+            </button>
           </div>
         )}
 
-        {/* Formulas Table */}
+        {/* List */}
         {filteredFormulas.length === 0 ? (
-          <Card className="border-0 shadow-md rounded-2xl">
+          <Card className="border-0 shadow-sm bg-white rounded-2xl">
             <CardContent className="py-16 text-center">
-              <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                <Package className="h-12 w-12 text-gray-400" />
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Beaker className="h-8 w-8 text-slate-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
                 {searchTerm || filterType !== "all"
-                  ? "Formül Bulunamadı"
+                  ? "Sonuç Bulunamadı"
                   : "Henüz Formül Yok"}
               </h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
                 {searchTerm || filterType !== "all"
-                  ? "Arama kriterlerinize uygun formül bulunamadı. Filtreleri değiştirerek tekrar deneyin."
-                  : "İlk formülünüzü oluşturmak için aşağıdaki butona tıklayın ve yeni bir formül tanımlayın."}
+                  ? "Arama kriterlerine uygun formül bulunamadı."
+                  : "İlk formülünüzü oluşturun."}
               </p>
               {!searchTerm && filterType === "all" && (
-                <Button 
-                  onClick={handleCreateNew}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  İlk Formülü Oluştur
-                </Button>
-              )}
-              {(searchTerm || filterType !== "all") && (
-                <Button 
-                  onClick={() => {
-                    setSearchTerm("");
-                    setFilterType("all");
-                  }}
-                  variant="outline"
-                  size="lg"
-                >
-                  Filtreleri Temizle
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button
+                    onClick={() => router.push("/admin/formulas/professional")}
+                    className="bg-violet-600 hover:bg-violet-700"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Profesyonel Formül
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/admin/formulas/create")}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Hızlı Formül
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-50 hover:to-indigo-50">
-                    <TableHead className="font-bold text-gray-900 py-4 w-[35%]">
-                      Formül Bilgileri
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-center">
-                      Hammaddeler
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-center">
-                      Toplam Hacim
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-right">
-                      Toplam Maliyet
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-right">
-                      Gram Başı Maliyet
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-center">
-                      Tarih
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-900 text-center">
-                      İşlemler
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredFormulas.map((formula) => {
-                    const activeCount = formula.ingredients?.filter(ing => 
-                      ing.function === "Active Ingredient" || 
-                      ing.functionTr === "Aktif Madde"
-                    ).length || 0;
-                    const costPerGram = formula.totalAmount && formula.calculatedCost && parseFloat(formula.calculatedCost) > 0
-                      ? (parseFloat(formula.calculatedCost) / parseFloat(formula.totalAmount)).toFixed(4)
-                      : "0.0000";
+          <div className="space-y-3">
+            {filteredFormulas.map((formula) => {
+              const activeCount =
+                formula.ingredients?.filter(
+                  (ing) =>
+                    ing.function === "Active Ingredient" ||
+                    ing.functionTr === "Aktif Madde"
+                ).length || 0;
+              const isProfessional = formula.source === "professional";
+              const hasProductionQuantity =
+                formula.productionQuantity &&
+                parseFloat(formula.productionQuantity) > 0;
 
-                    return (
-                      <TableRow
-                        key={formula.id}
-                        className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors cursor-pointer"
-                        onClick={() => handleViewFormula(formula.id)}
-                      >
-                        {/* Formül Bilgileri */}
-                        <TableCell className="py-4">
-                          <div className="flex items-start gap-3">
-                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-sm flex-shrink-0">
-                              <Beaker className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-bold text-gray-900 mb-1.5 line-clamp-1">
-                                {formula.name}
-                              </h3>
-                              <div className="flex gap-1.5 flex-wrap">
-                                <Badge className="bg-blue-600 text-white border-0 text-xs">
-                                  {formula.productType || "Genel"}
-                                </Badge>
-                                {formula.productVolume && (
-                                  <Badge variant="outline" className="border-blue-300 text-blue-700 text-xs">
-                                    {formula.productVolume} ml
-                                  </Badge>
-                                )}
-                              </div>
-                              {/* Ingredients Preview */}
-                              {formula.ingredients && formula.ingredients.length > 0 && (
-                                <div className="mt-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {formula.ingredients.slice(0, 3).map((ing, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium"
-                                      >
-                                        {ing.name}
-                                      </span>
-                                    ))}
-                                    {formula.ingredients.length > 3 && (
-                                      <span className="text-xs text-gray-500 px-2 py-0.5 font-medium">
-                                        +{formula.ingredients.length - 3}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+              // Kutu başına maliyet hesaplama (productionQuantity varsa)
+              const costPerUnit = hasProductionQuantity
+                ? (
+                    parseFloat(formula.calculatedCost) *
+                    parseFloat(formula.productionQuantity)
+                  ).toFixed(2)
+                : null;
+
+              return (
+                <Card
+                  key={formula.id}
+                  className="border-0 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow cursor-pointer group"
+                  onClick={() => router.push(`/admin/formulas/${formula.id}`)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                      {/* Sol: Formül Bilgileri */}
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${
+                            isProfessional
+                              ? "bg-gradient-to-br from-violet-500 to-purple-600 shadow-violet-500/20"
+                              : "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/20"
+                          }`}
+                        >
+                          {isProfessional ? (
+                            <Sparkles className="h-5 w-5 text-white" />
+                          ) : (
+                            <Beaker className="h-5 w-5 text-white" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-slate-900 truncate">
+                              {formula.name}
+                            </h3>
+                            {isProfessional && (
+                              <Badge
+                                variant="outline"
+                                className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] px-1.5 py-0 flex-shrink-0"
+                              >
+                                Profesyonel
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <Badge
+                              variant="secondary"
+                              className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0"
+                            >
+                              {formula.productType || "Genel"}
+                            </Badge>
+                            {formula.productVolume && (
+                              <span>{formula.productVolume} ml</span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(formula.createdAt)}
+                            </span>
+                            {hasProductionQuantity && (
+                              <span className="flex items-center gap-1 text-violet-600">
+                                <Package className="h-3 w-3" />
+                                {formula.productionQuantity} adet/kutu
+                              </span>
+                            )}
+                          </div>
+                          {/* Ingredients preview */}
+                          {formula.ingredients && formula.ingredients.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {formula.ingredients.slice(0, 4).map((ing, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded"
+                                >
+                                  {ing.name}
+                                </span>
+                              ))}
+                              {formula.ingredients.length > 4 && (
+                                <span className="text-[10px] text-slate-400 px-1">
+                                  +{formula.ingredients.length - 4}
+                                </span>
                               )}
                             </div>
-                          </div>
-                        </TableCell>
+                          )}
+                        </div>
+                      </div>
 
-                        {/* Hammaddeler */}
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center gap-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <Layers className="h-4 w-4 text-gray-400" />
-                              <span className="font-bold text-gray-900">
-                                {formula.ingredients?.length || 0}
-                              </span>
-                            </div>
+                      {/* Orta: Bilgiler */}
+                      <div className="flex items-center gap-4 lg:gap-6 flex-wrap">
+                        <div className="text-center px-3">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                            Hammadde
+                          </p>
+                          <div className="flex items-center justify-center gap-1">
+                            <p className="font-semibold text-slate-900">
+                              {formula.ingredients?.length || 0}
+                            </p>
                             {activeCount > 0 && (
-                              <Badge variant="secondary" className="bg-green-100 text-green-700 font-semibold text-xs">
+                              <Badge
+                                variant="secondary"
+                                className="bg-emerald-100 text-emerald-700 text-[10px] px-1 py-0"
+                              >
                                 {activeCount} aktif
                               </Badge>
                             )}
                           </div>
-                        </TableCell>
-
-                        {/* Toplam Hacim */}
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center">
-                            {formula.totalAmount ? (
-                              <>
-                                <span className="font-bold text-purple-700">
-                                  {parseFloat(formula.totalAmount).toFixed(0)}
-                                </span>
-                                <span className="text-xs text-gray-500">gram</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                        </div>
+                        <div className="text-center px-3">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                            Hacim
+                          </p>
+                          <p className="font-semibold text-slate-900">
+                            {formatVolume(formula.displayVolume)}
+                          </p>
+                        </div>
+                        <div className="text-center px-3">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                            Birim Maliyet
+                          </p>
+                          <p className="font-bold text-emerald-600">
+                            ₺{formula.calculatedCost}
+                          </p>
+                        </div>
+                        {costPerUnit && (
+                          <div className="text-center px-3">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                              Kutu Maliyeti
+                            </p>
+                            <p className="font-bold text-violet-600">
+                              ₺{costPerUnit}
+                            </p>
                           </div>
-                        </TableCell>
+                        )}
+                        <div className="text-center px-3">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                            Gram/TL
+                          </p>
+                          <p className="font-semibold text-slate-600">
+                            ₺{formula.costPerGram}
+                          </p>
+                        </div>
+                      </div>
 
-                        {/* Toplam Maliyet */}
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end">
-                            {formula.calculatedCost && parseFloat(formula.calculatedCost) > 0 ? (
-                              <>
-                                <span className="font-bold text-green-700">
-                                  ₺{formula.calculatedCost}
-                                </span>
-                                <span className="text-xs text-gray-500">toplam</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* Gram Başı Maliyet */}
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end">
-                            {formula.totalAmount && formula.calculatedCost && parseFloat(formula.calculatedCost) > 0 ? (
-                              <>
-                                <span className="font-bold text-orange-700">
-                                  ₺{costPerGram}
-                                </span>
-                                <span className="text-xs text-gray-500">per gram</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* Tarih */}
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                            <span className="text-xs text-gray-600">
-                              {formula.createdAt?.toDate
-                                ? formula.createdAt.toDate().toLocaleDateString("tr-TR", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric"
-                                  })
-                                : "Bilinmiyor"}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        {/* İşlemler */}
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-2">
+                      {/* Sağ: Actions */}
+                      <div className="flex items-center gap-2 lg:pl-4 lg:border-l lg:border-slate-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-3 text-slate-600 hover:text-violet-600 hover:bg-violet-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/admin/formulas/${formula.id}`);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Görüntüle
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleViewFormula(formula.id);
+                                router.push(
+                                  `/admin/pricing-calculator?formulaId=${formula.id}`
+                                );
                               }}
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              className="text-blue-600"
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                              <Calculator className="h-4 w-4 mr-2" />
+                              Maliyet Hesapla
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setDeleteDialog({ open: true, id: formula.id, name: formula.name });
+                                setDeleteDialog({
+                                  open: true,
+                                  id: formula.id,
+                                  name: formula.name,
+                                });
                               }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="text-red-600"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Sil
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </main>
 
       {/* Delete Dialog */}
       <AlertDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, id: null, name: "" })}
       >
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-bold text-gray-900">
-              Formülü Sil
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600">
-              <span className="font-semibold text-gray-900">{deleteDialog.name}</span> formülünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            <AlertDialogTitle>Formülü Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-semibold text-slate-900">
+                {deleteDialog.name}
+              </span>{" "}
+              formülünü silmek istediğinizden emin misiniz? Bu işlem geri
+              alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

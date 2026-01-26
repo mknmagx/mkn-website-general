@@ -6,7 +6,12 @@ import { useRouter, useParams } from "next/navigation";
 import { useAdminAuth } from "../../../../../hooks/use-admin-auth";
 import { useToast } from "../../../../../hooks/use-toast";
 // Unified AI Hook - mevcut AI altyapısı
-import { useUnifiedAI, AI_CONTEXTS } from "../../../../../hooks/use-unified-ai";
+import { useUnifiedAI, AI_CONTEXTS, getAIErrorTitle, getAIErrorMessage } from "../../../../../hooks/use-unified-ai";
+// HTML to Text utility - Mesaj temizleme
+import {
+  cleanTextForAI,
+  cleanEmailContent,
+} from "../../../../../utils/html-to-text";
 import {
   getConversationWithMessages,
   addMessage,
@@ -55,6 +60,20 @@ import {
 import { formatDistanceToNow, format, addDays, addHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../../lib/utils";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  getDoc,
+  doc,
+} from "firebase/firestore";
+import { db } from "../../../../../lib/firebase";
+import { uploadFile } from "../../../../../lib/storage";
+import { PROFORMA_STATUS_LABELS } from "../../../../../lib/services/proforma-service";
+import * as PricingService from "../../../../../lib/services/pricing-service";
 
 // UI Components
 import { Button } from "../../../../../components/ui/button";
@@ -104,10 +123,10 @@ import {
 import { Switch } from "../../../../../components/ui/switch";
 
 // AI Constants
-import {
-  PROVIDER_INFO,
-  CONTEXT_DISPLAY_NAMES,
-} from "../../../../../lib/ai-constants";
+import { PROVIDER_INFO } from "../../../../../lib/ai-constants";
+
+// AI Settings Modal
+import AISettingsModal from "../../../../../components/admin/ai-settings-modal";
 
 // Icons
 import {
@@ -151,134 +170,16 @@ import {
   Info,
   Zap,
   Brain,
+  RefreshCw,
+  Paperclip,
+  Upload,
+  File as FileIcon,
+  Receipt,
+  Calculator,
+  Link2,
+  FolderOpen,
+  XCircle,
 } from "lucide-react";
-
-/**
- * Email imza bloklarını tespit et ve kes
- * Yaygın imza formatlarını tanır
- */
-const removeEmailSignature = (text) => {
-  if (!text) return '';
-  
-  // İmza başlangıç kalıpları - bundan sonrası kesilecek
-  const signaturePatterns = [
-    // Klasik imza ayırıcıları - normal tire ve em-dash
-    /^--\s*$/m,                          // "-- " ile başlayan satır (RFC standart)
-    /^-{4,}\s*$/m,                       // 4+ tire (tek satırda)
-    /^_{4,}\s*$/m,                       // 4+ alt çizgi (tek satırda)
-    /^={4,}\s*$/m,                       // 4+ eşittir (tek satırda)
-    /^—{3,}/m,                           // 3+ em-dash (—)
-    /^–{3,}/m,                           // 3+ en-dash (–)
-    /[-—–_=]{10,}/m,                     // 10+ karışık tire/dash/altçizgi
-    
-    // Türkçe imza kalıpları - satır sonunu bekleme
-    /\n\s*Saygılarımla\s*[\/,.]?\s*(Best regards)?/im,
-    /\n\s*Saygılar\s*[\/,.]?/im,
-    /\n\s*İyi çalışmalar\s*[\/,.]?/im,
-    /\n\s*Sevgilerimle\s*[\/,.]?/im,
-    /\n\s*Kolay gelsin\s*[\/,.]?/im,
-    /\n\s*Teşekkürler\s*[\/,.]?/im,
-    /\n\s*Saygılarımızla\s*[\/,.]?/im,
-    
-    // İngilizce imza kalıpları
-    /\n\s*Best regards\s*[\/,.]?/im,
-    /\n\s*Kind regards\s*[\/,.]?/im,
-    /\n\s*Regards\s*[\/,.]?/im,
-    /\n\s*Thanks\s*[\/,.]?/im,
-    /\n\s*Thank you\s*[\/,.]?/im,
-    /\n\s*Sincerely\s*[\/,.]?/im,
-    /\n\s*Cheers\s*[\/,.]?/im,
-    
-    // Özel imza bloğu işaretleri
-    /^Sent from my iPhone/im,
-    /^Sent from my iPad/im,
-    /^Sent from my Android/im,
-    /^Sent from Samsung/im,
-    /^Get Outlook for/im,
-  ];
-  
-  let cleanText = text;
-  
-  // En erken bulunan imza başlangıcını bul
-  let earliestIndex = cleanText.length;
-  
-  for (const pattern of signaturePatterns) {
-    const match = cleanText.match(pattern);
-    if (match) {
-      const index = cleanText.indexOf(match[0]);
-      // En az 30 karakter içerik kalsın (boş mesaj olmasın)
-      if (index > 30 && index < earliestIndex) {
-        earliestIndex = index;
-      }
-    }
-  }
-  
-  // Eğer imza bulunduysa kes
-  if (earliestIndex < cleanText.length) {
-    cleanText = cleanText.substring(0, earliestIndex).trim();
-  }
-  
-  // Son temizlik - satır sonlarındaki tire/alt çizgi dizilerini kaldır (em-dash dahil)
-  cleanText = cleanText
-    .replace(/[\-—–_=]{4,}\s*$/gm, '')
-    .replace(/\n{2,}/g, '\n\n')
-    .trim();
-  
-  return cleanText;
-};
-
-/**
- * Email alıntılarını (quoted replies) kaldır
- * Farklı email client'larının formatlarını tanır
- */
-const removeEmailQuotes = (text) => {
-  if (!text) return '';
-  
-  // Alıntı başlangıç kalıpları (bu satırdan sonrası kesilecek)
-  const quotePatterns = [
-    // Gmail Türkçe: "Mkn Group <info@mkngroup.com.tr>, 19 Oca 2026 Pzt, 21:54 tarihinde şunu yazdı:"
-    /^.*<[^>]+@[^>]+>[^:]*tarihinde şunu yazd[ıi]:\s*$/im,
-    // Gmail English: "On Mon, Jan 19, 2026 at 9:54 PM Name <email> wrote:"
-    /^On .+wrote:\s*$/im,
-    // Outlook: "From: ... Sent: ... To: ... Subject: ..."
-    /^From:\s*.+\n.*Sent:\s*.+\n.*To:\s*.+/im,
-    // Outlook Türkçe: "Kimden: ... Gönderildi: ... Kime: ..."  
-    /^Kimden:\s*.+$/im,
-    // Genel alıntı işaretleri
-    /^-{3,}\s*(Alıntı|Original Message|Orijinal Mesaj|Forwarded message|İletilmiş mesaj)\s*-{3,}/im,
-    // > ile başlayan satırlar (en az 2 ardışık)
-    /^(>.*\n){2,}/m,
-    // "---- Original Message ----" veya benzeri
-    /^-{4,}\s*(Original|Orijinal).*-{4,}/im,
-    // "_____" ile başlayan Outlook ayırıcı
-    /^_{5,}/m,
-    // Email header başlangıcı (genellikle alıntı işareti)
-    /^Tarih:\s*\d+/im,  // "Tarih: 20 Ocak 2026"
-  ];
-  
-  let cleanText = text;
-  
-  // En erken bulunan alıntı başlangıcını bul
-  let earliestIndex = cleanText.length;
-  
-  for (const pattern of quotePatterns) {
-    const match = cleanText.match(pattern);
-    if (match) {
-      const index = cleanText.indexOf(match[0]);
-      // En az 20 karakter içerik kalsın
-      if (index > 20 && index < earliestIndex) {
-        earliestIndex = index;
-      }
-    }
-  }
-  
-  // Eğer alıntı bulunduysa kes
-  if (earliestIndex < cleanText.length) {
-    cleanText = cleanText.substring(0, earliestIndex).trim();
-  }
-  
-  return cleanText.trim();
-};
 
 /**
  * HTML içeriğini sanitize et (cid: referansları ve tehlikeli içerik)
@@ -287,183 +188,33 @@ const sanitizeEmailHtml = (html) => {
   if (!html) return "";
 
   let sanitized = html;
-  
+
   // cid: referanslarını placeholder görsel ile değiştir
   sanitized = sanitized.replace(
     /<img[^>]*src=["']cid:[^"']*["'][^>]*>/gi,
-    '<span class="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 rounded text-xs text-muted-foreground">[Gömülü Görsel]</span>'
+    '<span class="inline-flex items-center gap-1 px-2 py-1 bg-muted/50 rounded text-xs text-muted-foreground">[Gömülü Görsel]</span>',
   );
 
   // Boş src'li görselleri temizle
   sanitized = sanitized.replace(/<img[^>]*src=["']["'][^>]*>/gi, "");
-  
+
   // Script ve style taglarını tamamen kaldır
-  sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  sanitized = sanitized.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-  
+  sanitized = sanitized.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  sanitized = sanitized.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+
   // Event handler'ları temizle
-  sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
 
   return sanitized;
 };
 
 /**
- * HTML içeriğinden düz metin çıkar
- * Email'lerde gelen HTML içeriğini temizleyip okunabilir hale getirir
- * Ayrıca email alıntılarını (quoted replies) ve imzaları keser
+ * HTML içeriğinden düz metin çıkar (preview için)
+ * html-to-text utility'sini kullanır
  */
 const stripHtmlToText = (html) => {
-  if (!html) return '';
-  
-  // Zaten düz metin ise alıntıları ve imzaları temizleyip döndür
-  if (!html.includes('<') && !html.includes('&')) {
-    let cleaned = removeEmailQuotes(html);
-    cleaned = removeEmailSignature(cleaned);
-    return cleaned;
-  }
-  
-  // Önce alıntı ve imza bloklarını HTML seviyesinde temizle
-  let text = html;
-  
-  // Gmail/Outlook blockquote'ları tamamen kaldır (içeriğiyle birlikte)
-  text = text.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '');
-  // Gmail'in div.gmail_quote yapısını kaldır  
-  text = text.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/gi, '');
-  // Gmail'in gmail_extra yapısını kaldır
-  text = text.replace(/<div[^>]*class="[^"]*gmail_extra[^"]*"[^>]*>[\s\S]*$/gi, '');
-  // Gmail'in gmail_signature yapısını kaldır
-  text = text.replace(/<div[^>]*class="[^"]*gmail_signature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-  // Outlook'un #divRplyFwdMsg yapısını kaldır
-  text = text.replace(/<div[^>]*id="divRplyFwdMsg"[^>]*>[\s\S]*$/gi, '');
-  // Outlook'un appendonsend yapısını kaldır
-  text = text.replace(/<div[^>]*id="appendonsend"[^>]*>[\s\S]*$/gi, '');
-  // Email signature wrapper'larını kaldır
-  text = text.replace(/<div[^>]*class="[^"]*signature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-  text = text.replace(/<div[^>]*id="[^"]*signature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-  // Apple Mail signature
-  text = text.replace(/<div[^>]*class="[^"]*AppleMailSignature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-  
-  // Script, style, head taglarını tamamen kaldır
-  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-  text = text.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '');
-  text = text.replace(/<meta[^>]*>/gi, '');
-  text = text.replace(/<link[^>]*>/gi, '');
-  
-  // cid: referanslı görselleri placeholder ile değiştir
-  text = text.replace(/<img[^>]*src=["']cid:[^"']*["'][^>]*>/gi, '');
-  
-  // <hr> taglarını potansiyel bölüm işareti olarak değerlendir
-  text = text.replace(/<hr[^>]*>/gi, '\n---HR_MARKER---\n');
-  
-  // Blok elementleri yeni satıra çevir
-  text = text
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/tr>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<\/td>/gi, ' ')
-    .replace(/<\/th>/gi, ' ');
-  
-  // TÜM HTML tag'larını kaldır - agresif regex
-  text = text.replace(/<[^>]*>/g, '');
-  text = text.replace(/<[a-zA-Z][^>]*$/gm, ''); // Yarım kalan tag'lar
-  text = text.replace(/^[^<]*>/gm, ''); // Yarım kapanan tag'lar
-  
-  // HTML entities decode - kapsamlı liste
-  const htmlEntities = {
-    '&nbsp;': ' ',
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&#x27;': "'",
-    '&apos;': "'",
-    '&rsquo;': "'",
-    '&lsquo;': "'",
-    '&rdquo;': '"',
-    '&ldquo;': '"',
-    '&mdash;': '—',
-    '&ndash;': '–',
-    '&hellip;': '...',
-    '&copy;': '©',
-    '&reg;': '®',
-    '&trade;': '™',
-    '&euro;': '€',
-    '&pound;': '£',
-    '&yen;': '¥',
-    '&cent;': '¢',
-    '&deg;': '°',
-    '&bull;': '•',
-    '&middot;': '·',
-    '&laquo;': '«',
-    '&raquo;': '»',
-    '&frac12;': '½',
-    '&frac14;': '¼',
-    '&frac34;': '¾',
-    '&times;': '×',
-    '&divide;': '÷',
-    '&plusmn;': '±',
-    '&iexcl;': '¡',
-    '&iquest;': '¿',
-    '&sect;': '§',
-    '&para;': '¶',
-    '&dagger;': '†',
-    '&Dagger;': '‡',
-    '&#160;': ' ',
-    '&#8203;': '', // Zero-width space
-    '&#8204;': '', // Zero-width non-joiner
-    '&#8205;': '', // Zero-width joiner
-  };
-  
-  for (const [entity, char] of Object.entries(htmlEntities)) {
-    text = text.replace(new RegExp(entity, 'gi'), char);
-  }
-  
-  // Numeric HTML entities decode
-  text = text.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
-  text = text.replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
-  // HR marker'ları kontrol et - çok sayıda ise ilk bölümü al
-  const hrParts = text.split('---HR_MARKER---');
-  if (hrParts.length > 1) {
-    // İlk anlamlı bölümü al (en az 30 karakter)
-    const meaningfulPart = hrParts.find(part => part.trim().length > 30);
-    if (meaningfulPart) {
-      text = meaningfulPart;
-    } else {
-      text = hrParts[0];
-    }
-  }
-  
-  // Fazla boşlukları temizle
-  text = text
-    .replace(/[ \t]+/g, ' ')          // Ardışık boşlukları tek boşluğa indir
-    .replace(/\n[ \t]+/g, '\n')       // Satır başı boşlukları temizle
-    .replace(/[ \t]+\n/g, '\n')       // Satır sonu boşlukları temizle
-    .replace(/\n{3,}/g, '\n\n')       // 3+ yeni satırı 2'ye indir
-    .replace(/^[\-—–_=]{4,}\s*$/gm, '') // Sadece tire/em-dash/altçizgi/eşittir olan satırları kaldır
-    .replace(/[\-—–_=]{10,}/g, '')   // 10+ karışık tire dizilerini kaldır (inline)
-    .replace(/\n{3,}/g, '\n\n')       // Tekrar fazla satırları temizle
-    .trim();
-  
-  // Metin alıntılarını temizle
-  text = removeEmailQuotes(text);
-  
-  // İmza bloklarını temizle
-  text = removeEmailSignature(text);
-  
-  // Son temizlik - kalan tire dizilerini kaldır (em-dash dahil)
-  text = text
-    .replace(/^[\-—–_=]{4,}\s*$/gm, '')
-    .replace(/[\-—–_=]{10,}/g, '')
-    .replace(/\n{2,}/g, '\n\n')
-    .trim();
-  
-  return text;
+  if (!html) return "";
+  return cleanEmailContent(html);
 };
 
 /**
@@ -472,7 +223,11 @@ const stripHtmlToText = (html) => {
 const isHtmlContent = (content) => {
   if (!content) return false;
   // Daha güçlü HTML detection
-  return /<[a-z][\s\S]*>/i.test(content) || /&[a-z]+;/i.test(content) || /&#\d+;/.test(content);
+  return (
+    /<[a-z][\s\S]*>/i.test(content) ||
+    /&[a-z]+;/i.test(content) ||
+    /&#\d+;/.test(content)
+  );
 };
 
 export default function ConversationDetailPage() {
@@ -498,6 +253,22 @@ export default function ConversationDetailPage() {
     configLoading,
     isReady: aiReady,
   } = useUnifiedAI(AI_CONTEXTS.CRM_EMAIL_REPLY);
+
+  // Unified AI Hook - CRM Case Summary (Quick Summary için)
+  const {
+    config: summaryConfig,
+    prompt: summaryPrompt,
+    availableModels: summaryAvailableModels,
+    selectedModel: summaryCurrentModel,
+    currentProvider: summaryCurrentProvider,
+    selectModel: selectSummaryModel,
+    refresh: refreshSummaryConfig,
+    configLoading: summaryConfigLoading,
+    loadPromptForCategory: loadSummaryPromptForCategory,
+  } = useUnifiedAI(AI_CONTEXTS.CRM_CASE_SUMMARY);
+
+  // Quick prompt için state
+  const [quickPromptData, setQuickPromptData] = useState(null);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -529,16 +300,33 @@ export default function ConversationDetailPage() {
     temperature: 0.7,
   });
 
+  // Attachment States (Dosya Ekleme)
+  const [attachments, setAttachments] = useState([]); // Eklenecek dosyalar
+  const [showDocumentPicker, setShowDocumentPicker] = useState(false); // Belge seçici modal
+  const [addingDocumentId, setAddingDocumentId] = useState(null); // Hangi belge ekleniyor
+  const [showCalcOptionsModal, setShowCalcOptionsModal] = useState(false); // Hesaplama PDF ayarları modalı
+  const [pendingCalculation, setPendingCalculation] = useState(null); // Eklenecek hesaplama
+  const [calcShowCostDetails, setCalcShowCostDetails] = useState(false); // Maliyet detayları gösterilsin mi
+  const [linkedDocuments, setLinkedDocuments] = useState({ // Müşteriye bağlı belgeler
+    proformas: [],
+    contracts: [],
+    calculations: [],
+  });
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [linkedCompany, setLinkedCompany] = useState(null);
+  const fileInputRef = useRef(null);
+
   // Modals
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
   const [showQuickReplyModal, setShowQuickReplyModal] = useState(false);
+  const [creatingCase, setCreatingCase] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [pendingSendMessageId, setPendingSendMessageId] = useState(null);
   const [sendChannels, setSendChannels] = useState({
-    email: true,      // Outlook Email - varsayılan aktif
-    whatsapp: false,  // WhatsApp - şimdilik devre dışı
-    manual: false,    // Sadece CRM'e kaydet
+    email: true, // Outlook Email - varsayılan aktif
+    whatsapp: false, // WhatsApp - şimdilik devre dışı
+    manual: false, // Sadece CRM'e kaydet
   });
   const [sendingMessage, setSendingMessage] = useState(false);
   const [convertForm, setConvertForm] = useState({
@@ -546,6 +334,45 @@ export default function ConversationDetailPage() {
     type: CASE_TYPE.OTHER,
     priority: PRIORITY.NORMAL,
   });
+
+  // AI Summary State (Sidebar için hızlı özet)
+  const [aiSummary, setAiSummary] = useState(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [showSummarySettingsModal, setShowSummarySettingsModal] =
+    useState(false);
+  const [summaryModelSettings, setSummaryModelSettings] = useState({
+    maxTokens: 1500,
+    autoMaxTokens: true,
+    temperature: 0.2,
+  });
+
+  // Firestore config yüklendiğinde summaryModelSettings'i güncelle
+  useEffect(() => {
+    if (summaryConfig?.settings) {
+      setSummaryModelSettings(prev => ({
+        ...prev,
+        maxTokens: summaryConfig.settings.maxTokens || prev.maxTokens,
+        temperature: summaryConfig.settings.temperature ?? prev.temperature,
+      }));
+    }
+  }, [summaryConfig]);
+
+  // Modal açıldığında quick prompt'u yükle
+  useEffect(() => {
+    const loadQuickPrompt = async () => {
+      if (
+        showSummarySettingsModal &&
+        loadSummaryPromptForCategory &&
+        !quickPromptData
+      ) {
+        const promptData = await loadSummaryPromptForCategory("quick");
+        if (promptData) {
+          setQuickPromptData(promptData);
+        }
+      }
+    };
+    loadQuickPrompt();
+  }, [showSummarySettingsModal, loadSummaryPromptForCategory, quickPromptData]);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -606,6 +433,106 @@ export default function ConversationDetailPage() {
       setLoading(false);
     }
   }, [conversationId, router, toast]);
+
+  // Load linked documents from Company (for attachment picker)
+  const loadLinkedDocuments = useCallback(async (companyId) => {
+    if (!companyId) {
+      setLinkedDocuments({ proformas: [], contracts: [], calculations: [] });
+      setLinkedCompany(null);
+      return;
+    }
+
+    try {
+      setDocumentsLoading(true);
+
+      // Load Company info
+      const companyDoc = await getDoc(doc(db, "companies", companyId));
+      if (companyDoc.exists()) {
+        setLinkedCompany({ id: companyDoc.id, ...companyDoc.data() });
+      }
+
+      // Load Proformas
+      let proformas = [];
+      try {
+        const proformasQuery = query(
+          collection(db, "proformas"),
+          where("companyId", "==", companyId),
+          orderBy("createdAt", "desc"),
+          limit(20)
+        );
+        const proformasSnapshot = await getDocs(proformasQuery);
+        proformas = proformasSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (error) {
+        console.error("Error loading proformas:", error);
+      }
+
+      // Load Contracts
+      let contracts = [];
+      try {
+        const contractsQuery = query(
+          collection(db, "contracts"),
+          where("companyId", "==", companyId),
+          orderBy("createdAt", "desc"),
+          limit(20)
+        );
+        const contractsSnapshot = await getDocs(contractsQuery);
+        contracts = contractsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (error) {
+        console.error("Error loading contracts:", error);
+      }
+
+      // Load Calculations - İKİ KAYNAKTAN:
+      // 1. pricingCalculations koleksiyonunda linkedCompanies içinde companyId olanlar
+      // 2. companies koleksiyonundaki pricingCalculations array'i
+      let calculations = [];
+      try {
+        const allCalcs = await PricingService.getPricingCalculations();
+        
+        // Kaynak 1: linkedCompanies içinde companyId olanlar
+        const linkedFromCalcCollection = allCalcs.filter(
+          (calc) => calc.linkedCompanies && calc.linkedCompanies.includes(companyId)
+        );
+        
+        // Kaynak 2: Firma dokümanındaki pricingCalculations array'i
+        const companyDocRef = await getDoc(doc(db, "companies", companyId));
+        let linkedFromCompanyDoc = [];
+        if (companyDocRef.exists()) {
+          const companyData = companyDocRef.data();
+          const companyCalcIds = (companyData.pricingCalculations || []).map(c => c.calculationId || c.id);
+          linkedFromCompanyDoc = allCalcs.filter(calc => companyCalcIds.includes(calc.id));
+        }
+        
+        // İki kaynağı birleştir (duplicate'leri kaldır)
+        calculations = [...linkedFromCalcCollection];
+        for (const calc of linkedFromCompanyDoc) {
+          if (!calculations.some(c => c.id === calc.id)) {
+            calculations.push(calc);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading calculations:", error);
+      }
+
+      setLinkedDocuments({ proformas, contracts, calculations });
+    } catch (error) {
+      console.error("Error loading linked documents:", error);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
+  // Load linked documents when customer changes
+  useEffect(() => {
+    if (customer?.linkedCompanyId) {
+      loadLinkedDocuments(customer.linkedCompanyId);
+    }
+  }, [customer?.linkedCompanyId, loadLinkedDocuments]);
 
   // Track previous message count to detect NEW messages only
   const prevMessageCount = useRef(0);
@@ -715,18 +642,29 @@ export default function ConversationDetailPage() {
   const currentPromptVariables = useMemo(() => {
     // Son müşteri mesajını bul
     const lastCustomerMessage = conversation?.messages
-      ? [...conversation.messages].reverse().find((m) => m.direction === "inbound")
+      ? [...conversation.messages]
+          .reverse()
+          .find((m) => m.direction === "inbound")
       : null;
 
-    const customerName = customer?.name || conversation?.from?.name || "Değerli Müşterimiz";
-    const customerCompany = customer?.companyName || conversation?.from?.company || "";
+    const customerName =
+      customer?.name || conversation?.from?.name || "Değerli Müşterimiz";
+    const customerCompany =
+      customer?.companyName || conversation?.from?.company || "";
     const customerEmail = customer?.email || conversation?.sender?.email || "";
-    const agentName = user?.displayName || user?.email?.split("@")[0] || "MKN Group";
+    const agentName =
+      user?.displayName || user?.email?.split("@")[0] || "MKN Group";
     const toneDescription = getToneDescription(aiTone);
-    const conversationHistory = formatConversationHistory(conversation?.messages || [], 10);
+    const conversationHistory = formatConversationHistory(
+      conversation?.messages || [],
+      10,
+    );
 
     return {
-      customer_message: lastCustomerMessage?.content || "(Müşteri mesajı yok)",
+      // HTML'den temizlenmiş müşteri mesajı
+      customer_message: lastCustomerMessage?.content
+        ? cleanTextForAI(lastCustomerMessage.content, 1500)
+        : "(Müşteri mesajı yok)",
       conversation_history: conversationHistory || "(Konuşma geçmişi yok)",
       customer_name: customerName,
       customer_company: customerCompany,
@@ -764,7 +702,7 @@ export default function ConversationDetailPage() {
       // Konuşma geçmişini formatla (helper fonksiyon kullan)
       const conversationHistory = formatConversationHistory(
         conversation.messages,
-        10
+        10,
       );
 
       const customerName =
@@ -783,18 +721,20 @@ export default function ConversationDetailPage() {
       // - Devam mesajları (messageCount > 1): crm_communication_continuation (kısa yanıt)
       const messageCount = conversation.messages?.length || 0;
       const isFirstMessage = messageCount <= 1;
-      const promptContextKey = isFirstMessage 
-        ? "crm_communication" 
+      const promptContextKey = isFirstMessage
+        ? "crm_communication"
         : "crm_communication_continuation";
 
-      console.log(`[AI Reply] Mesaj sayısı: ${messageCount}, Prompt: ${promptContextKey}`);
+      console.log(
+        `[AI Reply] Mesaj sayısı: ${messageCount}, Prompt: ${promptContextKey}`,
+      );
 
       // Mesaj kutusundaki içerik varsa, AI'ya talimat olarak gönder
       const userInstruction = replyContent.trim();
 
-      // Prompt değişkenleri
+      // Prompt değişkenleri - Müşteri mesajını temizle
       const promptVariables = {
-        customer_message: lastCustomerMessage.content,
+        customer_message: cleanTextForAI(lastCustomerMessage.content, 1500),
         conversation_history: conversationHistory,
         customer_name: customerName,
         customer_company: customerCompany,
@@ -882,11 +822,24 @@ export default function ConversationDetailPage() {
         messageData.aiMetadata = aiMetadata;
       }
 
+      // Ekleri ekle
+      if (attachments.length > 0) {
+        messageData.attachments = attachments.map(att => ({
+          type: att.type,
+          name: att.name,
+          size: att.size || null,
+          documentId: att.documentId || null,
+          documentType: att.documentType || null,
+          url: att.url || null,
+        }));
+      }
+
       const newMessage = await addMessage(conversationId, messageData);
 
       setReplyContent("");
       setIsAiGenerated(false);
       setAiMetadata(null);
+      setAttachments([]);
       setDraftMessage(newMessage);
 
       toast({
@@ -922,7 +875,7 @@ export default function ConversationDetailPage() {
   // Seçilen kanallarla mesaj gönder
   const handleConfirmSend = async () => {
     if (!pendingSendMessageId) return;
-    
+
     // En az bir kanal seçilmeli
     if (!sendChannels.email && !sendChannels.whatsapp && !sendChannels.manual) {
       toast({
@@ -932,36 +885,85 @@ export default function ConversationDetailPage() {
       });
       return;
     }
-    
+
     setSendingMessage(true);
     try {
       const selectedChannels = [];
-      if (sendChannels.email) selectedChannels.push('email');
-      if (sendChannels.whatsapp) selectedChannels.push('whatsapp');
-      if (sendChannels.manual) selectedChannels.push('manual');
+      if (sendChannels.email) selectedChannels.push("email");
+      if (sendChannels.whatsapp) selectedChannels.push("whatsapp");
+      if (sendChannels.manual) selectedChannels.push("manual");
+
+      // Attachment'ları hazırla - state'ten veya mesajdan al
+      let emailAttachments = attachments;
       
-      // Mesajı onayla ve gönder (kanallarla birlikte)
-      await approveAndSendMessage(conversationId, pendingSendMessageId, user?.uid, {
-        channels: selectedChannels,
-        recipientEmail: conversation?.sender?.email,
-        recipientName: conversation?.sender?.name,
-        recipientPhone: conversation?.sender?.phone,
-        subject: conversation?.subject,
-      });
-      
+      // Eğer state'te attachment yoksa, mesajdaki attachment'ları Storage'dan indir
+      if (emailAttachments.length === 0 && sendChannels.email) {
+        const pendingMessage = conversation?.messages?.find(m => m.id === pendingSendMessageId);
+        if (pendingMessage?.attachments?.length > 0) {
+          toast({
+            title: "Dosyalar Hazırlanıyor",
+            description: "Ekler e-posta için hazırlanıyor...",
+          });
+          
+          emailAttachments = [];
+          for (const att of pendingMessage.attachments) {
+            if (att.url) {
+              try {
+                // Storage proxy API ile dosyayı indir (CORS bypass)
+                const proxyResponse = await fetch('/api/admin/storage-proxy', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: att.url }),
+                });
+                
+                const proxyResult = await proxyResponse.json();
+                
+                if (proxyResult.success && proxyResult.contentBytes) {
+                  emailAttachments.push({
+                    ...att,
+                    contentType: proxyResult.contentType || att.contentType || 'application/octet-stream',
+                    contentBytes: proxyResult.contentBytes,
+                  });
+                } else {
+                  console.error('Proxy error:', proxyResult.error);
+                }
+              } catch (err) {
+                console.error('Attachment download error:', err);
+              }
+            }
+          }
+        }
+      }
+
+      // Mesajı onayla ve gönder (kanallarla ve attachment'larla birlikte)
+      await approveAndSendMessage(
+        conversationId,
+        pendingSendMessageId,
+        user?.uid,
+        {
+          channels: selectedChannels,
+          recipientEmail: conversation?.sender?.email,
+          recipientName: conversation?.sender?.name,
+          recipientPhone: conversation?.sender?.phone,
+          subject: conversation?.subject,
+          attachments: emailAttachments, // Hazırlanan attachment'ları gönder
+        },
+      );
+
       const channelNames = [];
-      if (sendChannels.email) channelNames.push('E-posta');
-      if (sendChannels.whatsapp) channelNames.push('WhatsApp');
-      if (sendChannels.manual) channelNames.push('Manuel kayıt');
-      
+      if (sendChannels.email) channelNames.push("E-posta");
+      if (sendChannels.whatsapp) channelNames.push("WhatsApp");
+      if (sendChannels.manual) channelNames.push("Manuel kayıt");
+
       toast({
         title: "✅ Gönderildi",
-        description: `Mesaj gönderildi: ${channelNames.join(', ')}`,
+        description: `Mesaj gönderildi: ${channelNames.join(", ")}`,
       });
-      
+
       setDraftMessage(null);
       setShowSendModal(false);
       setPendingSendMessageId(null);
+      setAttachments([]); // Attachment'ları temizle
       loadData();
     } catch (error) {
       console.error("Send message error:", error);
@@ -1033,9 +1035,226 @@ export default function ConversationDetailPage() {
     }
   };
 
+  // ==========================================
+  // ATTACHMENT HANDLING FUNCTIONS
+  // ==========================================
+
+  // Dosya seçimi (bilgisayardan)
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10MB limit
+
+    for (const file of files) {
+      if (file.size > maxSize) {
+        toast({
+          title: "Dosya çok büyük",
+          description: `${file.name} 10MB'dan büyük.`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      toast({
+        title: "Yükleniyor",
+        description: `${file.name} yükleniyor...`,
+      });
+
+      try {
+        // Firebase Storage'a yükle
+        const storagePath = `crm-attachments/${conversationId}/${Date.now()}_${file.name}`;
+        const storageUrl = await uploadFile(file, storagePath);
+
+        // Base64'e çevir (email için)
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+          };
+          reader.readAsDataURL(file);
+        });
+
+        const attachment = {
+          id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name,
+          contentType: file.type || 'application/octet-stream',
+          contentBytes: base64,
+          size: file.size,
+          type: 'file',
+          url: storageUrl,
+          storagePath: storagePath,
+        };
+
+        setAttachments(prev => [...prev, attachment]);
+        
+        toast({
+          title: "✅ Yüklendi",
+          description: `${file.name} başarıyla eklendi.`,
+        });
+      } catch (error) {
+        console.error('Dosya yükleme hatası:', error);
+        toast({
+          title: "Hata",
+          description: `${file.name} yüklenemedi: ${error.message}`,
+          variant: "destructive",
+        });
+      }
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Bağlı belgeyi ekleme (Proforma, Sözleşme)
+  // Hesaplama için önce modal açılır
+  const handleAddLinkedDocument = async (docType, document, options = {}) => {
+    // Hesaplama için önce ayar modalı aç
+    if (docType === 'calculation' && !options.skipModal) {
+      setPendingCalculation(document);
+      setCalcShowCostDetails(false); // Varsayılan: maliyet detayları gizli
+      setShowCalcOptionsModal(true);
+      return;
+    }
+
+    // Duplicate kontrolü
+    const attachmentId = `${docType}-${document.id}`;
+    const exists = attachments.some(a => a.id === attachmentId);
+    if (exists) {
+      toast({
+        title: "Zaten ekli",
+        description: "Bu belge zaten eklendi.",
+        variant: "default",
+      });
+      return;
+    }
+
+    // Loading toast
+    toast({
+      title: "PDF Oluşturuluyor",
+      description: "Belge PDF'e dönüştürülüyor...",
+    });
+
+    try {
+      let apiEndpoint = '';
+      let requestBody = {};
+      let fileName = '';
+      
+      switch (docType) {
+        case 'proforma':
+          apiEndpoint = '/api/generate-pdf';
+          // Proforma için şirket bilgilerini de al
+          requestBody = { 
+            proforma: document,
+            companyData: linkedCompany || null
+          };
+          fileName = `Proforma_${document.proformaNumber || document.id.slice(0, 8)}.pdf`;
+          break;
+        case 'contract':
+          apiEndpoint = '/api/generate-contract-pdf';
+          requestBody = { 
+            contract: document,
+            companyData: linkedCompany || null
+          };
+          fileName = `Sozlesme_${document.contractNumber || document.id.slice(0, 8)}.pdf`;
+          break;
+        case 'calculation':
+          apiEndpoint = '/api/generate-pricing-calculation-pdf';
+          requestBody = { 
+            calculation: document,
+            options: {
+              showCostDetails: options.showCostDetails || false,
+              companyData: linkedCompany || null
+            }
+          };
+          fileName = `Hesaplama_${document.productName || document.id.slice(0, 8)}.pdf`;
+          break;
+      }
+
+      // PDF API'yi çağır
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`PDF oluşturulamadı: ${response.status}`);
+      }
+
+      // PDF blob'unu al
+      const pdfBlob = await response.blob();
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      // Firebase Storage'a yükle
+      const storagePath = `crm-attachments/${conversationId}/${Date.now()}_${fileName}`;
+      const storageUrl = await uploadFile(pdfFile, storagePath);
+
+      // Base64'e çevir (email için)
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64String = reader.result.split(',')[1];
+          resolve(base64String);
+        };
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      // Attachment objesi oluştur
+      const attachment = {
+        id: attachmentId,
+        name: fileName,
+        type: docType,
+        contentType: 'application/pdf',
+        contentBytes: base64,
+        size: pdfBlob.size,
+        url: storageUrl,
+        storagePath: storagePath,
+        documentId: document.id,
+        documentType: docType,
+        documentInfo: {
+          number: document.proformaNumber || document.contractNumber || document.productName,
+          status: document.status,
+          total: document.totals?.grandTotal || document.totalCost,
+          createdAt: document.createdAt,
+        },
+      };
+
+      setAttachments(prev => [...prev, attachment]);
+      toast({
+        title: "✅ Eklendi",
+        description: `${fileName} başarıyla eklendi.`,
+      });
+    } catch (error) {
+      console.error('PDF oluşturma hatası:', error);
+      toast({
+        title: "Hata",
+        description: `PDF oluşturulamadı: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Attachment'ı kaldır
+  const handleRemoveAttachment = (attachmentId) => {
+    setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+  };
+
+  // Dosya boyutunu formatla
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   // Hemen gönder (onay adımı olmadan)
   const handleSendReply = async () => {
-    if (!replyContent.trim()) return;
+    if (!replyContent.trim() && attachments.length === 0) return;
 
     setSending(true);
     try {
@@ -1057,11 +1276,27 @@ export default function ConversationDetailPage() {
         messageData.aiMetadata = aiMetadata;
       }
 
+      // Attachment'ları ekle
+      if (attachments.length > 0) {
+        messageData.attachments = attachments.map(att => ({
+          name: att.name,
+          type: att.type,
+          contentType: att.contentType,
+          size: att.size,
+          contentBytes: att.contentBytes,
+          docType: att.docType,
+          docId: att.docId,
+          pdfUrl: att.pdfUrl,
+          documentInfo: att.documentInfo,
+        }));
+      }
+
       await addMessage(conversationId, messageData);
 
       setReplyContent("");
       setIsAiGenerated(false);
       setAiMetadata(null);
+      setAttachments([]); // Attachment'ları temizle
 
       toast({ title: "Gönderildi", description: "Mesajınız gönderildi." });
       loadData();
@@ -1080,6 +1315,7 @@ export default function ConversationDetailPage() {
   const handleConvertToCase = async () => {
     if (!convertForm.title) return;
 
+    setCreatingCase(true);
     try {
       const newCase = await createCaseFromConversation(
         conversationId,
@@ -1088,7 +1324,7 @@ export default function ConversationDetailPage() {
           type: convertForm.type,
           priority: convertForm.priority,
         },
-        user?.uid
+        user?.uid,
       );
 
       toast({
@@ -1103,6 +1339,147 @@ export default function ConversationDetailPage() {
         description: "Talep oluşturulamadı.",
         variant: "destructive",
       });
+    } finally {
+      setCreatingCase(false);
+    }
+  };
+
+  // AI ile hızlı özet oluştur (sidebar için)
+  const handleGenerateSummary = async () => {
+    if (!conversation?.messages?.length) {
+      toast({
+        title: "Uyarı",
+        description: "Özetlenecek mesaj bulunamadı.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      // Konuşma geçmişini formatla
+      const conversationHistory = formatConversationHistory(
+        conversation.messages,
+        15, // Daha fazla mesaj dahil et özet için
+      );
+
+      const customerName =
+        customer?.name || conversation.sender?.name || "Müşteri";
+      const customerCompany =
+        customer?.companyName || conversation.sender?.company || "";
+
+      // Prompt değişkenleri
+      const promptVariables = {
+        conversation_messages: conversationHistory,
+        customer_name: customerName,
+        customer_company: customerCompany,
+        subject: conversation.subject || "Konu belirtilmemiş",
+        channel: getChannelLabel(conversation.channel) || "email",
+      };
+
+      // API'ye istek at (quick kategori promptu ile)
+      const response = await fetch("/api/admin/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "generate",
+          contextKey: AI_CONTEXTS.CRM_CASE_SUMMARY,
+          promptKey: "crm_case_summary_quick", // Quick kategori promptu
+          promptVariables,
+          options: {
+            temperature: summaryModelSettings.temperature,
+            maxTokens: summaryModelSettings.autoMaxTokens ? undefined : summaryModelSettings.maxTokens,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.content) {
+        // JSON yanıtı parse et
+        try {
+          // JSON bloğunu temizle (```json ... ``` varsa)
+          let jsonContent = result.content;
+          if (jsonContent.includes("```json")) {
+            jsonContent = jsonContent
+              .replace(/```json\n?/g, "")
+              .replace(/```\n?/g, "");
+          }
+          if (jsonContent.includes("```")) {
+            jsonContent = jsonContent.replace(/```\n?/g, "");
+          }
+
+          // Kesilmiş/eksik JSON'ı düzeltmeye çalış
+          jsonContent = jsonContent.trim();
+          
+          // Eğer JSON tam değilse tamamlamaya çalış
+          const openBraces = (jsonContent.match(/{/g) || []).length;
+          const closeBraces = (jsonContent.match(/}/g) || []).length;
+          const openBrackets = (jsonContent.match(/\[/g) || []).length;
+          const closeBrackets = (jsonContent.match(/\]/g) || []).length;
+          
+          // Eksik kapanış parantezlerini ekle
+          if (openBrackets > closeBrackets) {
+            jsonContent += ']'.repeat(openBrackets - closeBrackets);
+          }
+          if (openBraces > closeBraces) {
+            // Eğer son karakter virgül veya açık tırnak ise düzelt
+            jsonContent = jsonContent.replace(/,\s*$/, '');
+            jsonContent = jsonContent.replace(/"[^"]*$/, '""');
+            jsonContent += '}'.repeat(openBraces - closeBraces);
+          }
+
+          const summaryData = JSON.parse(jsonContent.trim());
+          setAiSummary(summaryData);
+
+          toast({
+            title: "✅ Özet Oluşturuldu",
+            description: "Konuşma özeti hazır.",
+          });
+        } catch (parseError) {
+          console.error("JSON parse error:", parseError, result.content);
+          
+          // Fallback: Ham içerikten özet çıkarmaya çalış
+          const summaryMatch = result.content.match(/"summary"\s*:\s*"([^"]+)"/);
+          const mainRequestMatch = result.content.match(/"mainRequest"\s*:\s*"([^"]+)"/);
+          
+          if (summaryMatch || mainRequestMatch) {
+            setAiSummary({
+              summary: summaryMatch?.[1] || mainRequestMatch?.[1] || "Özet ayrıştırılamadı",
+              mainRequest: mainRequestMatch?.[1] || "",
+              parseError: true,
+              rawContent: result.content,
+            });
+            toast({
+              title: "⚠️ Kısmi Özet",
+              description: "Özet kısmen ayrıştırıldı.",
+              variant: "default",
+            });
+          } else {
+            // JSON parse edilemezse ham içeriği göster
+            setAiSummary({
+              summary: result.content,
+              parseError: true,
+            });
+          }
+        }
+      } else {
+        // Enhanced error handling with user-friendly messages (helpers from hook)
+        toast({
+          title: getAIErrorTitle(result.errorCode),
+          description: getAIErrorMessage(result.errorCode, result.error),
+          variant: result.retryable ? "default" : "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("AI summary error:", error);
+      toast({
+        title: "AI Hatası",
+        description: error.message || "Özet oluşturulamadı. Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingSummary(false);
     }
   };
 
@@ -1208,14 +1585,19 @@ export default function ConversationDetailPage() {
                   </Badge>
                   {/* Reply Status Badge - Minimalist */}
                   {conversation.replyStatus && (
-                    <span 
+                    <span
                       className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium",
-                        getReplyStatusColor(conversation.replyStatus)
+                        getReplyStatusColor(conversation.replyStatus),
                       )}
                       title={getReplyStatusLabel(conversation.replyStatus)}
                     >
-                      <span className={cn("w-1.5 h-1.5 rounded-full", getReplyStatusDot(conversation.replyStatus))} />
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          getReplyStatusDot(conversation.replyStatus),
+                        )}
+                      />
                       {getReplyStatusLabel(conversation.replyStatus)}
                     </span>
                   )}
@@ -1223,7 +1605,7 @@ export default function ConversationDetailPage() {
                     variant="outline"
                     className={cn(
                       "text-xs bg-white",
-                      getConversationStatusColor(conversation.status)
+                      getConversationStatusColor(conversation.status),
                     )}
                   >
                     {getConversationStatusLabel(conversation.status)}
@@ -1239,7 +1621,7 @@ export default function ConversationDetailPage() {
                       return format(
                         displayDate?.toDate?.() || new Date(displayDate),
                         "dd MMM yyyy HH:mm",
-                        { locale: tr }
+                        { locale: tr },
                       );
                     })()}
                   </span>
@@ -1282,7 +1664,9 @@ export default function ConversationDetailPage() {
                       <DropdownMenuItem
                         onClick={async () => {
                           try {
-                            const result = await cleanupDuplicateMessages(conversation.id);
+                            const result = await cleanupDuplicateMessages(
+                              conversation.id,
+                            );
                             if (result.deleted > 0) {
                               toast({
                                 title: "Temizlendi",
@@ -1369,18 +1753,17 @@ export default function ConversationDetailPage() {
                                 return format(
                                   displayDate?.toDate?.() ||
                                     new Date(displayDate),
-                                  "HH:mm",
-                                  { locale: tr }
+                                  "dd MMM HH:mm",
+                                  { locale: tr },
                                 );
                               })()}
                             </span>
                           </div>
                           <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-slate-100">
                             <p className="whitespace-pre-wrap text-slate-700 text-sm leading-relaxed">
-                              {isHtmlContent(conversation.preview) 
+                              {isHtmlContent(conversation.preview)
                                 ? stripHtmlToText(conversation.preview)
-                                : conversation.preview
-                              }
+                                : conversation.preview}
                             </p>
                           </div>
                         </div>
@@ -1427,7 +1810,7 @@ export default function ConversationDetailPage() {
                         key={message.id || index}
                         className={cn(
                           "flex gap-3",
-                          isOutbound && "flex-row-reverse"
+                          isOutbound && "flex-row-reverse",
                         )}
                       >
                         <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-white shadow-sm">
@@ -1436,7 +1819,7 @@ export default function ConversationDetailPage() {
                               "text-sm font-medium",
                               isOutbound
                                 ? "bg-gradient-to-br from-slate-600 to-slate-700 text-white"
-                                : "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                                : "bg-gradient-to-br from-blue-500 to-blue-600 text-white",
                             )}
                           >
                             {getInitials(message.sender?.name)}
@@ -1445,14 +1828,14 @@ export default function ConversationDetailPage() {
                         <div
                           className={cn(
                             "flex-1",
-                            isOutbound ? "flex justify-end" : ""
+                            isOutbound ? "flex justify-end" : "",
                           )}
                         >
                           <div className="max-w-[75%]">
                             <div
                               className={cn(
                                 "flex items-center gap-2 mb-1.5",
-                                isOutbound && "flex-row-reverse"
+                                isOutbound && "flex-row-reverse",
                               )}
                             >
                               <span className="text-sm font-semibold text-slate-800">
@@ -1468,8 +1851,8 @@ export default function ConversationDetailPage() {
                                   return format(
                                     displayDate?.toDate?.() ||
                                       new Date(displayDate),
-                                    "HH:mm",
-                                    { locale: tr }
+                                    "dd MMM HH:mm",
+                                    { locale: tr },
                                   );
                                 })()}
                               </span>
@@ -1491,7 +1874,7 @@ export default function ConversationDetailPage() {
                                     variant="outline"
                                     className={cn(
                                       "text-xs px-1.5 py-0",
-                                      getMessageStatusColor(message.status)
+                                      getMessageStatusColor(message.status),
                                     )}
                                   >
                                     {getMessageStatusLabel(message.status)}
@@ -1505,7 +1888,7 @@ export default function ConversationDetailPage() {
                                   ? isDraft
                                     ? "bg-amber-100 text-amber-900 rounded-2xl rounded-tr-md border-2 border-dashed border-amber-300"
                                     : "bg-slate-800 text-white rounded-2xl rounded-tr-md"
-                                  : "bg-white border border-slate-100 rounded-2xl rounded-tl-md"
+                                  : "bg-white border border-slate-100 rounded-2xl rounded-tl-md",
                               )}
                             >
                               <div
@@ -1515,15 +1898,90 @@ export default function ConversationDetailPage() {
                                     ? isDraft
                                       ? "text-amber-800"
                                       : "text-slate-100"
-                                    : "text-slate-700"
+                                    : "text-slate-700",
                                 )}
                               >
                                 {/* HTML içerik varsa temizleyerek göster, yoksa direkt göster */}
-                                {isHtmlContent(message.content) 
+                                {isHtmlContent(message.content)
                                   ? stripHtmlToText(message.content)
-                                  : message.content
-                                }
+                                  : message.content}
                               </div>
+
+                              {/* Mesaja ekli dosyalar */}
+                              {message.attachments && message.attachments.length > 0 && (
+                                <div className={cn(
+                                  "mt-3 pt-3 border-t",
+                                  isDraft ? "border-amber-200" : isOutbound ? "border-slate-600" : "border-slate-200"
+                                )}>
+                                  <div className={cn(
+                                    "flex items-center gap-1.5 mb-2 text-xs font-medium",
+                                    isDraft ? "text-amber-700" : isOutbound ? "text-slate-300" : "text-slate-500"
+                                  )}>
+                                    <Paperclip className="h-3 w-3" />
+                                    Ekler ({message.attachments.length})
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {message.attachments.map((att, attIndex) => (
+                                      <button
+                                        key={attIndex}
+                                        onClick={() => {
+                                          // Önce Storage URL'i kontrol et (her zaman tercih edilir)
+                                          if (att.url) {
+                                            window.open(att.url, '_blank');
+                                          } 
+                                          // Yoksa belge tipine göre admin sayfasına yönlendir
+                                          else if (att.documentId) {
+                                            if (att.type === 'proforma') {
+                                              window.open(`/admin/proformas/${att.documentId}`, '_blank');
+                                            } else if (att.type === 'contract') {
+                                              window.open(`/admin/contracts/${att.documentId}`, '_blank');
+                                            } else if (att.type === 'calculation') {
+                                              window.open(`/admin/pricing-calculator?id=${att.documentId}`, '_blank');
+                                            }
+                                          }
+                                        }}
+                                        className={cn(
+                                          "flex items-center gap-2 w-full p-2 rounded-lg text-left transition-colors",
+                                          isDraft 
+                                            ? "bg-amber-50 hover:bg-amber-200 border border-amber-200" 
+                                            : isOutbound 
+                                              ? "bg-slate-700 hover:bg-slate-600 border border-slate-600" 
+                                              : "bg-slate-50 hover:bg-slate-100 border border-slate-200"
+                                        )}
+                                      >n                                        {att.type === 'file' ? (
+                                          <FileIcon className={cn("h-4 w-4 flex-shrink-0", isDraft ? "text-amber-600" : isOutbound ? "text-slate-300" : "text-slate-500")} />
+                                        ) : att.type === 'proforma' ? (
+                                          <Receipt className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                        ) : att.type === 'contract' ? (
+                                          <FileText className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                        ) : (
+                                          <Calculator className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className={cn(
+                                            "text-xs font-medium truncate",
+                                            isDraft ? "text-amber-800" : isOutbound ? "text-slate-200" : "text-slate-700"
+                                          )}>
+                                            {att.name}
+                                          </p>
+                                          {att.size && (
+                                            <p className={cn(
+                                              "text-xs",
+                                              isDraft ? "text-amber-600" : isOutbound ? "text-slate-400" : "text-slate-500"
+                                            )}>
+                                              {formatFileSize(att.size)}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <ExternalLink className={cn(
+                                          "h-3 w-3 flex-shrink-0",
+                                          isDraft ? "text-amber-500" : isOutbound ? "text-slate-400" : "text-slate-400"
+                                        )} />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Draft Actions */}
@@ -1531,7 +1989,7 @@ export default function ConversationDetailPage() {
                               <div
                                 className={cn(
                                   "flex gap-2 mt-2",
-                                  isOutbound && "justify-end"
+                                  isOutbound && "justify-end",
                                 )}
                               >
                                 <Button
@@ -1645,6 +2103,41 @@ export default function ConversationDetailPage() {
                     Hazır Yanıtlar
                   </Button>
 
+                  {/* Attachment Buttons */}
+                  <div className="flex items-center gap-1">
+                    {/* File Upload Button */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      multiple
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                      title="Dosya Ekle"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+
+                    {/* Linked Documents Button */}
+                    {customer?.linkedCompanyId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowDocumentPicker(true)}
+                        className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                        title="Belgelerden Seç (Proforma, Sözleşme)"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
                   {/* AI Settings Button */}
                   <Button
                     variant="ghost"
@@ -1681,8 +2174,62 @@ export default function ConversationDetailPage() {
                       Talimat
                     </Badge>
                   )}
+
+                  {/* Attachment Count Badge */}
+                  {attachments.length > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 text-blue-600 border-blue-200 text-[10px] px-2 py-0 h-5"
+                    >
+                      <Paperclip className="h-2.5 w-2.5 mr-1" />
+                      {attachments.length} dosya
+                    </Badge>
+                  )}
                 </div>
               </div>
+
+              {/* Attachments Preview */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className={cn(
+                        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs",
+                        attachment.type === 'linked_document'
+                          ? "bg-blue-50 border border-blue-200"
+                          : "bg-slate-100 border border-slate-200"
+                      )}
+                    >
+                      {attachment.type === 'linked_document' ? (
+                        attachment.docType === 'proforma' ? (
+                          <Receipt className="h-3.5 w-3.5 text-blue-500" />
+                        ) : attachment.docType === 'contract' ? (
+                          <FileText className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <Calculator className="h-3.5 w-3.5 text-purple-500" />
+                        )
+                      ) : (
+                        <FileIcon className="h-3.5 w-3.5 text-slate-400" />
+                      )}
+                      <span className="max-w-[150px] truncate text-slate-700">
+                        {attachment.name}
+                      </span>
+                      {attachment.size && (
+                        <span className="text-slate-400">
+                          ({formatFileSize(attachment.size)})
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleRemoveAttachment(attachment.id)}
+                        className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex gap-3 items-end">
                 <Textarea
@@ -1704,8 +2251,8 @@ export default function ConversationDetailPage() {
                     isAiGenerated
                       ? "bg-purple-50 border-purple-200 focus:bg-white focus:border-purple-300 focus:ring-purple-200"
                       : replyContent.trim() && !isAiGenerated
-                      ? "bg-amber-50/50 border-amber-200 focus:bg-white focus:border-amber-300 focus:ring-amber-200"
-                      : "bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-300 focus:ring-blue-200"
+                        ? "bg-amber-50/50 border-amber-200 focus:bg-white focus:border-amber-300 focus:ring-amber-200"
+                        : "bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-300 focus:ring-blue-200",
                   )}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && e.ctrlKey) {
@@ -1861,7 +2408,7 @@ export default function ConversationDetailPage() {
                   variant="outline"
                   className={cn(
                     "bg-white text-xs",
-                    getConversationStatusColor(conversation.status)
+                    getConversationStatusColor(conversation.status),
                   )}
                 >
                   {getConversationStatusLabel(conversation.status)}
@@ -1886,7 +2433,7 @@ export default function ConversationDetailPage() {
                       return format(
                         displayDate?.toDate?.() || new Date(displayDate),
                         "dd MMM yyyy",
-                        { locale: tr }
+                        { locale: tr },
                       );
                     })()}
                   </span>
@@ -1898,7 +2445,7 @@ export default function ConversationDetailPage() {
                       formatDistanceToNow(
                         conversation.lastMessageAt?.toDate?.() ||
                           new Date(conversation.lastMessageAt),
-                        { addSuffix: true, locale: tr }
+                        { addSuffix: true, locale: tr },
                       )}
                   </span>
                 </div>
@@ -1912,13 +2459,144 @@ export default function ConversationDetailPage() {
                         conversation.snoozedUntil?.toDate?.() ||
                           new Date(conversation.snoozedUntil),
                         "dd MMM HH:mm",
-                        { locale: tr }
+                        { locale: tr },
                       )}
                     </span>
                   </div>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* AI Conversation Summary */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                AI Özet
+              </h3>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                  onClick={() => setShowSummarySettingsModal(true)}
+                  title="AI Ayarları"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {!aiSummary && !generatingSummary && (
+              <Button
+                variant="outline"
+                className="w-full bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-indigo-100"
+                onClick={handleGenerateSummary}
+                disabled={!conversation.messages?.length}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Konuşmayı Özetle
+              </Button>
+            )}
+
+            {generatingSummary && (
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                  <span className="text-sm text-purple-700">
+                    AI özet oluşturuluyor...
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {aiSummary && !generatingSummary && (
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100 space-y-3">
+                {/* Summary Text */}
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {aiSummary.summary || aiSummary.ozet}
+                </p>
+
+                {/* Service Type */}
+                {(aiSummary.serviceType || aiSummary.hizmetTuru) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Hizmet:</span>
+                    <Badge
+                      variant="outline"
+                      className="bg-white text-purple-700 border-purple-200 text-xs"
+                    >
+                      {aiSummary.serviceType || aiSummary.hizmetTuru}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Products/Services */}
+                {((aiSummary.products && aiSummary.products.length > 0) ||
+                  (aiSummary.urunler && aiSummary.urunler.length > 0)) && (
+                  <div className="space-y-1">
+                    <span className="text-xs text-slate-500">
+                      Bahsi Geçen Ürünler:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {(aiSummary.products || aiSummary.urunler || []).map(
+                        (product, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="text-xs bg-white text-slate-700 border-slate-200"
+                            title={
+                              typeof product === "object" ? product.detail : ""
+                            }
+                          >
+                            {typeof product === "object"
+                              ? product.name
+                              : product}
+                          </Badge>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Current Stage */}
+                {(aiSummary.currentStage || aiSummary.mevcutAsama) && (
+                  <div className="flex items-start gap-2 pt-2 border-t border-purple-100">
+                    <span className="text-xs text-slate-500 shrink-0">
+                      Aşama:
+                    </span>
+                    <span className="text-xs text-slate-700">
+                      {aiSummary.currentStage || aiSummary.mevcutAsama}
+                    </span>
+                  </div>
+                )}
+
+                {/* Next Step */}
+                {(aiSummary.nextStep || aiSummary.sonrakiAdim) && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-slate-500 shrink-0">
+                      Sonraki:
+                    </span>
+                    <span className="text-xs text-slate-700">
+                      {aiSummary.nextStep || aiSummary.sonrakiAdim}
+                    </span>
+                  </div>
+                )}
+
+                {/* Regenerate Button */}
+                <div className="pt-2 border-t border-purple-100">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                    onClick={handleGenerateSummary}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Yeniden Oluştur
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Linked Case */}
@@ -2027,9 +2705,13 @@ export default function ConversationDetailPage() {
             >
               İptal
             </Button>
-            <Button onClick={handleConvertToCase} disabled={!convertForm.title}>
-              <Briefcase className="h-4 w-4 mr-2" />
-              Talep Oluştur
+            <Button onClick={handleConvertToCase} disabled={!convertForm.title || creatingCase}>
+              {creatingCase ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Briefcase className="h-4 w-4 mr-2" />
+              )}
+              {creatingCase ? "Oluşturuluyor..." : "Talep Oluştur"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2209,30 +2891,40 @@ export default function ConversationDetailPage() {
                     const messageCount = conversation?.messages?.length || 0;
                     const isFirstMessage = messageCount <= 1;
                     return (
-                      <div className={`rounded-xl border overflow-hidden ${
-                        isFirstMessage 
-                          ? "border-emerald-200 bg-emerald-50/50" 
-                          : "border-blue-200 bg-blue-50/50"
-                      }`}>
-                        <div className={`px-4 py-3 border-b ${
-                          isFirstMessage 
-                            ? "border-emerald-100 bg-emerald-50" 
-                            : "border-blue-100 bg-blue-50"
-                        }`}>
+                      <div
+                        className={`rounded-xl border overflow-hidden ${
+                          isFirstMessage
+                            ? "border-emerald-200 bg-emerald-50/50"
+                            : "border-blue-200 bg-blue-50/50"
+                        }`}
+                      >
+                        <div
+                          className={`px-4 py-3 border-b ${
+                            isFirstMessage
+                              ? "border-emerald-100 bg-emerald-50"
+                              : "border-blue-100 bg-blue-50"
+                          }`}
+                        >
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
-                            <Sparkles className={`h-3.5 w-3.5 ${
-                              isFirstMessage ? "text-emerald-500" : "text-blue-500"
-                            }`} />
+                            <Sparkles
+                              className={`h-3.5 w-3.5 ${
+                                isFirstMessage
+                                  ? "text-emerald-500"
+                                  : "text-blue-500"
+                              }`}
+                            />
                             Hibrit Prompt Modu
                           </p>
                         </div>
                         <div className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md ${
-                              isFirstMessage 
-                                ? "bg-gradient-to-br from-emerald-400 to-emerald-600" 
-                                : "bg-gradient-to-br from-blue-400 to-blue-600"
-                            }`}>
+                            <div
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md ${
+                                isFirstMessage
+                                  ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
+                                  : "bg-gradient-to-br from-blue-400 to-blue-600"
+                              }`}
+                            >
                               {isFirstMessage ? (
                                 <MessageSquarePlus className="h-5 w-5 text-white" />
                               ) : (
@@ -2241,28 +2933,37 @@ export default function ConversationDetailPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-slate-900">
-                                {isFirstMessage ? "İlk Karşılama Promptu" : "Devam Yanıtı Promptu"}
+                                {isFirstMessage
+                                  ? "İlk Karşılama Promptu"
+                                  : "Devam Yanıtı Promptu"}
                               </p>
                               <p className="text-sm text-slate-500">
-                                {isFirstMessage 
-                                  ? "Sıcak, profesyonel karşılama (max 100 kelime)" 
-                                  : "Bağlam farkında, akıllı yanıt (80-120 kelime)"
-                                }
+                                {isFirstMessage
+                                  ? "Sıcak, profesyonel karşılama (max 100 kelime)"
+                                  : "Bağlam farkında, akıllı yanıt (80-120 kelime)"}
                               </p>
                             </div>
-                            <Badge className={`border-0 text-xs ${
-                              isFirstMessage 
-                                ? "bg-emerald-100 text-emerald-700" 
-                                : "bg-blue-100 text-blue-700"
-                            }`}>
+                            <Badge
+                              className={`border-0 text-xs ${
+                                isFirstMessage
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
                               {messageCount} mesaj
                             </Badge>
                           </div>
-                          <div className={`mt-3 pt-3 border-t text-xs ${
-                            isFirstMessage ? "border-emerald-100 text-emerald-700" : "border-blue-100 text-blue-700"
-                          }`}>
+                          <div
+                            className={`mt-3 pt-3 border-t text-xs ${
+                              isFirstMessage
+                                ? "border-emerald-100 text-emerald-700"
+                                : "border-blue-100 text-blue-700"
+                            }`}
+                          >
                             <code className="font-mono bg-white/50 px-2 py-1 rounded">
-                              {isFirstMessage ? "crm_communication" : "crm_communication_continuation"}
+                              {isFirstMessage
+                                ? "crm_communication"
+                                : "crm_communication_continuation"}
                             </code>
                           </div>
                         </div>
@@ -2455,7 +3156,7 @@ export default function ConversationDetailPage() {
                               >
                                 {val >= 1000
                                   ? `${(val / 1000).toFixed(
-                                      val % 1000 === 0 ? 0 : 1
+                                      val % 1000 === 0 ? 0 : 1,
                                     )}K`
                                   : val}
                               </button>
@@ -2549,7 +3250,7 @@ export default function ConversationDetailPage() {
                                   )}
                                 </div>
                               );
-                            }
+                            },
                           )}
                         </div>
                       </div>
@@ -2570,33 +3271,39 @@ export default function ConversationDetailPage() {
                   {(() => {
                     const messageCount = conversation?.messages?.length || 0;
                     const isFirstMessage = messageCount <= 1;
-                    const activePromptKey = isFirstMessage 
-                      ? "crm_communication" 
+                    const activePromptKey = isFirstMessage
+                      ? "crm_communication"
                       : "crm_communication_continuation";
-                    
+
                     return (
                       <>
                         {/* Prompt Seçim Kartları */}
                         <div className="grid grid-cols-2 gap-3 mb-4">
                           {/* İlk Karşılama Promptu */}
-                          <div 
+                          <div
                             className={`rounded-xl border-2 p-3 cursor-pointer transition-all ${
-                              isFirstMessage 
-                                ? "border-emerald-400 bg-emerald-50 shadow-md" 
+                              isFirstMessage
+                                ? "border-emerald-400 bg-emerald-50 shadow-md"
                                 : "border-slate-200 bg-white hover:border-slate-300"
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                isFirstMessage 
-                                  ? "bg-emerald-500" 
-                                  : "bg-slate-300"
-                              }`}>
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                  isFirstMessage
+                                    ? "bg-emerald-500"
+                                    : "bg-slate-300"
+                                }`}
+                              >
                                 <MessageSquarePlus className="h-3.5 w-3.5 text-white" />
                               </div>
-                              <span className={`text-xs font-bold ${
-                                isFirstMessage ? "text-emerald-700" : "text-slate-500"
-                              }`}>
+                              <span
+                                className={`text-xs font-bold ${
+                                  isFirstMessage
+                                    ? "text-emerald-700"
+                                    : "text-slate-500"
+                                }`}
+                              >
                                 İlk Karşılama
                               </span>
                               {isFirstMessage && (
@@ -2605,32 +3312,42 @@ export default function ConversationDetailPage() {
                                 </Badge>
                               )}
                             </div>
-                            <p className={`text-[10px] ${
-                              isFirstMessage ? "text-emerald-600" : "text-slate-400"
-                            }`}>
+                            <p
+                              className={`text-[10px] ${
+                                isFirstMessage
+                                  ? "text-emerald-600"
+                                  : "text-slate-400"
+                              }`}
+                            >
                               Sıcak karşılama • Max 100 kelime
                             </p>
                           </div>
-                          
+
                           {/* Devam Yanıtı Promptu */}
-                          <div 
+                          <div
                             className={`rounded-xl border-2 p-3 cursor-pointer transition-all ${
-                              !isFirstMessage 
-                                ? "border-blue-400 bg-blue-50 shadow-md" 
+                              !isFirstMessage
+                                ? "border-blue-400 bg-blue-50 shadow-md"
                                 : "border-slate-200 bg-white hover:border-slate-300"
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                !isFirstMessage 
-                                  ? "bg-blue-500" 
-                                  : "bg-slate-300"
-                              }`}>
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                  !isFirstMessage
+                                    ? "bg-blue-500"
+                                    : "bg-slate-300"
+                                }`}
+                              >
                                 <MessageSquare className="h-3.5 w-3.5 text-white" />
                               </div>
-                              <span className={`text-xs font-bold ${
-                                !isFirstMessage ? "text-blue-700" : "text-slate-500"
-                              }`}>
+                              <span
+                                className={`text-xs font-bold ${
+                                  !isFirstMessage
+                                    ? "text-blue-700"
+                                    : "text-slate-500"
+                                }`}
+                              >
                                 Devam Yanıtı
                               </span>
                               {!isFirstMessage && (
@@ -2639,24 +3356,32 @@ export default function ConversationDetailPage() {
                                 </Badge>
                               )}
                             </div>
-                            <p className={`text-[10px] ${
-                              !isFirstMessage ? "text-blue-600" : "text-slate-400"
-                            }`}>
+                            <p
+                              className={`text-[10px] ${
+                                !isFirstMessage
+                                  ? "text-blue-600"
+                                  : "text-slate-400"
+                              }`}
+                            >
                               Akıllı bağlam • 80-120 kelime
                             </p>
                           </div>
                         </div>
 
                         {/* Mesaj Sayısı Bilgisi */}
-                        <div className={`text-center py-2 px-3 rounded-lg text-xs ${
-                          isFirstMessage 
-                            ? "bg-emerald-100 text-emerald-700" 
-                            : "bg-blue-100 text-blue-700"
-                        }`}>
-                          Bu konuşmada <strong>{messageCount}</strong> mesaj var → 
+                        <div
+                          className={`text-center py-2 px-3 rounded-lg text-xs ${
+                            isFirstMessage
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          Bu konuşmada <strong>{messageCount}</strong> mesaj var
+                          →
                           <code className="ml-1 bg-white/50 px-1.5 py-0.5 rounded font-mono text-[10px]">
                             {activePromptKey}
-                          </code> kullanılacak
+                          </code>{" "}
+                          kullanılacak
                         </div>
                       </>
                     );
@@ -2689,7 +3414,7 @@ export default function ConversationDetailPage() {
                             handleCopyPrompt(
                               firestorePrompt?.systemPrompt ||
                                 firestorePrompt?.content ||
-                                ""
+                                "",
                             )
                           }
                           className="h-8 px-3 text-xs rounded-lg hover:bg-slate-100 flex-shrink-0"
@@ -2709,9 +3434,9 @@ export default function ConversationDetailPage() {
 
                       {/* Aktif Değişkenler Paneli */}
                       <div className="rounded-xl border border-emerald-200 overflow-hidden bg-emerald-50/50">
-                        <div 
+                        <div
                           className="px-3 py-2 bg-emerald-100 border-b border-emerald-200 flex items-center justify-between cursor-pointer"
-                          onClick={() => setShowVariablesPanel(prev => !prev)}
+                          onClick={() => setShowVariablesPanel((prev) => !prev)}
                         >
                           <div className="flex items-center gap-2">
                             <Zap className="h-3.5 w-3.5 text-emerald-600" />
@@ -2728,21 +3453,29 @@ export default function ConversationDetailPage() {
                         </div>
                         {showVariablesPanel && (
                           <div className="p-3 space-y-2 max-h-48 overflow-auto">
-                            {Object.entries(currentPromptVariables).map(([key, value]) => (
-                              <div key={key} className="flex gap-2 text-[11px]">
-                                <code className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
-                                  {`{{${key}}}`}
-                                </code>
-                                <span className={`text-slate-600 truncate ${
-                                  value ? '' : 'italic text-slate-400'
-                                }`}>
-                                  {value 
-                                    ? (value.length > 60 ? value.substring(0, 60) + '...' : value)
-                                    : '(boş)'
-                                  }
-                                </span>
-                              </div>
-                            ))}
+                            {Object.entries(currentPromptVariables).map(
+                              ([key, value]) => (
+                                <div
+                                  key={key}
+                                  className="flex gap-2 text-[11px]"
+                                >
+                                  <code className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                                    {`{{${key}}}`}
+                                  </code>
+                                  <span
+                                    className={`text-slate-600 truncate ${
+                                      value ? "" : "italic text-slate-400"
+                                    }`}
+                                  >
+                                    {value
+                                      ? value.length > 60
+                                        ? value.substring(0, 60) + "..."
+                                        : value
+                                      : "(boş)"}
+                                  </span>
+                                </div>
+                              ),
+                            )}
                           </div>
                         )}
                       </div>
@@ -2800,7 +3533,10 @@ export default function ConversationDetailPage() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                               </div>
                               <span className="text-[11px] text-purple-300 ml-1 font-mono">
-                                user_prompt {showFilledPrompt ? "(değişkenler dolu)" : "(template)"}
+                                user_prompt{" "}
+                                {showFilledPrompt
+                                  ? "(değişkenler dolu)"
+                                  : "(template)"}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -2831,21 +3567,33 @@ export default function ConversationDetailPage() {
                                   'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
                               }}
                             >
-                              {showFilledPrompt 
-                                ? replacePromptVariables(firestorePrompt.userPromptTemplate, currentPromptVariables)
-                                : firestorePrompt.userPromptTemplate
-                              }
+                              {showFilledPrompt
+                                ? replacePromptVariables(
+                                    firestorePrompt.userPromptTemplate,
+                                    currentPromptVariables,
+                                  )
+                                : firestorePrompt.userPromptTemplate}
                             </pre>
                           </div>
                           {/* Variables info */}
-                          {showFilledPrompt && currentPromptVariables.user_instruction && (
-                            <div className="px-3 py-2 bg-amber-900/50 border-t border-amber-800/50 flex items-center gap-2">
-                              <Zap className="h-3 w-3 text-amber-400" />
-                              <span className="text-[10px] text-amber-300">
-                                Operatör Talimatı: "{currentPromptVariables.user_instruction.substring(0, 50)}{currentPromptVariables.user_instruction.length > 50 ? '...' : ''}"
-                              </span>
-                            </div>
-                          )}
+                          {showFilledPrompt &&
+                            currentPromptVariables.user_instruction && (
+                              <div className="px-3 py-2 bg-amber-900/50 border-t border-amber-800/50 flex items-center gap-2">
+                                <Zap className="h-3 w-3 text-amber-400" />
+                                <span className="text-[10px] text-amber-300">
+                                  Operatör Talimatı: "
+                                  {currentPromptVariables.user_instruction.substring(
+                                    0,
+                                    50,
+                                  )}
+                                  {currentPromptVariables.user_instruction
+                                    .length > 50
+                                    ? "..."
+                                    : ""}
+                                  "
+                                </span>
+                              </div>
+                            )}
                         </div>
                       )}
 
@@ -2933,7 +3681,8 @@ export default function ConversationDetailPage() {
               Mesaj Gönderimi
             </DialogTitle>
             <DialogDescription>
-              Mesajın gönderileceği kanalları seçin. Birden fazla kanal seçebilirsiniz.
+              Mesajın gönderileceği kanalları seçin. Birden fazla kanal
+              seçebilirsiniz.
             </DialogDescription>
           </DialogHeader>
 
@@ -2944,7 +3693,7 @@ export default function ConversationDetailPage() {
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-slate-400" />
                 <span className="text-sm text-slate-600">
-                  {conversation?.sender?.name || 'İsimsiz'}
+                  {conversation?.sender?.name || "İsimsiz"}
                 </span>
               </div>
               {conversation?.sender?.email && (
@@ -2965,29 +3714,87 @@ export default function ConversationDetailPage() {
               )}
             </div>
 
+            {/* Ek Dosyalar */}
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  Ekler ({attachments.length})
+                </p>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {attachments.map((attachment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {attachment.type === 'file' ? (
+                          <FileIcon className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                        ) : attachment.type === 'proforma' ? (
+                          <Receipt className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        ) : attachment.type === 'contract' ? (
+                          <FileText className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <Calculator className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-700 truncate">
+                            {attachment.name}
+                          </p>
+                          {attachment.size && (
+                            <p className="text-xs text-slate-500">
+                              {formatFileSize(attachment.size)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(index)}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Kanal Seçimleri */}
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700">Gönderim Kanalları:</p>
-              
+              <p className="text-sm font-medium text-slate-700">
+                Gönderim Kanalları:
+              </p>
+
               {/* Outlook Email */}
-              <label className={cn(
-                "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
-                sendChannels.email 
-                  ? "border-blue-500 bg-blue-50" 
-                  : "border-slate-200 hover:border-slate-300",
-                !conversation?.sender?.email && "opacity-50 cursor-not-allowed"
-              )}>
+              <label
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
+                  sendChannels.email
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-200 hover:border-slate-300",
+                  !conversation?.sender?.email &&
+                    "opacity-50 cursor-not-allowed",
+                )}
+              >
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    sendChannels.email ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
-                  )}>
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      sendChannels.email
+                        ? "bg-blue-500 text-white"
+                        : "bg-slate-100 text-slate-500",
+                    )}
+                  >
                     <Mail className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">Outlook E-posta</p>
+                    <p className="font-medium text-slate-900">
+                      Outlook E-posta
+                    </p>
                     <p className="text-xs text-slate-500">
-                      {conversation?.sender?.email || 'E-posta adresi yok'}
+                      {conversation?.sender?.email || "E-posta adresi yok"}
                     </p>
                   </div>
                 </div>
@@ -2995,7 +3802,12 @@ export default function ConversationDetailPage() {
                   type="checkbox"
                   checked={sendChannels.email}
                   disabled={!conversation?.sender?.email}
-                  onChange={(e) => setSendChannels(prev => ({ ...prev, email: e.target.checked }))}
+                  onChange={(e) =>
+                    setSendChannels((prev) => ({
+                      ...prev,
+                      email: e.target.checked,
+                    }))
+                  }
                   className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
               </label>
@@ -3008,46 +3820,64 @@ export default function ConversationDetailPage() {
                   </div>
                   <div>
                     <p className="font-medium text-slate-500">WhatsApp</p>
-                    <p className="text-xs text-slate-400">Yakında aktif olacak</p>
+                    <p className="text-xs text-slate-400">
+                      Yakında aktif olacak
+                    </p>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs">Yakında</Badge>
+                <Badge variant="outline" className="text-xs">
+                  Yakında
+                </Badge>
               </label>
 
               {/* Manuel Kayıt */}
-              <label className={cn(
-                "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
-                sendChannels.manual 
-                  ? "border-slate-500 bg-slate-50" 
-                  : "border-slate-200 hover:border-slate-300"
-              )}>
+              <label
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
+                  sendChannels.manual
+                    ? "border-slate-500 bg-slate-50"
+                    : "border-slate-200 hover:border-slate-300",
+                )}
+              >
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    sendChannels.manual ? "bg-slate-600 text-white" : "bg-slate-100 text-slate-500"
-                  )}>
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      sendChannels.manual
+                        ? "bg-slate-600 text-white"
+                        : "bg-slate-100 text-slate-500",
+                    )}
+                  >
                     <FileText className="h-5 w-5" />
                   </div>
                   <div>
                     <p className="font-medium text-slate-900">Manuel Kayıt</p>
-                    <p className="text-xs text-slate-500">Sadece CRM'e kaydet, dışarı gönderme</p>
+                    <p className="text-xs text-slate-500">
+                      Sadece CRM'e kaydet, dışarı gönderme
+                    </p>
                   </div>
                 </div>
                 <input
                   type="checkbox"
                   checked={sendChannels.manual}
-                  onChange={(e) => setSendChannels(prev => ({ ...prev, manual: e.target.checked }))}
+                  onChange={(e) =>
+                    setSendChannels((prev) => ({
+                      ...prev,
+                      manual: e.target.checked,
+                    }))
+                  }
                   className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
                 />
               </label>
             </div>
 
             {/* Bilgi Notu */}
-            {sendChannels.email && conversation?.channel === 'email' && (
+            {sendChannels.email && conversation?.channel === "email" && (
               <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-700">
-                  E-posta, mevcut konuşma zincirine (thread) yanıt olarak gönderilecek.
+                  E-posta, mevcut konuşma zincirine (thread) yanıt olarak
+                  gönderilecek.
                 </p>
               </div>
             )}
@@ -3066,7 +3896,9 @@ export default function ConversationDetailPage() {
             </Button>
             <Button
               onClick={handleConfirmSend}
-              disabled={sendingMessage || (!sendChannels.email && !sendChannels.manual)}
+              disabled={
+                sendingMessage || (!sendChannels.email && !sendChannels.manual)
+              }
               className="bg-blue-600 hover:bg-blue-700"
             >
               {sendingMessage ? (
@@ -3084,6 +3916,391 @@ export default function ConversationDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Calculation Options Modal - Maliyet Detayları Seçimi */}
+      <Dialog open={showCalcOptionsModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowCalcOptionsModal(false);
+          setPendingCalculation(null);
+          setAddingDocumentId(null);
+        }
+      }}>
+        <DialogContent className="bg-white border-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-slate-800 flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-purple-500" />
+              PDF Ayarları
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              {pendingCalculation?.productName || "Hesaplama"} için PDF oluşturma seçeneklerini belirleyin.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {/* Maliyet Detayları Switch */}
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+              <div className="space-y-0.5">
+                <Label htmlFor="calcCostDetails" className="text-sm font-medium text-slate-900">
+                  Maliyet Detayları
+                </Label>
+                <p className="text-xs text-slate-500">
+                  Hammadde maliyetlerini ve kar marjını göster
+                </p>
+              </div>
+              <Switch
+                id="calcCostDetails"
+                checked={calcShowCostDetails}
+                onCheckedChange={setCalcShowCostDetails}
+              />
+            </div>
+
+            {/* Info */}
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+              <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                Maliyet detayları kapatıldığında PDF'te sadece satış fiyatı görünür. Müşteriye gönderilecek tekliflerde bu seçeneği kapalı tutmanız önerilir.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCalcOptionsModal(false);
+                setPendingCalculation(null);
+                setAddingDocumentId(null);
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={async () => {
+                if (pendingCalculation) {
+                  setShowCalcOptionsModal(false);
+                  setAddingDocumentId(pendingCalculation.id);
+                  await handleAddLinkedDocument('calculation', pendingCalculation, {
+                    skipModal: true,
+                    showCostDetails: calcShowCostDetails
+                  });
+                  setAddingDocumentId(null);
+                  setPendingCalculation(null);
+                }
+              }}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              PDF Oluştur ve Ekle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Picker Modal - Bağlı Belgelerden Seç */}
+      <Dialog open={showDocumentPicker} onOpenChange={setShowDocumentPicker}>
+        <DialogContent className="bg-white border-slate-200 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-slate-800 flex items-center gap-2">
+              <FolderOpen className="h-5 w-5 text-blue-500" />
+              Belgelerden Seç
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              {linkedCompany ? (
+                <>
+                  <span className="font-medium text-blue-600">{linkedCompany.name}</span> firmasına ait belgeleri e-postaya ekleyin.
+                </>
+              ) : (
+                "Müşteriye bağlı firma belgeleri"
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-2">
+            {documentsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            ) : (
+              <>
+                {/* Proformas Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-blue-500" />
+                    Proformalar
+                    <Badge variant="secondary" className="ml-1 bg-blue-50 text-blue-700 text-xs">
+                      {linkedDocuments.proformas.length}
+                    </Badge>
+                  </h4>
+                  {linkedDocuments.proformas.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-2 pl-6">Proforma bulunamadı</p>
+                  ) : (
+                    <div className="space-y-1 pl-6">
+                      {linkedDocuments.proformas.map((proforma) => (
+                        <div
+                          key={proforma.id}
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Receipt className="h-4 w-4 text-blue-400" />
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">
+                                {proforma.proformaNumber || `#${proforma.id.slice(0, 8)}`}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {proforma.createdAt && format(
+                                  proforma.createdAt?.toDate?.() || new Date(proforma.createdAt),
+                                  "dd MMM yyyy",
+                                  { locale: tr }
+                                )}
+                                {proforma.totals?.grandTotal && (
+                                  <span className="ml-2 text-emerald-600">
+                                    {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(proforma.totals.grandTotal)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                proforma.status === "accepted" && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                proforma.status === "sent" && "bg-blue-50 text-blue-700 border-blue-200",
+                                proforma.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200"
+                              )}
+                            >
+                              {PROFORMA_STATUS_LABELS[proforma.status] || proforma.status}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={addingDocumentId !== null}
+                              onClick={async () => {
+                                setAddingDocumentId(proforma.id);
+                                await handleAddLinkedDocument('proforma', proforma);
+                                setAddingDocumentId(null);
+                              }}
+                              className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              {addingDocumentId === proforma.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Paperclip className="h-3.5 w-3.5 mr-1" />
+                                  Ekle
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Contracts Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-green-500" />
+                    Sözleşmeler
+                    <Badge variant="secondary" className="ml-1 bg-green-50 text-green-700 text-xs">
+                      {linkedDocuments.contracts.length}
+                    </Badge>
+                  </h4>
+                  {linkedDocuments.contracts.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-2 pl-6">Sözleşme bulunamadı</p>
+                  ) : (
+                    <div className="space-y-1 pl-6">
+                      {linkedDocuments.contracts.map((contract) => (
+                        <div
+                          key={contract.id}
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <FileText className="h-4 w-4 text-green-400" />
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">
+                                {contract.contractNumber || `#${contract.id.slice(0, 8)}`}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {contract.contractType && <span className="mr-2">{contract.contractType}</span>}
+                                {contract.createdAt && format(
+                                  contract.createdAt?.toDate?.() || new Date(contract.createdAt),
+                                  "dd MMM yyyy",
+                                  { locale: tr }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                contract.status === "active" && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                contract.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200"
+                              )}
+                            >
+                              {contract.status === "active" ? "Aktif" : contract.status === "draft" ? "Taslak" : contract.status}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={addingDocumentId !== null}
+                              onClick={async () => {
+                                setAddingDocumentId(contract.id);
+                                await handleAddLinkedDocument('contract', contract);
+                                setAddingDocumentId(null);
+                              }}
+                              className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              {addingDocumentId === contract.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Paperclip className="h-3.5 w-3.5 mr-1" />
+                                  Ekle
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Calculations Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <Calculator className="h-4 w-4 text-purple-500" />
+                    Fiyat Hesaplamaları
+                    <Badge variant="secondary" className="ml-1 bg-purple-50 text-purple-700 text-xs">
+                      {linkedDocuments.calculations.length}
+                    </Badge>
+                  </h4>
+                  {linkedDocuments.calculations.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-2 pl-6">Hesaplama bulunamadı</p>
+                  ) : (
+                    <div className="space-y-1 pl-6">
+                      {linkedDocuments.calculations.map((calc) => (
+                        <div
+                          key={calc.id}
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Calculator className="h-4 w-4 text-purple-400" />
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">
+                                {calc.productName || calc.name || "Hesaplama"}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {calc.createdAt && format(
+                                  calc.createdAt?.toDate?.() || new Date(calc.createdAt),
+                                  "dd MMM yyyy",
+                                  { locale: tr }
+                                )}
+                                {calc.totalCost && (
+                                  <span className="ml-2 text-purple-600">
+                                    {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calc.totalCost)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {calc.productType && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                {calc.productType}
+                              </Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={addingDocumentId !== null}
+                              onClick={() => {
+                                // Hesaplama için modal açılacak, loading yok
+                                handleAddLinkedDocument('calculation', calc);
+                              }}
+                              className="h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                            >
+                              {addingDocumentId === calc.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Paperclip className="h-3.5 w-3.5 mr-1" />
+                                  Ekle
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Empty State */}
+                {linkedDocuments.proformas.length === 0 && 
+                 linkedDocuments.contracts.length === 0 && 
+                 linkedDocuments.calculations.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                      <FolderOpen className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="text-slate-500 font-medium">Belge bulunamadı</p>
+                    <p className="text-sm text-slate-400 mt-1">Bu firmaya ait henüz belge oluşturulmamış.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDocumentPicker(false)}
+              className="bg-white border-slate-200 text-slate-600"
+            >
+              Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Summary Settings Modal - Reusable Component */}
+      <AISettingsModal
+        open={showSummarySettingsModal}
+        onOpenChange={setShowSummarySettingsModal}
+        title={summaryConfig?.name || "AI Özet Ayarları"}
+        description={
+          summaryConfig?.description || "Konuşma özeti üretimi için AI ayarları"
+        }
+        contextKey={AI_CONTEXTS.CRM_CASE_SUMMARY}
+        availableModels={summaryAvailableModels}
+        currentModel={summaryCurrentModel}
+        currentProvider={summaryCurrentProvider}
+        selectModel={selectSummaryModel}
+        prompt={quickPromptData || summaryPrompt}
+        config={summaryConfig}
+        promptVariables={{
+          conversation_messages: formatConversationHistory(
+            conversation?.messages || [],
+            15,
+          ),
+          customer_name:
+            customer?.name || conversation?.sender?.name || "Müşteri",
+          customer_company:
+            customer?.companyName || conversation?.sender?.company || "",
+          subject: conversation?.subject || "Konu belirtilmemiş",
+          channel: getChannelLabel(conversation?.channel) || "email",
+        }}
+        loading={summaryConfigLoading}
+        onRefresh={refreshSummaryConfig}
+        modelSettings={summaryModelSettings}
+        setModelSettings={setSummaryModelSettings}
+      />
     </div>
   );
 }

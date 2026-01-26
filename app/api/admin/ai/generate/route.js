@@ -132,6 +132,7 @@ export async function POST(request) {
       action,
       contextKey,
       prompt,
+      promptKey: requestedPromptKey, // Belirli bir prompt key isteniyorsa
       modelId,
       options = {},
       platform, // Platform bazlı prompt seçimi için (Social Media)
@@ -345,8 +346,14 @@ export async function POST(request) {
       // Sadece systemPrompt yoksa Firestore'dan çek
       if (!systemPrompt && contextKey) {
         configData = await getConfiguration(contextKey);
-        if (configData?.promptKey) {
-          promptData = await getPrompt(configData.promptKey);
+        
+        // ✅ requestedPromptKey varsa onu kullan, yoksa config'deki promptKey'i kullan
+        const effectivePromptKey = requestedPromptKey || configData?.promptKey;
+        
+        if (effectivePromptKey) {
+          promptData = await getPrompt(effectivePromptKey);
+          console.log(`📝 Loading prompt: requested=${requestedPromptKey || 'none'}, config=${configData?.promptKey}, effective=${effectivePromptKey}`);
+          
           if (promptData) {
             // System prompt ayrı, user prompt (content/userPromptTemplate) ayrı
             // System prompt AI'ın rolünü tanımlar
@@ -363,8 +370,9 @@ export async function POST(request) {
         // systemPrompt options'dan geldi - sadece config bilgisini al metadata için
         if (contextKey) {
           configData = await getConfiguration(contextKey);
-          if (configData?.promptKey) {
-            promptData = await getPrompt(configData.promptKey);
+          const effectivePromptKey = requestedPromptKey || configData?.promptKey;
+          if (effectivePromptKey) {
+            promptData = await getPrompt(effectivePromptKey);
           }
         }
         console.log(`✅ Using provided systemPrompt (length: ${systemPrompt.length}), skipping Firestore fetch`);
@@ -551,13 +559,120 @@ ${prompt}
     );
   } catch (error) {
     console.error("AI Generation Error:", error);
+    
+    // Parse error for user-friendly messages
+    const errorInfo = parseAIError(error);
+    
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || "AI generation failed",
+        error: errorInfo.message,
+        errorCode: errorInfo.code,
+        errorType: errorInfo.type,
+        retryable: errorInfo.retryable,
+        retryAfter: errorInfo.retryAfter,
         details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: errorInfo.httpStatus }
     );
   }
+}
+
+/**
+ * AI Error Parser - Kullanıcı dostu hata mesajları üretir
+ */
+function parseAIError(error) {
+  const errorMessage = error.message || "";
+  const errorString = JSON.stringify(error);
+  
+  // 503 - Service Unavailable / Model Overloaded
+  if (errorMessage.includes("503") || errorMessage.includes("overloaded") || errorMessage.includes("UNAVAILABLE")) {
+    return {
+      code: "MODEL_OVERLOADED",
+      type: "temporary",
+      message: "AI modeli şu anda yoğun. Lütfen birkaç saniye bekleyip tekrar deneyin.",
+      retryable: true,
+      retryAfter: 5,
+      httpStatus: 503,
+    };
+  }
+  
+  // 429 - Rate Limit Exceeded
+  if (errorMessage.includes("429") || errorMessage.includes("rate") || errorMessage.includes("quota") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
+    return {
+      code: "RATE_LIMITED",
+      type: "temporary",
+      message: "Çok fazla istek gönderildi. Lütfen bir dakika bekleyip tekrar deneyin.",
+      retryable: true,
+      retryAfter: 60,
+      httpStatus: 429,
+    };
+  }
+  
+  // 401/403 - Authentication/Authorization
+  if (errorMessage.includes("401") || errorMessage.includes("403") || errorMessage.includes("PERMISSION_DENIED") || errorMessage.includes("UNAUTHENTICATED")) {
+    return {
+      code: "AUTH_ERROR",
+      type: "configuration",
+      message: "AI servisi yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.",
+      retryable: false,
+      httpStatus: 500,
+    };
+  }
+  
+  // 400 - Bad Request / Invalid Input
+  if (errorMessage.includes("400") || errorMessage.includes("INVALID_ARGUMENT") || errorMessage.includes("invalid")) {
+    return {
+      code: "INVALID_INPUT",
+      type: "client",
+      message: "Geçersiz istek. Lütfen girdiğiniz verileri kontrol edin.",
+      retryable: false,
+      httpStatus: 400,
+    };
+  }
+  
+  // Content Safety / Blocked
+  if (errorMessage.includes("safety") || errorMessage.includes("blocked") || errorMessage.includes("SAFETY")) {
+    return {
+      code: "CONTENT_BLOCKED",
+      type: "content",
+      message: "İçerik güvenlik filtresine takıldı. Lütfen farklı bir şekilde ifade etmeyi deneyin.",
+      retryable: false,
+      httpStatus: 400,
+    };
+  }
+  
+  // Timeout
+  if (errorMessage.includes("timeout") || errorMessage.includes("DEADLINE_EXCEEDED")) {
+    return {
+      code: "TIMEOUT",
+      type: "temporary",
+      message: "İstek zaman aşımına uğradı. Lütfen tekrar deneyin.",
+      retryable: true,
+      retryAfter: 3,
+      httpStatus: 504,
+    };
+  }
+  
+  // Network Error
+  if (errorMessage.includes("network") || errorMessage.includes("ECONNREFUSED") || errorMessage.includes("fetch")) {
+    return {
+      code: "NETWORK_ERROR",
+      type: "temporary",
+      message: "AI servisine bağlanılamadı. İnternet bağlantınızı kontrol edin.",
+      retryable: true,
+      retryAfter: 5,
+      httpStatus: 503,
+    };
+  }
+  
+  // Default - Unknown Error
+  return {
+    code: "UNKNOWN_ERROR",
+    type: "unknown",
+    message: errorMessage || "AI işlemi başarısız oldu. Lütfen tekrar deneyin.",
+    retryable: true,
+    retryAfter: 3,
+    httpStatus: 500,
+  };
 }

@@ -1,38 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   Loader2,
   ArrowLeft,
   Save,
-  FileDown,
-  Sparkles,
   Edit,
-  Eye,
   TrendingUp,
   Package,
   DollarSign,
@@ -43,284 +43,130 @@ import {
   Plus,
   Trash2,
   Settings,
-  Zap,
-  Code,
+  Factory,
+  Shield,
+  Thermometer,
+  Layers,
+  ListChecks,
+  X,
+  Calendar,
+  FlaskConical,
+  Sparkles,
+  FileText,
+  Megaphone,
+  Wand2,
+  RefreshCw,
   Copy,
   Check,
+  Lightbulb,
+  Target,
+  Heart,
+  Zap,
+  TriangleAlert,
 } from "lucide-react";
 import * as FormulaService from "@/lib/services/formula-service";
 import { useToast } from "@/hooks/use-toast";
+import { useUnifiedAI, AI_CONTEXTS } from "@/hooks/use-unified-ai";
+import AISettingsModal from "@/components/admin/ai-settings-modal";
 import FormulaPDFExport from "@/components/formula-pdf-export";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
-// Unified AI Hook - Firestore'dan dinamik config
-import { useUnifiedAI, AI_CONTEXTS, PROVIDER_INFO } from "@/hooks/use-unified-ai";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
+// Category display names
+const CATEGORY_LABELS = {
+  cosmetic: "Kozmetik",
+  dermocosmetic: "Dermokozmetik",
+  cleaning: "Temizlik",
+  supplement: "Gıda Takviyesi",
+};
 
-// Helper function to extract sections from text
-function extractSection(text, keywords) {
-  for (const keyword of keywords) {
-    const regex = new RegExp(
-      `${keyword}[:\s]*([\\s\\S]*?)(?=\\n\\n|$|[A-Z0-9]{2,}:)`,
-      "i"
-    );
-    const match = text.match(regex);
-    if (match && match[1]) {
-      return cleanContentField(match[1].trim());
-    }
-  }
-  return "";
-}
-
-/**
- * Content field'ı temizler - istenmeyen karakterleri ve prefix'leri kaldırır
- * @param {string} text - Temizlenecek metin
- * @returns {string} Temizlenmiş metin
- */
-function cleanContentField(text) {
-  if (!text || typeof text !== 'string') return '';
-  
-  let cleaned = text;
-  
-  // 1. Escape karakterlerini düzelt (çift escape dahil)
-  cleaned = cleaned
-    .replace(/\\n/g, '\n')     // \\n -> gerçek newline
-    .replace(/\\t/g, '\t')     // \\t -> gerçek tab
-    .replace(/\\"/g, '"')      // \\" -> "
-    .replace(/\\\\/g, '\\');   // \\\\ -> \\
-  
-  // 2. Başındaki istenmeyen prefix'leri kaldır
-  const unwantedPrefixes = [
-    /^["':]+\s*/,              // Başındaki ": " veya ': ' vb.
-    /^Örnek:\s*/i,             // "Örnek:" prefix
-    /^Örn\.?:\s*/i,            // "Örn:" veya "Örn.:" prefix
-    /^Not:\s*/i,               // "Not:" prefix
-    /^Açıklama:\s*/i,          // "Açıklama:" prefix
-  ];
-  
-  for (const prefix of unwantedPrefixes) {
-    cleaned = cleaned.replace(prefix, '');
-  }
-  
-  // 3. Sonundaki istenmeyen karakterleri kaldır
-  cleaned = cleaned
-    .replace(/["']+\s*$/g, '') // Sondaki tırnak işaretleri
-    .replace(/,\s*$/g, '');    // Sondaki virgül
-  
-  // 4. Çoklu boş satırları tekle indir
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  
-  // 5. Başında/sonundaki whitespace'i temizle
-  cleaned = cleaned.trim();
-  
-  return cleaned;
-}
+// Function display names
+const FUNCTION_LABELS = {
+  Active: "Aktif Madde",
+  Excipient: "Dolgu Maddesi",
+  "Flow Agent": "Akışkanlaştırıcı",
+  Lubricant: "Yağlayıcı",
+  Preservative: "Koruyucu",
+  Emulsifier: "Emülgatör",
+  Thickener: "Kıvam Artırıcı",
+  Solvent: "Çözücü",
+  Fragrance: "Parfüm",
+  Colorant: "Renklendirici",
+  Antioxidant: "Antioksidan",
+  Other: "Diğer",
+};
 
 export default function FormulaDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  // Unified AI - Marketing content generation için
-  // FORMULA_MARKETING_GENERATION context kullanarak merkezi AI sisteminden prompt alınıyor
-  const {
-    generateContent,
-    loading: aiLoading,
-    selectedModel: currentModel,
-    config: aiConfig,
-    availableModels,
-    prompt: aiPrompt,
-    selectModel,
-    configLoading,
-  } = useUnifiedAI(AI_CONTEXTS.FORMULA_MARKETING_GENERATION);
 
+  // State
   const [formula, setFormula] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [ingredientsEditMode, setIngredientsEditMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Edit states
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
   const [editableIngredients, setEditableIngredients] = useState([]);
-  const [hasMarketingChanges, setHasMarketingChanges] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Marketing Content States
+  const [marketingContent, setMarketingContent] = useState({
+    productDescription: "",
+    usageInstructions: "",
+    recommendations: "",
+    benefits: "",
+    warnings: "",
+  });
+  const [isGeneratingMarketing, setIsGeneratingMarketing] = useState(false);
+  const [savingMarketing, setSavingMarketing] = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+  const [marketingModelSettings, setMarketingModelSettings] = useState({
+    temperature: 0.7,
+    maxTokens: 2000,
+  });
+
+  // AI Hook for Marketing Content
+  const {
+    generateContent: generateMarketingAI,
+    loading: aiLoading,
+    configLoading: aiConfigLoading,
+    availableModels,
+    selectedModel,
+    selectModel,
+    isReady: aiIsReady,
+    config: aiConfig,
+    prompt: aiPrompt,
+  } = useUnifiedAI(AI_CONTEXTS.FORMULA_MARKETING_GENERATION);
+
+  // New ingredient form
   const [newIngredient, setNewIngredient] = useState({
     name: "",
-    function: "",
+    displayName: "",
+    function: "Other",
     amount: "",
-    unit: "g",
+    unit: "gram",
     price: "",
     supplier: "",
   });
 
-  // AI Settings Dialog State
-  const [showAiSettings, setShowAiSettings] = useState(false);
-  const [aiSettingsLocal, setAiSettingsLocal] = useState({
-    temperature: 0.7,
-    maxTokens: 1500,
-    autoMaxTokens: true,
-  });
-  const [showPromptPreview, setShowPromptPreview] = useState(false);
-  const [promptCopied, setPromptCopied] = useState(false);
-
-  // Sync AI settings from config when loaded
-  useEffect(() => {
-    if (aiConfig?.settings) {
-      setAiSettingsLocal({
-        temperature: aiConfig.settings.temperature ?? 0.7,
-        maxTokens: aiConfig.settings.maxTokens ?? 1500,
-        autoMaxTokens: true,
-      });
-    }
-  }, [aiConfig]);
-
-  // Calculate auto max tokens based on formula complexity
-  const calculateAutoMaxTokens = () => {
-    if (!formula) return 1500;
-    const ingredientCount = formula.ingredients?.length || 0;
-    const baseTokens = 800;
-    const perIngredientTokens = 50;
-    const calculated = baseTokens + (ingredientCount * perIngredientTokens);
-    return Math.min(Math.max(calculated, 1000), 4000);
-  };
-
-  // Get effective max tokens
-  const effectiveMaxTokens = aiSettingsLocal.autoMaxTokens 
-    ? calculateAutoMaxTokens() 
-    : aiSettingsLocal.maxTokens;
-
-  // Copy prompt to clipboard
-  const copyPromptToClipboard = () => {
-    if (!formula || !aiPrompt) return;
-    
-    const ingredientsList = formula.ingredients
-      ?.map((ing) => `${ing.name} (${ing.percentage}%)`)
-      .join(", ") || "";
-
-    const fullPrompt = aiPrompt.userPromptTemplate
-      ?.replace("{{formulaName}}", formula.name || "")
-      .replace("{{productType}}", formula.productType || "")
-      .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
-      .replace("{{ingredientsList}}", ingredientsList) || "";
-
-    navigator.clipboard.writeText(fullPrompt);
-    setPromptCopied(true);
-    setTimeout(() => setPromptCopied(false), 2000);
-    toast({
-      title: "Kopyalandı",
-      description: "Prompt panoya kopyalandı.",
-    });
-  };
-
-  // Editable fields
-  const [formulaName, setFormulaName] = useState("");
-  const [nameEditMode, setNameEditMode] = useState(false);
-  const [productDescription, setProductDescription] = useState("");
-  const [usageInstructions, setUsageInstructions] = useState("");
-  const [recommendations, setRecommendations] = useState("");
-  const [benefits, setBenefits] = useState("");
-  const [warnings, setWarnings] = useState("");
-  const [hasNameChange, setHasNameChange] = useState(false);
-
-  // Track marketing content changes
-  useEffect(() => {
-    if (!formula) return;
-
-    const hasChanges =
-      productDescription !== (formula.productDescription || "") ||
-      usageInstructions !== (formula.usageInstructions || "") ||
-      recommendations !== (formula.recommendations || "") ||
-      benefits !== (formula.benefits || "") ||
-      warnings !== (formula.warnings || "");
-
-    setHasMarketingChanges(hasChanges);
-  }, [
-    productDescription,
-    usageInstructions,
-    recommendations,
-    benefits,
-    warnings,
-    formula,
-  ]);
-
-  // Calculate formula cost
-  const calculateFormulaCost = () => {
-    if (!formula || !formula.ingredients) return null;
-
-    let totalCost = 0;
-    const volume = parseFloat(formula.productVolume) || 0;
-    const ingredientsWithCost = [];
-
-    formula.ingredients.forEach((ing) => {
-      const amount = parseFloat(ing.amount) || 0;
-      // v3.1 uyumu: estimatedPriceTLperKg veya price kullan
-      const price = parseFloat(ing.estimatedPriceTLperKg || ing.price) || 0;
-
-      // Eğer estimatedCostTL varsa direkt kullan, yoksa hesapla
-      let cost = 0;
-      if (ing.estimatedCostTL && parseFloat(ing.estimatedCostTL) > 0) {
-        cost = parseFloat(ing.estimatedCostTL);
-      } else if (ing.unit === "g" || ing.unit === "gram") {
-        cost = (amount / 1000) * price;
-      } else if (ing.unit === "ml") {
-        cost = (amount / 1000) * price;
-      } else if (ing.unit === "kg") {
-        cost = amount * price;
-      } else {
-        cost = amount * price;
-      }
-
-      totalCost += cost;
-      ingredientsWithCost.push({
-        ...ing,
-        price: price, // Normalize edilmiş fiyat
-        calculatedCost: cost.toFixed(2),
-      });
-    });
-
-    return {
-      volume: volume,
-      totalCost: totalCost.toFixed(2),
-      costPerGram: volume > 0 ? (totalCost / volume).toFixed(4) : "0.0000",
-      ingredients: ingredientsWithCost,
-    };
-  };
-
-  const formulaCost = calculateFormulaCost();
-
-  useEffect(() => {
-    if (params.id) {
-      loadFormula();
-    }
-  }, [params.id]);
-
-  const loadFormula = async () => {
+  // Load formula
+  const loadFormula = useCallback(async () => {
     try {
       setLoading(true);
       const data = await FormulaService.loadFormula(params.id);
       setFormula(data);
-      setFormulaName(data.name || "");
+      setEditForm({
+        name: data.name || "",
+        notes: data.notes || "",
+        productVolume: data.productVolume || data.totalAmount || "",
+        productionQuantity:
+          data.productionQuantity || data.aiConfig?.productionQuantity || "",
+      });
       setEditableIngredients(data.ingredients || []);
-
-      // Load existing marketing content
-      setProductDescription(data.productDescription || "");
-      setUsageInstructions(data.usageInstructions || "");
-      setRecommendations(data.recommendations || "");
-      setBenefits(data.benefits || "");
-      setWarnings(data.warnings || "");
     } catch (error) {
       console.error("Error loading formula:", error);
       toast({
@@ -332,363 +178,204 @@ export default function FormulaDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router, toast]);
 
-  const checkAndGenerate = () => {
-    // Check if there's existing content
-    const hasExistingContent =
-      productDescription.trim() ||
-      usageInstructions.trim() ||
-      recommendations.trim() ||
-      benefits.trim() ||
-      warnings.trim();
-
-    // Ask for confirmation if content exists
-    if (hasExistingContent) {
-      setShowConfirmDialog(true);
-    } else {
-      generateMarketingContent();
+  useEffect(() => {
+    if (params.id) {
+      loadFormula();
     }
-  };
+  }, [params.id, loadFormula]);
 
-  const generateMarketingContent = async () => {
-    if (!formula) return;
+  // Calculate costs - works for both view mode and edit mode
+  // Also calculates percentage based on unit type
+  const calculateIngredientsCosts = useCallback((ingredients, totalVolume) => {
+    if (!ingredients || ingredients.length === 0) return [];
 
-    // Firestore'dan prompt gelmemişse hata ver
-    if (!aiPrompt?.userPromptTemplate || !aiPrompt?.systemPrompt) {
-      toast({
-        title: "Prompt Bulunamadı",
-        description: "Lütfen admin panelinden AI prompt ayarlarını yapılandırın.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setGenerating(true);
-      setShowConfirmDialog(false);
-
-      // Hammaddeleri kategorize et
-      const ingredients = formula.ingredients || [];
-      const ingredientsList = ingredients
-        .map((ing) => `${ing.displayName || ing.name} (${ing.percentage}%)`)
-        .join(", ");
-      
-      // Aktif maddeleri ayır (yüksek konsantrasyonlu veya function='Active' olanlar)
-      const activeIngredients = ingredients
-        .filter(ing => 
-          (ing.function?.toLowerCase().includes('active') || 
-           ing.function?.toLowerCase().includes('aktif') ||
-           parseFloat(ing.percentage) >= 2)
-        )
-        .map(ing => ing.displayName || ing.name)
-        .slice(0, 5)
-        .join(", ") || "Belirtilmedi";
-
-      // Firestore'dan gelen prompt template kullan
-      const prompt = aiPrompt.userPromptTemplate
-        .replace("{{formulaName}}", formula.name || "")
-        .replace("{{productType}}", formula.productType || "")
-        .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
-        .replace("{{ingredientsList}}", ingredientsList)
-        .replace("{{activeIngredients}}", activeIngredients);
-      
-      const systemPrompt = aiPrompt.systemPrompt;
-
-      // AI ayarlarını kullan (lokal state'ten)
-      const result = await generateContent(prompt, {
-        maxTokens: effectiveMaxTokens,
-        temperature: aiSettingsLocal.temperature,
-        systemPrompt: systemPrompt,
-      });
-      const response = result?.content || result;
-
-      console.log("AI Response:", response);
-
-      // Parse response - multiple fallback strategies
-      let content = null;
-      
-      /**
-       * Field extraction helper - geliştirilmiş versiyon
-       */
-      const extractFieldFromText = (text, fieldName) => {
-        // Strateji 1: Standart JSON field pattern
-        const patterns = [
-          new RegExp(`"${fieldName}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 's'),
-          new RegExp(`"${fieldName}"\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'`, 's'),
-          new RegExp(`${fieldName}["']?\\s*:\\s*["']([^"']+)["']`, 'i'),
-        ];
-        
-        for (const pattern of patterns) {
-          const match = text.match(pattern);
-          if (match && match[1]) {
-            return match[1];
-          }
-        }
-        return '';
-      };
-      
-      /**
-       * JSON string'i parse eder ve her field'ı temizler
-       */
-      const parseAndCleanJSON = (jsonStr) => {
-        try {
-          // Önce trailing comma'ları temizle
-          let cleaned = jsonStr
-            .replace(/,\s*([}\]])/g, '$1')
-            .replace(/\r\n/g, '\\n')
-            .replace(/\r/g, '\\n');
-          
-          const parsed = JSON.parse(cleaned);
-          
-          // Her field'ı cleanContentField ile temizle
-          return {
-            productDescription: cleanContentField(parsed.productDescription || ''),
-            usageInstructions: cleanContentField(parsed.usageInstructions || ''),
-            recommendations: cleanContentField(parsed.recommendations || ''),
-            benefits: cleanContentField(parsed.benefits || ''),
-            warnings: cleanContentField(parsed.warnings || ''),
-          };
-        } catch (e) {
-          console.log('JSON parse error:', e.message);
-          return null;
-        }
-      };
-
-      // Strategy 1: JSON code blocks (```json ... ```)
-      let jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        content = parseAndCleanJSON(jsonMatch[1].trim());
-        if (content && Object.values(content).some(v => v && v.length > 0)) {
-          console.log('Strategy 1 (code block) success');
-        } else {
-          // Fallback: regex ile field extraction
-          const text = jsonMatch[1].trim();
-          content = {
-            productDescription: cleanContentField(extractFieldFromText(text, 'productDescription')),
-            usageInstructions: cleanContentField(extractFieldFromText(text, 'usageInstructions')),
-            recommendations: cleanContentField(extractFieldFromText(text, 'recommendations')),
-            benefits: cleanContentField(extractFieldFromText(text, 'benefits')),
-            warnings: cleanContentField(extractFieldFromText(text, 'warnings')),
-          };
-          
-          if (Object.values(content).some(v => v && v.length > 0)) {
-            console.log('Strategy 1.5 (regex from code block) success');
-          } else {
-            content = null;
-          }
-        }
-      }
-
-      // Strategy 2: Direct JSON object (without code blocks)
-      if (!content) {
-        jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          content = parseAndCleanJSON(jsonMatch[0].trim());
-          if (content && Object.values(content).some(v => v && v.length > 0)) {
-            console.log('Strategy 2 (direct JSON) success');
-          } else {
-            // Fallback: regex extraction
-            const text = jsonMatch[0].trim();
-            content = {
-              productDescription: cleanContentField(extractFieldFromText(text, 'productDescription')),
-              usageInstructions: cleanContentField(extractFieldFromText(text, 'usageInstructions')),
-              recommendations: cleanContentField(extractFieldFromText(text, 'recommendations')),
-              benefits: cleanContentField(extractFieldFromText(text, 'benefits')),
-              warnings: cleanContentField(extractFieldFromText(text, 'warnings')),
-            };
-            
-            if (Object.values(content).some(v => v && v.length > 0)) {
-              console.log('Strategy 2.5 (regex from direct JSON) success');
-            } else {
-              content = null;
-            }
-          }
-        }
-      }
-
-      // Strategy 3: Extract sections manually (plain text response)
-      if (!content) {
-        console.log('Attempting manual section extraction...');
-        content = {
-          productDescription: extractSection(response, [
-            'productDescription',
-            'ÜRÜN AÇIKLAMASI',
-            'Ürün Açıklaması',
-            'Açıklama',
-          ]),
-          usageInstructions: extractSection(response, [
-            'usageInstructions',
-            'KULLANIM TALİMATI',
-            'Kullanım Talimatı',
-            'Kullanım',
-            'Nasıl Kullanılır',
-          ]),
-          recommendations: extractSection(response, [
-            'recommendations',
-            'ÖNERİLER',
-            'Öneriler',
-            'İpuçları',
-          ]),
-          benefits: extractSection(response, [
-            'benefits',
-            'FAYDALAR',
-            'Faydalar',
-            'Avantajlar',
-          ]),
-          warnings: extractSection(response, [
-            'warnings',
-            'UYARILAR',
-            'Uyarılar',
-            'Dikkat',
-          ]),
-        };
-        
-        if (Object.values(content).some(v => v && v.length > 0)) {
-          console.log('Strategy 3 (section extraction) success');
-        }
-      }
-
-      // Final validation and cleanup
-      if (content && Object.values(content).some((v) => v && v.length > 0)) {
-        // Son bir kez tüm field'ları temizle (güvenlik için)
-        const finalContent = {
-          productDescription: cleanContentField(content.productDescription || ''),
-          usageInstructions: cleanContentField(content.usageInstructions || ''),
-          recommendations: cleanContentField(content.recommendations || ''),
-          benefits: cleanContentField(content.benefits || ''),
-          warnings: cleanContentField(content.warnings || ''),
-        };
-        
-        console.log('Final cleaned content:', finalContent);
-
-        setProductDescription(finalContent.productDescription);
-        setUsageInstructions(finalContent.usageInstructions);
-        setRecommendations(finalContent.recommendations);
-        setBenefits(finalContent.benefits);
-        setWarnings(finalContent.warnings);
-
-        toast({
-          title: "İçerik Oluşturuldu",
-          description: "AI tarafından pazarlama içeriği hazırlandı.",
-        });
-      } else {
-        throw new Error("JSON parse edilemedi");
-      }
-    } catch (error) {
-      console.error("Error generating content:", error);
-      toast({
-        title: "Hata",
-        description: "İçerik oluşturulurken bir hata oluştu.",
-        variant: "destructive",
-      });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleIngredientChange = (index, field, value) => {
-    const updated = [...editableIngredients];
-    updated[index] = { ...updated[index], [field]: value };
-
-    // Recalculate percentage if amount changes
-    if (field === "amount") {
-      const totalAmount = updated.reduce(
-        (sum, ing) => sum + (parseFloat(ing.amount) || 0),
-        0
-      );
-      updated.forEach((ing) => {
-        const amount = parseFloat(ing.amount) || 0;
-        ing.percentage =
-          totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) : "0";
-      });
-    }
-
-    setEditableIngredients(updated);
-  };
-
-  const handleAddIngredient = () => {
-    if (!newIngredient.name.trim() || !newIngredient.amount) {
-      toast({
-        title: "Eksik Bilgi",
-        description: "Lütfen en az hammadde adı ve miktarı girin.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const updated = [...editableIngredients, newIngredient];
-
-    // Recalculate percentages
-    const totalAmount = updated.reduce(
-      (sum, ing) => sum + (parseFloat(ing.amount) || 0),
-      0
-    );
-    updated.forEach((ing) => {
+    // First, calculate total gram-based amount for percentage calculation
+    // Exclude "adet" (piece) units from percentage calculation
+    const totalGramAmount = ingredients.reduce((sum, ing) => {
       const amount = parseFloat(ing.amount) || 0;
-      ing.percentage =
-        totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) : "0";
-    });
+      const unit = ing.unit || "gram";
 
-    setEditableIngredients(updated);
+      // Only include gram-based units in total
+      if (unit === "adet" || unit === "%") return sum;
 
-    // Reset form
-    setNewIngredient({
-      name: "",
-      function: "",
-      amount: "",
-      unit: "g",
-      price: "",
-      supplier: "",
-    });
+      // Convert to grams for percentage calculation
+      let gramAmount = amount;
+      if (unit === "mg") gramAmount = amount / 1000;
+      else if (unit === "kg") gramAmount = amount * 1000;
+      else if (unit === "ml")
+        gramAmount = amount; // assume 1ml ≈ 1g
+      else if (unit === "L") gramAmount = amount * 1000;
 
-    toast({
-      title: "Eklendi",
-      description: "Yeni hammadde listeye eklendi.",
-    });
-  };
+      return sum + gramAmount;
+    }, 0);
 
-  const handleRemoveIngredient = (index) => {
-    const updated = editableIngredients.filter((_, idx) => idx !== index);
-
-    // Recalculate percentages
-    const totalAmount = updated.reduce(
-      (sum, ing) => sum + (parseFloat(ing.amount) || 0),
-      0
-    );
-    updated.forEach((ing) => {
+    return ingredients.map((ing) => {
       const amount = parseFloat(ing.amount) || 0;
-      ing.percentage =
-        totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) : "0";
+      const unit = ing.unit || "gram";
+      const price =
+        parseFloat(ing.price) || parseFloat(ing.estimatedPriceTLperKg) || 0;
+
+      let cost = 0;
+      let percentage = null;
+
+      // Calculate cost based on unit type
+      switch (unit) {
+        case "adet":
+          // For pieces: cost = amount * price per piece
+          cost = amount * price;
+          percentage = null; // Pieces don't have percentage
+          break;
+        case "mg":
+          // price is per kg, so: (mg / 1,000,000) * pricePerKg
+          cost = (amount / 1000000) * price;
+          percentage =
+            totalGramAmount > 0 ? (amount / 1000 / totalGramAmount) * 100 : 0;
+          break;
+        case "kg":
+          // price is per kg: kg * pricePerKg
+          cost = amount * price;
+          percentage =
+            totalGramAmount > 0 ? ((amount * 1000) / totalGramAmount) * 100 : 0;
+          break;
+        case "ml":
+          // Assume 1ml ≈ 1g, price per kg: (ml / 1000) * pricePerKg
+          cost = (amount / 1000) * price;
+          percentage =
+            totalGramAmount > 0 ? (amount / totalGramAmount) * 100 : 0;
+          break;
+        case "L":
+          // Assume 1L ≈ 1000g, price per kg: L * pricePerKg
+          cost = amount * price;
+          percentage =
+            totalGramAmount > 0 ? ((amount * 1000) / totalGramAmount) * 100 : 0;
+          break;
+        case "%":
+          // Percentage-based: calculate from total volume
+          const gramFromPercentage =
+            totalVolume > 0 ? (amount / 100) * totalVolume : 0;
+          cost = (gramFromPercentage / 1000) * price;
+          percentage = amount; // Already a percentage
+          break;
+        case "gram":
+        default:
+          // Default gram: (gram / 1000) * pricePerKg
+          cost = (amount / 1000) * price;
+          percentage =
+            totalGramAmount > 0 ? (amount / totalGramAmount) * 100 : 0;
+          break;
+      }
+
+      return { ...ing, calculatedCost: cost, percentage };
     });
+  }, []);
 
-    setEditableIngredients(updated);
+  // Memoized costs for view mode (from formula)
+  const viewModeCosts = useMemo(() => {
+    if (!formula?.ingredients) return null;
 
-    toast({
-      title: "Kaldırıldı",
-      description: "Hammadde listeden kaldırıldı.",
-    });
-  };
+    const volume =
+      parseFloat(formula.productVolume || formula.totalAmount) || 0;
+    // Kutu içindeki adet - formül oluşturulurken seçilen değer
+    const productionQuantity = parseInt(formula.productionQuantity) || 1;
+    
+    const ingredientsWithCost = calculateIngredientsCosts(
+      formula.ingredients,
+      volume,
+    );
+    // 1 birim için toplam maliyet
+    const costPerUnit = ingredientsWithCost.reduce(
+      (sum, ing) => sum + (ing.calculatedCost || 0),
+      0,
+    );
+    // Kutu başına toplam maliyet (productionQuantity ile çarpılmış)
+    const totalCost = costPerUnit * productionQuantity;
 
-  const handleSaveIngredients = async () => {
+    // 1 birim hacim (toplam hacim / adet sayısı)
+    const unitVolume = productionQuantity > 0 ? volume / productionQuantity : volume;
+
+    return {
+      volume,
+      productionQuantity, // Kutu içindeki adet
+      costPerUnit: costPerUnit.toFixed(4), // 1 birim için maliyet
+      totalCost: totalCost.toFixed(2), // Kutu başına toplam maliyet
+      costPerGram: unitVolume > 0 ? (costPerUnit / unitVolume).toFixed(4) : "0.0000",
+      ingredients: ingredientsWithCost,
+    };
+  }, [formula, calculateIngredientsCosts]);
+
+  // Memoized costs for edit mode (from editableIngredients)
+  const editModeCosts = useMemo(() => {
+    if (!editableIngredients || editableIngredients.length === 0) return null;
+
+    // In edit mode, use editForm.productVolume for real-time calculation
+    const volume =
+      parseFloat(editForm.productVolume) ||
+      parseFloat(formula?.productVolume || formula?.totalAmount) ||
+      0;
+    // Kutu içindeki adet
+    const productionQuantity = parseInt(editForm.productionQuantity) || parseInt(formula?.productionQuantity) || 1;
+    
+    const ingredientsWithCost = calculateIngredientsCosts(
+      editableIngredients,
+      volume,
+    );
+    // 1 birim için toplam maliyet
+    const costPerUnit = ingredientsWithCost.reduce(
+      (sum, ing) => sum + (ing.calculatedCost || 0),
+      0,
+    );
+    // Kutu başına toplam maliyet
+    const totalCost = costPerUnit * productionQuantity;
+
+    // 1 birim hacim (toplam hacim / adet sayısı)
+    const unitVolume = productionQuantity > 0 ? volume / productionQuantity : volume;
+
+    return {
+      volume,
+      productionQuantity,
+      costPerUnit: costPerUnit.toFixed(4),
+      totalCost: totalCost.toFixed(2),
+      costPerGram: unitVolume > 0 ? (costPerUnit / unitVolume).toFixed(4) : "0.0000",
+      ingredients: ingredientsWithCost,
+    };
+  }, [
+    editableIngredients,
+    editForm.productVolume,
+    editForm.productionQuantity,
+    formula,
+    calculateIngredientsCosts,
+  ]);
+
+  // Use the appropriate costs based on editing state
+  const costs = editing ? editModeCosts : viewModeCosts;
+
+  // Save changes
+  const handleSave = async () => {
     try {
       setSaving(true);
       await FormulaService.updateFormula(params.id, {
+        name: editForm.name,
+        notes: editForm.notes,
+        productVolume: parseFloat(editForm.productVolume) || 0,
+        totalAmount: parseFloat(editForm.productVolume) || 0,
+        productionQuantity: parseInt(editForm.productionQuantity) || 0,
         ingredients: editableIngredients,
       });
 
+      await loadFormula();
+      setEditing(false);
+
       toast({
         title: "Kaydedildi",
-        description: "Hammadde listesi güncellendi.",
+        description: "Formül başarıyla güncellendi.",
       });
-
-      setIngredientsEditMode(false);
-      await loadFormula();
     } catch (error) {
-      console.error("Error saving ingredients:", error);
+      console.error("Save error:", error);
       toast({
         title: "Hata",
-        description: "Hammadde listesi kaydedilirken hata oluştu.",
+        description: "Formül kaydedilirken bir hata oluştu.",
         variant: "destructive",
       });
     } finally {
@@ -696,821 +383,1945 @@ export default function FormulaDetailPage() {
     }
   };
 
-  const handleCancelIngredientsEdit = () => {
-    setEditableIngredients(formula.ingredients || []);
-    setIngredientsEditMode(false);
+  // Add ingredient
+  const handleAddIngredient = () => {
+    if (!newIngredient.name || !newIngredient.amount) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Hammadde adı ve miktarı zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEditableIngredients([
+      ...editableIngredients,
+      {
+        ...newIngredient,
+        displayName: newIngredient.displayName || newIngredient.name,
+        amount: parseFloat(newIngredient.amount) || 0,
+        price: parseFloat(newIngredient.price) || 0,
+      },
+    ]);
+
+    setNewIngredient({
+      name: "",
+      displayName: "",
+      function: "Other",
+      amount: "",
+      unit: "gram",
+      price: "",
+      supplier: "",
+    });
   };
 
-  const handleSave = async () => {
-    if (!formula) return;
+  // Remove ingredient
+  const handleRemoveIngredient = (index) => {
+    setEditableIngredients(editableIngredients.filter((_, i) => i !== index));
+  };
+
+  // Update ingredient - supports multiple fields at once
+  const handleUpdateIngredient = (index, fieldOrFields, value) => {
+    setEditableIngredients((prev) => {
+      const updated = [...prev];
+      if (typeof fieldOrFields === "object") {
+        // Multiple fields: fieldOrFields is an object like { price: 100, estimatedPriceTLperKg: 100 }
+        updated[index] = { ...updated[index], ...fieldOrFields };
+      } else {
+        // Single field
+        updated[index] = { ...updated[index], [fieldOrFields]: value };
+      }
+      return updated;
+    });
+  };
+
+  // Initialize marketing content from formula when loaded
+  useEffect(() => {
+    if (formula) {
+      setMarketingContent({
+        productDescription: formula.productDescription || "",
+        usageInstructions: formula.usageInstructions || "",
+        recommendations: formula.recommendations || "",
+        benefits: formula.benefits || "",
+        warnings: formula.warnings || "",
+      });
+    }
+  }, [formula]);
+
+  // Generate Marketing Content with AI
+  const handleGenerateMarketing = async () => {
+    if (!formula || !aiIsReady) {
+      toast({
+        title: "Hazır Değil",
+        description: "AI yapılandırması yükleniyor, lütfen bekleyin.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      setSaving(true);
+      setIsGeneratingMarketing(true);
 
-      const updates = {
-        name: formulaName,
-        productDescription,
-        usageInstructions,
-        recommendations,
-        benefits,
-        warnings,
+      // Prepare variables for prompt (DB'deki prompt template bu değişkenleri kullanacak)
+      const activeIngredients =
+        formula.ingredients
+          ?.filter(
+            (ing) =>
+              ing.function === "Active" || ing.functionTr?.includes("Aktif"),
+          )
+          ?.map((ing) => ing.displayName || ing.name)
+          ?.join(", ") || "Belirtilmemiş";
+
+      const ingredientsList =
+        formula.ingredients
+          ?.map(
+            (ing) =>
+              `${ing.displayName || ing.name} (${ing.functionTr || ing.function})`,
+          )
+          ?.join(", ") || "Belirtilmemiş";
+
+      // promptVariables - DB'deki prompt template'inde {{formulaName}}, {{productType}} gibi kullanılacak
+      const promptVariables = {
+        formulaName: formula.name,
+        productType:
+          CATEGORY_LABELS[formula.productType] || formula.productType,
+        productVolume:
+          formula.productVolume || formula.totalAmount || "Belirtilmemiş",
+        activeIngredients,
+        ingredientsList,
       };
 
-      await FormulaService.updateFormula(params.id, updates);
-
-      toast({
-        title: "Kaydedildi",
-        description: "Değişiklikler başarıyla kaydedildi.",
+      // generateContent çağrısı - prompt DB'den gelecek, sadece variables gönderiyoruz
+      const response = await generateMarketingAI(null, {
+        promptVariables: promptVariables,
+        temperature: marketingModelSettings.temperature,
+        maxTokens: marketingModelSettings.maxTokens,
       });
 
-      setEditMode(false);
-      setHasMarketingChanges(false);
-      await loadFormula(); // Reload to get updated data
+      // Response yapısı: { success: true, content: "..." } veya { success: false, error: "..." }
+      if (!response?.success) {
+        throw new Error(response?.error || "AI generation failed");
+      }
+
+      const content = response.content;
+      
+      if (content) {
+        // Parse JSON response
+        let parsedContent;
+        try {
+          // content artık string olarak geliyor (useUnifiedAI bunu hallediyor)
+          let contentToParse = content;
+          
+          // Check if content is already an object with the expected fields
+          if (typeof contentToParse === "object" && contentToParse.productDescription) {
+            parsedContent = contentToParse;
+          } else if (typeof contentToParse === "string") {
+            // Try to extract JSON from string response
+            const jsonMatch = contentToParse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              let jsonString = jsonMatch[0];
+              
+              // First try standard JSON parse
+              try {
+                parsedContent = JSON.parse(jsonString);
+              } catch (firstParseError) {
+                // API returns single-quoted JSON, need to convert
+                // Step 1: Replace escaped single quotes (\') with placeholder
+                let convertedJson = jsonString.replace(/\\'/g, '<<<ESCAPED_QUOTE>>>');
+                
+                // Step 2: Replace newlines inside strings with placeholder
+                convertedJson = convertedJson.replace(/\n/g, '<<<NEWLINE>>>');
+                
+                // Step 3: Convert single quotes to double quotes
+                convertedJson = convertedJson.replace(/'/g, '"');
+                
+                // Step 4: Restore escaped quotes as regular single quotes
+                convertedJson = convertedJson.replace(/<<<ESCAPED_QUOTE>>>/g, "'");
+                
+                // Step 5: Restore newlines as escaped newlines
+                convertedJson = convertedJson.replace(/<<<NEWLINE>>>/g, '\\n');
+                
+                try {
+                  parsedContent = JSON.parse(convertedJson);
+                } catch (secondParseError) {
+                  // Log only in development, not as error
+                  console.warn("JSON dönüştürme başarısız, regex fallback kullanılıyor");
+                  throw secondParseError;
+                }
+              }
+            } else {
+              throw new Error("JSON bulunamadı");
+            }
+          } else if (typeof contentToParse === "object") {
+            parsedContent = contentToParse;
+          } else {
+            throw new Error("Beklenmeyen yanıt formatı");
+          }
+        } catch (parseError) {
+          // Fallback: Extract content manually using regex
+          // This handles edge cases where JSON conversion fails
+          const rawContent = typeof content === "string" ? content : JSON.stringify(content);
+          
+          // Extract values using regex - handles both 'key': 'value' and "key": "value"
+          const extractValue = (key) => {
+            // Try double quotes first
+            let regex = new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|\\})`);
+            let match = rawContent.match(regex);
+            
+            if (!match) {
+              // Try single quotes
+              regex = new RegExp(`'${key}'\\s*:\\s*'([\\s\\S]*?)'\\s*(?:,|\\})`);
+              match = rawContent.match(regex);
+            }
+            
+            if (match) {
+              // Convert escaped newlines and clean up
+              return match[1]
+                .replace(/\\n/g, '\n')
+                .replace(/\\'/g, "'")
+                .replace(/\\"/g, '"');
+            }
+            return "";
+          };
+          
+          parsedContent = {
+            productDescription: extractValue('productDescription'),
+            usageInstructions: extractValue('usageInstructions'),
+            recommendations: extractValue('recommendations'),
+            benefits: extractValue('benefits'),
+            warnings: extractValue('warnings'),
+          };
+          
+          // If all fields are empty, put raw content in description
+          if (!parsedContent.productDescription && !parsedContent.usageInstructions) {
+            parsedContent.productDescription = rawContent;
+          }
+        }
+
+        setMarketingContent({
+          productDescription: parsedContent.productDescription || "",
+          usageInstructions: parsedContent.usageInstructions || "",
+          recommendations: parsedContent.recommendations || "",
+          benefits: parsedContent.benefits || "",
+          warnings: parsedContent.warnings || "",
+        });
+
+        toast({
+          title: "Başarılı!",
+          description: "Pazarlama içeriği oluşturuldu.",
+        });
+      }
     } catch (error) {
-      console.error("Error saving:", error);
+      console.error("Marketing generation error:", error);
       toast({
         title: "Hata",
-        description: "Kaydederken bir hata oluştu.",
+        description:
+          error.message || "Pazarlama içeriği oluşturulurken bir hata oluştu.",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsGeneratingMarketing(false);
     }
   };
 
+  // Save Marketing Content
+  const handleSaveMarketing = async () => {
+    try {
+      setSavingMarketing(true);
+      await FormulaService.updateFormula(params.id, {
+        productDescription: marketingContent.productDescription,
+        usageInstructions: marketingContent.usageInstructions,
+        recommendations: marketingContent.recommendations,
+        benefits: marketingContent.benefits,
+        warnings: marketingContent.warnings,
+      });
+
+      await loadFormula();
+
+      toast({
+        title: "Kaydedildi",
+        description: "Pazarlama içeriği başarıyla kaydedildi.",
+      });
+    } catch (error) {
+      console.error("Save marketing error:", error);
+      toast({
+        title: "Hata",
+        description: "Pazarlama içeriği kaydedilirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingMarketing(false);
+    }
+  };
+
+  // Copy to clipboard
+  const handleCopyField = async (field, content) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Kopyalama başarısız oldu.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Format date
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return format(date, "d MMMM yyyy, HH:mm", { locale: tr });
+  };
+
+  // Loading skeleton
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <Skeleton className="h-10 w-48" />
+          <div className="grid grid-cols-4 gap-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+          </div>
+          <Skeleton className="h-96" />
+        </div>
       </div>
     );
   }
 
   if (!formula) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Formül bulunamadı</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-slate-800">
+            Formül Bulunamadı
+          </h2>
+          <p className="text-slate-500 mt-1">
+            İstenen formül mevcut değil veya silinmiş olabilir.
+          </p>
+          <Button variant="outline" className="mt-4" asChild>
+            <Link href="/admin/formulas">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Formüllere Dön
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Modern Header with Glass Effect */}
-      <div className="sticky top-0 z-10 backdrop-blur-lg bg-white/80 border-b border-gray-200">
-        <div className="container mx-auto px-6 py-4">
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/admin/formulas")}
-                className="hover:bg-gray-100 transition-colors"
+                className="text-slate-500 hover:text-slate-700"
+                asChild
               >
-                <ArrowLeft className="h-4 w-4" />
+                <Link href="/admin/formulas">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Geri
+                </Link>
               </Button>
-              <div className="flex-1">
-                {nameEditMode ? (
-                  <div className="flex items-center gap-3">
-                    <Input
-                      value={formulaName}
-                      onChange={(e) => setFormulaName(e.target.value)}
-                      className="text-2xl font-bold h-12 max-w-md"
-                      autoFocus
-                    />
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        setNameEditMode(false);
-                        await handleSave();
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      Kaydet
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setFormulaName(formula.name);
-                        setNameEditMode(false);
-                      }}
-                    >
-                      İptal
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                      {formulaName}
-                    </h1>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setNameEditMode(true)}
-                      className="hover:bg-gray-100"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-                <div className="flex gap-2 mt-2">
-                  <Badge variant="default" className="bg-blue-600">
-                    {formula.productType || "Genel"}
+              <Separator orientation="vertical" className="h-6" />
+              <div>
+                <h1 className="text-xl font-semibold text-slate-800">
+                  {formula.name}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-slate-300 text-slate-600"
+                  >
+                    {CATEGORY_LABELS[formula.productType] ||
+                      formula.productType}
                   </Badge>
-                  {formula.productVolume && (
+                  {formula.aiConfig?.subcategory?.name && (
                     <Badge
                       variant="outline"
-                      className="border-blue-300 text-blue-700"
+                      className="text-xs border-slate-300 text-slate-600"
                     >
-                      {formula.productVolume} ml
+                      {formula.aiConfig.subcategory.name}
                     </Badge>
                   )}
-                  <Badge variant="outline" className="border-gray-300">
-                    {formula.ingredients?.length || 0} hammadde
-                  </Badge>
                 </div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <FormulaPDFExport
-                formula={{
-                  ...formula,
-                  productDescription,
-                  usageInstructions,
-                  recommendations,
-                  benefits,
-                  warnings,
-                }}
-              />
+            <div className="flex items-center gap-2">
+              {editing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditing(false);
+                      setEditableIngredients(formula.ingredients || []);
+                      setEditForm({
+                        name: formula.name,
+                        notes: formula.notes,
+                        productVolume:
+                          formula.productVolume || formula.totalAmount || "",
+                        productionQuantity:
+                          formula.productionQuantity ||
+                          formula.aiConfig?.productionQuantity ||
+                          "",
+                      });
+                    }}
+                    className="bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    İptal
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-slate-800 hover:bg-slate-900 text-white"
+                  >
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Kaydet
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <FormulaPDFExport formula={formula} />
+                  <Button
+                    size="sm"
+                    onClick={() => setEditing(true)}
+                    className="bg-slate-800 hover:bg-slate-900 text-white"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Düzenle
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        {/* Cost Summary Cards - Modern Grid */}
-        {formulaCost && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="group bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <Package className="h-8 w-8 opacity-80" />
-                <div className="text-xs font-medium opacity-90">HACIM</div>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Package className="h-5 w-5 text-blue-600" />
               </div>
-              <div className="text-3xl font-bold tracking-tight">
-                {formulaCost.volume}
-                <span className="text-xl ml-1 opacity-90">gram</span>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Hacim
+                </p>
+                <p className="text-lg font-semibold text-slate-800">
+                  {costs?.volume || 0}{" "}
+                  <span className="text-sm font-normal text-slate-500">
+                    gram
+                  </span>
+                </p>
               </div>
-              <div className="text-sm mt-2 opacity-80">Toplam formül hacmi</div>
-            </div>
-
-            <div className="group bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <DollarSign className="h-8 w-8 opacity-80" />
-                <div className="text-xs font-medium opacity-90">MALİYET</div>
-              </div>
-              <div className="text-3xl font-bold tracking-tight">
-                ₺{formulaCost.totalCost}
-              </div>
-              <div className="text-sm mt-2 opacity-80">
-                Toplam üretim maliyeti
-              </div>
-            </div>
-
-            <div className="group bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <TrendingUp className="h-8 w-8 opacity-80" />
-                <div className="text-xs font-medium opacity-90">
-                  BİRİM FİYAT
-                </div>
-              </div>
-              <div className="text-3xl font-bold tracking-tight">
-                ₺{formulaCost.costPerGram}
-              </div>
-              <div className="text-sm mt-2 opacity-80">Gram başına maliyet</div>
             </div>
           </div>
-        )}
 
-        {/* Tabs with Modern Design */}
-        <Tabs defaultValue="formula" className="space-y-6">
-          <TabsList className="bg-white border border-gray-200 shadow-sm p-1 rounded-xl">
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Toplam Maliyet
+                </p>
+                <p className="text-lg font-semibold text-slate-800">
+                  ₺{costs?.totalCost || "0.00"}
+                </p>
+                {costs?.productionQuantity > 1 && (
+                  <p className="text-xs text-green-600">
+                    {costs.productionQuantity} adet × ₺{costs.costPerUnit}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Birim Maliyet
+                </p>
+                <p className="text-lg font-semibold text-slate-800">
+                  ₺{costs?.costPerGram || "0.0000"}{" "}
+                  <span className="text-sm font-normal text-slate-500">/g</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Beaker className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Hammadde
+                </p>
+                <p className="text-lg font-semibold text-slate-800">
+                  {formula.ingredients?.length || 0}{" "}
+                  <span className="text-sm font-normal text-slate-500">
+                    adet
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-5 border-l-4 border-l-emerald-500">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <Factory className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">
+                  Üretim Maliyeti
+                </p>
+                <p className="text-lg font-semibold text-emerald-700">
+                  ₺{costs?.totalCost || "0.00"}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {costs?.productionQuantity || 1}{" "}
+                  adet × ₺{costs?.costPerUnit || "0.0000"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-white border border-slate-200 p-1 mb-6">
             <TabsTrigger
-              value="formula"
-              className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all"
+              value="overview"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
             >
-              <Beaker className="h-4 w-4 mr-2" />
-              Formül Detayı
+              Genel Bakış
+            </TabsTrigger>
+            <TabsTrigger
+              value="ingredients"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
+            >
+              Hammaddeler ({formula.ingredients?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger
+              value="manufacturing"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
+            >
+              Üretim
+            </TabsTrigger>
+            <TabsTrigger
+              value="quality"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
+            >
+              Kalite
+            </TabsTrigger>
+            <TabsTrigger
+              value="config"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
+            >
+              AI Ayarları
             </TabsTrigger>
             <TabsTrigger
               value="marketing"
-              className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all"
+              className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-800"
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Pazarlama İçeriği
-            </TabsTrigger>
-            <TabsTrigger
-              value="ai-config"
-              className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              AI Ayarları
+              Pazarlama
             </TabsTrigger>
           </TabsList>
 
-          {/* Formula Details Tab */}
-          <TabsContent value="formula" className="space-y-6">
-            {/* Ingredients Table - Minimalist Design */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Beaker className="h-5 w-5 text-blue-600" />
-                    Hammadde Bileşimi
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    {ingredientsEditMode ? (
-                      <>
-                        <Button
-                          onClick={handleCancelIngredientsEdit}
-                          variant="outline"
-                          size="sm"
-                          className="hover:bg-gray-100"
-                        >
-                          İptal
-                        </Button>
-                        <Button
-                          onClick={handleSaveIngredients}
-                          disabled={saving}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          {saving ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Kaydediliyor
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4 mr-2" />
-                              Kaydet
-                            </>
-                          )}
-                        </Button>
-                      </>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Basic Info */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Info className="h-4 w-4 text-slate-400" />
+                      Temel Bilgiler
+                    </h3>
+                  </div>
+                  <div className="p-5">
+                    {editing ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-slate-600 text-sm">
+                            Formül Adı
+                          </Label>
+                          <Input
+                            value={editForm.name}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, name: e.target.value })
+                            }
+                            className="bg-slate-50 border-slate-200 focus:bg-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-slate-600 text-sm">
+                              Formül Gramı
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                value={editForm.productVolume}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    productVolume: e.target.value,
+                                  })
+                                }
+                                className="bg-slate-50 border-slate-200 focus:bg-white pr-12"
+                                placeholder="Örn: 100"
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                                gram
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-slate-600 text-sm">
+                              Üretim Adedi
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                value={editForm.productionQuantity}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    productionQuantity: e.target.value,
+                                  })
+                                }
+                                className="bg-slate-50 border-slate-200 focus:bg-white pr-12"
+                                placeholder="Örn: 1000"
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                                adet
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-slate-600 text-sm">
+                            Notlar
+                          </Label>
+                          <Textarea
+                            value={editForm.notes}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                notes: e.target.value,
+                              })
+                            }
+                            rows={4}
+                            className="bg-slate-50 border-slate-200 focus:bg-white"
+                          />
+                        </div>
+                      </div>
                     ) : (
-                      <Button
-                        onClick={() => setIngredientsEditMode(true)}
-                        variant="outline"
-                        size="sm"
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Düzenle
-                      </Button>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Kategori
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {CATEGORY_LABELS[formula.productType] ||
+                              formula.productType}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Alt Kategori
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.aiConfig?.subcategory?.name || "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Ürün Hacmi
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.productVolume ||
+                              formula.totalAmount ||
+                              "-"}{" "}
+                            gram
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Üretim Adedi
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.productionQuantity ||
+                              formula.aiConfig?.productionQuantity ||
+                              "-"}{" "}
+                            adet
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Notlar
+                          </p>
+                          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                            {formula.notes || "-"}
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          #
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Hammadde
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Fonksiyon
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Miktar
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Oran
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Birim Fiyat
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Maliyet
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Tedarikçi
-                        </th>
-                        {ingredientsEditMode && (
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            İşlem
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {(ingredientsEditMode
-                        ? editableIngredients
-                        : formulaCost?.ingredients
-                      )?.map((ing, idx) => {
-                        const calculatedCost = ingredientsEditMode
-                          ? (() => {
-                              const amount = parseFloat(ing.amount) || 0;
-                              const price = parseFloat(ing.price) || 0;
-                              let cost = 0;
-                              if (ing.unit === "g" || ing.unit === "gram") {
-                                cost = (amount / 1000) * price;
-                              } else if (ing.unit === "ml") {
-                                cost = (amount / 1000) * price;
-                              } else if (ing.unit === "kg") {
-                                cost = amount * price;
-                              } else {
-                                cost = amount * price;
-                              }
-                              return cost.toFixed(2);
-                            })()
-                          : ing.calculatedCost;
 
-                        return (
-                          <tr
+                {/* AI Suggestions */}
+                {formula.suggestions && (
+                  <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-amber-400 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-500" />
+                        AI Önerileri
+                      </h3>
+                    </div>
+                    <div className="p-5">
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                        {formula.suggestions}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Specs */}
+                {(formula.shelfLife ||
+                  formula.targetPH ||
+                  formula.storageConditions) && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 text-slate-400" />
+                        Hızlı Spesifikasyonlar
+                      </h3>
+                    </div>
+                    <div className="p-5">
+                      <div className="grid grid-cols-3 gap-4">
+                        {formula.shelfLife && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Raf Ömrü
+                            </p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {formula.shelfLife}
+                            </p>
+                          </div>
+                        )}
+                        {formula.targetPH && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Hedef pH
+                            </p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {formula.targetPH}
+                            </p>
+                          </div>
+                        )}
+                        {formula.storageConditions && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Saklama
+                            </p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {formula.storageConditions}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Dates */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-slate-400" />
+                      Tarihler
+                    </h3>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">
+                        Oluşturulma
+                      </span>
+                      <span className="text-sm text-slate-800">
+                        {formatDate(formula.createdAt)}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">Güncelleme</span>
+                      <span className="text-sm text-slate-800">
+                        {formatDate(formula.updatedAt)}
+                      </span>
+                    </div>
+                    {formula.aiConfig?.generatedAt && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-500">
+                            AI Üretim
+                          </span>
+                          <span className="text-sm text-slate-800">
+                            {format(
+                              new Date(formula.aiConfig.generatedAt),
+                              "d MMM yyyy, HH:mm",
+                              { locale: tr },
+                            )}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Production Notes */}
+                {formula.productionNotes &&
+                  formula.productionNotes.length > 0 && (
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100">
+                        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          <Factory className="h-4 w-4 text-slate-400" />
+                          Üretim Notları
+                        </h3>
+                      </div>
+                      <div className="p-5">
+                        <ul className="space-y-2">
+                          {formula.productionNotes.map((note, idx) => (
+                            <li
+                              key={idx}
+                              className="text-sm text-slate-600 flex items-start gap-2"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Quality Checks */}
+                {formula.qualityChecks && formula.qualityChecks.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                        Kalite Kontrolleri
+                      </h3>
+                    </div>
+                    <div className="p-5">
+                      <ul className="space-y-2">
+                        {formula.qualityChecks.map((check, idx) => (
+                          <li
                             key={idx}
-                            className="hover:bg-blue-50/30 transition-colors"
+                            className="text-sm text-slate-600 flex items-start gap-2"
                           >
-                            <td className="px-6 py-4 text-sm text-gray-500 font-medium">
-                              {idx + 1}
-                            </td>
-                            <td className="px-6 py-4">
-                              {ingredientsEditMode ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                            {check}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Ingredients Tab */}
+          <TabsContent value="ingredients" className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Beaker className="h-4 w-4 text-slate-400" />
+                  Hammadde Listesi
+                </h3>
+                {editing && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-blue-200 text-blue-600"
+                  >
+                    Düzenleme Modu
+                  </Badge>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        #
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Hammadde
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Fonksiyon
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Miktar
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Oran
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Fiyat (₺/kg)
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Maliyet
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Tedarikçi
+                      </th>
+                      {editing && <th className="px-5 py-3"></th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(editing
+                      ? editableIngredients
+                      : costs?.ingredients || []
+                    )?.map((ing, idx) => {
+                      // Get calculated cost from costs for this ingredient
+                      const calculatedCost =
+                        costs?.ingredients?.[idx]?.calculatedCost || 0;
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="px-5 py-4 text-sm text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="px-5 py-4">
+                            {editing ? (
+                              <div className="space-y-1">
+                                <Input
+                                  value={ing.displayName || ing.name}
+                                  onChange={(e) =>
+                                    handleUpdateIngredient(
+                                      idx,
+                                      "displayName",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="h-8 text-sm bg-slate-50 border-slate-200"
+                                  placeholder="Türkçe ad"
+                                />
                                 <Input
                                   value={ing.name}
                                   onChange={(e) =>
-                                    handleIngredientChange(
+                                    handleUpdateIngredient(
                                       idx,
                                       "name",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
-                                  className="text-sm font-semibold border-gray-300 focus:border-blue-500 rounded-lg"
+                                  className="h-8 text-xs bg-slate-50 border-slate-200"
+                                  placeholder="INCI adı"
                                 />
-                              ) : (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="text-sm font-semibold text-gray-900 cursor-help">
-                                        {ing.name}
-                                      </div>
-                                    </TooltipTrigger>
-                                    {ing.displayName && (
-                                      <TooltipContent>
-                                        <p>{ing.displayName}</p>
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              {ingredientsEditMode ? (
-                                <Input
-                                  value={ing.function || ""}
-                                  onChange={(e) =>
-                                    handleIngredientChange(
-                                      idx,
-                                      "function",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Fonksiyon"
-                                  className="text-xs border-gray-300 focus:border-blue-500 rounded-lg"
-                                />
-                              ) : ing.functionTr || ing.function ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs font-normal bg-blue-100 text-blue-800 border-0"
-                                >
-                                  {ing.functionTr || ing.function}
-                                </Badge>
-                              ) : (
-                                <span className="text-gray-400 text-sm">—</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              {ingredientsEditMode ? (
-                                <div className="flex gap-2 items-center">
-                                  <Input
-                                    type="number"
-                                    value={ing.amount}
-                                    onChange={(e) =>
-                                      handleIngredientChange(
-                                        idx,
-                                        "amount",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-20 text-sm border-gray-300 focus:border-blue-500 rounded-lg"
-                                  />
-                                  <Input
-                                    value={ing.unit}
-                                    onChange={(e) =>
-                                      handleIngredientChange(
-                                        idx,
-                                        "unit",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-16 text-sm border-gray-300 focus:border-blue-500 rounded-lg"
-                                  />
-                                </div>
-                              ) : (
-                                <span className="text-sm text-gray-700 font-medium">
-                                  {ing.amount} {ing.unit}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-sm font-medium text-slate-800">
+                                  {ing.displayName || ing.name}
+                                </p>
+                                {ing.displayName &&
+                                  ing.name !== ing.displayName && (
+                                    <p className="text-xs text-slate-500">
+                                      {ing.name}
+                                    </p>
+                                  )}
+                                {ing.specNotes && (
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    {ing.specNotes}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            {editing ? (
+                              <Input
+                                value={ing.functionTr || ing.function}
+                                onChange={(e) =>
+                                  handleUpdateIngredient(
+                                    idx,
+                                    "functionTr",
+                                    e.target.value,
+                                  )
+                                }
+                                className="h-8 text-sm w-32 bg-slate-50 border-slate-200"
+                              />
+                            ) : (
                               <Badge
                                 variant="outline"
-                                className="font-semibold border-blue-200 text-blue-700"
+                                className="text-xs border-slate-200 text-slate-600"
                               >
-                                {ing.percentage}%
+                                {ing.functionTr ||
+                                  FUNCTION_LABELS[ing.function] ||
+                                  ing.function}
                               </Badge>
-                            </td>
-                            <td className="px-6 py-4">
-                              {ingredientsEditMode ? (
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            {editing ? (
+                              <div className="flex items-center gap-1">
                                 <Input
                                   type="number"
-                                  value={ing.price || ""}
+                                  step="0.001"
+                                  value={ing.amount}
                                   onChange={(e) =>
-                                    handleIngredientChange(
+                                    handleUpdateIngredient(
                                       idx,
-                                      "price",
-                                      e.target.value
+                                      "amount",
+                                      parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  placeholder="Fiyat"
-                                  className="w-24 text-sm border-gray-300 focus:border-blue-500 rounded-lg"
+                                  className="h-8 text-sm w-20 bg-slate-50 border-slate-200"
                                 />
-                              ) : (
-                                <span className="text-sm text-gray-700">
-                                  {ing.price ? `₺${ing.price}/kg` : "—"}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-sm font-bold text-green-600">
-                                ₺{calculatedCost}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              {ingredientsEditMode ? (
-                                <Input
-                                  value={ing.supplier || ""}
-                                  onChange={(e) =>
-                                    handleIngredientChange(
-                                      idx,
-                                      "supplier",
-                                      e.target.value
-                                    )
+                                <Select
+                                  value={ing.unit || "gram"}
+                                  onValueChange={(value) =>
+                                    handleUpdateIngredient(idx, "unit", value)
                                   }
-                                  placeholder="Tedarikçi"
-                                  className="text-sm border-gray-300 focus:border-blue-500 rounded-lg"
-                                />
-                              ) : (
-                                <span className="text-sm text-gray-600">
-                                  {ing.supplier || "—"}
-                                </span>
-                              )}
-                            </td>
-                            {ingredientsEditMode && (
-                              <td className="px-6 py-4">
-                                <Button
-                                  onClick={() => handleRemoveIngredient(idx)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </td>
+                                  <SelectTrigger className="h-8 w-20 text-xs bg-slate-50 border-slate-200">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="gram">gram</SelectItem>
+                                    <SelectItem value="mg">mg</SelectItem>
+                                    <SelectItem value="kg">kg</SelectItem>
+                                    <SelectItem value="ml">ml</SelectItem>
+                                    <SelectItem value="L">L</SelectItem>
+                                    <SelectItem value="adet">adet</SelectItem>
+                                    <SelectItem value="%"> %</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-slate-800">
+                                {ing.amount} {ing.unit}
+                              </span>
                             )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-gradient-to-r from-gray-50 to-white border-t-2 border-gray-200">
-                      <tr>
-                        <td
-                          colSpan="6"
-                          className="px-6 py-5 text-right text-sm font-bold text-gray-900 uppercase tracking-wide"
-                        >
-                          Toplam Maliyet
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className="text-xl font-bold text-green-600">
-                            ₺
-                            {ingredientsEditMode
-                              ? editableIngredients
-                                  .reduce((sum, ing) => {
-                                    const amount = parseFloat(ing.amount) || 0;
-                                    const price = parseFloat(ing.price) || 0;
-                                    let cost = 0;
-                                    if (
-                                      ing.unit === "g" ||
-                                      ing.unit === "gram"
-                                    ) {
-                                      cost = (amount / 1000) * price;
-                                    } else if (ing.unit === "ml") {
-                                      cost = (amount / 1000) * price;
-                                    } else if (ing.unit === "kg") {
-                                      cost = amount * price;
-                                    } else {
-                                      cost = amount * price;
-                                    }
-                                    return sum + cost;
-                                  }, 0)
-                                  .toFixed(2)
-                              : formulaCost?.totalCost}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-sm text-slate-800">
+                              {ing.unit === "adet"
+                                ? "-"
+                                : costs?.ingredients?.[idx]?.percentage != null
+                                  ? `${costs.ingredients[idx].percentage.toFixed(2)}%`
+                                  : ing.percentage != null
+                                    ? `${ing.percentage.toFixed(2)}%`
+                                    : "-"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {editing ? (
+                              <Input
+                                type="number"
+                                value={
+                                  ing.estimatedPriceTLperKg || ing.price || 0
+                                }
+                                onChange={(e) => {
+                                  const newPrice =
+                                    parseFloat(e.target.value) || 0;
+                                  handleUpdateIngredient(idx, {
+                                    price: newPrice,
+                                    estimatedPriceTLperKg: newPrice,
+                                  });
+                                }}
+                                className="h-8 text-sm w-24 bg-slate-50 border-slate-200"
+                              />
+                            ) : (
+                              <span className="text-sm text-slate-800">
+                                {ing.estimatedPriceTLperKg || ing.price
+                                  ? `₺${ing.estimatedPriceTLperKg || ing.price}`
+                                  : "-"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-sm font-medium text-slate-800">
+                              ₺
+                              {(() => {
+                                // 1 adet ürün için maliyet
+                                const unitCost = calculatedCost ||
+                                  ing.calculatedCost ||
+                                  ing.estimatedCostTL ||
+                                  0;
+                                return unitCost.toFixed(4);
+                              })()}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {editing ? (
+                              <Input
+                                value={ing.supplier || ""}
+                                onChange={(e) =>
+                                  handleUpdateIngredient(
+                                    idx,
+                                    "supplier",
+                                    e.target.value,
+                                  )
+                                }
+                                className="h-8 text-sm w-32 bg-slate-50 border-slate-200"
+                              />
+                            ) : (
+                              <span className="text-sm text-slate-600">
+                                {ing.supplier || "-"}
+                              </span>
+                            )}
+                          </td>
+                          {editing && (
+                            <td className="px-5 py-4">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveIngredient(idx)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t border-slate-200">
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-5 py-4 text-sm font-semibold text-slate-800"
+                      >
+                        Toplam
+                        {costs?.productionQuantity > 1 && (
+                          <span className="text-xs font-normal text-green-600 ml-2">
+                            ({costs.productionQuantity} adet/kutu)
                           </span>
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-semibold text-slate-800">
+                        {(() => {
+                          // Calculate total percentage excluding "adet" units
+                          const totalPercentage = (costs?.ingredients || [])
+                            .filter((ing) => ing.unit !== "adet")
+                            .reduce(
+                              (sum, ing) => sum + (ing.percentage || 0),
+                              0,
+                            );
+                          return totalPercentage > 0
+                            ? `${totalPercentage.toFixed(2)}%`
+                            : "-";
+                        })()}
+                      </td>
+                      <td className="px-5 py-4"></td>
+                      <td className="px-5 py-4 text-sm font-semibold text-slate-800">
+                        ₺{costs?.totalCost || "0.00"}
+                        {costs?.productionQuantity > 1 && costs?.costPerUnit && (
+                          <span className="text-xs font-normal text-slate-500 block">
+                            (1 birim: ₺{costs.costPerUnit})
+                          </span>
+                        )}
+                      </td>
+                      <td colSpan={editing ? 2 : 1}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Add New Ingredient Form */}
+              {editing && (
+                <div className="px-5 py-4 bg-blue-50 border-t border-blue-100">
+                  <h4 className="text-sm font-medium text-slate-800 mb-3 flex items-center gap-2">
+                    <Plus className="h-4 w-4 text-blue-600" />
+                    Yeni Hammadde Ekle
+                  </h4>
+                  <div className="grid grid-cols-7 gap-3">
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        INCI Adı *
+                      </Label>
+                      <Input
+                        value={newIngredient.name}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            name: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="Aqua"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        Türkçe Adı
+                      </Label>
+                      <Input
+                        value={newIngredient.displayName}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            displayName: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="Su"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        Fonksiyon
+                      </Label>
+                      <Input
+                        value={newIngredient.function}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            function: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="Çözücü"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        Miktar (g) *
+                      </Label>
+                      <Input
+                        type="number"
+                        value={newIngredient.amount}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            amount: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="100"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        Fiyat (₺/kg)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={newIngredient.price}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            price: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="50"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">
+                        Tedarikçi
+                      </Label>
+                      <Input
+                        value={newIngredient.supplier}
+                        onChange={(e) =>
+                          setNewIngredient({
+                            ...newIngredient,
+                            supplier: e.target.value,
+                          })
+                        }
+                        className="h-9 text-sm bg-white border-slate-200"
+                        placeholder="Firma"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={handleAddIngredient}
+                        size="sm"
+                        className="h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ekle
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Manufacturing Tab */}
+          <TabsContent value="manufacturing" className="space-y-6">
+            {formula.manufacturing ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-slate-400" />
+                      İşlem Bilgileri
+                    </h3>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    {formula.manufacturing.processType && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          İşlem Tipi
+                        </p>
+                        <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                          {formula.manufacturing.processType.replace(/_/g, " ")}
+                        </Badge>
+                      </div>
+                    )}
+                    {formula.manufacturing.mixingSpeed && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Karıştırma Hızı
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.manufacturing.mixingSpeed}
+                        </p>
+                      </div>
+                    )}
+                    {formula.manufacturing.totalTime && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Toplam Süre
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.manufacturing.totalTime}
+                        </p>
+                      </div>
+                    )}
+                    {(formula.manufacturing.fillingTemp ||
+                      formula.manufacturing.fillingTemp_C) && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Dolum Sıcaklığı
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.manufacturing.fillingTemp ||
+                            `${formula.manufacturing.fillingTemp_C}°C`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Yeni Hammadde Ekleme Formu */}
-                {ingredientsEditMode && (
-                  <div className="p-6 bg-blue-50 border-t-2 border-blue-200">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Plus className="h-4 w-4 text-blue-600" />
-                      Yeni Hammadde Ekle
+                <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-slate-400" />
+                      Üretim Adımları
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-4">
-                      <div className="lg:col-span-2">
-                        <Label
-                          htmlFor="new-name"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Hammadde Adı *
-                        </Label>
-                        <Input
-                          id="new-name"
-                          value={newIngredient.name}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Örn: Gliserin"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
+                  </div>
+                  <div className="p-5">
+                    {formula.manufacturing.steps &&
+                    formula.manufacturing.steps.length > 0 ? (
+                      <ol className="space-y-3">
+                        {formula.manufacturing.steps.map((step, idx) => (
+                          <li key={idx} className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-medium flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              {step}
+                            </p>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : formula.manufacturing.phases &&
+                      formula.manufacturing.phases.length > 0 ? (
+                      <div className="space-y-4">
+                        {formula.manufacturing.phases.map((phase, idx) => (
+                          <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-medium text-slate-800">
+                                {phase.name}
+                              </h4>
+                              {phase.temperature && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs border-red-200 text-red-600"
+                                >
+                                  <Thermometer className="h-3 w-3 mr-1" />
+                                  {phase.temperature}
+                                </Badge>
+                              )}
+                            </div>
+                            {phase.ingredients &&
+                              phase.ingredients.length > 0 && (
+                                <p className="text-xs text-slate-500 mb-2">
+                                  <span className="font-medium">
+                                    Hammaddeler:
+                                  </span>{" "}
+                                  {phase.ingredients.join(", ")}
+                                </p>
+                              )}
+                            {phase.instructions && (
+                              <p className="text-sm text-slate-600">
+                                {phase.instructions}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <div className="lg:col-span-2">
-                        <Label
-                          htmlFor="new-function"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Fonksiyon
-                        </Label>
-                        <Input
-                          id="new-function"
-                          value={newIngredient.function}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              function: e.target.value,
-                            })
-                          }
-                          placeholder="Örn: Nemlendirici"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
+                    ) : (
+                      <p className="text-sm text-slate-500 text-center py-8">
+                        Üretim adımı tanımlanmamış
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {formula.manufacturing.criticalPoints &&
+                  formula.manufacturing.criticalPoints.length > 0 && (
+                    <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 border-l-4 border-l-red-400 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-100">
+                        <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                          Kritik Kontrol Noktaları
+                        </h3>
                       </div>
-                      <div>
-                        <Label
-                          htmlFor="new-amount"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Miktar *
-                        </Label>
-                        <Input
-                          id="new-amount"
-                          type="number"
-                          value={newIngredient.amount}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              amount: e.target.value,
-                            })
-                          }
-                          placeholder="100"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="new-unit"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Birim
-                        </Label>
-                        <Input
-                          id="new-unit"
-                          value={newIngredient.unit}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              unit: e.target.value,
-                            })
-                          }
-                          placeholder="g"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="new-price"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Fiyat (₺/kg)
-                        </Label>
-                        <Input
-                          id="new-price"
-                          type="number"
-                          value={newIngredient.price}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              price: e.target.value,
-                            })
-                          }
-                          placeholder="150"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="new-supplier"
-                          className="text-xs text-gray-600 mb-1"
-                        >
-                          Tedarikçi
-                        </Label>
-                        <Input
-                          id="new-supplier"
-                          value={newIngredient.supplier}
-                          onChange={(e) =>
-                            setNewIngredient({
-                              ...newIngredient,
-                              supplier: e.target.value,
-                            })
-                          }
-                          placeholder="Firma Adı"
-                          className="text-sm border-gray-300 focus:border-blue-500"
-                        />
+                      <div className="p-5">
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {formula.manufacturing.criticalPoints.map(
+                            (point, idx) => (
+                              <li
+                                key={idx}
+                                className="text-sm text-slate-600 flex items-start gap-2"
+                              >
+                                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+                                {point}
+                              </li>
+                            ),
+                          )}
+                        </ul>
                       </div>
                     </div>
-                    <Button
-                      onClick={handleAddIngredient}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                      size="sm"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Listeye Ekle
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Notes Section */}
-            {formula.notes && (
-              <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50">
-                <CardHeader className="border-b border-amber-100">
-                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Info className="h-5 w-5 text-amber-600" />
-                    Notlar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <p className="text-gray-700 whitespace-pre-line leading-relaxed">
-                    {formula.notes}
-                  </p>
-                </CardContent>
-              </Card>
+                  )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                  <Factory className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-slate-500 font-medium">
+                  Üretim bilgisi tanımlanmamış
+                </p>
+              </div>
             )}
           </TabsContent>
 
-          {/* Marketing Content Tab */}
-          <TabsContent value="marketing" className="space-y-6">
-            {/* Save Button for Marketing Content */}
-            {hasMarketingChanges && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Info className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Kaydedilmemiş Değişiklikler
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Pazarlama içeriğinde yaptığınız değişiklikleri kaydetmeyi
-                      unutmayın.
-                    </p>
+          {/* Quality Tab */}
+          <TabsContent value="quality" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {formula.quality ? (
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                      Kalite Spesifikasyonları
+                    </h3>
+                  </div>
+                  <div className="p-5">
+                    <div className="grid grid-cols-2 gap-4">
+                      {formula.quality.appearance && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Görünüm
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.appearance}
+                          </p>
+                        </div>
+                      )}
+                      {formula.quality.color && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Renk
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.color}
+                          </p>
+                        </div>
+                      )}
+                      {formula.quality.odor && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Koku
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.odor}
+                          </p>
+                        </div>
+                      )}
+                      {formula.quality.texture && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Doku
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.texture}
+                          </p>
+                        </div>
+                      )}
+                      {formula.quality.pH && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            pH
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.pH.min} - {formula.quality.pH.max}
+                          </p>
+                        </div>
+                      )}
+                      {formula.quality.viscosity && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Viskozite
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.quality.viscosity.min} -{" "}
+                            {formula.quality.viscosity.max}{" "}
+                            {formula.quality.viscosity.unit || "cP"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {formula.quality.stabilityNotes && (
+                      <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-xs text-amber-700 uppercase tracking-wide mb-1">
+                          Stabilite
+                        </p>
+                        <p className="text-sm text-amber-800">
+                          {formula.quality.stabilityNotes}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Kaydediliyor
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Kaydet
-                    </>
-                  )}
-                </Button>
+              ) : (
+                <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 font-medium">
+                    Kalite spesifikasyonu yok
+                  </p>
+                </div>
+              )}
+
+              {formula.compliance ? (
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-slate-400" />
+                      Uyumluluk
+                    </h3>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    {formula.compliance.regulations?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                          Düzenlemeler
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {formula.compliance.regulations.map((reg, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-xs border-green-200 text-green-700"
+                            >
+                              {reg}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {formula.compliance.claims?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                          İddialar
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {formula.compliance.claims.map((claim, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-xs border-blue-200 text-blue-700"
+                            >
+                              {claim}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {formula.compliance.warnings?.length > 0 && (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                        <p className="text-xs text-red-700 uppercase tracking-wide mb-2">
+                          Uyarılar
+                        </p>
+                        <ul className="space-y-1">
+                          {formula.compliance.warnings.map((w, idx) => (
+                            <li
+                              key={idx}
+                              className="text-sm text-red-600 flex items-start gap-2"
+                            >
+                              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                              {w}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {formula.compliance.allergens?.length > 0 && (
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-xs text-amber-700 uppercase tracking-wide mb-2">
+                          Alerjenler
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {formula.compliance.allergens.map((a, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-xs border-amber-300 text-amber-700"
+                            >
+                              {a}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                    <Shield className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 font-medium">
+                    Uyumluluk bilgisi yok
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* AI Config Tab */}
+          <TabsContent value="config" className="space-y-6">
+            {formula.aiConfig ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-slate-400" />
+                      AI Yapılandırması
+                    </h3>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Model
+                        </p>
+                        <Badge className="bg-purple-50 text-purple-700 border-purple-200">
+                          {formula.aiConfig.selectedModel || "-"}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Seviye
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.aiConfig.formulaLevel || "-"}/10
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Kategori
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {CATEGORY_LABELS[formula.aiConfig.mainCategory] ||
+                            formula.aiConfig.mainCategory}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Alt Kategori
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.aiConfig.subcategory?.name || "-"}
+                        </p>
+                      </div>
+                    </div>
+                    {formula.aiConfig.productType && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Ürün Tipi
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          {formula.aiConfig.productType.name ||
+                            formula.aiConfig.productType}
+                        </p>
+                      </div>
+                    )}
+                    {formula.aiConfig.description && (
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                          Açıklama
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          {formula.aiConfig.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {formula.aiConfig.advancedOptions && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-slate-400" />
+                        Gelişmiş Seçenekler
+                      </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Min Hammadde
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.aiConfig.advancedOptions.minIngredients ||
+                              "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Max Hammadde
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.aiConfig.advancedOptions.maxIngredients ||
+                              "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Kalite
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.aiConfig.advancedOptions
+                              .ingredientQuality || "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                            Hedef Kitle
+                          </p>
+                          <p className="text-sm text-slate-800">
+                            {formula.aiConfig.advancedOptions.targetAudience ||
+                              "-"}
+                          </p>
+                        </div>
+                      </div>
+                      {formula.aiConfig.advancedOptions.certifications?.length >
+                        0 && (
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                            Sertifikalar
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {formula.aiConfig.advancedOptions.certifications.map(
+                              (cert, idx) => (
+                                <Badge
+                                  key={idx}
+                                  variant="outline"
+                                  className="text-xs border-slate-200"
+                                >
+                                  {cert}
+                                </Badge>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {formula.aiConfig.categorySpecific && (
+                  <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <FlaskConical className="h-4 w-4 text-slate-400" />
+                        Kategori Özellikleri
+                      </h3>
+                    </div>
+                    <div className="p-5">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {formula.aiConfig.categorySpecific.formType && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Form Tipi
+                            </p>
+                            <p className="text-sm text-slate-800">
+                              {formula.aiConfig.categorySpecific.formType}
+                            </p>
+                          </div>
+                        )}
+                        {formula.aiConfig.categorySpecific.capsuleType && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Kapsül Tipi
+                            </p>
+                            <p className="text-sm text-slate-800">
+                              {formula.aiConfig.categorySpecific.capsuleType}
+                            </p>
+                          </div>
+                        )}
+                        {formula.aiConfig.categorySpecific.capsuleSize && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Kapsül Boyutu
+                            </p>
+                            <p className="text-sm text-slate-800">
+                              {formula.aiConfig.categorySpecific.capsuleSize}
+                            </p>
+                          </div>
+                        )}
+                        {formula.aiConfig.categorySpecific.productVolume && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Ürün Hacmi
+                            </p>
+                            <p className="text-sm text-slate-800">
+                              {formula.aiConfig.categorySpecific.productVolume}{" "}
+                              ml
+                            </p>
+                          </div>
+                        )}
+                        {formula.aiConfig.categorySpecific
+                          .productionQuantity && (
+                          <div className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+                              Üretim Adedi
+                            </p>
+                            <p className="text-sm text-slate-800">
+                              {
+                                formula.aiConfig.categorySpecific
+                                  .productionQuantity
+                              }
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-slate-500 font-medium">
+                  AI yapılandırması bulunamadı
+                </p>
               </div>
             )}
+          </TabsContent>
 
-            {/* AI Content Generation Banner */}
-            <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-              <div className="flex items-start justify-between gap-6">
+          {/* Marketing Tab */}
+          <TabsContent value="marketing" className="space-y-6">
+            {/* AI Marketing Generator Card */}
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-6 text-white">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
-                      <Sparkles className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-2xl font-bold">AI Pazarlama İçeriği</h3>
-                  </div>
-                  <p className="text-purple-50 leading-relaxed mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    AI Pazarlama İçeriği
+                  </h3>
+                  <p className="text-emerald-100 text-sm mt-1">
                     Formülünüz için profesyonel pazarlama içeriği oluşturun. AI,
                     ürün açıklaması, kullanım talimatı, faydalar ve öneriler
                     hazırlayacak.
                   </p>
-                  <div className="flex items-center gap-2 text-sm text-purple-100">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Otomatik ve hızlı</span>
-                    <span className="text-purple-200">•</span>
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Profesyonel dil</span>
-                    <span className="text-purple-200">•</span>
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Düzenlenebilir</span>
+                  <div className="flex items-center gap-4 mt-3 text-xs text-emerald-100">
+                    <span className="flex items-center gap-1">
+                      <Settings className="h-3 w-3" />
+                      {selectedModel?.name || "Model seçilmedi"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Thermometer className="h-3 w-3" />
+                      Sıcaklık: {marketingModelSettings.temperature}
+                    </span>
+                    <span>{marketingModelSettings.maxTokens} token</span>
                   </div>
-                  {/* Current Model Badge */}
-                  {currentModel && (
-                    <div className="mt-4 flex items-center gap-2">
-                      <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
-                        {PROVIDER_INFO[currentModel.provider]?.icon} {currentModel.displayName || currentModel.name}
-                      </Badge>
-                      <Badge className="bg-white/10 text-purple-100 border-white/20">
-                        {effectiveMaxTokens} token
-                      </Badge>
-                    </div>
-                  )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* AI Settings Button */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => setShowAiSettings(true)}
-                          size="lg"
-                          variant="ghost"
-                          className="bg-white/10 hover:bg-white/20 text-white border border-white/20 h-12 w-12 p-0"
-                        >
-                          <Settings className="h-5 w-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>AI Ayarları</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  {/* Generate Button */}
+                <div className="flex items-center gap-2">
                   <Button
-                    onClick={checkAndGenerate}
-                    disabled={generating || aiLoading}
-                    size="lg"
-                    className="bg-white text-purple-600 hover:bg-purple-50 font-semibold shadow-lg hover:shadow-xl transition-all px-8"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAISettings(true)}
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                   >
-                    {generating ? (
+                    <Settings className="h-4 w-4 mr-1" />
+                    Ayarlar
+                  </Button>
+                  <Button
+                    onClick={handleGenerateMarketing}
+                    disabled={isGeneratingMarketing || !aiIsReady}
+                    className="bg-white text-emerald-600 hover:bg-emerald-50"
+                  >
+                    {isGeneratingMarketing ? (
                       <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Oluşturuluyor...
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-5 w-5 mr-2" />
+                        <Wand2 className="h-4 w-4 mr-2" />
                         İçerik Oluştur
                       </>
                     )}
@@ -1519,622 +2330,327 @@ export default function FormulaDetailPage() {
               </div>
             </div>
 
-            {/* AI Settings Dialog */}
-            <Dialog open={showAiSettings} onOpenChange={setShowAiSettings}>
-              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-xl">
-                    <div className="bg-purple-100 rounded-lg p-2">
-                      <Settings className="h-5 w-5 text-purple-600" />
-                    </div>
-                    AI Pazarlama İçerik Ayarları
-                  </DialogTitle>
-                  <DialogDescription>
-                    Formül pazarlama içeriği üretimi için AI model ve parametre ayarları
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-6 py-4">
-                  {/* Model Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-amber-500" />
-                      AI Model Seçimi
-                    </Label>
-                    <Select 
-                      value={currentModel?.modelId || currentModel?.id}
-                      onValueChange={(value) => selectModel(value)}
-                    >
-                      <SelectTrigger className="w-full h-12 rounded-xl border-gray-200">
-                        <SelectValue placeholder="Model seçin..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableModels.map((model) => (
-                          <SelectItem 
-                            key={model.modelId || model.id} 
-                            value={model.modelId || model.id}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{PROVIDER_INFO[model.provider]?.icon || "⚪"}</span>
-                              <span>{model.displayName || model.name}</span>
-                              {model.isDefault && (
-                                <Badge variant="secondary" className="text-xs ml-2">Varsayılan</Badge>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {currentModel && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {currentModel.description || `${PROVIDER_INFO[currentModel.provider]?.name} tarafından sağlanmaktadır.`}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Temperature */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Yaratıcılık (Temperature)</Label>
-                      <Badge variant="outline" className="font-mono">
-                        {aiSettingsLocal.temperature.toFixed(2)}
-                      </Badge>
-                    </div>
-                    <Slider
-                      value={[aiSettingsLocal.temperature]}
-                      onValueChange={([value]) => 
-                        setAiSettingsLocal(prev => ({ ...prev, temperature: value }))
-                      }
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Tutarlı</span>
-                      <span>Dengeli</span>
-                      <span>Yaratıcı</span>
-                    </div>
-                  </div>
-
-                  {/* Max Tokens */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Maksimum Token</Label>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="auto-tokens" className="text-xs text-gray-500 cursor-pointer">
-                          Otomatik
-                        </Label>
-                        <Switch
-                          id="auto-tokens"
-                          checked={aiSettingsLocal.autoMaxTokens}
-                          onCheckedChange={(checked) => 
-                            setAiSettingsLocal(prev => ({ ...prev, autoMaxTokens: checked }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    
-                    {aiSettingsLocal.autoMaxTokens ? (
-                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Zap className="h-4 w-4 text-purple-500" />
-                            <span className="text-sm text-purple-700">Otomatik Hesaplama</span>
-                          </div>
-                          <Badge className="bg-purple-100 text-purple-700 font-mono">
-                            {effectiveMaxTokens} token
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-purple-600 mt-2">
-                          {formula?.ingredients?.length || 0} hammadde için optimize edildi
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <Slider
-                          value={[aiSettingsLocal.maxTokens]}
-                          onValueChange={([value]) => 
-                            setAiSettingsLocal(prev => ({ ...prev, maxTokens: value }))
-                          }
-                          min={500}
-                          max={4000}
-                          step={100}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>500</span>
-                          <span className="font-mono">{aiSettingsLocal.maxTokens}</span>
-                          <span>4000</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <Label className="text-sm font-medium flex items-center gap-2">
-                        <Code className="h-4 w-4 text-gray-500" />
-                        Prompt Önizleme
-                      </Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setShowPromptPreview(!showPromptPreview)}
-                        className="text-xs"
-                      >
-                        {showPromptPreview ? "Gizle" : "Göster"}
-                        <Eye className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                    
-                    {showPromptPreview && (
-                      <div className="space-y-3">
-                        {/* System Prompt */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-gray-600">System Prompt</span>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 font-mono max-h-32 overflow-y-auto border border-gray-100">
-                            {aiPrompt?.systemPrompt || "Yükleniyor..."}
-                          </div>
-                        </div>
-                        
-                        {/* User Prompt Template */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-gray-600">User Prompt Template</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={copyPromptToClipboard}
-                              className="h-6 text-xs"
-                            >
-                              {promptCopied ? (
-                                <>
-                                  <Check className="h-3 w-3 mr-1 text-green-500" />
-                                  Kopyalandı
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-3 w-3 mr-1" />
-                                  Kopyala
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 font-mono max-h-48 overflow-y-auto border border-gray-100 whitespace-pre-wrap">
-                            {aiPrompt?.userPromptTemplate || "Yükleniyor..."}
-                          </div>
-                        </div>
-
-                        {/* Preview with Variables */}
-                        {formula && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-gray-600">Formül ile Önizleme</span>
-                              <Badge variant="outline" className="text-xs">Değişkenler uygulandı</Badge>
-                            </div>
-                            <div className="bg-purple-50 rounded-lg p-3 text-xs text-purple-900 font-mono max-h-48 overflow-y-auto border border-purple-100 whitespace-pre-wrap">
-                              {aiPrompt?.userPromptTemplate
-                                ?.replace("{{formulaName}}", formula.name || "—")
-                                .replace("{{productType}}", formula.productType || "—")
-                                .replace("{{productVolume}}", formula.productVolume || "Belirtilmedi")
-                                .replace("{{ingredientsList}}", 
-                                  formula.ingredients?.map((ing) => `${ing.name} (${ing.percentage}%)`).join(", ") || "—"
-                                ) || "Yükleniyor..."}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Config Info */}
-                  {aiConfig && (
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Info className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">Konfigürasyon Bilgisi</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-gray-500">Context:</span>
-                          <span className="ml-2 font-mono text-gray-700">{aiConfig.contextId || "formula_marketing_generation"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Provider:</span>
-                          <span className="ml-2 text-gray-700">{PROVIDER_INFO[aiConfig.defaultProvider]?.name || aiConfig.defaultProvider}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Prompt Key:</span>
-                          <span className="ml-2 font-mono text-gray-700">{aiConfig.promptKey}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Versiyon:</span>
-                          <span className="ml-2 text-gray-700">{aiPrompt?.version || "1.0"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAiSettings(false)}
-                  >
-                    Kapat
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowAiSettings(false);
-                      toast({
-                        title: "Ayarlar Güncellendi",
-                        description: "AI ayarları sonraki üretimde kullanılacak.",
-                      });
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    Uygula
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Product Description */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+            {/* Marketing Content Form */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Product Description */}
+              <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-slate-400" />
                     Ürün Açıklaması
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-700 font-mono"
-                  >
-                    {productDescription.length} karakter
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Ürünün ne olduğunu, amacını ve kimler için uygun olduğunu
-                  açıklayın.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <Textarea
-                  value={productDescription}
-                  onChange={(e) => setProductDescription(e.target.value)}
-                  rows={6}
-                  placeholder="Örnek: Bu nemlendirici krem, kuru ve hassas ciltler için özel olarak formüle edilmiştir..."
-                  className="resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl transition-colors"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Usage Instructions */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <Info className="h-5 w-5 text-green-600" />
-                    Kullanım Talimatı
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-100 text-green-700 font-mono"
-                  >
-                    {usageInstructions.length} karakter
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Ürünün adım adım nasıl kullanılacağını açıklayın (3-5 adım
-                  önerilir).
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <Textarea
-                  value={usageInstructions}
-                  onChange={(e) => setUsageInstructions(e.target.value)}
-                  rows={6}
-                  placeholder="Örnek:\n1. Cildinizi temizleyin ve kurulayın\n2. Az miktarda kremi avuç içinize alın\n3. Yüz ve boyun bölgesine hafif masaj hareketleriyle uygulayın\n4. Tamamen emilene kadar bekleyin"
-                  className="resize-none border-gray-200 focus:border-green-500 focus:ring-green-500 rounded-xl transition-colors"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Recommendations */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-600" />
-                    Öneriler ve İpuçları
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-purple-100 text-purple-700 font-mono"
-                  >
-                    {recommendations.length} karakter
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Saklama koşulları, kullanım sıklığı ve kombinasyon önerileri
-                  ekleyin.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <Textarea
-                  value={recommendations}
-                  onChange={(e) => setRecommendations(e.target.value)}
-                  rows={5}
-                  placeholder="Örnek: Serin ve kuru yerde saklayın. Sabah ve akşam düzenli kullanımda en iyi sonuçları alırsınız. Güneş koruyucu ile birlikte kullanmanız önerilir."
-                  className="resize-none border-gray-200 focus:border-purple-500 focus:ring-purple-500 rounded-xl transition-colors"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Benefits */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-teal-600" />
-                    Faydalar
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-teal-100 text-teal-700 font-mono"
-                  >
-                    {benefits.length} karakter
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Ürünün sağladığı somut faydaları madde madde listeleyin.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <Textarea
-                  value={benefits}
-                  onChange={(e) => setBenefits(e.target.value)}
-                  rows={5}
-                  placeholder="Örnek:\n• Cildi derinlemesine nemlendirir\n• Kırışıklık görünümünü azaltır\n• Cildin elastikiyetini artırır\n• Parlak ve canlı bir görünüm sağlar"
-                  className="resize-none border-gray-200 focus:border-teal-500 focus:ring-teal-500 rounded-xl transition-colors"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Warnings */}
-            <Card className="border-0 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                    Uyarılar ve Önlemler
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="bg-red-100 text-red-700 font-mono"
-                  >
-                    {warnings.length} karakter
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Güvenlik uyarıları, yan etkiler ve dikkat edilmesi gereken
-                  hususları belirtin.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <Textarea
-                  value={warnings}
-                  onChange={(e) => setWarnings(e.target.value)}
-                  rows={5}
-                  placeholder="Örnek: Göz ile temasından kaçınınız. Dış kullanım içindir. Alerjik reaksiyon görülürse kullanmayı bırakınız. Çocukların ulaşamayacağı yerde saklayınız."
-                  className="resize-none border-gray-200 focus:border-red-500 focus:ring-red-500 rounded-xl transition-colors"
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* AI Configuration Tab */}
-          <TabsContent value="ai-config" className="space-y-6">
-            {formula.aiConfig ? (
-              <div className="space-y-6">
-                {/* AI Model Used Card */}
-                <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
-                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-purple-600" />
-                      Kullanılan AI Modeli
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-purple-100 rounded-lg p-3">
-                        <Sparkles className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">
-                          {formula.aiConfig.modelName || "Claude AI"}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {formula.aiConfig.modelDescription || "AI ile üretilen formül"}
-                        </p>
-                        <div className="mt-3 flex gap-2">
-                          <Badge
-                            variant="outline"
-                            className="border-purple-300 text-purple-700"
-                          >
-                            {formula.aiConfig.selectedModel || formula.aiConfig.modelName || "AI Model"}
-                          </Badge>
-                          {formula.aiConfig.generatedAt && (
-                            <Badge
-                              variant="outline"
-                              className="border-gray-300 text-gray-600"
-                            >
-                              {new Date(
-                                formula.aiConfig.generatedAt
-                              ).toLocaleDateString("tr-TR", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Product Details Card */}
-                <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <Package className="h-5 w-5 text-blue-600" />
-                      Ürün Bilgileri
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">
-                          Ürün Adı
-                        </Label>
-                        <p className="text-base font-medium text-gray-900">
-                          {formula.aiConfig.productName || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">
-                          Ürün Tipi
-                        </Label>
-                        <p className="text-base font-medium text-gray-900">
-                          {formula.aiConfig.productType || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">
-                          Ürün Hacmi
-                        </Label>
-                        <p className="text-base font-medium text-gray-900">
-                          {formula.aiConfig.productVolume
-                            ? `${formula.aiConfig.productVolume} ml`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">
-                          Formül Seviyesi
-                        </Label>
-                        <Badge
-                          variant="outline"
-                          className={
-                            formula.aiConfig.formulaLevel === "basic"
-                              ? "border-green-300 text-green-700"
-                              : formula.aiConfig.formulaLevel === "professional"
-                              ? "border-blue-300 text-blue-700"
-                              : "border-purple-300 text-purple-700"
-                          }
-                        >
-                          {formula.aiConfig.formulaLevel === "basic"
-                            ? "Temel"
-                            : formula.aiConfig.formulaLevel === "professional"
-                            ? "Profesyonel"
-                            : "İleri Seviye"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Product Description Card */}
-                {formula.aiConfig.description && (
-                  <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                      <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Info className="h-5 w-5 text-gray-600" />
-                        Ürün Açıklaması
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {formula.aiConfig.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            ) : (
-              <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                <CardContent className="pt-12 pb-12 text-center">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="bg-gray-100 rounded-full p-6">
-                      <Sparkles className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        AI Ayarları Bulunamadı
-                      </h3>
-                      <p className="text-sm text-gray-600 max-w-md">
-                        Bu formül manuel olarak oluşturulmuş olabilir veya AI
-                        ayarları kaydedilmemiş olabilir.
-                      </p>
-                    </div>
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {marketingContent.productDescription?.length || 0}{" "}
+                      karakter
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopyField(
+                          "productDescription",
+                          marketingContent.productDescription,
+                        )
+                      }
+                      disabled={!marketingContent.productDescription}
+                      className="h-7 px-2"
+                    >
+                      {copiedField === "productDescription" ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={marketingContent.productDescription}
+                    onChange={(e) =>
+                      setMarketingContent({
+                        ...marketingContent,
+                        productDescription: e.target.value,
+                      })
+                    }
+                    placeholder="Ürünün ne olduğunu, amacını ve kimler için uygun olduğunu açıklayın..."
+                    rows={4}
+                    className="resize-none bg-slate-50 border-slate-200 focus:bg-white"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Örnek: Bu nemlendirici krem, kuru ve hassas ciltler için
+                    özel olarak formüle edilmiştir...
+                  </p>
+                </div>
+              </div>
+
+              {/* Usage Instructions */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-blue-500" />
+                    Kullanım Talimatı
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {marketingContent.usageInstructions?.length || 0} karakter
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopyField(
+                          "usageInstructions",
+                          marketingContent.usageInstructions,
+                        )
+                      }
+                      disabled={!marketingContent.usageInstructions}
+                      className="h-7 px-2"
+                    >
+                      {copiedField === "usageInstructions" ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={marketingContent.usageInstructions}
+                    onChange={(e) =>
+                      setMarketingContent({
+                        ...marketingContent,
+                        usageInstructions: e.target.value,
+                      })
+                    }
+                    placeholder="Ürünün adım adım nasıl kullanılacağını açıklayın (3-5 adım önerilir)..."
+                    rows={5}
+                    className="resize-none bg-slate-50 border-slate-200 focus:bg-white"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Örnek: 1. Cildinizi temizleyin ve kurulayın. 2. Az miktarda
+                    kremi avuç içinize alın...
+                  </p>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-blue-400 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-amber-500" />
+                    Öneriler ve İpuçları
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {marketingContent.recommendations?.length || 0} karakter
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopyField(
+                          "recommendations",
+                          marketingContent.recommendations,
+                        )
+                      }
+                      disabled={!marketingContent.recommendations}
+                      className="h-7 px-2"
+                    >
+                      {copiedField === "recommendations" ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={marketingContent.recommendations}
+                    onChange={(e) =>
+                      setMarketingContent({
+                        ...marketingContent,
+                        recommendations: e.target.value,
+                      })
+                    }
+                    placeholder="Saklama koşulları, kullanım sıklığı ve kombinasyon önerilerini ekleyin..."
+                    rows={4}
+                    className="resize-none bg-slate-50 border-slate-200 focus:bg-white"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Örnek: Serin ve kuru yerde saklayın. Sabah ve akşam düzenli
+                    kullanımda en iyi sonuçları alırsınız.
+                  </p>
+                </div>
+              </div>
+
+              {/* Benefits */}
+              <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-green-400 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-green-500" />
+                    Faydalar
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {marketingContent.benefits?.length || 0} karakter
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopyField("benefits", marketingContent.benefits)
+                      }
+                      disabled={!marketingContent.benefits}
+                      className="h-7 px-2"
+                    >
+                      {copiedField === "benefits" ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={marketingContent.benefits}
+                    onChange={(e) =>
+                      setMarketingContent({
+                        ...marketingContent,
+                        benefits: e.target.value,
+                      })
+                    }
+                    placeholder="Ürünün sağladığı somut faydaları madde madde listeleyin..."
+                    rows={4}
+                    className="resize-none bg-slate-50 border-slate-200 focus:bg-white"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Örnek: • Cildi derilemesine nemlendirir • Kırışıklık
+                    görünümünü azaltır • Cildin elastikiyetini artırır
+                  </p>
+                </div>
+              </div>
+
+              {/* Warnings */}
+              <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 border-l-4 border-l-red-400 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <TriangleAlert className="h-4 w-4 text-red-500" />
+                    Uyarılar
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {marketingContent.warnings?.length || 0} karakter
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopyField("warnings", marketingContent.warnings)
+                      }
+                      disabled={!marketingContent.warnings}
+                      className="h-7 px-2"
+                    >
+                      {copiedField === "warnings" ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <Textarea
+                    value={marketingContent.warnings}
+                    onChange={(e) =>
+                      setMarketingContent({
+                        ...marketingContent,
+                        warnings: e.target.value,
+                      })
+                    }
+                    placeholder="Hassasiyet, kullanım kısıtlamaları ve güvenlik uyarılarını ekleyin..."
+                    rows={3}
+                    className="resize-none bg-slate-50 border-slate-200 focus:bg-white"
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Örnek: İlk kullanımdan önce yama testi yapın. Göz çevresine
+                    uygulamayın. Çocukların ulaşamayacağı yerde saklayın.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setMarketingContent({
+                    productDescription: formula.productDescription || "",
+                    usageInstructions: formula.usageInstructions || "",
+                    recommendations: formula.recommendations || "",
+                    benefits: formula.benefits || "",
+                    warnings: formula.warnings || "",
+                  });
+                }}
+                className="border-slate-200"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sıfırla
+              </Button>
+              <Button
+                onClick={handleSaveMarketing}
+                disabled={savingMarketing}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {savingMarketing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Pazarlama İçeriğini Kaydet
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
-      </div>
 
-      {/* Confirmation Dialog for Overwriting Content */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
-              <AlertCircle className="h-5 w-5" />
-              Mevcut İçerik Silinecek
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 pt-2">
-                <p className="text-gray-700">
-                  Pazarlama içeriği alanlarında{" "}
-                  <strong>mevcut veri bulunuyor</strong>.
-                </p>
-                <p className="text-gray-700">
-                  Yeni içerik oluşturulduğunda, mevcut tüm pazarlama içeriğiniz{" "}
-                  <strong className="text-red-600">
-                    silinecek ve yerine AI tarafından oluşturulan yeni içerik
-                  </strong>{" "}
-                  gelecek.
-                </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-                  <strong>Not:</strong> Devam etmeden önce mevcut içeriğinizi
-                  yedeklemenizi öneririz.
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="hover:bg-gray-100">
-              İptal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={generateMarketingContent}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Devam Et ve Yeni İçerik Oluştur
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* AI Settings Modal */}
+        <AISettingsModal
+          open={showAISettings}
+          onOpenChange={setShowAISettings}
+          title="Pazarlama AI Ayarları"
+          description="Pazarlama içeriği üretimi için AI model ve ayarlarını yapılandırın"
+          contextKey={AI_CONTEXTS.FORMULA_MARKETING_GENERATION}
+          availableModels={availableModels}
+          currentModel={selectedModel}
+          selectModel={selectModel}
+          prompt={aiPrompt}
+          config={aiConfig}
+          loading={aiConfigLoading}
+          modelSettings={marketingModelSettings}
+          setModelSettings={setMarketingModelSettings}
+          promptVariables={{
+            formulaName: formula?.name || "",
+            productType:
+              CATEGORY_LABELS[formula?.productType] ||
+              formula?.productType ||
+              "",
+            productVolume: formula?.productVolume || formula?.totalAmount || "",
+            activeIngredients:
+              formula?.ingredients
+                ?.filter((ing) => ing.function === "Active")
+                ?.map((ing) => ing.displayName || ing.name)
+                ?.join(", ") || "",
+            ingredientsList:
+              formula?.ingredients
+                ?.map((ing) => ing.displayName || ing.name)
+                ?.join(", ") || "",
+          }}
+        />
+      </div>
     </div>
   );
 }

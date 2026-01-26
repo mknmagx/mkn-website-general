@@ -39,6 +39,8 @@ import {
   getOrderPriorityColor,
   getStagesForOrderType,
   calculateStageProgress,
+  calculateProductionProgress,
+  calculateProductionGroupProgress,
   getProductionStageLabel,
   getSupplyStageLabel,
   getServiceStageLabel,
@@ -552,6 +554,50 @@ export default function OrderDetailPage() {
     return icons[type] || FileText;
   };
 
+  // Check if a production stage is completed based on production data
+  const isStageCompletedFromProgress = (stage, production = {}) => {
+    switch (stage) {
+      case PRODUCTION_STAGE.FORMULA_SELECTION:
+        return !!production?.formulaId;
+      case PRODUCTION_STAGE.FORMULA_APPROVAL:
+        return !!production?.formulaApproved;
+      case PRODUCTION_STAGE.PACKAGING_DESIGN:
+        return !!production?.packaging?.approved;
+      case PRODUCTION_STAGE.LABEL_DESIGN:
+        return !!production?.label?.approved;
+      case PRODUCTION_STAGE.BOX_DESIGN:
+        return !!production?.box?.approved || !production?.box?.required;
+      case PRODUCTION_STAGE.DESIGN_APPROVAL:
+        return !!production?.designsApproved;
+      case PRODUCTION_STAGE.RAW_MATERIAL:
+        return !!production?.supply?.rawMaterialReceived;
+      case PRODUCTION_STAGE.PACKAGING_SUPPLY:
+        return !!production?.supply?.packagingReceived;
+      case PRODUCTION_STAGE.LABEL_SUPPLY:
+        return !!production?.supply?.labelReceived;
+      case PRODUCTION_STAGE.BOX_SUPPLY:
+        return !!production?.supply?.boxReceived || !production?.box?.required;
+      case PRODUCTION_STAGE.PRODUCTION_PLANNING:
+        return !!production?.productionPlanned;
+      case PRODUCTION_STAGE.PRODUCTION:
+        return !!production?.productionCompleted;
+      case PRODUCTION_STAGE.FILLING:
+        return !!production?.fillingCompleted;
+      case PRODUCTION_STAGE.QUALITY_CONTROL:
+        return !!production?.qcApproved;
+      case PRODUCTION_STAGE.LABELING:
+        return !!production?.labelingCompleted;
+      case PRODUCTION_STAGE.BOXING:
+        return !!production?.boxingCompleted;
+      case PRODUCTION_STAGE.FINAL_PACKAGING:
+        return !!production?.finalPackagingCompleted;
+      case PRODUCTION_STAGE.READY_FOR_DELIVERY:
+        return !!production?.readyForDelivery;
+      default:
+        return false;
+    }
+  };
+
   // Calculate paid amount
   const getPaidAmount = () => {
     return (order?.payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -592,7 +638,20 @@ export default function OrderDetailPage() {
 
   const IconComponent = getIconComponent(order.type);
   const stages = getStagesForOrderType(order.type);
-  const stageProgress = calculateStageProgress(order.type, order.currentStage);
+  
+  // Production siparişleri için production objesine dayalı hesaplama kullan
+  const productionProgressData = order.type === ORDER_TYPE.PRODUCTION 
+    ? calculateProductionProgress(order.production) 
+    : null;
+  const productionGroupProgressData = order.type === ORDER_TYPE.PRODUCTION 
+    ? calculateProductionGroupProgress(order.production) 
+    : null;
+  
+  // Genel ilerleme yüzdesi: production için production verisi, diğerleri için eski yöntem
+  const stageProgress = order.type === ORDER_TYPE.PRODUCTION 
+    ? productionProgressData.percent 
+    : calculateStageProgress(order.type, order.currentStage);
+  
   const paidAmount = getPaidAmount();
   const remainingAmount = (order.total || 0) - paidAmount;
   const paymentProgress = order.total > 0 ? Math.round((paidAmount / order.total) * 100) : 0;
@@ -785,14 +844,19 @@ export default function OrderDetailPage() {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {PRODUCTION_STAGE_GROUPS.map((group) => {
                           const groupStages = group.stages || [];
-                          const currentStageIndex = stages.findIndex(s => s.id === order.currentStage);
-                          const completedInGroup = groupStages.filter(stageId => {
-                            const stageIdx = stages.findIndex(s => s.id === stageId);
-                            return stageIdx < currentStageIndex;
-                          }).length;
-                          const isCurrentGroup = groupStages.some(stageId => stageId === order.currentStage);
-                          const isCompletedGroup = completedInGroup === groupStages.length && groupStages.length > 0;
-                          const currentStageInGroup = groupStages.find(stageId => stageId === order.currentStage);
+                          // Production verilerine dayalı grup progress kullan
+                          const groupData = productionGroupProgressData?.[group.id] || { completed: 0, total: groupStages.length, isComplete: false };
+                          const completedInGroup = groupData.completed;
+                          const isCompletedGroup = groupData.isComplete;
+                          // Aktif grup: en az 1 stage tamamlanmış ama hepsi değil
+                          const isCurrentGroup = completedInGroup > 0 && !isCompletedGroup;
+                          
+                          // İlk tamamlanmamış stage'i bul (mevcut aşama olarak göster)
+                          const firstIncompleteStage = !isCompletedGroup ? groupStages.find(stageId => {
+                            const progress = productionProgressData;
+                            // Bu stage tamamlanmış mı kontrol et
+                            return !isStageCompletedFromProgress(stageId, order.production);
+                          }) : null;
 
                           return (
                             <div
@@ -826,9 +890,9 @@ export default function OrderDetailPage() {
                                 <span className="text-xs text-slate-500">
                                   {completedInGroup}/{groupStages.length}
                                 </span>
-                                {currentStageInGroup && (
+                                {firstIncompleteStage && !isCompletedGroup && (
                                   <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                                    {getProductionStageLabel(currentStageInGroup)}
+                                    {getProductionStageLabel(firstIncompleteStage)}
                                   </Badge>
                                 )}
                               </div>

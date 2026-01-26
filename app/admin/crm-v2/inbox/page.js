@@ -39,6 +39,9 @@ import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../lib/utils";
 
+// HTML to Text utility - Mesaj temizleme
+import { htmlToText } from "../../../../utils/html-to-text";
+
 // UI Components
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
@@ -120,62 +123,12 @@ import {
 } from "lucide-react";
 
 /**
- * Email alıntılarını (quoted replies) kaldır
- */
-const removeEmailQuotes = (text) => {
-  if (!text) return '';
-  
-  const quotePatterns = [
-    /^.*<[^>]+@[^>]+>[^:]*tarihinde şunu yazd[ıi]:\s*$/im,
-    /^On .+wrote:\s*$/im,
-    /^From:\s*.+\nSent:\s*.+\nTo:\s*.+/im,
-    /^Kimden:\s*.+\nGönderildi:\s*.+\nKime:\s*.+/im,
-    /^-{3,}\s*(Alıntı|Original Message|Orijinal Mesaj|Forwarded message|İletilmiş mesaj)\s*-{3,}/im,
-    /^(>.*\n){2,}/m,
-    /^-{4,}\s*(Original|Orijinal).*-{4,}/im,
-    /^_{5,}/m,
-  ];
-  
-  let cleanText = text;
-  
-  for (const pattern of quotePatterns) {
-    const match = cleanText.match(pattern);
-    if (match) {
-      const index = cleanText.indexOf(match[0]);
-      if (index > 0) {
-        cleanText = cleanText.substring(0, index).trim();
-      }
-    }
-  }
-  
-  return cleanText.trim();
-};
-
-/**
  * HTML içeriğinden düz metin çıkar (preview için)
+ * html-to-text utility'sini kullanır
  */
 const stripHtmlToText = (html) => {
-  if (!html) return '';
-  if (!html.includes('<') && !html.includes('&')) return removeEmailQuotes(html);
-  
-  let text = html
-    .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
-    .replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<div[^>]*id="divRplyFwdMsg"[^>]*>[\s\S]*$/gi, '')
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/p>/gi, ' ')
-    .replace(/<\/div>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-  
-  return removeEmailQuotes(text);
+  if (!html) return "";
+  return htmlToText(html, { removeQuotes: true, removeSignature: true });
 };
 
 // Kanal ikonları için mapping
@@ -189,14 +142,14 @@ const channelIcons = {
 };
 
 // Session storage key
-const STORAGE_KEY_SELECTED_CONVERSATION = 'inbox_selected_conversation';
+const STORAGE_KEY_SELECTED_CONVERSATION = "inbox_selected_conversation";
 
 export default function InboxPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAdminAuth();
   const { toast } = useToast();
-  
+
   // Refs
   const listContainerRef = useRef(null);
   const isRestoringRef = useRef(false);
@@ -212,7 +165,7 @@ export default function InboxPage() {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") || "open"
+    searchParams.get("status") || "open",
   );
   const [channelFilter, setChannelFilter] = useState("all");
 
@@ -220,6 +173,7 @@ export default function InboxPage() {
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
   const [convertingConversation, setConvertingConversation] = useState(null);
+  const [creatingCase, setCreatingCase] = useState(false);
   const [snoozeUntil, setSnoozeUntil] = useState("");
 
   // Convert to Case form
@@ -237,8 +191,8 @@ export default function InboxPage() {
         statusFilter === "all"
           ? null
           : statusFilter === "active"
-          ? [CONVERSATION_STATUS.OPEN, CONVERSATION_STATUS.PENDING]
-          : statusFilter;
+            ? [CONVERSATION_STATUS.OPEN, CONVERSATION_STATUS.PENDING]
+            : statusFilter;
 
       const [conversationsData, countsData] = await Promise.all([
         getUnifiedInbox({
@@ -254,21 +208,30 @@ export default function InboxPage() {
       // Artık tüm veriler CRM v2'de, linkedCaseId conversation'da mevcut
       setConversations(conversationsData);
       setCounts(countsData);
-      
+
       // Restore selected conversation from session storage
       if (!isRestoringRef.current) {
         isRestoringRef.current = true;
-        const savedConversationId = sessionStorage.getItem(STORAGE_KEY_SELECTED_CONVERSATION);
+        const savedConversationId = sessionStorage.getItem(
+          STORAGE_KEY_SELECTED_CONVERSATION,
+        );
         if (savedConversationId && conversationsData.length > 0) {
-          const savedConversation = conversationsData.find(c => c.id === savedConversationId);
+          const savedConversation = conversationsData.find(
+            (c) => c.id === savedConversationId,
+          );
           if (savedConversation) {
             setSelectedConversation(savedConversation);
-            
+
             // Scroll to selected item after DOM is ready
             setTimeout(() => {
-              const selectedElement = document.getElementById(`conversation-${savedConversationId}`);
+              const selectedElement = document.getElementById(
+                `conversation-${savedConversationId}`,
+              );
               if (selectedElement) {
-                selectedElement.scrollIntoView({ block: 'center', behavior: 'instant' });
+                selectedElement.scrollIntoView({
+                  block: "center",
+                  behavior: "instant",
+                });
               }
             }, 150);
           }
@@ -294,7 +257,10 @@ export default function InboxPage() {
   // Save selected conversation to session storage
   useEffect(() => {
     if (selectedConversation) {
-      sessionStorage.setItem(STORAGE_KEY_SELECTED_CONVERSATION, selectedConversation.id);
+      sessionStorage.setItem(
+        STORAGE_KEY_SELECTED_CONVERSATION,
+        selectedConversation.id,
+      );
     }
   }, [selectedConversation]);
 
@@ -305,18 +271,20 @@ export default function InboxPage() {
         setSelectedLinkedCase(null);
         return;
       }
-      
+
       // If already has linkedCaseId, use that
       if (selectedConversation.linkedCaseId) {
         setSelectedLinkedCase({ id: selectedConversation.linkedCaseId });
         return;
       }
-      
+
       // Otherwise search for case by conversation ID
-      const existingCase = await getCaseByConversationId(selectedConversation.id);
+      const existingCase = await getCaseByConversationId(
+        selectedConversation.id,
+      );
       setSelectedLinkedCase(existingCase);
     };
-    
+
     checkLinkedCase();
   }, [selectedConversation]);
 
@@ -361,7 +329,7 @@ export default function InboxPage() {
       await snoozeConversation(
         convertingConversation.id,
         snoozeUntil,
-        user?.uid
+        user?.uid,
       );
       toast({ title: "Başarılı", description: "Konuşma ertelendi." });
       setShowSnoozeModal(false);
@@ -391,6 +359,7 @@ export default function InboxPage() {
   const handleConvertToCase = async () => {
     if (!convertingConversation) return;
 
+    setCreatingCase(true);
     try {
       const newCase = await createCaseFromConversation(
         convertingConversation.id,
@@ -398,7 +367,7 @@ export default function InboxPage() {
           ...caseForm,
           createdBy: user?.uid,
         },
-        user?.uid
+        user?.uid,
       );
 
       toast({
@@ -424,6 +393,8 @@ export default function InboxPage() {
         description: "Talep oluşturulamadı.",
         variant: "destructive",
       });
+    } finally {
+      setCreatingCase(false);
     }
   };
 
@@ -450,7 +421,7 @@ export default function InboxPage() {
         className={cn(
           "p-4 cursor-pointer transition-all hover:bg-slate-50 border-l-4",
           isSelected ? "bg-blue-50 border-l-blue-600" : "border-l-transparent",
-          isUnread && !isSelected && "bg-blue-50/30"
+          isUnread && !isSelected && "bg-blue-50/30",
         )}
         onClick={() => setSelectedConversation(conversation)}
       >
@@ -459,7 +430,7 @@ export default function InboxPage() {
           <div
             className={cn(
               "p-2 rounded-lg flex-shrink-0",
-              getChannelColor(conversation.channel)
+              getChannelColor(conversation.channel),
             )}
           >
             <ChannelIcon className="h-4 w-4" />
@@ -473,7 +444,7 @@ export default function InboxPage() {
                 <span
                   className={cn(
                     "font-medium truncate text-slate-900",
-                    isUnread && "font-semibold"
+                    isUnread && "font-semibold",
                   )}
                 >
                   {conversation.sender?.name || "İsimsiz"}
@@ -492,17 +463,30 @@ export default function InboxPage() {
               </div>
               <span className="text-xs text-slate-500 flex-shrink-0">
                 {(() => {
-                  // Öncelikle originalCreatedAt kullan, yoksa createdAt veya lastMessageAt
-                  const originalDate =
-                    conversation.channelMetadata?.originalCreatedAt;
-                  const displayDate =
-                    originalDate ||
-                    conversation.createdAt ||
-                    conversation.lastMessageAt;
+                  // Akıllı tarih görüntüleme:
+                  // - Birden fazla mesaj varsa (yanıtlanmış) = lastMessageAt göster
+                  // - Sadece tek mesaj varsa = originalCreatedAt göster
+                  const hasMultipleMessages =
+                    (conversation.messageCount || 0) > 1;
+
+                  let displayDate;
+                  if (hasMultipleMessages && conversation.lastMessageAt) {
+                    // Aktif konuşma - son mesaj tarihini göster
+                    displayDate = conversation.lastMessageAt;
+                  } else {
+                    // Tek mesajlı - orijinal oluşturma tarihini göster
+                    const originalDate =
+                      conversation.channelMetadata?.originalCreatedAt;
+                    displayDate =
+                      originalDate ||
+                      conversation.createdAt ||
+                      conversation.lastMessageAt;
+                  }
+
                   if (!displayDate) return "";
                   return formatDistanceToNow(
                     displayDate?.toDate?.() || new Date(displayDate),
-                    { addSuffix: true, locale: tr }
+                    { addSuffix: true, locale: tr },
                   );
                 })()}
               </span>
@@ -520,7 +504,7 @@ export default function InboxPage() {
             <p
               className={cn(
                 "text-sm mt-1.5 truncate",
-                isUnread ? "text-slate-900 font-medium" : "text-slate-600"
+                isUnread ? "text-slate-900 font-medium" : "text-slate-600",
               )}
             >
               {conversation.subject}
@@ -535,14 +519,19 @@ export default function InboxPage() {
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {/* Reply Status Badge - Minimalist */}
               {conversation.replyStatus && (
-                <span 
+                <span
                   className={cn(
                     "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium",
-                    getReplyStatusColor(conversation.replyStatus)
+                    getReplyStatusColor(conversation.replyStatus),
                   )}
                   title={getReplyStatusLabel(conversation.replyStatus)}
                 >
-                  <span className={cn("w-1.5 h-1.5 rounded-full", getReplyStatusDot(conversation.replyStatus))} />
+                  <span
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      getReplyStatusDot(conversation.replyStatus),
+                    )}
+                  />
                   {getReplyStatusLabel(conversation.replyStatus)}
                 </span>
               )}
@@ -550,7 +539,7 @@ export default function InboxPage() {
                 variant="outline"
                 className={cn(
                   "text-xs",
-                  getConversationStatusColor(conversation.status)
+                  getConversationStatusColor(conversation.status),
                 )}
               >
                 {getConversationStatusLabel(conversation.status)}
@@ -615,7 +604,10 @@ export default function InboxPage() {
                   e.stopPropagation();
                   openConvertModal(conversation);
                 }}
-                disabled={conversation.linkedCaseId || conversation.status === CONVERSATION_STATUS.CLOSED}
+                disabled={
+                  conversation.linkedCaseId ||
+                  conversation.status === CONVERSATION_STATUS.CLOSED
+                }
               >
                 <Briefcase className="h-4 w-4 mr-2" />
                 Talebe Dönüştür
@@ -677,7 +669,7 @@ export default function InboxPage() {
               <div
                 className={cn(
                   "p-2.5 rounded-lg",
-                  getChannelColor(conversation.channel)
+                  getChannelColor(conversation.channel),
                 )}
               >
                 <ChannelIcon className="h-5 w-5" />
@@ -712,7 +704,9 @@ export default function InboxPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push(`/admin/crm-v2/inbox/${conversation.id}`)}
+                onClick={() =>
+                  router.push(`/admin/crm-v2/inbox/${conversation.id}`)
+                }
               >
                 Tam Görünüm
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -740,11 +734,22 @@ export default function InboxPage() {
                 value={conversation.status}
                 onValueChange={async (newStatus) => {
                   try {
-                    await updateConversation(conversation.id, { status: newStatus }, user?.uid);
-                    toast({ title: "Başarılı", description: "Durum güncellendi." });
+                    await updateConversation(
+                      conversation.id,
+                      { status: newStatus },
+                      user?.uid,
+                    );
+                    toast({
+                      title: "Başarılı",
+                      description: "Durum güncellendi.",
+                    });
                     loadData();
                   } catch (error) {
-                    toast({ title: "Hata", description: "Durum güncellenemedi.", variant: "destructive" });
+                    toast({
+                      title: "Hata",
+                      description: "Durum güncellenemedi.",
+                      variant: "destructive",
+                    });
                   }
                 }}
               >
@@ -753,8 +758,12 @@ export default function InboxPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={CONVERSATION_STATUS.OPEN}>Açık</SelectItem>
-                  <SelectItem value={CONVERSATION_STATUS.PENDING}>Beklemede</SelectItem>
-                  <SelectItem value={CONVERSATION_STATUS.CLOSED}>Kapalı</SelectItem>
+                  <SelectItem value={CONVERSATION_STATUS.PENDING}>
+                    Beklemede
+                  </SelectItem>
+                  <SelectItem value={CONVERSATION_STATUS.CLOSED}>
+                    Kapalı
+                  </SelectItem>
                 </SelectContent>
               </Select>
             ) : (
@@ -788,16 +797,90 @@ export default function InboxPage() {
                     Ek Bilgiler
                   </h5>
                   <dl className="text-sm space-y-2 bg-slate-50 rounded-lg p-4">
-                    {Object.entries(conversation.channelMetadata).map(
-                      ([key, value]) => (
-                        <div key={key} className="flex">
-                          <dt className="text-slate-600 font-medium w-32 flex-shrink-0">
-                            {key}:
-                          </dt>
-                          <dd className="text-slate-900">{String(value)}</dd>
-                        </div>
-                      )
-                    )}
+                    {(() => {
+                      // Alan adı çevirileri
+                      const fieldTranslations = {
+                        isRead: "Okundu",
+                        ccRecipients: "CC Alıcıları",
+                        importance: "Önem Derecesi",
+                        syncedAt: "Senkronize Edilme",
+                        receivedDateTime: "Alınma Tarihi",
+                        originalCreatedAt: "Orijinal Oluşturma",
+                        toRecipients: "Alıcılar",
+                        hasAttachments: "Ek Dosya Var",
+                        fromAddress: "Gönderen Adres",
+                        replyTo: "Yanıt Adresi",
+                        messageId: "Mesaj ID",
+                      };
+
+                      // Gizlenecek karmaşık/gereksiz alanlar
+                      const hiddenFields = [
+                        "internetMessageId",
+                        "outlookMessageId",
+                        "outlookConversationId",
+                        "conversationId",
+                        "threadId",
+                        "rawHeaders",
+                        "bodyPreview",
+                      ];
+
+                      // Değer formatlama
+                      const formatValue = (key, value) => {
+                        if (value === null || value === undefined) return "-";
+                        
+                        // Boolean değerler
+                        if (typeof value === "boolean") {
+                          return value ? "Evet" : "Hayır";
+                        }
+                        
+                        // Timestamp objesi kontrolü
+                        if (value?.seconds || value?.toDate) {
+                          try {
+                            const date = value?.toDate?.() || new Date(value.seconds * 1000);
+                            return format(date, "d MMMM yyyy HH:mm", { locale: tr });
+                          } catch {
+                            return "-";
+                          }
+                        }
+                        
+                        // Tarih string'i kontrolü (ISO format)
+                        if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                          try {
+                            return format(new Date(value), "d MMMM yyyy HH:mm", { locale: tr });
+                          } catch {
+                            return value;
+                          }
+                        }
+                        
+                        // Importance/Önem değeri
+                        if (key === "importance") {
+                          const importanceMap = { low: "Düşük", normal: "Normal", high: "Yüksek" };
+                          return importanceMap[value?.toLowerCase()] || value;
+                        }
+                        
+                        // Uzun string'leri kısalt
+                        const strValue = String(value);
+                        if (strValue.length > 50) {
+                          return strValue.substring(0, 47) + "...";
+                        }
+                        
+                        return strValue;
+                      };
+
+                      return Object.entries(conversation.channelMetadata)
+                        .filter(([key]) => !hiddenFields.includes(key))
+                        .filter(([, value]) => value !== null && value !== undefined && value !== "")
+                        .map(([key, value]) => (
+                          <div key={key} className="flex">
+                            <dt className="text-slate-600 font-medium w-36 flex-shrink-0">
+                              {fieldTranslations[key] || key}:
+                            </dt>
+                            <dd className="text-slate-900 break-all">
+                              {formatValue(key, value)}
+                            </dd>
+                          </div>
+                        ));
+                    })()}
                   </dl>
                 </div>
               )}
@@ -808,26 +891,37 @@ export default function InboxPage() {
                 <Clock className="h-4 w-4" />
                 <span className="font-medium">Oluşturulma:</span>
                 {(() => {
-                  const originalDate = conversation.channelMetadata?.originalCreatedAt;
+                  const originalDate =
+                    conversation.channelMetadata?.originalCreatedAt;
                   const displayDate = originalDate || conversation.createdAt;
-                  if (!displayDate) return '';
+                  if (!displayDate) return "";
                   return format(
                     displayDate?.toDate?.() || new Date(displayDate),
                     "d MMMM yyyy HH:mm",
-                    { locale: tr }
+                    { locale: tr },
                   );
                 })()}
               </p>
-              {conversation.lastMessageAt && (
+              {/* Son mesaj tarihi - sadece birden fazla mesaj varsa göster (yanıtlanmış conversation) */}
+              {conversation.lastMessageAt &&
+                (conversation.messageCount || 0) > 1 && (
+                  <p className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="font-medium">Son mesaj:</span>
+                    {format(
+                      conversation.lastMessageAt?.toDate?.() ||
+                        new Date(conversation.lastMessageAt),
+                      "d MMMM yyyy HH:mm",
+                      { locale: tr },
+                    )}
+                  </p>
+                )}
+              {/* Mesaj sayısı bilgisi */}
+              {(conversation.messageCount || 0) > 0 && (
                 <p className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="font-medium">Son mesaj:</span>
-                  {format(
-                    conversation.lastMessageAt?.toDate?.() ||
-                      new Date(conversation.lastMessageAt),
-                    "d MMMM yyyy HH:mm",
-                    { locale: tr }
-                  )}
+                  <Mail className="h-4 w-4" />
+                  <span className="font-medium">Toplam mesaj:</span>
+                  {conversation.messageCount} adet
                 </p>
               )}
             </div>
@@ -838,10 +932,11 @@ export default function InboxPage() {
         <div className="p-6 border-t border-slate-200 bg-slate-50 flex-shrink-0">
           <div className="flex items-center gap-3">
             {/* Talebe Dönüştür - sadece açık veya beklemede ise ve talep yoksa */}
-            {(conversation.status === CONVERSATION_STATUS.OPEN || 
+            {(conversation.status === CONVERSATION_STATUS.OPEN ||
               conversation.status === CONVERSATION_STATUS.PENDING ||
-              conversation.status === CONVERSATION_STATUS.UNREAD) && 
-              !conversation.linkedCaseId && !selectedLinkedCase ? (
+              conversation.status === CONVERSATION_STATUS.UNREAD) &&
+            !conversation.linkedCaseId &&
+            !selectedLinkedCase ? (
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 onClick={() => openConvertModal(conversation)}
@@ -849,23 +944,17 @@ export default function InboxPage() {
                 <Briefcase className="h-4 w-4 mr-2" />
                 Talebe Dönüştür
               </Button>
-            ) : (conversation.linkedCaseId || selectedLinkedCase) ? (
-              <Button
-                className="flex-1"
-                variant="outline"
-                asChild
-              >
-                <Link href={`/admin/crm-v2/cases/${conversation.linkedCaseId || selectedLinkedCase?.id}`}>
+            ) : conversation.linkedCaseId || selectedLinkedCase ? (
+              <Button className="flex-1" variant="outline" asChild>
+                <Link
+                  href={`/admin/crm-v2/cases/${conversation.linkedCaseId || selectedLinkedCase?.id}`}
+                >
                   <Briefcase className="h-4 w-4 mr-2" />
                   Talebi Görüntüle
                 </Link>
               </Button>
             ) : (
-              <Button
-                className="flex-1"
-                variant="outline"
-                disabled
-              >
+              <Button className="flex-1" variant="outline" disabled>
                 <Briefcase className="h-4 w-4 mr-2" />
                 Talebe Dönüştür
               </Button>
@@ -1004,7 +1093,7 @@ export default function InboxPage() {
       {/* Main Content */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Conversation List */}
-        <div 
+        <div
           ref={listContainerRef}
           className="w-96 bg-white border-r border-slate-200 flex-shrink-0 overflow-y-auto"
         >
@@ -1136,11 +1225,15 @@ export default function InboxPage() {
             </Button>
             <Button
               onClick={handleConvertToCase}
-              disabled={!caseForm.title}
+              disabled={!caseForm.title || creatingCase}
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
-              <Briefcase className="h-4 w-4 mr-2" />
-              Talep Oluştur
+              {creatingCase ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Briefcase className="h-4 w-4 mr-2" />
+              )}
+              {creatingCase ? "Oluşturuluyor..." : "Talep Oluştur"}
             </Button>
           </DialogFooter>
         </DialogContent>

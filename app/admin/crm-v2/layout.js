@@ -4,6 +4,21 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PermissionGuard } from "../../../components/admin-route-guard";
+import { useAdminAuth } from "../../../hooks/use-admin-auth";
+import { useToast } from "../../../hooks/use-toast";
+import { 
+  getReminderStats,
+  autoSyncIfNeeded,
+  getLastSyncTime,
+} from "../../../lib/services/crm-v2";
+import {
+  manualSync,
+  formatSyncStatus,
+  getSyncLockStatus,
+} from "../../../lib/services/crm-v2/sync-service";
+import { getCrmSettings } from "../../../lib/services/crm-v2/settings-service";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
 import {
   Inbox,
   Briefcase,
@@ -16,6 +31,10 @@ import {
   Tags,
   Bell,
   ShoppingCart,
+  RefreshCw,
+  Clock,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../components/ui/button";
@@ -51,6 +70,12 @@ const navigation = [
     icon: Users,
   },
   {
+    name: "Hatırlatmalar",
+    href: "/admin/crm-v2/reminders",
+    icon: Bell,
+    badge: "reminders", // Dinamik badge gösterimi için
+  },
+  {
     name: "Raporlar",
     href: "/admin/crm-v2/reports",
     icon: BarChart3,
@@ -64,10 +89,15 @@ const navigation = [
 
 export default function CrmV2Layout({ children }) {
   const pathname = usePathname();
+  const { user } = useAdminAuth();
+  const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
   const [counts, setCounts] = useState({
     unread: 0,
     openCases: 0,
+    reminders: 0,
   });
 
   // Sidebar durum için local storage
@@ -77,6 +107,155 @@ export default function CrmV2Layout({ children }) {
       setCollapsed(JSON.parse(saved));
     }
   }, []);
+
+  // Reminder sayılarını yükle
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const stats = await getReminderStats();
+        setCounts(prev => ({
+          ...prev,
+          reminders: (stats?.overdue || 0) + (stats?.today || 0),
+        }));
+      } catch (error) {
+        console.error("Error loading reminder counts:", error);
+      }
+    };
+    
+    loadCounts();
+    
+    // Her 60 saniyede bir güncelle
+    const interval = setInterval(loadCounts, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync status yükle
+  const loadSyncStatus = async () => {
+    try {
+      const syncData = await getLastSyncTime();
+      const lockStatus = await getSyncLockStatus();
+      setSyncStatus({
+        lastSyncAt: syncData?.lastSyncAt || null,
+        lastSyncBy: syncData?.lastSyncBy || null,
+        syncCount: syncData?.syncCount || 0,
+        isLocked: lockStatus.isLocked,
+        lockedBy: lockStatus.lockedBy,
+      });
+    } catch (error) {
+      console.error("Error loading sync status:", error);
+    }
+  };
+
+  // Manuel sync
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      const result = await manualSync(user?.uid);
+      
+      // result.skipped = false ise başarılı, skipped = true ise atlandı
+      if (!result.skipped) {
+        const { summary } = result;
+        const description = summary 
+          ? `${summary.forms || 0} form, ${summary.emails || 0} email senkronize edildi`
+          : "Veriler senkronize edildi";
+        toast({
+          title: "Senkronizasyon Tamamlandı",
+          description,
+        });
+      } else if (result.skipReason === 'sync_locked') {
+        toast({
+          title: "Senkronizasyon Bekliyor",
+          description: result.message || "Başka bir işlem devam ediyor",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Senkronizasyon Atlandı",
+          description: result.message || "Henüz gerekli değil",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+      loadSyncStatus();
+    }
+  };
+
+  // CRM Otomatik Senkronizasyon (formlar + emailler)
+  useEffect(() => {
+    let syncIntervalId = null;
+    let statusIntervalId = null;
+    
+    const performAutoSync = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        console.log("[CRM Layout] Checking auto-sync (forms + emails)...");
+        const result = await autoSyncIfNeeded(user.uid);
+        
+        if (result && !result.skipped && result.summary) {
+          const { imported, threadUpdates, forms, emails } = result.summary;
+          
+          if (imported > 0 || threadUpdates > 0) {
+            let description = '';
+            if (forms > 0) description += `${forms} form`;
+            if (emails > 0) description += `${description ? ', ' : ''}${emails} email`;
+            
+            toast({
+              title: "Otomatik Senkronizasyon",
+              description: `${description} senkronize edildi.`,
+            });
+          }
+        }
+        
+        // Sync sonrası status'u güncelle
+        loadSyncStatus();
+      } catch (error) {
+        console.error("[CRM Layout] Auto-sync error:", error);
+      }
+    };
+    
+    const initSync = async () => {
+      if (!user?.uid) return;
+      
+      // Önce sync status'u yükle
+      loadSyncStatus();
+      
+      // İlk sync kontrolü
+      await performAutoSync();
+      
+      // Ayarlardan sync interval'i al
+      try {
+        const settings = await getCrmSettings();
+        const syncIntervalMinutes = settings?.sync?.syncInterval || 15;
+        const intervalMs = syncIntervalMinutes * 60 * 1000; // dakikayı ms'ye çevir
+        
+        console.log(`[CRM Layout] Setting up auto-sync interval: ${syncIntervalMinutes} minutes`);
+        
+        // Periyodik senkronizasyon kontrolü (ayarlardaki interval'e göre)
+        syncIntervalId = setInterval(performAutoSync, intervalMs);
+      } catch (error) {
+        console.error("[CRM Layout] Error setting up sync interval:", error);
+        // Hata durumunda varsayılan 15 dakika
+        syncIntervalId = setInterval(performAutoSync, 15 * 60 * 1000);
+      }
+      
+      // UI status güncellemesi için ayrı interval (her 30 saniye)
+      statusIntervalId = setInterval(loadSyncStatus, 30000);
+    };
+    
+    initSync();
+    
+    return () => {
+      if (syncIntervalId) clearInterval(syncIntervalId);
+      if (statusIntervalId) clearInterval(statusIntervalId);
+    };
+  }, [user?.uid, toast]);
 
   const toggleSidebar = () => {
     const newState = !collapsed;
@@ -91,13 +270,23 @@ export default function CrmV2Layout({ children }) {
     return pathname.startsWith(item.href);
   };
 
+  // lastSyncAt'i Date'e çevir (Timestamp, Date veya string olabilir)
+  const getLastSyncDate = () => {
+    if (!syncStatus?.lastSyncAt) return null;
+    const ls = syncStatus.lastSyncAt;
+    if (ls.toDate) return ls.toDate(); // Firestore Timestamp
+    if (ls instanceof Date) return ls; // Already Date
+    if (typeof ls === 'string' || typeof ls === 'number') return new Date(ls);
+    return null;
+  };
+
   return (
     <PermissionGuard requiredPermission="crm.view">
       <div className="flex h-[calc(100vh-64px)] bg-slate-50">
         {/* Sidebar */}
         <aside
           className={cn(
-            "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col shadow-sm",
+            "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col shadow-sm relative",
             collapsed ? "w-16" : "w-64"
           )}
         >
@@ -164,7 +353,7 @@ export default function CrmV2Layout({ children }) {
                     </span>
                   )}
                   {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    <div className="fixed left-16 ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[9999]">
                       {item.name}
                     </div>
                   )}
@@ -173,19 +362,72 @@ export default function CrmV2Layout({ children }) {
             })}
           </nav>
 
-          {/* Footer - Quick Actions */}
+          {/* Sync Status Footer */}
           <div className="p-3 border-t border-slate-200">
-            <Button
-              variant="ghost"
-              size={collapsed ? "icon" : "default"}
-              className={cn("w-full justify-start gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50", collapsed && "px-0")}
-              asChild
-            >
-              <Link href="/admin/crm-v2/reminders">
-                <Bell className="h-4 w-4" />
-                {!collapsed && <span className="text-sm">Hatırlatmalar</span>}
-              </Link>
-            </Button>
+            {collapsed ? (
+              /* Collapsed: Sadece ikon butonu */
+              <button
+                onClick={handleManualSync}
+                disabled={syncing || syncStatus?.isLocked}
+                className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 group relative"
+                title="Senkronize Et"
+              >
+                {syncing || syncStatus?.isLocked ? (
+                  <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                ) : syncStatus?.lastSyncAt ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <RefreshCw className="h-5 w-5 text-slate-400" />
+                )}
+                {/* Tooltip */}
+                <div className="fixed left-16 ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[9999]">
+                  {syncing ? "Senkronize ediliyor..." : "Son sync: "}
+                  {!syncing && getLastSyncDate() ? (
+                    formatDistanceToNow(getLastSyncDate(), { addSuffix: true, locale: tr })
+                  ) : !syncing ? "Henüz yok" : ""}
+                </div>
+              </button>
+            ) : (
+              /* Expanded: Full widget */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {syncStatus?.lastSyncAt ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-slate-400" />
+                    )}
+                    <div>
+                      <p className="text-xs font-medium text-slate-600">Son Sync</p>
+                      <p className="text-xs text-slate-400">
+                        {getLastSyncDate() ? (
+                          formatDistanceToNow(getLastSyncDate(), { addSuffix: true, locale: tr })
+                        ) : (
+                          "Henüz yok"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncing || syncStatus?.isLocked}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {syncing || syncStatus?.isLocked ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Senkronize ediliyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      <span>Senkronize Et</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </aside>
 

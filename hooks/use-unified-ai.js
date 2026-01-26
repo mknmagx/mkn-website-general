@@ -33,7 +33,8 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 // Merkezi AI sabitleri import et
 import { 
@@ -45,6 +46,61 @@ import {
   getProviderIcon,
   getDefaultFallbackModel,
 } from "@/lib/ai-constants";
+
+// =============================================================================
+// AI ERROR HELPERS - Merkezi hata mesajları
+// =============================================================================
+
+/**
+ * AI hata koduna göre kullanıcı dostu başlık döndürür
+ */
+const getAIErrorTitle = (errorCode) => {
+  switch (errorCode) {
+    case "MODEL_OVERLOADED":
+      return "AI Modeli Meşgul";
+    case "RATE_LIMITED":
+      return "Çok Fazla İstek";
+    case "TIMEOUT":
+      return "Zaman Aşımı";
+    case "NETWORK_ERROR":
+      return "Bağlantı Hatası";
+    case "CONTENT_BLOCKED":
+      return "İçerik Engellendi";
+    case "AUTH_ERROR":
+      return "Yapılandırma Hatası";
+    case "INVALID_INPUT":
+      return "Geçersiz İstek";
+    default:
+      return "AI Hatası";
+  }
+};
+
+/**
+ * AI hata koduna göre kullanıcı dostu mesaj döndürür
+ */
+const getAIErrorMessage = (errorCode, fallbackMessage) => {
+  switch (errorCode) {
+    case "MODEL_OVERLOADED":
+      return "AI modeli şu anda yoğun. Birkaç saniye sonra tekrar deneyin.";
+    case "RATE_LIMITED":
+      return "Çok fazla istek gönderildi. Bir dakika bekleyip tekrar deneyin.";
+    case "TIMEOUT":
+      return "İstek zaman aşımına uğradı. Tekrar deneyin.";
+    case "NETWORK_ERROR":
+      return "AI servisine bağlanılamadı. İnternet bağlantınızı kontrol edin.";
+    case "CONTENT_BLOCKED":
+      return "İçerik güvenlik filtresine takıldı. Farklı bir şekilde ifade etmeyi deneyin.";
+    case "AUTH_ERROR":
+      return "AI servisi yapılandırma hatası. Lütfen yöneticiyle iletişime geçin.";
+    case "INVALID_INPUT":
+      return "Geçersiz istek. Lütfen girdiğiniz verileri kontrol edin.";
+    default:
+      return fallbackMessage || "Bir hata oluştu. Lütfen tekrar deneyin.";
+  }
+};
+
+// Export error helpers for external use if needed
+export { getAIErrorTitle, getAIErrorMessage };
 
 // Re-export for backward compatibility
 export { AI_CONTEXTS, AI_PROVIDERS, AI_PROVIDER_TYPES, PROVIDER_INFO };
@@ -58,7 +114,17 @@ export { AI_CONTEXTS, AI_PROVIDERS, AI_PROVIDER_TYPES, PROVIDER_INFO };
 export function useUnifiedAI(context, options = {}) {
   const { 
     autoLoad = true,        // Otomatik config yükleme
+    showErrorToast = true,  // Hata durumunda otomatik toast göster
   } = options;
+
+  // Toast hook
+  const { toast } = useToast();
+  
+  // Ref to track if toast should be shown (can be overridden per-call)
+  const showErrorToastRef = useRef(showErrorToast);
+  useEffect(() => {
+    showErrorToastRef.current = showErrorToast;
+  }, [showErrorToast]);
 
   // States
   const [config, setConfig] = useState(null);
@@ -213,8 +279,17 @@ export function useUnifiedAI(context, options = {}) {
 
   /**
    * Generate content using API
+   * @param {string|null} promptText - Direct prompt text (optional if using promptVariables)
+   * @param {Object} generateOptions - Generation options
+   * @param {Object} generateOptions.promptVariables - Variables to fill Firestore prompt template
+   * @param {string} generateOptions.promptKey - Specific prompt key to use (optional)
+   * @param {string} generateOptions.modelId - Specific model ID to use
+   * @param {number} generateOptions.temperature - Temperature setting
+   * @param {number} generateOptions.maxTokens - Max tokens setting
    */
   const generateContent = useCallback(async (promptText, generateOptions = {}) => {
+    const { showErrorToast: showToastOverride = true } = generateOptions;
+    
     setLoading(true);
     setError(null);
 
@@ -226,6 +301,8 @@ export function useUnifiedAI(context, options = {}) {
           action: "generate",
           contextKey: context,
           prompt: promptText,
+          promptVariables: generateOptions.promptVariables, // Firestore prompt template variables
+          promptKey: generateOptions.promptKey, // Specific prompt key (optional)
           modelId: generateOptions.modelId || selectedModel?.modelId || selectedModel?.id,
           options: {
             systemPrompt: generateOptions.systemPrompt,
@@ -250,20 +327,61 @@ export function useUnifiedAI(context, options = {}) {
         setLastResult(result);
         return result;
       } else {
-        throw new Error(data.error || "Generation failed");
+        // Enhanced error handling with API error info
+        const errorResult = {
+          success: false,
+          error: data.error || "Generation failed",
+          errorCode: data.errorCode,
+          errorType: data.errorType,
+          retryable: data.retryable ?? true,
+          retryAfter: data.retryAfter,
+        };
+        setError(errorResult.error);
+        
+        // Show toast if enabled
+        if (showErrorToastRef.current && showToastOverride) {
+          toast({
+            title: getAIErrorTitle(errorResult.errorCode),
+            description: getAIErrorMessage(errorResult.errorCode, errorResult.error),
+            variant: errorResult.retryable ? "default" : "destructive",
+          });
+        }
+        
+        return errorResult;
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      // Network or parsing error
+      const errorResult = {
+        success: false,
+        error: err.message || "Bağlantı hatası oluştu",
+        errorCode: "NETWORK_ERROR",
+        errorType: "temporary",
+        retryable: true,
+        retryAfter: 5,
+      };
+      setError(errorResult.error);
+      
+      // Show toast if enabled
+      if (showErrorToastRef.current && showToastOverride) {
+        toast({
+          title: getAIErrorTitle("NETWORK_ERROR"),
+          description: getAIErrorMessage("NETWORK_ERROR", err.message),
+          variant: "default",
+        });
+      }
+      
+      return errorResult;
     } finally {
       setLoading(false);
     }
-  }, [context, selectedModel]);
+  }, [context, selectedModel, toast]);
 
   /**
    * Generate with specific model
    */
   const generateWithModel = useCallback(async (modelId, promptText, generateOptions = {}) => {
+    const { showErrorToast: showToastOverride = true } = generateOptions;
+    
     setLoading(true);
     setError(null);
 
@@ -297,20 +415,54 @@ export function useUnifiedAI(context, options = {}) {
         setLastResult(result);
         return result;
       } else {
-        throw new Error(data.error || "Generation failed");
+        const errorResult = {
+          success: false,
+          error: data.error || "Generation failed",
+          errorCode: data.errorCode,
+          errorType: data.errorType,
+          retryable: data.retryable ?? true,
+        };
+        setError(errorResult.error);
+        
+        if (showErrorToastRef.current && showToastOverride) {
+          toast({
+            title: getAIErrorTitle(errorResult.errorCode),
+            description: getAIErrorMessage(errorResult.errorCode, errorResult.error),
+            variant: errorResult.retryable ? "default" : "destructive",
+          });
+        }
+        
+        return errorResult;
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorResult = {
+        success: false,
+        error: err.message || "Bağlantı hatası oluştu",
+        errorCode: "NETWORK_ERROR",
+        retryable: true,
+      };
+      setError(errorResult.error);
+      
+      if (showErrorToastRef.current && showToastOverride) {
+        toast({
+          title: getAIErrorTitle("NETWORK_ERROR"),
+          description: getAIErrorMessage("NETWORK_ERROR", err.message),
+          variant: "default",
+        });
+      }
+      
+      return errorResult;
     } finally {
       setLoading(false);
     }
-  }, [context]);
+  }, [context, toast]);
 
   /**
    * Chat method
    */
   const chat = useCallback(async (message, chatOptions = {}) => {
+    const { showErrorToast: showToastOverride = true } = chatOptions;
+    
     setLoading(true);
     setError(null);
 
@@ -335,20 +487,53 @@ export function useUnifiedAI(context, options = {}) {
       if (data.success) {
         return { success: true, content: data.content };
       } else {
-        throw new Error(data.error || "Chat failed");
+        const errorResult = {
+          success: false,
+          error: data.error || "Chat failed",
+          errorCode: data.errorCode,
+          retryable: data.retryable ?? true,
+        };
+        setError(errorResult.error);
+        
+        if (showErrorToastRef.current && showToastOverride) {
+          toast({
+            title: getAIErrorTitle(errorResult.errorCode),
+            description: getAIErrorMessage(errorResult.errorCode, errorResult.error),
+            variant: errorResult.retryable ? "default" : "destructive",
+          });
+        }
+        
+        return errorResult;
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorResult = {
+        success: false,
+        error: err.message || "Bağlantı hatası oluştu",
+        errorCode: "NETWORK_ERROR",
+        retryable: true,
+      };
+      setError(errorResult.error);
+      
+      if (showErrorToastRef.current && showToastOverride) {
+        toast({
+          title: getAIErrorTitle("NETWORK_ERROR"),
+          description: getAIErrorMessage("NETWORK_ERROR", err.message),
+          variant: "default",
+        });
+      }
+      
+      return errorResult;
     } finally {
       setLoading(false);
     }
-  }, [context, selectedModel]);
+  }, [context, selectedModel, toast]);
 
   /**
    * Improve content
    */
   const improveContent = useCallback(async (content, improveOptions = {}) => {
+    const { showErrorToast: showToastOverride = true } = improveOptions;
+    
     setLoading(true);
     setError(null);
 
@@ -381,15 +566,46 @@ export function useUnifiedAI(context, options = {}) {
         setLastResult(result);
         return result;
       } else {
-        throw new Error(data.error || "Improvement failed");
+        const errorResult = {
+          success: false,
+          error: data.error || "Improvement failed",
+          errorCode: data.errorCode,
+          retryable: data.retryable ?? true,
+        };
+        setError(errorResult.error);
+        
+        if (showErrorToastRef.current && showToastOverride) {
+          toast({
+            title: getAIErrorTitle(errorResult.errorCode),
+            description: getAIErrorMessage(errorResult.errorCode, errorResult.error),
+            variant: errorResult.retryable ? "default" : "destructive",
+          });
+        }
+        
+        return errorResult;
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorResult = {
+        success: false,
+        error: err.message || "Bağlantı hatası oluştu",
+        errorCode: "NETWORK_ERROR",
+        retryable: true,
+      };
+      setError(errorResult.error);
+      
+      if (showErrorToastRef.current && showToastOverride) {
+        toast({
+          title: getAIErrorTitle("NETWORK_ERROR"),
+          description: getAIErrorMessage("NETWORK_ERROR", err.message),
+          variant: "default",
+        });
+      }
+      
+      return errorResult;
     } finally {
       setLoading(false);
     }
-  }, [context, selectedModel]);
+  }, [context, selectedModel, toast]);
 
   /**
    * Change selected model

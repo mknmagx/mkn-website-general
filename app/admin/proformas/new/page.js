@@ -59,6 +59,8 @@ import {
   Package,
   DollarSign,
   ShoppingCart,
+  Globe,
+  Check,
 } from "lucide-react";
 
 export default function CreateProformaPage() {
@@ -90,6 +92,11 @@ export default function CreateProformaPage() {
   const [loadingCalculations, setLoadingCalculations] = useState(false);
   const [calculationsDialog, setCalculationsDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Currency selection modal state
+  const [currencySelectModal, setCurrencySelectModal] = useState(false);
+  const [selectedCalculation, setSelectedCalculation] = useState(null);
+  const [selectedPriceType, setSelectedPriceType] = useState("TRY"); // TRY veya currency
 
   // Terms configuration state
   const [termsConfig, setTermsConfig] = useState({
@@ -161,8 +168,33 @@ export default function CreateProformaPage() {
     }
   };
 
+  // Hesaplamadan ürün ekleme - döviz kontrolü
+  const handleCalculationSelect = (calc) => {
+    if (!calc || !calc.calculations) return;
+    
+    // Eğer hesaplamada döviz verisi varsa modal göster
+    if (calc.currencyData?.currency && calc.currencyData?.unitPriceConverted) {
+      setSelectedCalculation(calc);
+      setSelectedPriceType("TRY");
+      setCurrencySelectModal(true);
+    } else {
+      // Döviz verisi yoksa direkt ekle
+      addFromCalculation(calc, "TRY");
+    }
+  };
+
+  // Döviz seçimi ile ekleme
+  const handleCurrencyConfirm = () => {
+    if (selectedCalculation) {
+      addFromCalculation(selectedCalculation, selectedPriceType);
+      setCurrencySelectModal(false);
+      setSelectedCalculation(null);
+      setSelectedPriceType("TRY");
+    }
+  };
+
   // Hesaplamadan ürün ekleme
-  const addFromCalculation = (calc) => {
+  const addFromCalculation = (calc, priceType = "TRY") => {
     if (!calc || !calc.calculations) return;
 
     // Ürün açıklamasını oluştur
@@ -206,25 +238,37 @@ export default function CreateProformaPage() {
       descriptions.push(packagingDetails.join(", "));
     }
 
+    // Fiyat belirleme - döviz tipine göre
+    let unitPrice = parseFloat(calc.calculations.unitPrice) || 0;
+    let currency = CURRENCIES.TRY;
+    
+    if (priceType !== "TRY" && calc.currencyData?.unitPriceConverted) {
+      unitPrice = parseFloat(calc.currencyData.unitPriceConverted) || 0;
+      currency = calc.currencyData.currency;
+      descriptions.push(`Döviz Kuru: ${calc.currencyData.exchangeRate} (${calc.currencyData.currency}/TRY)`);
+    }
+
     const newService = {
       id: Date.now(),
       name: calc.productName || "Ürün",
       description: descriptions.join(" | "),
       quantity: calc.quantity || 1,
       unit: "Adet",
-      unitPrice: parseFloat(calc.calculations.unitPrice) || 0,
+      unitPrice: unitPrice,
       calculationId: calc.id, // Hesaplama referansı
     };
 
     setFormData((prev) => ({
       ...prev,
       services: [...prev.services, newService],
+      // Eğer döviz seçildiyse para birimini de güncelle
+      ...(priceType !== "TRY" && { currency: currency }),
     }));
 
     setCalculationsDialog(false);
     toast({
       title: "Ürün Eklendi",
-      description: `${calc.productName} proformaya eklendi`,
+      description: `${calc.productName} proformaya eklendi${priceType !== "TRY" ? ` (${currency})` : ""}`,
     });
   };
 
@@ -728,94 +772,204 @@ export default function CreateProformaPage() {
                             Hesaplamalardan Ekle
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle className="text-2xl">Maliyet Hesaplamaları</DialogTitle>
-                            <DialogDescription>
-                              Kayıtlı hesaplamalardan ürün seçip proformaya ekleyin
+                        <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden">
+                          {/* Minimal Header */}
+                          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Hesaplama Seç
+                            </DialogTitle>
+                            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Proformaya eklenecek hesaplamayı seçin
                             </DialogDescription>
-                          </DialogHeader>
+                          </div>
                           
-                          {/* Search */}
-                          <div className="relative mb-4">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                              placeholder="Ürün adı ile ara..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="pl-10 h-11 border-2"
-                            />
+                          {/* Search - Minimal */}
+                          <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Ara..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
                           </div>
 
-                          {/* Calculations List */}
-                          {loadingCalculations ? (
-                            <div className="flex items-center justify-center py-12">
-                              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                            </div>
-                          ) : calculations.filter(calc => 
-                              calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
-                            ).length === 0 ? (
-                            <div className="text-center py-12">
-                              <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                              <p className="text-gray-600 dark:text-gray-400">
-                                {searchTerm ? "Arama sonucu bulunamadı" : "Henüz hesaplama yok"}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {calculations
-                                .filter(calc => 
-                                  calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
-                                )
-                                .map((calc) => (
-                                  <Card 
-                                    key={calc.id}
-                                    className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-blue-300"
-                                    onClick={() => addFromCalculation(calc)}
-                                  >
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                          <h4 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+                          {/* Calculations List - Minimal */}
+                          <div className="overflow-y-auto max-h-[calc(85vh-140px)] p-4">
+                            {loadingCalculations ? (
+                              <div className="flex items-center justify-center py-16">
+                                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                              </div>
+                            ) : calculations.filter(calc => 
+                                calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+                              ).length === 0 ? (
+                              <div className="text-center py-16">
+                                <Package className="h-10 w-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {searchTerm ? "Sonuç bulunamadı" : "Hesaplama yok"}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {calculations
+                                  .filter(calc => 
+                                    calc.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+                                  )
+                                  .map((calc) => (
+                                    <div 
+                                      key={calc.id}
+                                      className="group flex items-center gap-4 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 cursor-pointer transition-all"
+                                      onClick={() => handleCalculationSelect(calc)}
+                                    >
+                                      {/* Product Info */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h4 className="font-medium text-gray-900 dark:text-white truncate">
                                             {calc.productName}
                                           </h4>
-                                          <div className="flex gap-2 flex-wrap mb-3">
-                                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                                              {calc.productType || "Genel"}
+                                          {calc.currencyData?.currency && (
+                                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 border-green-200 text-green-700 dark:border-green-800 dark:text-green-400 flex-shrink-0">
+                                              <Globe className="h-3 w-3 mr-1" />
+                                              {calc.currencyData.currency}
                                             </Badge>
-                                            {calc.quantity && (
-                                              <Badge variant="outline">
-                                                {calc.quantity} adet
-                                              </Badge>
-                                            )}
-                                            {calc.productVolume && (
-                                              <Badge variant="outline">
-                                                {calc.productVolume} ml
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {calc.description && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                              {calc.description}
-                                            </p>
                                           )}
                                         </div>
-                                        <div className="text-right ml-4">
-                                          <p className="text-sm text-gray-600 dark:text-gray-400">Birim Fiyat</p>
-                                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                            ₺{calc.calculations?.unitPrice?.toFixed(2) || "0.00"}
-                                          </p>
-                                          <Button size="sm" className="mt-2">
-                                            <Plus className="h-4 w-4 mr-1" />
-                                            Ekle
-                                          </Button>
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                          {calc.productType && (
+                                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                                              {calc.productType}
+                                            </span>
+                                          )}
+                                          {calc.quantity && (
+                                            <span>{calc.quantity} adet</span>
+                                          )}
+                                          {calc.productVolume && (
+                                            <span>{calc.productVolume} ml</span>
+                                          )}
                                         </div>
                                       </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
+                                      
+                                      {/* Price */}
+                                      <div className="text-right flex-shrink-0">
+                                        <p className="font-semibold text-gray-900 dark:text-white">
+                                          ₺{calc.calculations?.unitPrice?.toFixed(2) || "0.00"}
+                                        </p>
+                                        {calc.currencyData?.unitPriceConverted && (
+                                          <p className="text-xs text-green-600 dark:text-green-400">
+                                            {calc.currencyData.unitPriceConverted} {calc.currencyData.currency}
+                                          </p>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Add Icon */}
+                                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                        <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Döviz Seçim Modal */}
+                      <Dialog open={currencySelectModal} onOpenChange={setCurrencySelectModal}>
+                        <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
+                          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              <Globe className="h-5 w-5 text-green-600" />
+                              Fiyat Türü Seç
+                            </DialogTitle>
+                            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Bu hesaplamada döviz fiyatı mevcut
+                            </DialogDescription>
+                          </div>
+                          
+                          <div className="p-6 space-y-3">
+                            {/* TRY Option */}
+                            <div 
+                              className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                selectedPriceType === "TRY" 
+                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" 
+                                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                              }`}
+                              onClick={() => setSelectedPriceType("TRY")}
+                            >
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                selectedPriceType === "TRY" 
+                                  ? "bg-blue-500 text-white" 
+                                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                              }`}>
+                                <DollarSign className="h-5 w-5" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900 dark:text-white">Türk Lirası (TRY)</p>
+                                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                  ₺{selectedCalculation?.calculations?.unitPrice?.toFixed(2) || "0.00"}
+                                </p>
+                              </div>
+                              {selectedPriceType === "TRY" && (
+                                <Check className="h-5 w-5 text-blue-500" />
+                              )}
                             </div>
-                          )}
+                            
+                            {/* Currency Option */}
+                            {selectedCalculation?.currencyData && (
+                              <div 
+                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                  selectedPriceType === "CURRENCY" 
+                                    ? "border-green-500 bg-green-50 dark:bg-green-950/30" 
+                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                }`}
+                                onClick={() => setSelectedPriceType("CURRENCY")}
+                              >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  selectedPriceType === "CURRENCY" 
+                                    ? "bg-green-500 text-white" 
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                }`}>
+                                  <Globe className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {selectedCalculation.currencyData.currency}
+                                  </p>
+                                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                                    {selectedCalculation.currencyData.unitPriceConverted} {selectedCalculation.currencyData.currency}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Kur: {selectedCalculation.currencyData.exchangeRate}
+                                  </p>
+                                </div>
+                                {selectedPriceType === "CURRENCY" && (
+                                  <Check className="h-5 w-5 text-green-500" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex gap-3">
+                            <Button 
+                              variant="outline" 
+                              className="flex-1"
+                              onClick={() => {
+                                setCurrencySelectModal(false);
+                                setSelectedCalculation(null);
+                              }}
+                            >
+                              İptal
+                            </Button>
+                            <Button 
+                              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700"
+                              onClick={handleCurrencyConfirm}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Ekle
+                            </Button>
+                          </div>
                         </DialogContent>
                       </Dialog>
 

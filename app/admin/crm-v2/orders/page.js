@@ -22,6 +22,7 @@ import {
   getOrderPriorityLabel,
   getOrderPriorityColor,
   calculateStageProgress,
+  calculateProductionProgress,
 } from "../../../../lib/services/crm-v2";
 import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -363,7 +364,10 @@ export default function OrdersPage() {
             <div className="divide-y divide-slate-100">
               {filteredOrders.map((order) => {
                 const IconComponent = getIconComponent(getOrderTypeIcon(order.type));
-                const stageProgress = calculateStageProgress(order.type, order.currentStage);
+                // Production siparişleri için production objesine dayalı hesaplama
+                const stageProgress = order.type === ORDER_TYPE.PRODUCTION 
+                  ? calculateProductionProgress(order.production).percent 
+                  : calculateStageProgress(order.type, order.currentStage);
                 const createdAt = order.createdAt?.toDate?.() || new Date(order.createdAt);
 
                 return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAdminAuth } from "../../../../../hooks/use-admin-auth";
@@ -24,6 +24,8 @@ import {
   deleteNoteFromCase,
   toggleNoteImportance,
   deleteCase,
+  addSummaryToCase,
+  deleteSummaryFromCase,
 } from "../../../../../lib/services/crm-v2";
 import { getCustomer } from "../../../../../lib/services/crm-v2/customer-service";
 import {
@@ -56,6 +58,18 @@ import { formatDistanceToNow, format, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../../lib/utils";
 
+// AI Hook
+import { useUnifiedAI, AI_CONTEXTS } from "../../../../../hooks/use-unified-ai";
+
+// AI Settings Modal Component
+import AISettingsModal from "../../../../../components/admin/ai-settings-modal";
+
+// HTML to Text utility - Mesaj temizleme
+import {
+  cleanTextForAI,
+  cleanEmailContent,
+} from "../../../../../utils/html-to-text";
+
 // UI Components
 import { Button } from "../../../../../components/ui/button";
 import { Input } from "../../../../../components/ui/input";
@@ -80,6 +94,12 @@ import { Skeleton } from "../../../../../components/ui/skeleton";
 import { Separator } from "../../../../../components/ui/separator";
 import { ScrollArea } from "../../../../../components/ui/scroll-area";
 import { Checkbox } from "../../../../../components/ui/checkbox";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../../../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -128,6 +148,10 @@ import {
   Bell,
   BellOff,
   AlertTriangle,
+  Sparkles,
+  Settings,
+  ChevronDown,
+  ChevronUp,
   CalendarClock,
   Paperclip,
   StickyNote,
@@ -139,165 +163,59 @@ import {
   Download,
   Eye,
   ShoppingCart,
+  Zap,
 } from "lucide-react";
 
-/**
- * Email imza bloklarını tespit et ve kes
- */
-const removeEmailSignature = (text) => {
-  if (!text) return '';
-  
-  const signaturePatterns = [
-    /^--\s*$/m,
-    /^-{4,}\s*$/m,
-    /^_{4,}\s*$/m,
-    /^={4,}\s*$/m,
-    /^—{3,}/m,
-    /^–{3,}/m,
-    /[-—–_=]{10,}/m,
-    /\n\s*Saygılarımla\s*[\/,.]?\s*(Best regards)?/im,
-    /\n\s*Saygılar\s*[\/,.]?/im,
-    /\n\s*İyi çalışmalar\s*[\/,.]?/im,
-    /\n\s*Saygılarımızla\s*[\/,.]?/im,
-    /\n\s*Best regards\s*[\/,.]?/im,
-    /\n\s*Kind regards\s*[\/,.]?/im,
-    /\n\s*Regards\s*[\/,.]?/im,
-    /^Sent from my iPhone/im,
-    /^Sent from my Android/im,
-    /^Get Outlook for/im,
-  ];
-  
-  let cleanText = text;
-  let earliestIndex = cleanText.length;
-  
-  for (const pattern of signaturePatterns) {
-    const match = cleanText.match(pattern);
-    if (match) {
-      const index = cleanText.indexOf(match[0]);
-      if (index > 30 && index < earliestIndex) {
-        earliestIndex = index;
-      }
-    }
-  }
-  
-  if (earliestIndex < cleanText.length) {
-    cleanText = cleanText.substring(0, earliestIndex).trim();
-  }
-  
-  return cleanText.replace(/[\-—–_=]{4,}\s*$/gm, '').replace(/\n{2,}/g, '\n\n').trim();
-};
+// Helper function to render complex AI summary values in a readable format
+const renderAIValue = (value, depth = 0) => {
+  if (value === null || value === undefined) return null;
 
-/**
- * Email alıntılarını kaldır
- */
-const removeEmailQuotes = (text) => {
-  if (!text) return '';
-  
-  const quotePatterns = [
-    /^.*<[^>]+@[^>]+>[^:]*tarihinde şunu yazd[ıi]:\s*$/im,
-    /^On .+wrote:\s*$/im,
-    /^From:\s*.+\n.*Sent:\s*.+\n.*To:\s*.+/im,
-    /^Kimden:\s*.+$/im,
-    /^-{3,}\s*(Alıntı|Original Message|Orijinal Mesaj)\s*-{3,}/im,
-    /^(>.*\n){2,}/m,
-    /^_{5,}/m,
-    /^Tarih:\s*\d+/im,
-  ];
-  
-  let cleanText = text;
-  let earliestIndex = cleanText.length;
-  
-  for (const pattern of quotePatterns) {
-    const match = cleanText.match(pattern);
-    if (match) {
-      const index = cleanText.indexOf(match[0]);
-      if (index > 20 && index < earliestIndex) {
-        earliestIndex = index;
-      }
-    }
+  // String veya number ise direkt döndür
+  if (typeof value === "string" || typeof value === "number") {
+    return <span>{value}</span>;
   }
-  
-  if (earliestIndex < cleanText.length) {
-    cleanText = cleanText.substring(0, earliestIndex).trim();
-  }
-  
-  return cleanText.trim();
-};
 
-/**
- * HTML içeriğinden düz metin çıkar ve email'i temizle
- */
-const cleanEmailContent = (html) => {
-  if (!html) return '';
-  
-  let text = html;
-  
-  // Önce tam HTML dökümanı mı kontrol et
-  const hasHtmlTags = /<[a-zA-Z][^>]*>/i.test(text);
-  
-  if (hasHtmlTags) {
-    // Head, script, style taglarını içerikleriyle birlikte kaldır
-    text = text.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '');
-    text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    text = text.replace(/<meta[^>]*>/gi, '');
-    text = text.replace(/<link[^>]*>/gi, '');
-    
-    // Email alıntı yapılarını temizle
-    text = text.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '');
-    text = text.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/gi, '');
-    text = text.replace(/<div[^>]*class="[^"]*gmail_signature[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-    text = text.replace(/<div[^>]*id="divRplyFwdMsg"[^>]*>[\s\S]*$/gi, '');
-    
-    // Blok elementleri yeni satıra çevir
-    text = text.replace(/<br\s*\/?>/gi, '\n');
-    text = text.replace(/<\/p>/gi, '\n\n');
-    text = text.replace(/<\/div>/gi, '\n');
-    text = text.replace(/<\/li>/gi, '\n');
-    text = text.replace(/<\/h[1-6]>/gi, '\n\n');
-    
-    // TÜM HTML tag'larını kaldır - çok agresif regex
-    text = text.replace(/<[^>]*>/g, '');
-    text = text.replace(/<[a-zA-Z][^>]*$/gm, ''); // Yarım kalan tag'lar
-    text = text.replace(/^[^<]*>/gm, ''); // Yarım kapanan tag'lar
+  // Array ise liste olarak göster
+  if (Array.isArray(value)) {
+    if (value.length === 0) return null;
+    return (
+      <ul className="list-disc list-inside space-y-0.5 ml-2">
+        {value.map((item, i) => (
+          <li key={i} className="text-slate-600">
+            {typeof item === "object" ? renderAIValue(item, depth + 1) : item}
+          </li>
+        ))}
+      </ul>
+    );
   }
-  
-  // HTML entities decode
-  const htmlEntities = {
-    '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>',
-    '&quot;': '"', '&#39;': "'", '&apos;': "'",
-    '&rsquo;': "'", '&lsquo;': "'", '&rdquo;': '"', '&ldquo;': '"',
-    '&mdash;': '—', '&ndash;': '–', '&hellip;': '...',
-    '&#160;': ' ', '&copy;': '©', '&reg;': '®', '&trade;': '™',
-  };
-  
-  for (const [entity, char] of Object.entries(htmlEntities)) {
-    text = text.replace(new RegExp(entity, 'gi'), char);
+
+  // Object ise key-value olarak göster
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return null;
+
+    return (
+      <div
+        className={cn(
+          "space-y-2",
+          depth > 0 && "ml-3 mt-1 border-l-2 border-slate-200 pl-3",
+        )}
+      >
+        {entries.map(([key, val]) => (
+          <div key={key}>
+            <span className="font-medium text-slate-700">{key}:</span>
+            {typeof val === "object" ? (
+              <div className="mt-1">{renderAIValue(val, depth + 1)}</div>
+            ) : (
+              <span className="ml-1 text-slate-600">{val}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   }
-  
-  // Numeric entities
-  text = text.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec));
-  text = text.replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
-  // Kalan HTML benzeri kalıntıları temizle
-  text = text.replace(/<[^>]*$/g, ''); // Satır sonundaki yarım tag
-  text = text.replace(/^[^<]*>/g, ''); // Satır başındaki yarım tag
-  
-  // Temizlik
-  text = text
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/^[\-—–_=]{4,}\s*$/gm, '')
-    .replace(/[\-—–_=]{10,}/g, '')
-    .trim();
-  
-  // Alıntıları ve imzaları temizle
-  text = removeEmailQuotes(text);
-  text = removeEmailSignature(text);
-  
-  return text.replace(/^[\-—–_=]{4,}\s*$/gm, '').replace(/\n{2,}/g, '\n\n').trim();
+
+  return <span>{String(value)}</span>;
 };
 
 const STATUS_FLOW = [
@@ -383,6 +301,69 @@ export default function CaseDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const isSuperAdmin = user?.role === "super_admin";
 
+  // AI Summary State
+  const [showAiSettingsModal, setShowAiSettingsModal] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [expandedSummaryId, setExpandedSummaryId] = useState(null);
+  const [modelSettings, setModelSettings] = useState({
+    maxTokens: 2048,
+    autoMaxTokens: true,
+    temperature: 0.3,
+  });
+
+  // AI Hook
+  const {
+    generateContent: generateAiSummary,
+    loading: aiLoading,
+    configLoading: aiConfigLoading,
+    availableModels,
+    selectedModel,
+    selectModel,
+    isReady: aiIsReady,
+    error: aiError,
+    prompt: aiPrompt,
+    config: aiConfig,
+  } = useUnifiedAI(AI_CONTEXTS.CRM_CASE_SUMMARY);
+
+  // Firestore config yüklendiğinde modelSettings'i güncelle
+  useEffect(() => {
+    if (aiConfig?.settings) {
+      setModelSettings((prev) => ({
+        ...prev,
+        maxTokens: aiConfig.settings.maxTokens || prev.maxTokens,
+        temperature: aiConfig.settings.temperature ?? prev.temperature,
+      }));
+    }
+  }, [aiConfig]);
+
+  // Modal'da gösterilecek prompt değişkenleri
+  const currentPromptVariables = useMemo(() => {
+    const customerName = customer?.name || "Müşteri";
+    const customerCompany = customer?.companyName || "";
+
+    // Mesajları düzgün formatla - HTML'i temizle
+    const formattedMessages =
+      conversation?.messages
+        ?.map((m, index) => {
+          const direction =
+            m.direction === "inbound" ? "📩 MÜŞTERİ" : "📤 OPERATİONS";
+          const rawContent = m.content || "";
+          // HTML'den temiz metin çıkar (email alıntıları ve imzalar dahil temizlenir)
+          const cleanContent = cleanTextForAI(rawContent, 500);
+          return `[${index + 1}] ${direction}:\n${cleanContent}`;
+        })
+        .join("\n\n---\n\n") || "(Mesaj yok)";
+
+    return {
+      conversation_messages: formattedMessages,
+      customer_name: customerName,
+      customer_company: customerCompany || "(Belirtilmemiş)",
+      case_title: caseData?.title || "(Başlık yok)",
+      case_type: getCaseTypeLabel(caseData?.type) || "(Tür yok)",
+      case_description: caseData?.description || "(Açıklama yok)",
+    };
+  }, [conversation, customer, caseData]);
+
   // Load data
   const loadData = useCallback(async () => {
     try {
@@ -412,7 +393,7 @@ export default function CaseDetailPage() {
         "[Case Detail] Checklist config for type",
         caseResult.type,
         ":",
-        checklistConfig
+        checklistConfig,
       );
       setChecklistSettings(checklistConfig);
 
@@ -428,11 +409,11 @@ export default function CaseDetailPage() {
             completed: false,
             completedAt: null,
             completedBy: null,
-          }))
+          })),
         );
         console.log(
           "[Case Detail] Checklist items initialized:",
-          allItems.length
+          allItems.length,
         );
         setChecklistProgress({ completed: 0, total: allItems.length });
       } else {
@@ -546,13 +527,13 @@ export default function CaseDetailPage() {
       await updateCase(
         caseId,
         { status: targetStatus, statusChangeNotes: statusNote },
-        user?.uid
+        user?.uid,
       );
 
       toast({
         title: "Başarılı",
         description: `Durum "${getCaseStatusLabel(
-          targetStatus
+          targetStatus,
         )}" olarak güncellendi.`,
       });
       setShowStatusModal(false);
@@ -676,7 +657,7 @@ export default function CaseDetailPage() {
   const handleToggleChecklistItem = async (
     itemId,
     isCurrentlyCompleted,
-    itemLabel
+    itemLabel,
   ) => {
     // Eğer zaten işaretli ve kaldırılmak isteniyorsa onay iste
     if (isCurrentlyCompleted) {
@@ -736,7 +717,7 @@ export default function CaseDetailPage() {
           description: reminderForm.description,
           dueDate: new Date(reminderForm.dueDate),
         },
-        user?.uid
+        user?.uid,
       );
 
       toast({ title: "Başarılı", description: "Hatırlatıcı eklendi." });
@@ -825,7 +806,7 @@ export default function CaseDetailPage() {
   // Get active/pending reminders
   const activeReminders =
     caseData?.reminders?.filter(
-      (r) => r.status === "pending" || r.status === "snoozed"
+      (r) => r.status === "pending" || r.status === "snoozed",
     ) || [];
 
   const overdueReminders = activeReminders.filter((r) => {
@@ -878,13 +859,13 @@ export default function CaseDetailPage() {
           type: result.isImage
             ? "image"
             : result.fileType === "application/pdf"
-            ? "pdf"
-            : "file",
+              ? "pdf"
+              : "file",
           size: result.fileSize,
           category: "general",
           isImage: result.isImage,
         },
-        user?.uid
+        user?.uid,
       );
 
       toast({ title: "Başarılı", description: "Dosya yüklendi." });
@@ -934,7 +915,7 @@ export default function CaseDetailPage() {
         caseId,
         noteForm,
         user?.uid,
-        user?.displayName || user?.email
+        user?.displayName || user?.email,
       );
       toast({ title: "Başarılı", description: "Not eklendi." });
       setShowNoteModal(false);
@@ -1021,6 +1002,176 @@ export default function CaseDetailPage() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
+
+  // ==================== AI SUMMARY HANDLERS ====================
+  const handleGenerateSummary = async () => {
+    if (!conversation?.messages?.length) {
+      toast({
+        title: "Hata",
+        description: "Özetlenecek konuşma bulunamadı.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      // Konuşma mesajlarını formatla
+      const formattedMessages = conversation.messages
+        .map((msg) => {
+          const sender = msg.direction === "inbound" ? "Müşteri" : "MKN GROUP";
+          const date = msg.createdAt?.toDate?.()
+            ? format(msg.createdAt.toDate(), "dd.MM.yyyy HH:mm", { locale: tr })
+            : "";
+          const content = cleanEmailContent(msg.content || msg.text || "");
+          return `[${date}] ${sender}:\n${content}`;
+        })
+        .join("\n\n---\n\n");
+
+      // Prompt değişkenleri hazırla (Firestore'daki prompt şablonuna uygun)
+      const promptVariables = {
+        conversation_messages: formattedMessages,
+        customer_name: customer?.name || customer?.companyName || "Bilinmeyen",
+        customer_company: customer?.companyName || "Belirtilmemiş",
+        case_title: caseData?.title || "Belirtilmemiş",
+        case_type: getCaseTypeLabel(caseData?.type),
+        case_description: caseData?.description
+          ? cleanEmailContent(caseData.description)
+          : "Açıklama yok",
+      };
+
+      // useUnifiedAI hook'u ile üret - Firestore'daki prompt otomatik kullanılır
+      // Hata durumunda hook otomatik toast gösterir
+      const result = await generateAiSummary(null, {
+        promptVariables,
+        temperature: modelSettings.temperature,
+        maxTokens: modelSettings.autoMaxTokens ? undefined : modelSettings.maxTokens,
+      });
+
+      if (!result.success) {
+        // Hook zaten toast gösterdi, sadece çık
+        return;
+      }
+
+      // JSON parse et
+      let summaryData;
+      try {
+        // JSON'u temizle - bazen AI markdown code block ekliyor
+        let jsonContent = result.content;
+        if (jsonContent.includes("```json")) {
+          jsonContent = jsonContent
+            .replace(/```json\n?/g, "")
+            .replace(/```\n?/g, "");
+        } else if (jsonContent.includes("```")) {
+          jsonContent = jsonContent.replace(/```\n?/g, "");
+        }
+
+        // Kesilmiş/eksik JSON'ı düzeltmeye çalış
+        jsonContent = jsonContent.trim();
+
+        // Eğer JSON tam değilse tamamlamaya çalış
+        const openBraces = (jsonContent.match(/{/g) || []).length;
+        const closeBraces = (jsonContent.match(/}/g) || []).length;
+        const openBrackets = (jsonContent.match(/\[/g) || []).length;
+        const closeBrackets = (jsonContent.match(/\]/g) || []).length;
+
+        // Eksik kapanış parantezlerini ekle
+        if (openBrackets > closeBrackets) {
+          jsonContent += "]".repeat(openBrackets - closeBrackets);
+        }
+        if (openBraces > closeBraces) {
+          // Eğer son karakter virgül veya açık tırnak ise düzelt
+          jsonContent = jsonContent.replace(/,\s*$/, "");
+          jsonContent = jsonContent.replace(/"[^"]*$/, '""');
+          jsonContent += "}".repeat(openBraces - closeBraces);
+        }
+
+        summaryData = JSON.parse(jsonContent.trim());
+      } catch (parseError) {
+        console.error("JSON parse error:", parseError, result.content);
+
+        // Fallback: Ham içerikten özet çıkarmaya çalış
+        const summaryMatch = result.content.match(/"summary"\s*:\s*"([^"]+)"/);
+        const mainRequestMatch = result.content.match(
+          /"mainRequest"\s*:\s*"([^"]+)"/,
+        );
+
+        if (summaryMatch || mainRequestMatch) {
+          summaryData = {
+            mainRequest: mainRequestMatch?.[1] || "Kısmi Özet",
+            summary:
+              summaryMatch?.[1] ||
+              mainRequestMatch?.[1] ||
+              "Özet ayrıştırılamadı",
+            details: {},
+            keyPoints: [],
+            uncertainties: ["JSON yanıtı kısmen ayrıştırıldı"],
+            suggestedActions: [],
+            parseError: true,
+          };
+        } else {
+          // Fallback: Düz metin olarak kaydet
+          summaryData = {
+            mainRequest: "Özet ayrıştırılamadı",
+            summary: result.content,
+            details: {},
+            keyPoints: [],
+            uncertainties: [
+              "JSON formatı ayrıştırılamadı - ham yanıt kaydedildi",
+            ],
+            suggestedActions: [],
+          };
+        }
+      }
+
+      // Özeti kaydet
+      await addSummaryToCase(
+        caseId,
+        {
+          ...summaryData,
+          aiModel:
+            result.model || selectedModel?.displayName || selectedModel?.name,
+          aiProvider: result.provider,
+          messageCount: conversation.messages.length,
+        },
+        user?.uid,
+        user?.displayName || user?.email,
+      );
+
+      toast({
+        title: "Başarılı",
+        description: "Talep özeti oluşturuldu.",
+      });
+
+      loadData();
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      toast({
+        title: "AI Hatası",
+        description: error.message || "Özet oluşturulamadı. Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
+  const handleDeleteSummary = async (summaryId) => {
+    if (!confirm("Bu özeti silmek istediğinizden emin misiniz?")) return;
+
+    try {
+      await deleteSummaryFromCase(caseId, summaryId, user?.uid);
+      toast({ title: "Başarılı", description: "Özet silindi." });
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Özet silinemedi.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // ==================== END HANDLERS ====================
 
   // Update quote status (and sync with proforma if linked)
@@ -1033,7 +1184,7 @@ export default function CaseDetailPage() {
       if (quote.proformaId) {
         const result = await ProformaService.updateProformaStatus(
           quote.proformaId,
-          newStatus
+          newStatus,
         );
         if (!result.success) {
           console.error("Proforma status güncellenemedi:", result.error);
@@ -1273,7 +1424,7 @@ export default function CaseDetailPage() {
                         !isPast &&
                           !isActive &&
                           "hover:bg-slate-50 cursor-pointer",
-                        isPast && "opacity-50"
+                        isPast && "opacity-50",
                       )}
                     >
                       <div
@@ -1281,7 +1432,7 @@ export default function CaseDetailPage() {
                           "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
                           isActive && "bg-blue-600 text-white",
                           isPast && "bg-green-500 text-white",
-                          isFuture && "bg-slate-100 text-slate-500"
+                          isFuture && "bg-slate-100 text-slate-500",
                         )}
                       >
                         {isPast ? (
@@ -1295,7 +1446,7 @@ export default function CaseDetailPage() {
                           "text-xs font-medium",
                           isActive && "text-blue-600",
                           isPast && "text-slate-400",
-                          isFuture && "text-slate-500"
+                          isFuture && "text-slate-500",
                         )}
                       >
                         {getCaseStatusLabel(status)}
@@ -1305,7 +1456,9 @@ export default function CaseDetailPage() {
                       <div
                         className={cn(
                           "h-0.5 w-full max-w-[40px]",
-                          index < currentIndex ? "bg-green-500" : "bg-slate-200"
+                          index < currentIndex
+                            ? "bg-green-500"
+                            : "bg-slate-200",
                         )}
                       />
                     )}
@@ -1330,7 +1483,7 @@ export default function CaseDetailPage() {
                   caseData.status === CASE_STATUS.LOST &&
                     "bg-red-50 text-red-700",
                   caseData.status === CASE_STATUS.CANCELLED &&
-                    "bg-slate-100 text-slate-600"
+                    "bg-slate-100 text-slate-600",
                 )}
               >
                 {caseData.status === CASE_STATUS.WON && (
@@ -1382,11 +1535,346 @@ export default function CaseDetailPage() {
           {/* Basic Info */}
           <Card className="bg-white border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Talep Bilgileri
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold text-slate-900">
+                  Talep Bilgileri
+                </CardTitle>
+                {/* AI Özet Butonları */}
+                {conversation?.messages?.length > 0 && !editing && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateSummary}
+                      disabled={generatingSummary || !aiIsReady}
+                      className="border-slate-200 text-slate-600 hover:text-slate-900"
+                    >
+                      {generatingSummary ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                      )}
+                      {generatingSummary ? "Özetleniyor..." : "AI ile Özetle"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowAiSettingsModal(true)}
+                      className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                      title="AI Ayarları"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* AI Özetleri */}
+              {caseData.aiSummaries?.length > 0 && !editing && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    AI Özetleri
+                    <Badge variant="secondary" className="text-xs">
+                      {caseData.aiSummaries.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {caseData.aiSummaries.map((summary, index) => {
+                      const isExpanded = expandedSummaryId === summary.id;
+                      return (
+                        <div
+                          key={summary.id}
+                          className="border border-purple-100 bg-purple-50/50 rounded-lg overflow-hidden"
+                        >
+                          {/* Summary Header */}
+                          <div
+                            className="flex items-center justify-between p-3 cursor-pointer hover:bg-purple-50 transition-colors"
+                            onClick={() =>
+                              setExpandedSummaryId(
+                                isExpanded ? null : summary.id,
+                              )
+                            }
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-slate-800 truncate">
+                                  {typeof summary.mainRequest === "object"
+                                    ? JSON.stringify(summary.mainRequest)
+                                    : summary.mainRequest || "Özet"}
+                                </span>
+                                {index === 0 && (
+                                  <Badge className="bg-purple-100 text-purple-700 text-[10px]">
+                                    En Güncel
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                                <span>{summary.aiModel || "AI"}</span>
+                                <span>•</span>
+                                <span>{summary.messageCount} mesaj</span>
+                                <span>•</span>
+                                <span>
+                                  {formatDistanceToNow(
+                                    summary.createdAt?.toDate?.() ||
+                                      new Date(summary.createdAt),
+                                    { addSuffix: true, locale: tr },
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSummary(summary.id);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-slate-400" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expanded Content */}
+                          {isExpanded && (
+                            <div className="border-t border-purple-100 p-3 space-y-3 bg-white">
+                              {/* Summary Text */}
+                              {summary.summary && (
+                                <div>
+                                  <p className="text-sm text-slate-700">
+                                    {typeof summary.summary === "object"
+                                      ? renderAIValue(summary.summary)
+                                      : summary.summary}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Talep Edilen Ürünler */}
+                              {summary.requestedProducts?.length > 0 && (
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <ShoppingCart className="h-4 w-4 text-blue-600" />
+                                    <span className="font-medium text-blue-800 text-sm">
+                                      Talep Edilen Ürünler
+                                    </span>
+                                    <Badge className="bg-blue-100 text-blue-700 text-[10px]">
+                                      {summary.requestedProducts.length} ürün
+                                    </Badge>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {summary.requestedProducts.map(
+                                      (product, i) => (
+                                        <div
+                                          key={i}
+                                          className="flex items-start gap-2 text-sm bg-white/60 p-2 rounded border border-blue-100"
+                                        >
+                                          <span className="text-blue-500 font-bold">
+                                            {i + 1}.
+                                          </span>
+                                          <div className="flex-1">
+                                            <span className="font-medium text-slate-800">
+                                              {typeof product === "string"
+                                                ? product
+                                                : product.name || "Ürün"}
+                                            </span>
+                                            {product.quantity && (
+                                              <span className="ml-2 text-slate-500">
+                                                ({product.quantity})
+                                              </span>
+                                            )}
+                                            {product.specs && (
+                                              <p className="text-xs text-slate-500 mt-0.5">
+                                                {product.specs}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Details */}
+                              {summary.details &&
+                                Object.keys(summary.details).some(
+                                  (k) => summary.details[k],
+                                ) && (
+                                  <div className="space-y-3 text-xs">
+                                    {/* Basit alanlar - grid içinde */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {summary.details.productType && (
+                                        <div className="bg-slate-50 p-2 rounded">
+                                          <span className="text-slate-500">
+                                            Kategori:
+                                          </span>{" "}
+                                          <span className="text-slate-700 font-medium">
+                                            {typeof summary.details
+                                              .productType === "object"
+                                              ? renderAIValue(
+                                                  summary.details.productType,
+                                                )
+                                              : summary.details.productType}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {summary.details.quantity && (
+                                        <div className="bg-slate-50 p-2 rounded">
+                                          <span className="text-slate-500">
+                                            Miktar:
+                                          </span>{" "}
+                                          <span className="text-slate-700 font-medium">
+                                            {typeof summary.details.quantity ===
+                                            "object"
+                                              ? renderAIValue(
+                                                  summary.details.quantity,
+                                                )
+                                              : summary.details.quantity}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {summary.details.timeline && (
+                                        <div className="bg-slate-50 p-2 rounded">
+                                          <span className="text-slate-500">
+                                            Süre:
+                                          </span>{" "}
+                                          <span className="text-slate-700 font-medium">
+                                            {typeof summary.details.timeline ===
+                                            "object"
+                                              ? renderAIValue(
+                                                  summary.details.timeline,
+                                                )
+                                              : summary.details.timeline}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {summary.details.budget && (
+                                        <div className="bg-slate-50 p-2 rounded">
+                                          <span className="text-slate-500">
+                                            Bütçe:
+                                          </span>{" "}
+                                          <span className="text-slate-700 font-medium">
+                                            {typeof summary.details.budget ===
+                                            "object"
+                                              ? renderAIValue(
+                                                  summary.details.budget,
+                                                )
+                                              : summary.details.budget}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Özel İstekler - tam genişlikte ve detaylı */}
+                                    {summary.details.specifications && (
+                                      <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-3 rounded-lg border border-slate-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <FileText className="h-3.5 w-3.5 text-slate-500" />
+                                          <span className="font-medium text-slate-700">
+                                            Özel İstekler
+                                          </span>
+                                        </div>
+                                        <div className="text-slate-600">
+                                          {typeof summary.details
+                                            .specifications === "object"
+                                            ? renderAIValue(
+                                                summary.details.specifications,
+                                              )
+                                            : summary.details.specifications}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                              {/* Key Points */}
+                              {summary.keyPoints?.length > 0 && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-slate-600 mb-1">
+                                    Önemli Noktalar
+                                  </h5>
+                                  <ul className="text-xs text-slate-600 space-y-1">
+                                    {summary.keyPoints.map((point, i) => (
+                                      <li
+                                        key={i}
+                                        className="flex items-start gap-1"
+                                      >
+                                        <span className="text-green-500 mt-0.5">
+                                          •
+                                        </span>
+                                        {typeof point === "object"
+                                          ? JSON.stringify(point)
+                                          : point}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Uncertainties */}
+                              {summary.uncertainties?.length > 0 && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-amber-600 mb-1">
+                                    Netleştirilmesi Gerekenler
+                                  </h5>
+                                  <ul className="text-xs text-amber-700 space-y-1">
+                                    {summary.uncertainties.map((item, i) => (
+                                      <li
+                                        key={i}
+                                        className="flex items-start gap-1"
+                                      >
+                                        <span className="mt-0.5">⚠️</span>
+                                        {typeof item === "object"
+                                          ? JSON.stringify(item)
+                                          : item}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Suggested Actions */}
+                              {summary.suggestedActions?.length > 0 && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-blue-600 mb-1">
+                                    Önerilen Aksiyonlar
+                                  </h5>
+                                  <ul className="text-xs text-blue-700 space-y-1">
+                                    {summary.suggestedActions.map(
+                                      (action, i) => (
+                                        <li
+                                          key={i}
+                                          className="flex items-start gap-1"
+                                        >
+                                          <span className="mt-0.5">→</span>
+                                          {typeof action === "object"
+                                            ? JSON.stringify(action)
+                                            : action}
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Mevcut Açıklama */}
               {editing ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -1458,9 +1946,20 @@ export default function CaseDetailPage() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">
-                    {cleanEmailContent(caseData.description) || "Açıklama yok"}
-                  </p>
+                  {/* Orijinal açıklama - sadece AI özeti yoksa veya açıklama varsa göster */}
+                  {(caseData.description || !caseData.aiSummaries?.length) && (
+                    <div>
+                      {caseData.aiSummaries?.length > 0 && (
+                        <h4 className="text-xs font-medium text-slate-500 mb-2">
+                          Orijinal Açıklama
+                        </h4>
+                      )}
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                        {cleanEmailContent(caseData.description) ||
+                          "Açıklama yok"}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1530,7 +2029,7 @@ export default function CaseDetailPage() {
                               <Badge
                                 className={cn(
                                   "text-xs",
-                                  getQuoteStatusColor(quote.status)
+                                  getQuoteStatusColor(quote.status),
                                 )}
                               >
                                 {getQuoteStatusLabel(quote.status)}
@@ -1568,7 +2067,7 @@ export default function CaseDetailPage() {
                                   quote.createdAt?.toDate?.() ||
                                     new Date(quote.createdAt),
                                   "dd MMM yyyy",
-                                  { locale: tr }
+                                  { locale: tr },
                                 )}
                               </span>
                             )}
@@ -1669,7 +2168,7 @@ export default function CaseDetailPage() {
                       <div
                         className={cn(
                           "w-2.5 h-2.5 rounded-full flex-shrink-0",
-                          getCaseStatusColor(history.status)
+                          getCaseStatusColor(history.status),
                         )}
                       />
                       <div className="flex-1 min-w-0">
@@ -1687,7 +2186,7 @@ export default function CaseDetailPage() {
                           formatDistanceToNow(
                             history.changedAt?.toDate?.() ||
                               new Date(history.changedAt),
-                            { addSuffix: true, locale: tr }
+                            { addSuffix: true, locale: tr },
                           )}
                       </span>
                     </div>
@@ -1773,7 +2272,7 @@ export default function CaseDetailPage() {
                             {formatDistanceToNow(
                               attachment.uploadedAt?.toDate?.() ||
                                 new Date(attachment.uploadedAt),
-                              { addSuffix: true, locale: tr }
+                              { addSuffix: true, locale: tr },
                             )}
                           </p>
                         </div>
@@ -1856,7 +2355,7 @@ export default function CaseDetailPage() {
                           "p-3 rounded-lg border group",
                           note.important
                             ? "bg-amber-50 border-amber-200"
-                            : "bg-slate-50 border-slate-200"
+                            : "bg-slate-50 border-slate-200",
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -1895,7 +2394,7 @@ export default function CaseDetailPage() {
                             {formatDistanceToNow(
                               note.createdAt?.toDate?.() ||
                                 new Date(note.createdAt),
-                              { addSuffix: true, locale: tr }
+                              { addSuffix: true, locale: tr },
                             )}
                           </span>
                         </div>
@@ -1925,7 +2424,7 @@ export default function CaseDetailPage() {
                     <Badge
                       className={cn(
                         "text-xs font-medium",
-                        getSLAStatusColor(slaStatus.status)
+                        getSLAStatusColor(slaStatus.status),
                       )}
                     >
                       {slaStatus.status === "on_track" && "Yolunda"}
@@ -1994,7 +2493,7 @@ export default function CaseDetailPage() {
                       // Get items for this phase from case data or initialize
                       const phaseItems = phase.items.map((item) => {
                         const caseItem = caseData?.checklist?.find(
-                          (ci) => ci.id === item.id
+                          (ci) => ci.id === item.id,
                         );
                         return {
                           ...item,
@@ -2004,7 +2503,7 @@ export default function CaseDetailPage() {
                         };
                       });
                       const phaseCompleted = phaseItems.filter(
-                        (i) => i.completed
+                        (i) => i.completed,
                       ).length;
                       const phaseTotal = phaseItems.length;
 
@@ -2024,13 +2523,13 @@ export default function CaseDetailPage() {
                                 key={item.id}
                                 className={cn(
                                   "flex items-center gap-2 p-2 rounded hover:bg-slate-50 group cursor-pointer",
-                                  item.completed && "bg-slate-50"
+                                  item.completed && "bg-slate-50",
                                 )}
                                 onClick={() =>
                                   handleToggleChecklistItem(
                                     item.id,
                                     item.completed,
-                                    item.label
+                                    item.label,
                                   )
                                 }
                               >
@@ -2044,7 +2543,7 @@ export default function CaseDetailPage() {
                                     "text-sm flex-1",
                                     item.completed
                                       ? "text-slate-400 line-through"
-                                      : "text-slate-700"
+                                      : "text-slate-700",
                                   )}
                                 >
                                   {item.label}
@@ -2088,7 +2587,7 @@ export default function CaseDetailPage() {
                       type: "follow_up",
                       dueDate: format(
                         addDays(new Date(), 1),
-                        "yyyy-MM-dd'T'HH:mm"
+                        "yyyy-MM-dd'T'HH:mm",
                       ),
                       title: "",
                       description: "",
@@ -2123,8 +2622,8 @@ export default function CaseDetailPage() {
                           isOverdue
                             ? "border-red-200 bg-red-50"
                             : isSnoozed
-                            ? "border-amber-200 bg-amber-50"
-                            : "border-slate-200 bg-slate-50"
+                              ? "border-amber-200 bg-amber-50"
+                              : "border-slate-200 bg-slate-50",
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -2133,7 +2632,7 @@ export default function CaseDetailPage() {
                               <span
                                 className={cn(
                                   "text-sm font-medium truncate",
-                                  isOverdue ? "text-red-700" : "text-slate-700"
+                                  isOverdue ? "text-red-700" : "text-slate-700",
                                 )}
                               >
                                 {reminder.title}
@@ -2148,13 +2647,13 @@ export default function CaseDetailPage() {
                               <CalendarClock
                                 className={cn(
                                   "h-3 w-3",
-                                  isOverdue ? "text-red-500" : "text-slate-400"
+                                  isOverdue ? "text-red-500" : "text-slate-400",
                                 )}
                               />
                               <span
                                 className={cn(
                                   "text-xs",
-                                  isOverdue ? "text-red-600" : "text-slate-500"
+                                  isOverdue ? "text-red-600" : "text-slate-500",
                                 )}
                               >
                                 {format(dueDate, "d MMM yyyy HH:mm", {
@@ -2351,7 +2850,7 @@ export default function CaseDetailPage() {
                             key={message.id || index}
                             className={cn(
                               "flex",
-                              isOutbound ? "justify-end" : "justify-start"
+                              isOutbound ? "justify-end" : "justify-start",
                             )}
                           >
                             <div
@@ -2359,7 +2858,7 @@ export default function CaseDetailPage() {
                                 "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                                 isOutbound
                                   ? "bg-blue-600 text-white"
-                                  : "bg-slate-100 text-slate-800"
+                                  : "bg-slate-100 text-slate-800",
                               )}
                             >
                               <p className="whitespace-pre-wrap text-xs leading-relaxed">
@@ -2370,7 +2869,7 @@ export default function CaseDetailPage() {
                                   "text-[10px] mt-1",
                                   isOutbound
                                     ? "text-blue-200"
-                                    : "text-slate-400"
+                                    : "text-slate-400",
                                 )}
                               >
                                 {message.createdAt &&
@@ -2378,7 +2877,7 @@ export default function CaseDetailPage() {
                                     message.createdAt?.toDate?.() ||
                                       new Date(message.createdAt),
                                     "dd MMM HH:mm",
-                                    { locale: tr }
+                                    { locale: tr },
                                   )}
                               </p>
                             </div>
@@ -2471,7 +2970,7 @@ export default function CaseDetailPage() {
                       caseData.createdAt?.toDate?.() ||
                         new Date(caseData.createdAt),
                       "dd MMM yyyy HH:mm",
-                      { locale: tr }
+                      { locale: tr },
                     )}
                 </span>
               </div>
@@ -2482,7 +2981,7 @@ export default function CaseDetailPage() {
                     formatDistanceToNow(
                       caseData.updatedAt?.toDate?.() ||
                         new Date(caseData.updatedAt),
-                      { addSuffix: true, locale: tr }
+                      { addSuffix: true, locale: tr },
                     )}
                 </span>
               </div>
@@ -2673,7 +3172,7 @@ export default function CaseDetailPage() {
                         className={cn(
                           "p-3 cursor-pointer hover:bg-slate-50 transition-colors",
                           selectedProformaId === proforma.id &&
-                            "bg-blue-50 border-l-2 border-l-blue-600"
+                            "bg-blue-50 border-l-2 border-l-blue-600",
                         )}
                         onClick={() => setSelectedProformaId(proforma.id)}
                       >
@@ -2716,7 +3215,7 @@ export default function CaseDetailPage() {
                             <p className="font-semibold text-slate-900 text-sm">
                               {formatCurrency(
                                 proforma.totalAmount,
-                                proforma.currency
+                                proforma.currency,
                               )}
                             </p>
                             {proforma.createdAt && (
@@ -2725,7 +3224,7 @@ export default function CaseDetailPage() {
                                   proforma.createdAt?.toDate?.() ||
                                     new Date(proforma.createdAt),
                                   "dd MMM yyyy",
-                                  { locale: tr }
+                                  { locale: tr },
                                 )}
                               </p>
                             )}
@@ -3057,6 +3556,25 @@ export default function CaseDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Settings Modal - Reusable Component */}
+      <AISettingsModal
+        open={showAiSettingsModal}
+        onOpenChange={setShowAiSettingsModal}
+        title="AI Özet Ayarları"
+        description="Model, prompt ve token ayarları"
+        contextKey={AI_CONTEXTS.CRM_CASE_SUMMARY}
+        availableModels={availableModels}
+        currentModel={selectedModel}
+        currentProvider={{ id: selectedModel?.provider }}
+        selectModel={selectModel}
+        prompt={aiPrompt}
+        config={aiConfig}
+        promptVariables={currentPromptVariables}
+        loading={aiConfigLoading}
+        modelSettings={modelSettings}
+        setModelSettings={setModelSettings}
+      />
     </div>
   );
 }
