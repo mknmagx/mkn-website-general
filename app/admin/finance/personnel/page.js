@@ -74,7 +74,6 @@ export default function PersonnelPage() {
         setPersonnel(result.data);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
       toast.error("Veriler yüklenirken bir hata oluştu");
     } finally {
       setLoading(false);
@@ -133,7 +132,7 @@ export default function PersonnelPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -290,27 +289,27 @@ export default function PersonnelPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {filteredPersonnel.map((person) => (
-            <Card key={person.id} className="bg-white border-slate-200 hover:shadow-md transition-shadow">
+            <Card key={person.id} className="bg-white border-slate-200 hover:shadow-md transition-shadow group">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
+                  <Link href={`/admin/finance/personnel/${person.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarFallback className="bg-purple-100 text-purple-700 font-semibold">
                         {person.firstName?.[0]}{person.lastName?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-slate-900">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-slate-900 hover:text-blue-600 truncate">
                         {person.firstName} {person.lastName}
                       </h3>
-                      <p className="text-sm text-slate-500">{person.position || "-"}</p>
+                      <p className="text-sm text-slate-500 truncate">{person.position || "-"}</p>
                     </div>
-                  </div>
+                  </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>

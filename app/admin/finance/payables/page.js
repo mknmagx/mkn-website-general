@@ -78,7 +78,6 @@ export default function PayablesPage() {
         setPayables(result.data);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
       toast.error("Veriler yüklenirken bir hata oluştu");
     } finally {
       setLoading(false);
@@ -172,7 +171,7 @@ export default function PayablesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -344,101 +343,108 @@ export default function PayablesPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold">Tedarikçi</TableHead>
-                  <TableHead className="font-semibold">Açıklama</TableHead>
-                  <TableHead className="font-semibold">Vade Tarihi</TableHead>
-                  <TableHead className="font-semibold text-right">Toplam</TableHead>
-                  <TableHead className="font-semibold text-right">Kalan</TableHead>
-                  <TableHead className="font-semibold">İlerleme</TableHead>
-                  <TableHead className="font-semibold">Durum</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayables.map((item) => {
-                  const remaining = item.totalAmount - item.paidAmount;
-                  const progress = item.totalAmount > 0 
-                    ? Math.round((item.paidAmount / item.totalAmount) * 100) 
-                    : 0;
-                  
-                  const isOverdue = item.dueDate && item.status !== PAYABLE_STATUS.PAID && (() => {
-                    const dueDate = item.dueDate.toDate ? item.dueDate.toDate() : new Date(item.dueDate);
-                    return dueDate < new Date();
-                  })();
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="font-semibold w-[180px]">Tedarikçi</TableHead>
+                    <TableHead className="font-semibold min-w-[160px]">Açıklama</TableHead>
+                    <TableHead className="font-semibold w-[110px]">Vade Tarihi</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Toplam</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Kalan</TableHead>
+                    <TableHead className="font-semibold w-[100px]">İlerleme</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Durum</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPayables.map((item) => {
+                    const remaining = item.totalAmount - item.paidAmount;
+                    const progress = item.totalAmount > 0 
+                      ? Math.round((item.paidAmount / item.totalAmount) * 100) 
+                      : 0;
+                    
+                    const isOverdue = item.dueDate && item.status !== PAYABLE_STATUS.PAID && (() => {
+                      const dueDate = item.dueDate.toDate ? item.dueDate.toDate() : new Date(item.dueDate);
+                      return dueDate < new Date();
+                    })();
 
-                  return (
-                    <TableRow key={item.id} className={cn("hover:bg-slate-50", isOverdue && "bg-red-50/50")}>
-                      <TableCell>
-                        <div className="font-medium text-slate-900">{item.supplierName}</div>
-                        {item.invoiceNumber && (
-                          <p className="text-xs text-slate-500">Fatura: {item.invoiceNumber}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-slate-600 max-w-[200px]">
-                        <p className="line-clamp-1">{item.description || "-"}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className={cn("flex items-center gap-1", isOverdue && "text-red-600")}>
-                          {isOverdue && <AlertTriangle className="w-4 h-4" />}
-                          <span>{item.dueDate ? formatDate(item.dueDate) : "-"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.totalAmount, item.currency)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={cn("font-semibold", remaining > 0 ? "text-orange-600" : "text-emerald-600")}>
-                          {formatCurrency(remaining, item.currency)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="min-w-[120px]">
-                        <div className="space-y-1">
-                          <Progress value={progress} className="h-2" />
-                          <p className="text-xs text-slate-500 text-right">{progress}%</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn("text-xs", getPayableStatusColor(item.status))}>
-                          {getPayableStatusLabel(item.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/admin/finance/payables/${item.id}`)}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Detay
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/admin/finance/payables/${item.id}/payment`)}
-                            >
-                              <CreditCard className="w-4 h-4 mr-2" />
-                              Ödeme Ekle
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/admin/finance/payables/${item.id}/edit`)}
-                            >
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Düzenle
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                    return (
+                      <TableRow key={item.id} className={cn("hover:bg-slate-50 group", isOverdue && "bg-red-50/50")}>
+                        <TableCell>
+                          <Link 
+                            href={`/admin/finance/payables/${item.id}`}
+                            className="block hover:bg-slate-100 rounded p-1 -m-1 transition-colors"
+                          >
+                            <div className="font-medium text-slate-900 hover:text-blue-600">{item.supplierName}</div>
+                            {item.invoiceNumber && (
+                              <p className="text-xs text-slate-500">Fatura: {item.invoiceNumber}</p>
+                            )}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          <p className="line-clamp-1">{item.description || "-"}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div className={cn("flex items-center gap-1 whitespace-nowrap", isOverdue && "text-red-600")}>
+                            {isOverdue && <AlertTriangle className="w-4 h-4" />}
+                            <span className="text-sm">{item.dueDate ? formatDate(item.dueDate) : "-"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium whitespace-nowrap">
+                          {formatCurrency(item.totalAmount, item.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className={cn("font-semibold whitespace-nowrap", remaining > 0 ? "text-orange-600" : "text-emerald-600")}>
+                            {formatCurrency(remaining, item.currency)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Progress value={progress} className="h-2" />
+                            <p className="text-xs text-slate-500 text-right">{progress}%</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("text-xs whitespace-nowrap", getPayableStatusColor(item.status))}>
+                            {getPayableStatusLabel(item.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/admin/finance/payables/${item.id}`)}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Detay
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/admin/finance/payables/${item.id}/payment`)}
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Ödeme Ekle
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/admin/finance/payables/${item.id}/edit`)}
+                              >
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Düzenle
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

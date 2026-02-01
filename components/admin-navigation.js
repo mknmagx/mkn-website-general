@@ -55,6 +55,8 @@ import {
   TrendingDown,
   CreditCard,
   HandCoins,
+  BarChart3,
+  List,
 } from "lucide-react";
 import { useState, useMemo, useCallback, memo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -85,7 +87,7 @@ import {
 // ANIMATION VARIANTS
 // ============================================
 const sidebarVariants = {
-  expanded: { width: 256, transition: { duration: 0.25, ease: "easeInOut" } },
+  expanded: { width: 320, transition: { duration: 0.25, ease: "easeInOut" } },
   collapsed: { width: 72, transition: { duration: 0.25, ease: "easeInOut" } },
 };
 
@@ -433,42 +435,26 @@ export default function AdminNavigation() {
       show: true,
     },
     {
-      id: "blog",
-      name: "Blog Yönetimi",
-      icon: Edit3,
-      show: hasPermission("blog.read"),
-      items: [
-        { id: "blog-list", name: "Tüm Yazılar", href: "/admin/blog", icon: BookOpen, show: hasPermission("blog.read") },
-        { id: "blog-new", name: "Yeni Yazı", href: "/admin/blog/new", icon: FileText, show: hasPermission("blog.write") },
-        { id: "blog-ai", name: "AI Oluşturucu", href: "/admin/blog/ai-generator", icon: Sparkles, show: hasPermission("blog.read") },
-        { id: "blog-categories", name: "Kategoriler", href: "/admin/blog/categories", icon: FolderTree, show: hasPermission("blog.read") },
-        { id: "blog-titles", name: "Başlıklar", href: "/admin/blog/title-management", icon: StickyNote, show: hasPermission("blog.read") },
-      ],
-    },
-    {
-      id: "social-media",
-      name: "Sosyal Medya",
-      icon: Share2,
-      show: hasPermission("blog.read"),
-      items: [
-        { id: "sm-dashboard", name: "Dashboard", href: "/admin/social-media", icon: LayoutDashboard, show: hasPermission("blog.read") },
-        { id: "sm-titles", name: "Başlık Kütüphanesi", href: "/admin/social-media/title-library", icon: StickyNote, show: hasPermission("blog.read") },
-        { id: "sm-calendar", name: "İçerik Planlama", href: "/admin/social-media/calendar-view", icon: CalendarIcon, show: hasPermission("blog.read") },
-        { id: "sm-studio", name: "İçerik Stüdyosu", href: "/admin/social-media/content-studio", icon: Sparkles, show: hasPermission("blog.read") },
-        { id: "sm-library", name: "Kütüphane", href: "/admin/social-media/content-list", icon: Database, show: hasPermission("blog.read") },
-      ],
-    },
-    {
-      id: "customers",
-      name: "Müşteriler",
-      icon: Building2,
-      show: hasPermission("companies.view") || hasPermission("contracts.view") || hasPermission("quotes.view") || hasPermission("contacts.view"),
+      id: "communication-center",
+      name: "İletişim Merkezi",
+      icon: MessageSquare,
+      show: hasAnyRole(["admin", "super_admin"]) || hasPermission("contacts.view") || hasPermission("quotes.view") || hasPermission("outlook.view"),
       items: [
         { id: "crm-v2", name: "CRM v2", href: "/admin/crm-v2", icon: Briefcase, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "site-messages", name: "Site Mesajları", href: "/admin/contacts", icon: Mail, show: hasPermission("contacts.view") },
+        { id: "quote-requests", name: "Teklif Talepleri", href: "/admin/quotes", icon: FileText, show: hasPermission("quotes.view") },
+        { id: "outlook-email", name: "Outlook E-posta", href: "/admin/outlook", icon: Mail, show: hasPermission("outlook.view") },
+        { id: "meta-messages", name: "Meta Mesajlar", href: "/admin/meta-messenger", icon: MessageSquare, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
+      ],
+    },
+    {
+      id: "companies-contracts",
+      name: "Firmalar & Sözleşmeler",
+      icon: Building2,
+      show: hasPermission("companies.view") || hasPermission("contracts.view"),
+      items: [
         { id: "companies", name: "Firmalar", href: "/admin/companies", icon: Building2, show: hasPermission("companies.view") },
         { id: "contracts", name: "Sözleşmeler", href: "/admin/contracts", icon: FileSignature, show: hasPermission("contracts.view") },
-        { id: "quotes", name: "Teklifler", href: "/admin/quotes", icon: FileText, show: hasPermission("quotes.view") },
-        { id: "contacts", name: "Mesajlar", href: "/admin/contacts", icon: MessageSquare, show: hasPermission("contacts.view") },
       ],
     },
     {
@@ -489,8 +475,9 @@ export default function AdminNavigation() {
       icon: PiggyBank,
       show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
-        { id: "finance-dashboard", name: "Dashboard", href: "/admin/finance", icon: LayoutDashboard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-dashboard", name: "Özet", href: "/admin/finance", icon: LayoutDashboard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-accounts", name: "Hesaplar", href: "/admin/finance/accounts", icon: Wallet, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-transactions", name: "Tüm İşlemler", href: "/admin/finance/transactions", icon: List, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-income", name: "Gelirler", href: "/admin/finance/income", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-expenses", name: "Giderler", href: "/admin/finance/expenses", icon: TrendingDown, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-receivables", name: "Alacaklar", href: "/admin/finance/receivables", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
@@ -498,17 +485,40 @@ export default function AdminNavigation() {
         { id: "finance-personnel", name: "Personel", href: "/admin/finance/personnel", icon: Users, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-salaries", name: "Maaşlar", href: "/admin/finance/salaries", icon: HandCoins, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "finance-advances", name: "Avanslar", href: "/admin/finance/advances", icon: CreditCard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-reports", name: "Raporlar", href: "/admin/finance/reports", icon: Activity, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "finance-reports", name: "Raporlar", href: "/admin/finance/reports", icon: BarChart3, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },
     {
       id: "warehouse",
-      name: "Depo",
+      name: "Depo & Envanter",
       icon: Box,
       show: hasPermission("packaging.view") || hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
-        { id: "packaging", name: "Ambalajlar", href: "/admin/packaging", icon: Package, show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "inventory-dashboard", name: "Envanter", href: "/admin/inventory", icon: Database, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "inventory-items", name: "Ürünler", href: "/admin/inventory/items", icon: Package, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "inventory-transactions", name: "Stok Hareketleri", href: "/admin/inventory/transactions", icon: Activity, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "inventory-warehouses", name: "Depolar", href: "/admin/inventory/warehouses", icon: Box, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "inventory-suppliers", name: "Tedarikçiler", href: "/admin/inventory/suppliers", icon: Truck, show: hasAnyRole(["admin", "super_admin"]) },
+        { id: "packaging", name: "Ambalajlar (Eski)", href: "/admin/packaging", icon: Package, show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "deliveries", name: "İrsaliyeler", href: "/admin/deliveries", icon: Truck, show: hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]) },
+      ],
+    },
+    {
+      id: "content-management",
+      name: "İçerik Yönetimi",
+      icon: Edit3,
+      show: hasPermission("blog.read"),
+      items: [
+        { id: "blog-list", name: "Blog Yazıları", href: "/admin/blog", icon: BookOpen, show: hasPermission("blog.read") },
+        { id: "blog-new", name: "Blog Yeni Yazı", href: "/admin/blog/new", icon: FileText, show: hasPermission("blog.write") },
+        { id: "blog-ai", name: "Blog AI Oluşturucu", href: "/admin/blog/ai-generator", icon: Sparkles, show: hasPermission("blog.read") },
+        { id: "blog-categories", name: "Blog Kategorileri", href: "/admin/blog/categories", icon: FolderTree, show: hasPermission("blog.read") },
+        { id: "blog-titles", name: "Blog Başlıkları", href: "/admin/blog/title-management", icon: StickyNote, show: hasPermission("blog.read") },
+        { id: "sm-dashboard", name: "SM Genel Bakış", href: "/admin/social-media", icon: Share2, show: hasPermission("blog.read") },
+        { id: "sm-titles", name: "SM Başlık Kütüphanesi", href: "/admin/social-media/title-library", icon: StickyNote, show: hasPermission("blog.read") },
+        { id: "sm-calendar", name: "SM İçerik Takvimi", href: "/admin/social-media/calendar-view", icon: CalendarIcon, show: hasPermission("blog.read") },
+        { id: "sm-studio", name: "SM İçerik Stüdyosu", href: "/admin/social-media/content-studio", icon: Sparkles, show: hasPermission("blog.read") },
+        { id: "sm-library", name: "SM İçerik Arşivi", href: "/admin/social-media/content-list", icon: Database, show: hasPermission("blog.read") },
       ],
     },
     {
@@ -530,13 +540,6 @@ export default function AdminNavigation() {
       items: [
         { id: "ecommerce", name: "E-ticaret", href: "/admin/integrations", icon: ShoppingCart, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
-    },
-    {
-      id: "outlook",
-      name: "Outlook",
-      icon: Mail,
-      href: "/admin/outlook",
-      show: hasPermission("outlook.view"),
     },
     {
       id: "users",
@@ -1098,7 +1101,7 @@ export default function AdminNavigation() {
       </div>
 
       {/* Spacer for main content */}
-      <div className={`hidden lg:block flex-shrink-0 transition-all duration-300 ${isCollapsed ? "w-[72px]" : "w-64"}`} />
+      <div className={`hidden lg:block flex-shrink-0 transition-all duration-300 ${isCollapsed ? "w-[72px]" : "w-80"}`} />
     </>
   );
 }

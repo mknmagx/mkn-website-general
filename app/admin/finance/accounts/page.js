@@ -13,7 +13,9 @@ import {
   getAccountTypeIcon,
   getAccountTypeColor,
   getCurrencyLabel,
+  getCurrencySymbol,
   ACCOUNT_TYPE,
+  ACCOUNT_MODE,
   CURRENCY,
 } from "@/lib/services/finance";
 import {
@@ -32,6 +34,7 @@ import {
   Globe,
   Star,
   RefreshCw,
+  Coins,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,7 +100,6 @@ export default function AccountsPage() {
         setAccounts(result.data);
       }
     } catch (error) {
-      console.error("Error loading accounts:", error);
       toast.error("Hesaplar yüklenirken bir hata oluştu");
     } finally {
       setLoading(false);
@@ -139,12 +141,27 @@ export default function AccountsPage() {
   });
 
   const totalBalances = filteredAccounts.reduce((acc, account) => {
-    if (!acc[account.currency]) {
-      acc[account.currency] = 0;
+    // Multi-currency hesapları için balances objesini kullan
+    if (account.balances) {
+      Object.entries(account.balances).forEach(([currency, balance]) => {
+        if (balance) {
+          if (!acc[currency]) acc[currency] = 0;
+          acc[currency] += balance;
+        }
+      });
+    } else {
+      // Eski tek dövizli hesaplar için currentBalance kullan
+      const currency = account.currency || CURRENCY.TRY;
+      if (!acc[currency]) acc[currency] = 0;
+      acc[currency] += account.currentBalance || 0;
     }
-    acc[account.currency] += account.currentBalance;
     return acc;
   }, {});
+
+  // Sıfır bakiyeleri temizle
+  Object.keys(totalBalances).forEach(key => {
+    if (totalBalances[key] === 0) delete totalBalances[key];
+  });
 
   const AccountIcon = ({ type }) => {
     const iconName = getAccountTypeIcon(type);
@@ -169,7 +186,7 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -187,7 +204,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Toplam Bakiyeler */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(totalBalances).map(([currency, balance]) => (
           <Card key={currency} className="bg-white border-slate-200">
             <CardContent className="p-4">
@@ -271,42 +288,56 @@ export default function AccountsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {filteredAccounts.map((account) => (
             <Card 
               key={account.id} 
-              className="bg-white border-slate-200 hover:shadow-md transition-shadow"
+              className="bg-white border-slate-200 hover:shadow-md transition-shadow group"
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <Link href={`/admin/finance/accounts/${account.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
                       getAccountTypeColor(account.type)
                     )}>
                       <AccountIcon type={account.type} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-slate-900">{account.name}</h3>
+                        <h3 className="font-semibold text-slate-900 hover:text-blue-600 truncate">{account.name}</h3>
                         {account.isDefault && (
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-500 flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-slate-500">
-                        {getAccountTypeLabel(account.type)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-slate-500">
+                          {getAccountTypeLabel(account.type)}
+                        </p>
+                        {account.mode === ACCOUNT_MODE.MULTI && (
+                          <Badge variant="outline" className="text-xs py-0 h-4 bg-blue-50 text-blue-600 border-blue-200">
+                            <Globe className="w-3 h-3 mr-1" />
+                            Çoklu Döviz
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={() => router.push(`/admin/finance/accounts/${account.id}`)}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Detay
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/admin/finance/accounts/${account.id}/edit`)}
                       >
                         <Pencil className="w-4 h-4 mr-2" />
                         Düzenle
@@ -324,12 +355,36 @@ export default function AccountsPage() {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-slate-100">
-                  <p className="text-2xl font-bold text-slate-900">
-                    {formatCurrency(account.currentBalance, account.currency)}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Güncel Bakiye
-                  </p>
+                  {/* Multi-currency hesaplar için tüm bakiyeleri göster */}
+                  {account.mode === ACCOUNT_MODE.MULTI && account.balances ? (
+                    <div className="space-y-2">
+                      {Object.entries(account.balances)
+                        .filter(([_, balance]) => balance !== 0)
+                        .map(([currency, balance]) => (
+                          <div key={currency} className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">{getCurrencyLabel(currency)}</span>
+                            <span className={cn(
+                              "text-sm font-semibold",
+                              balance >= 0 ? "text-slate-900" : "text-red-600"
+                            )}>
+                              {formatCurrency(balance, currency)}
+                            </span>
+                          </div>
+                        ))}
+                      {Object.values(account.balances).every(b => b === 0) && (
+                        <p className="text-sm text-slate-400">Bakiye yok</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {formatCurrency(account.currentBalance, account.currency)}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Güncel Bakiye
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {account.bankName && (
@@ -347,6 +402,11 @@ export default function AccountsPage() {
                   <Badge variant="outline" className="text-xs">
                     {getCurrencyLabel(account.currency)}
                   </Badge>
+                  {account.mode === ACCOUNT_MODE.MULTI && account.supportedCurrencies?.length > 1 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{account.supportedCurrencies.length - 1} döviz
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -8,9 +8,12 @@ import { useAdminAuth } from "@/hooks/use-admin-auth";
 import {
   createAccount,
   ACCOUNT_TYPE,
+  ACCOUNT_MODE,
   CURRENCY,
+  ALL_CURRENCIES,
   getAccountTypeLabel,
   getCurrencyLabel,
+  getCurrencySymbol,
 } from "@/lib/services/finance";
 import {
   ArrowLeft,
@@ -18,6 +21,8 @@ import {
   Wallet,
   Building2,
   CreditCard,
+  Globe,
+  Coins,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +30,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -41,12 +48,20 @@ export default function NewAccountPage() {
   const [formData, setFormData] = useState({
     name: "",
     type: ACCOUNT_TYPE.BANK,
+    mode: ACCOUNT_MODE.SINGLE,
     currency: CURRENCY.TRY,
+    supportedCurrencies: [CURRENCY.TRY, CURRENCY.USD, CURRENCY.EUR],
     bankName: "",
     iban: "",
     accountNumber: "",
     branchCode: "",
     initialBalance: "",
+    initialBalances: {
+      TRY: "",
+      USD: "",
+      EUR: "",
+      GBP: "",
+    },
     isDefault: false,
     description: "",
     notes: "",
@@ -54,6 +69,33 @@ export default function NewAccountPage() {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleInitialBalanceChange = (currency, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      initialBalances: {
+        ...prev.initialBalances,
+        [currency]: value,
+      },
+    }));
+  };
+
+  const handleSupportedCurrencyToggle = (currency) => {
+    setFormData((prev) => {
+      const current = prev.supportedCurrencies || [];
+      if (current.includes(currency)) {
+        return {
+          ...prev,
+          supportedCurrencies: current.filter((c) => c !== currency),
+        };
+      } else {
+        return {
+          ...prev,
+          supportedCurrencies: [...current, currency],
+        };
+      }
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -64,15 +106,31 @@ export default function NewAccountPage() {
       return;
     }
 
+    // Multi-currency modunda en az bir döviz seçili olmalı
+    if (formData.mode === ACCOUNT_MODE.MULTI && formData.supportedCurrencies.length === 0) {
+      toast.error("En az bir para birimi seçmelisiniz");
+      return;
+    }
+
     setLoading(true);
     try {
-      const result = await createAccount(
-        {
-          ...formData,
-          initialBalance: parseFloat(formData.initialBalance) || 0,
-        },
-        user?.uid
-      );
+      const accountData = {
+        ...formData,
+        initialBalance: parseFloat(formData.initialBalance) || 0,
+      };
+
+      // Multi-currency için bakiyeleri hazırla
+      if (formData.mode === ACCOUNT_MODE.MULTI) {
+        const balances = {};
+        Object.entries(formData.initialBalances).forEach(([curr, val]) => {
+          if (formData.supportedCurrencies.includes(curr)) {
+            balances[curr] = parseFloat(val) || 0;
+          }
+        });
+        accountData.initialBalances = balances;
+      }
+
+      const result = await createAccount(accountData, user?.uid);
 
       if (result.success) {
         toast.success("Hesap oluşturuldu");
@@ -146,37 +204,158 @@ export default function NewAccountPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Para Birimi</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) => handleChange("currency", value)}
+            {/* Hesap Modu Seçimi */}
+            <div className="space-y-3">
+              <Label>Hesap Modu</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    formData.mode === ACCOUNT_MODE.SINGLE 
+                      ? 'border-emerald-500 bg-emerald-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => handleChange("mode", ACCOUNT_MODE.SINGLE)}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(CURRENCY).map((currency) => (
-                      <SelectItem key={currency} value={currency}>
-                        {getCurrencyLabel(currency)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="initialBalance">Açılış Bakiyesi</Label>
-                <Input
-                  id="initialBalance"
-                  type="number"
-                  step="0.01"
-                  value={formData.initialBalance}
-                  onChange={(e) => handleChange("initialBalance", e.target.value)}
-                  placeholder="0.00"
-                />
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      formData.mode === ACCOUNT_MODE.SINGLE ? 'bg-emerald-100' : 'bg-slate-100'
+                    }`}>
+                      <Coins className={`w-5 h-5 ${
+                        formData.mode === ACCOUNT_MODE.SINGLE ? 'text-emerald-600' : 'text-slate-500'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">Tek Döviz</p>
+                      <p className="text-xs text-slate-500">Tek para birimi ile çalışır</p>
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    formData.mode === ACCOUNT_MODE.MULTI 
+                      ? 'border-emerald-500 bg-emerald-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => handleChange("mode", ACCOUNT_MODE.MULTI)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      formData.mode === ACCOUNT_MODE.MULTI ? 'bg-emerald-100' : 'bg-slate-100'
+                    }`}>
+                      <Globe className={`w-5 h-5 ${
+                        formData.mode === ACCOUNT_MODE.MULTI ? 'text-emerald-600' : 'text-slate-500'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">Çoklu Döviz</p>
+                      <p className="text-xs text-slate-500">Birden fazla döviz tutabilir</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Tek Döviz Modu */}
+            {formData.mode === ACCOUNT_MODE.SINGLE && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Para Birimi</Label>
+                  <Select
+                    value={formData.currency}
+                    onValueChange={(value) => handleChange("currency", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(CURRENCY).map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {getCurrencyLabel(currency)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="initialBalance">Açılış Bakiyesi</Label>
+                  <Input
+                    id="initialBalance"
+                    type="number"
+                    step="0.01"
+                    value={formData.initialBalance}
+                    onChange={(e) => handleChange("initialBalance", e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Çoklu Döviz Modu */}
+            {formData.mode === ACCOUNT_MODE.MULTI && (
+              <>
+                <div className="space-y-2">
+                  <Label>Ana Para Birimi (Raporlama için)</Label>
+                  <Select
+                    value={formData.currency}
+                    onValueChange={(value) => handleChange("currency", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(CURRENCY).map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {getCurrencyLabel(currency)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Desteklenen Para Birimleri & Açılış Bakiyeleri</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {ALL_CURRENCIES.map((currency) => (
+                      <div 
+                        key={currency}
+                        className={`p-3 border rounded-lg ${
+                          formData.supportedCurrencies?.includes(currency) 
+                            ? 'border-emerald-300 bg-emerald-50' 
+                            : 'border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={formData.supportedCurrencies?.includes(currency)}
+                            onCheckedChange={() => handleSupportedCurrencyToggle(currency)}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-mono">
+                                {getCurrencySymbol(currency)}
+                              </Badge>
+                              <span className="text-sm font-medium">{getCurrencyLabel(currency)}</span>
+                            </div>
+                            {formData.supportedCurrencies?.includes(currency) && (
+                              <div className="mt-2">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Açılış bakiyesi"
+                                  value={formData.initialBalances[currency] || ""}
+                                  onChange={(e) => handleInitialBalanceChange(currency, e.target.value)}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <div>

@@ -118,7 +118,6 @@ export default function SalariesPage() {
 
       setSalaries(salaryData);
     } catch (error) {
-      console.error("Error loading data:", error);
       toast({
         title: "Hata",
         description: "Veriler yüklenirken bir hata oluştu",
@@ -181,7 +180,7 @@ export default function SalariesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -358,73 +357,78 @@ export default function SalariesPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold">Personel</TableHead>
-                  <TableHead className="font-semibold">Dönem</TableHead>
-                  <TableHead className="font-semibold text-right">Brüt Maaş</TableHead>
-                  <TableHead className="font-semibold text-right">Kesintiler</TableHead>
-                  <TableHead className="font-semibold text-right">Net Maaş</TableHead>
-                  <TableHead className="font-semibold">Ödeme Tarihi</TableHead>
-                  <TableHead className="font-semibold">Durum</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSalaries.map((salary) => (
-                  <TableRow key={salary.id} className="hover:bg-slate-50">
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-indigo-600" />
-                        </div>
-                        <span className="font-medium text-slate-900">{salary.personnelName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {MONTHS.find(m => m.value === String(salary.month))?.label} {salary.year}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(salary.grossSalary || 0, salary.currency)}
-                    </TableCell>
-                    <TableCell className="text-right text-red-600">
-                      -{formatCurrency(salary.totalDeductions || 0, salary.currency)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-semibold text-emerald-600">
-                        {formatCurrency(salary.netSalary || 0, salary.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {salary.paidDate ? formatDate(salary.paidDate) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn("text-xs", getSalaryStatusColor(salary.status))}>
-                        {getSalaryStatusLabel(salary.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/admin/finance/salaries/${salary.id}`)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Detay
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="font-semibold w-[180px]">Personel</TableHead>
+                    <TableHead className="font-semibold w-[120px]">Dönem</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Brüt Maaş</TableHead>
+                    <TableHead className="font-semibold w-[110px] text-right">Kesintiler</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Net Maaş</TableHead>
+                    <TableHead className="font-semibold w-[110px]">Ödeme Tarihi</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Durum</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredSalaries.map((salary) => (
+                    <TableRow key={salary.id} className="hover:bg-slate-50 group">
+                      <TableCell>
+                        <Link 
+                          href={`/admin/finance/salaries/${salary.id}`}
+                          className="flex items-center gap-2 hover:bg-slate-100 rounded p-1 -m-1 transition-colors"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <span className="font-medium text-slate-900 hover:text-blue-600">{salary.personnelName}</span>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-slate-600 text-sm">
+                        {MONTHS.find(m => m.value === String(salary.month))?.label} {salary.year}
+                      </TableCell>
+                      <TableCell className="text-right font-medium whitespace-nowrap">
+                        {formatCurrency(salary.grossSalary || 0, salary.currency)}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600 whitespace-nowrap">
+                        -{formatCurrency(salary.totalDeductions || 0, salary.currency)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-semibold text-emerald-600 whitespace-nowrap">
+                          {formatCurrency(salary.netSalary || 0, salary.currency)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-slate-600 text-sm">
+                        {salary.paidDate ? formatDate(salary.paidDate) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn("text-xs whitespace-nowrap", getSalaryStatusColor(salary.status))}>
+                          {getSalaryStatusLabel(salary.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/admin/finance/salaries/${salary.id}`)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Detay
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

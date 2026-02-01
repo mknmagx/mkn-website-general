@@ -100,7 +100,7 @@ export default function NewSalaryPage() {
         setAccounts(accountsResult.data);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      // Silent fail - dropdowns will be empty
     } finally {
       setLoading(false);
     }

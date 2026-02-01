@@ -64,7 +64,7 @@ export default function FinanceDashboard() {
         setReceivablePayableStats(receivablePayable.data);
       if (personnel.success) setPersonnelStats(personnel.data);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      // Dashboard data load failed - will show empty state
     } finally {
       setLoading(false);
     }
@@ -221,7 +221,7 @@ export default function FinanceDashboard() {
     receivablePayableStats?.receivables?.overdue?.[CURRENCY.TRY] || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -348,6 +348,27 @@ export default function FinanceDashboard() {
               icon={Wallet}
               href="/admin/finance/accounts/new"
               color="blue"
+            />
+            <QuickAction
+              title="Transfer"
+              description="Hesaplar arası transfer"
+              icon={RefreshCw}
+              href="/admin/finance/transfer"
+              color="blue"
+            />
+            <QuickAction
+              title="Tüm İşlemler"
+              description="Gelir, gider, transfer listesi"
+              icon={CreditCard}
+              href="/admin/finance/transactions"
+              color="blue"
+            />
+            <QuickAction
+              title="Döviz Çevir"
+              description="Hesap içi döviz çevirme"
+              icon={DollarSign}
+              href="/admin/finance/exchange"
+              color="purple"
             />
             <QuickAction
               title="Avans Ver"

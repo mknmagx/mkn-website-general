@@ -72,7 +72,7 @@ export default function NewAdvancePage() {
         setAccounts(accountsResult.data);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      // Silent fail - dropdowns will be empty
     } finally {
       setLoading(false);
     }
@@ -172,14 +172,14 @@ export default function NewAdvancePage() {
             <div className="space-y-2">
               <Label htmlFor="personnelId">Personel Seçin *</Label>
               <Select
-                value={formData.personnelId}
+                value={formData.personnelId || ""}
                 onValueChange={handlePersonnelSelect}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Personel seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {personnel.map((person) => (
+                  {personnel.filter(person => person.id).map((person) => (
                     <SelectItem key={person.id} value={person.id}>
                       {person.firstName} {person.lastName} - {person.position || "Pozisyon yok"}
                     </SelectItem>
@@ -216,14 +216,14 @@ export default function NewAdvancePage() {
               <div className="space-y-2">
                 <Label htmlFor="currency">Para Birimi *</Label>
                 <Select
-                  value={formData.currency}
+                  value={formData.currency || CURRENCY.TRY}
                   onValueChange={(value) => handleChange("currency", value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(CURRENCY).map((curr) => (
+                    {Object.values(CURRENCY).filter(curr => curr).map((curr) => (
                       <SelectItem key={curr} value={curr}>
                         {curr}
                       </SelectItem>
@@ -284,15 +284,15 @@ export default function NewAdvancePage() {
             <div className="space-y-2">
               <Label htmlFor="accountId">Ödeme Hesabı</Label>
               <Select
-                value={formData.accountId}
-                onValueChange={(value) => handleChange("accountId", value)}
+                value={formData.accountId || "none"}
+                onValueChange={(value) => handleChange("accountId", value === "none" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Hesap seçin (opsiyonel)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Seçilmedi</SelectItem>
-                  {accounts.map((account) => (
+                  <SelectItem value="none">Seçilmedi</SelectItem>
+                  {accounts.filter(account => account.id).map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name} ({account.currency})
                     </SelectItem>

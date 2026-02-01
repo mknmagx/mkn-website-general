@@ -105,7 +105,6 @@ export default function IncomePage() {
       if (txResult.success) setTransactions(txResult.data);
       if (accResult.success) setAccounts(accResult.data);
     } catch (error) {
-      console.error("Error loading data:", error);
       toast.error("Veriler yüklenirken bir hata oluştu");
     } finally {
       setLoading(false);
@@ -158,7 +157,7 @@ export default function IncomePage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-10 w-32" />
@@ -170,7 +169,7 @@ export default function IncomePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -188,13 +187,13 @@ export default function IncomePage() {
       </div>
 
       {/* Toplam */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(totalIncome).map(([currency, total]) => (
           <Card key={currency} className="bg-emerald-50 border-emerald-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-emerald-700">Toplam Gelir ({currency})</p>
+                  <p className="text-sm text-emerald-700">Toplam ({currency})</p>
                   <p className="text-2xl font-bold text-emerald-800">
                     {formatCurrency(total, currency)}
                   </p>
@@ -207,7 +206,7 @@ export default function IncomePage() {
           </Card>
         ))}
         {Object.keys(totalIncome).length === 0 && (
-          <Card className="bg-slate-50 border-slate-200 md:col-span-3">
+          <Card className="bg-slate-50 border-slate-200 md:col-span-4">
             <CardContent className="p-4 text-center text-slate-500">
               Henüz gelir kaydı bulunmuyor
             </CardContent>
@@ -292,91 +291,104 @@ export default function IncomePage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold">İşlem No</TableHead>
-                  <TableHead className="font-semibold">Tarih</TableHead>
-                  <TableHead className="font-semibold">Açıklama</TableHead>
-                  <TableHead className="font-semibold">Kategori</TableHead>
-                  <TableHead className="font-semibold">Hesap</TableHead>
-                  <TableHead className="font-semibold text-right">Tutar</TableHead>
-                  <TableHead className="font-semibold">Durum</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((tx) => (
-                  <TableRow key={tx.id} className="hover:bg-slate-50">
-                    <TableCell className="font-mono text-sm text-slate-600">
-                      {tx.transactionNumber}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {formatDate(tx.transactionDate)}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-slate-900 line-clamp-1">
-                          {tx.description || "-"}
-                        </p>
-                        {tx.customerName && (
-                          <p className="text-xs text-slate-500">{tx.customerName}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {getIncomeCategoryLabel(tx.category) || "-"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {tx.accountName || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-semibold text-emerald-600">
-                        +{formatCurrency(tx.amount, tx.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn("text-xs", getTransactionStatusColor(tx.status))}>
-                        {getTransactionStatusLabel(tx.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/admin/finance/income/${tx.id}`)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Görüntüle
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/admin/finance/income/${tx.id}/edit`)}
-                          >
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Düzenle
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => setDeleteDialog({ open: true, transaction: tx })}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Sil
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="font-semibold w-[120px]">İşlem No</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Tarih</TableHead>
+                    <TableHead className="font-semibold min-w-[200px]">Açıklama</TableHead>
+                    <TableHead className="font-semibold w-[120px]">Kategori</TableHead>
+                    <TableHead className="font-semibold w-[140px]">Hesap</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Tutar</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Durum</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransactions.map((tx) => (
+                    <TableRow key={tx.id} className="hover:bg-slate-50 group">
+                      <TableCell>
+                        <Link 
+                          href={`/admin/finance/transactions/${tx.id}`}
+                          className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {tx.transactionNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-slate-600 text-sm">
+                        {formatDate(tx.transactionDate)}
+                      </TableCell>
+                      <TableCell>
+                        <Link 
+                          href={`/admin/finance/transactions/${tx.id}`}
+                          className="block hover:bg-slate-100 rounded p-1 -m-1 transition-colors"
+                        >
+                          <p className="font-medium text-slate-900 line-clamp-1">
+                            {tx.description || "-"}
+                          </p>
+                          {tx.customerName && (
+                            <p className="text-xs text-slate-500">{tx.customerName}</p>
+                          )}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs whitespace-nowrap">
+                          {getIncomeCategoryLabel(tx.category) || "-"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {tx.accountId ? (
+                          <Link 
+                            href={`/admin/finance/accounts/${tx.accountId}`}
+                            className="text-sm text-slate-600 hover:text-blue-600 hover:underline"
+                          >
+                            {tx.accountName || "-"}
+                          </Link>
+                        ) : (
+                          <span className="text-slate-600 text-sm">{tx.accountName || "-"}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-semibold text-emerald-600 whitespace-nowrap">
+                          +{formatCurrency(tx.amount, tx.currency)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn("text-xs whitespace-nowrap", getTransactionStatusColor(tx.status))}>
+                          {getTransactionStatusLabel(tx.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/admin/finance/transactions/${tx.id}`)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Görüntüle
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => setDeleteDialog({ open: true, transaction: tx })}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Sil
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -385,10 +397,39 @@ export default function IncomePage() {
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Gelir Kaydını Sil</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{deleteDialog.transaction?.transactionNumber}</strong> numaralı gelir kaydını silmek istediğinize emin misiniz?
-              Bu işlem geri alınamaz ve hesap bakiyesi otomatik olarak güncellenecektir.
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Gelir Kaydını Sil
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  <strong>{deleteDialog.transaction?.transactionNumber}</strong> numaralı gelir kaydını silmek istediğinize emin misiniz?
+                </p>
+                {deleteDialog.transaction && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Tutar:</span>
+                      <span className="font-semibold text-red-600">
+                        -{formatCurrency(deleteDialog.transaction.amount, deleteDialog.transaction.currency)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Hesap:</span>
+                      <span className="font-medium">{deleteDialog.transaction.accountName || "-"}</span>
+                    </div>
+                    {deleteDialog.transaction.companyName && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600">Firma:</span>
+                        <span>{deleteDialog.transaction.companyName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-amber-600 text-sm flex items-center gap-1">
+                  ⚠️ Bu işlem geri alınamaz. Hesap bakiyesi otomatik olarak düşürülecektir.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -397,7 +438,7 @@ export default function IncomePage() {
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Sil
+              Sil ve Bakiyeyi Güncelle
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

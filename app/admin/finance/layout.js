@@ -19,6 +19,9 @@ import {
   CreditCard,
   HandCoins,
   PiggyBank,
+  ArrowLeftRight,
+  RefreshCcw,
+  List,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../components/ui/button";
@@ -34,6 +37,21 @@ const navigation = [
     name: "Hesaplar",
     href: "/admin/finance/accounts",
     icon: Wallet,
+  },
+  {
+    name: "Tüm İşlemler",
+    href: "/admin/finance/transactions",
+    icon: List,
+  },
+  {
+    name: "Transfer",
+    href: "/admin/finance/transfer",
+    icon: ArrowLeftRight,
+  },
+  {
+    name: "Döviz Çevir",
+    href: "/admin/finance/exchange",
+    icon: RefreshCcw,
   },
   {
     name: "Gelirler",
@@ -183,7 +201,9 @@ export default function FinanceLayout({ children }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </div>
     </PermissionGuard>
   );

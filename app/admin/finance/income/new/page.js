@@ -77,7 +77,7 @@ export default function NewIncomePage() {
         }
       }
     } catch (error) {
-      console.error("Error loading accounts:", error);
+      // Silent fail - will show empty dropdown
     } finally {
       setLoading(false);
     }

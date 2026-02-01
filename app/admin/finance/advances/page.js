@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, where } from "firebase/firestore";
 import {
   formatCurrency,
   formatDate,
@@ -14,6 +14,8 @@ import {
   getAdvanceStatusColor,
   ADVANCE_STATUS,
   CURRENCY,
+  TRANSACTION_TYPE,
+  EXPENSE_CATEGORY,
 } from "@/lib/services/finance";
 import {
   Plus,
@@ -70,25 +72,60 @@ export default function AdvancesPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const q = query(
+      // 1. Finance Advances collection'ından avans kayıtlarını çek
+      const advancesQuery = query(
         collection(db, "finance_advances"),
         orderBy("createdAt", "desc")
       );
-
-      const snapshot = await getDocs(q);
-      let advanceData = snapshot.docs.map(doc => ({
+      const advancesSnapshot = await getDocs(advancesQuery);
+      const advanceRecords = advancesSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        source: 'advance_record', // Kaynak bilgisi
       }));
 
-      // Filtreleme
+      // 2. Finance Transactions'dan avans kategorisindeki giderleri çek
+      const transactionsQuery = query(
+        collection(db, "finance_transactions"),
+        where("type", "==", TRANSACTION_TYPE.EXPENSE),
+        where("category", "==", EXPENSE_CATEGORY.ADVANCE),
+        orderBy("transactionDate", "desc")
+      );
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      const advanceTransactions = transactionsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          personnelId: data.personnelId,
+          personnelName: data.personnelName || '-',
+          amount: data.amount,
+          currency: data.currency || CURRENCY.TRY,
+          status: ADVANCE_STATUS.PAID, // Gider olarak eklenen = ödenmiş
+          requestDate: data.transactionDate,
+          paymentDate: data.transactionDate,
+          reason: data.description || data.transactionNumber,
+          accountId: data.accountId,
+          accountName: data.accountName,
+          source: 'transaction', // Kaynak bilgisi
+          transactionNumber: data.transactionNumber,
+          createdAt: data.createdAt,
+        };
+      });
+
+      // 3. Birleştir ve sırala
+      let allAdvances = [...advanceRecords, ...advanceTransactions].sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+
+      // Durum filtresi
       if (statusFilter !== "all") {
-        advanceData = advanceData.filter(a => a.status === statusFilter);
+        allAdvances = allAdvances.filter(a => a.status === statusFilter);
       }
 
-      setAdvances(advanceData);
+      setAdvances(allAdvances);
     } catch (error) {
-      console.error("Error loading data:", error);
       toast.error("Veriler yüklenirken bir hata oluştu");
     } finally {
       setLoading(false);
@@ -151,7 +188,7 @@ export default function AdvancesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -315,88 +352,77 @@ export default function AdvancesPage() {
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold">Personel</TableHead>
-                  <TableHead className="font-semibold">Talep Tarihi</TableHead>
-                  <TableHead className="font-semibold">Sebep</TableHead>
-                  <TableHead className="font-semibold text-right">Tutar</TableHead>
-                  <TableHead className="font-semibold text-right">Kalan</TableHead>
-                  <TableHead className="font-semibold">İade Durumu</TableHead>
-                  <TableHead className="font-semibold">Durum</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAdvances.map((advance) => {
-                  const remaining = advance.remainingAmount || advance.amount;
-                  const repaidAmount = advance.amount - remaining;
-                  const progress = advance.amount > 0 
-                    ? Math.round((repaidAmount / advance.amount) * 100) 
-                    : 0;
-
-                  return (
-                    <TableRow key={advance.id} className="hover:bg-slate-50">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center">
-                            <User className="w-4 h-4 text-cyan-600" />
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="font-semibold w-[180px]">Personel</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Tarih</TableHead>
+                    <TableHead className="font-semibold min-w-[160px]">Açıklama</TableHead>
+                    <TableHead className="font-semibold w-[120px] text-right">Tutar</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Durum</TableHead>
+                    <TableHead className="font-semibold w-[100px]">Kaynak</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAdvances.map((advance) => {
+                    return (
+                      <TableRow key={`${advance.source}-${advance.id}`} className="hover:bg-slate-50 group">
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                              <User className="w-4 h-4 text-cyan-600" />
+                            </div>
+                            <span className="font-medium text-slate-900">{advance.personnelName || '-'}</span>
                           </div>
-                          <span className="font-medium text-slate-900">{advance.personnelName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {advance.requestDate ? formatDate(advance.requestDate) : formatDate(advance.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-slate-600 max-w-[200px]">
-                        <p className="line-clamp-1">{advance.reason || "-"}</p>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(advance.amount, advance.currency)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={cn("font-semibold", remaining > 0 ? "text-orange-600" : "text-emerald-600")}>
-                          {formatCurrency(remaining, advance.currency)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="min-w-[120px]">
-                        {advance.status === ADVANCE_STATUS.PAID ? (
-                          <div className="space-y-1">
-                            <Progress value={progress} className="h-2" />
-                            <p className="text-xs text-slate-500 text-right">{progress}% iade edildi</p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn("text-xs", getAdvanceStatusColor(advance.status))}>
-                          {getAdvanceStatusLabel(advance.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/admin/finance/advances/${advance.id}`)}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Detay
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="text-slate-600 text-sm">
+                          {advance.requestDate ? formatDate(advance.requestDate) : formatDate(advance.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          <p className="line-clamp-1">{advance.reason || advance.transactionNumber || "-"}</p>
+                        </TableCell>
+                        <TableCell className="text-right font-medium whitespace-nowrap text-red-600">
+                          -{formatCurrency(advance.amount, advance.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("text-xs whitespace-nowrap", getAdvanceStatusColor(advance.status))}>
+                            {getAdvanceStatusLabel(advance.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {advance.source === 'transaction' ? 'Gider İşlemi' : 'Avans Kaydı'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => router.push(
+                                  advance.source === 'transaction' 
+                                    ? `/admin/finance/transactions/${advance.id}`
+                                    : `/admin/finance/advances/${advance.id}`
+                                )}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Detay
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import {
   createPersonnel,
+  getPersonnelList,
   PERSONNEL_STATUS,
   CURRENCY,
 } from "@/lib/services/finance";
+import { getAllUsers } from "@/lib/services/admin-user-service";
 import {
   ArrowLeft,
   Save,
@@ -22,12 +24,19 @@ import {
   CreditCard,
   MapPin,
   FileText,
+  RefreshCw,
+  UserCircle,
+  Link2,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -35,14 +44,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function NewPersonnelPage() {
   const router = useRouter();
-  const { user } = useAdminAuth();
+  const { user, permissions } = useAdminAuth();
 
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [existingPersonnel, setExistingPersonnel] = useState([]);
+  const [userSelectOpen, setUserSelectOpen] = useState(false);
   
   const [formData, setFormData] = useState({
+    linkedUserId: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -59,9 +86,67 @@ export default function NewPersonnelPage() {
     notes: "",
   });
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Kullanıcıları yükle
+      const usersResult = await getAllUsers(permissions);
+      if (usersResult.success) {
+        setUsers(usersResult.users || []);
+      }
+      
+      // Mevcut personelleri yükle (bağlı kullanıcıları filtrelemek için)
+      const personnelResult = await getPersonnelList();
+      if (personnelResult.success) {
+        setExistingPersonnel(personnelResult.data || []);
+      }
+    } catch (error) {
+      // Silent fail - users and personnel list will be empty
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Kullanıcı seçildiğinde bilgileri doldur
+  const handleUserSelect = (userId) => {
+    const selectedUser = users.find(u => u.id === userId);
+    if (selectedUser) {
+      setFormData(prev => ({
+        ...prev,
+        linkedUserId: userId,
+        firstName: selectedUser.firstName || selectedUser.displayName?.split(' ')[0] || "",
+        lastName: selectedUser.lastName || selectedUser.displayName?.split(' ').slice(1).join(' ') || "",
+        email: selectedUser.email || "",
+        phone: selectedUser.phone || "",
+      }));
+    }
+    setUserSelectOpen(false);
+  };
+
+  // Kullanıcı bağlantısını kaldır
+  const handleRemoveUserLink = () => {
+    setFormData(prev => ({
+      ...prev,
+      linkedUserId: "",
+    }));
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Zaten personele bağlı kullanıcıları filtrele
+  const linkedUserIds = existingPersonnel
+    .filter(p => p.linkedUserId)
+    .map(p => p.linkedUserId);
+
+  const availableUsers = users.filter(u => !linkedUserIds.includes(u.id));
+
+  const selectedUser = users.find(u => u.id === formData.linkedUserId);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,6 +164,7 @@ export default function NewPersonnelPage() {
     setSaving(true);
     try {
       const personnelData = {
+        linkedUserId: formData.linkedUserId || null,
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email || null,
@@ -87,6 +173,7 @@ export default function NewPersonnelPage() {
         department: formData.department || null,
         baseSalary: formData.baseSalary ? parseFloat(formData.baseSalary) : 0,
         salaryCurrency: formData.salaryCurrency,
+        currency: formData.salaryCurrency,
         startDate: formData.startDate ? new Date(formData.startDate) : null,
         bankName: formData.bankName || null,
         iban: formData.iban || null,
@@ -111,8 +198,17 @@ export default function NewPersonnelPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6 max-w-[1000px] mx-auto">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-[600px]" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-[1000px] mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/admin/finance/personnel">
@@ -128,15 +224,114 @@ export default function NewPersonnelPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Kullanıcı Bağlantısı */}
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-blue-600" />
+              Sistem Kullanıcısı Bağlantısı
+            </CardTitle>
+            <CardDescription>
+              Personeli sistemdeki bir kullanıcıya bağlayın. Bağlı kullanıcılar kendi sayfalarında maaş ve finans bilgilerini görebilirler.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {formData.linkedUserId ? (
+              <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedUser?.photoURL} />
+                    <AvatarFallback className="bg-blue-100 text-blue-700">
+                      {selectedUser?.firstName?.[0] || selectedUser?.email?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {selectedUser?.displayName || `${selectedUser?.firstName || ''} ${selectedUser?.lastName || ''}`}
+                    </p>
+                    <p className="text-sm text-slate-500">{selectedUser?.email}</p>
+                  </div>
+                  <Badge className="ml-2 bg-blue-100 text-blue-700">Bağlı</Badge>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRemoveUserLink}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Bağlantıyı Kaldır
+                </Button>
+              </div>
+            ) : (
+              <Popover open={userSelectOpen} onOpenChange={setUserSelectOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start text-slate-500 border-slate-300"
+                  >
+                    <UserCircle className="w-4 h-4 mr-2" />
+                    Kullanıcı Seç (Opsiyonel)
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Kullanıcı ara..." />
+                    <CommandList>
+                      <CommandEmpty>Kullanıcı bulunamadı.</CommandEmpty>
+                      <CommandGroup>
+                        {availableUsers.map((u) => (
+                          <CommandItem
+                            key={u.id}
+                            value={`${u.email} ${u.displayName || ''} ${u.firstName || ''}`}
+                            onSelect={() => handleUserSelect(u.id)}
+                            className="cursor-pointer"
+                          >
+                            <Avatar className="h-8 w-8 mr-2">
+                              <AvatarImage src={u.photoURL} />
+                              <AvatarFallback className="bg-slate-100 text-slate-600 text-xs">
+                                {u.firstName?.[0] || u.email?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {u.displayName || `${u.firstName || ''} ${u.lastName || ''}`}
+                              </p>
+                              <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                            </div>
+                            {u.role && (
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {u.role}
+                              </Badge>
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
+            
+            {availableUsers.length === 0 && !formData.linkedUserId && (
+              <div className="flex items-center gap-2 mt-3 text-sm text-amber-600">
+                <AlertCircle className="w-4 h-4" />
+                Bağlanabilecek kullanıcı kalmadı veya tüm kullanıcılar zaten personele bağlı.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Kişisel Bilgiler */}
         <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-4">
+          <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="w-5 h-5 text-purple-600" />
               Kişisel Bilgiler
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">İsim *</Label>
@@ -218,13 +413,13 @@ export default function NewPersonnelPage() {
 
         {/* İş Bilgileri */}
         <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-4">
+          <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <Building className="w-5 h-5 text-purple-600" />
               İş Bilgileri
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="position">Pozisyon</Label>
@@ -265,13 +460,13 @@ export default function NewPersonnelPage() {
 
         {/* Maaş Bilgileri */}
         <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-4">
+          <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-purple-600" />
               Maaş Bilgileri
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="baseSalary">Maaş</Label>
@@ -310,14 +505,14 @@ export default function NewPersonnelPage() {
 
         {/* Banka Bilgileri */}
         <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-4">
+          <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-purple-600" />
               Banka Bilgileri
             </CardTitle>
             <CardDescription>Maaş ödemesi için banka bilgileri</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bankName">Banka Adı</Label>
@@ -344,24 +539,25 @@ export default function NewPersonnelPage() {
 
         {/* Notlar */}
         <Card className="bg-white border-slate-200">
-          <CardHeader className="pb-4">
+          <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="w-5 h-5 text-purple-600" />
               Ek Notlar
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <Textarea
               value={formData.notes}
               onChange={(e) => handleChange("notes", e.target.value)}
               placeholder="Personel ile ilgili ek notlar..."
               rows={4}
+              className="border-slate-300"
             />
           </CardContent>
         </Card>
 
         {/* Buttons */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 pt-4 border-t border-slate-200">
           <Button
             type="submit"
             disabled={saving}
@@ -369,7 +565,7 @@ export default function NewPersonnelPage() {
           >
             {saving ? (
               <>
-                <span className="animate-spin mr-2">⏳</span>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                 Kaydediliyor...
               </>
             ) : (
@@ -380,7 +576,7 @@ export default function NewPersonnelPage() {
             )}
           </Button>
           <Link href="/admin/finance/personnel">
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" className="border-slate-300">
               İptal
             </Button>
           </Link>
