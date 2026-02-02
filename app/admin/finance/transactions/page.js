@@ -10,6 +10,7 @@ import {
   getAccounts,
   formatCurrency,
   formatDate,
+  updateTransaction,
   TRANSACTION_TYPE,
   TRANSACTION_STATUS,
   INCOME_CATEGORY,
@@ -32,6 +33,9 @@ import {
   ExternalLink,
   Trash2,
   Eye,
+  Edit,
+  Save,
+  Loader2,
   Building2,
   User,
   FileText,
@@ -41,6 +45,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -58,6 +64,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +96,15 @@ export default function TransactionsListPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Edit dialog state
+  const [editDialog, setEditDialog] = useState({ open: false, transaction: null });
+  const [editFormData, setEditFormData] = useState({
+    amount: "",
+    description: "",
+    notes: "",
+  });
+  const [editSaving, setEditSaving] = useState(false);
   
   // Filtreler
   const [filters, setFilters] = useState({
@@ -208,6 +231,54 @@ export default function TransactionsListPage() {
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v !== "");
+
+  // Open edit dialog
+  const handleOpenEditDialog = (transaction) => {
+    setEditFormData({
+      amount: transaction.amount || 0,
+      description: transaction.description || "",
+      notes: transaction.notes || "",
+    });
+    setEditDialog({ open: true, transaction });
+  };
+
+  // Save edit - updates finance transaction and account balance
+  const handleSaveEdit = async () => {
+    if (!editDialog.transaction) return;
+
+    const tx = editDialog.transaction;
+    const newAmount = Number(editFormData.amount);
+
+    if (isNaN(newAmount) || newAmount < 0) {
+      toast.error("Geçerli bir tutar girin");
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const result = await updateTransaction(
+        tx.id,
+        {
+          amount: newAmount,
+          description: editFormData.description,
+          notes: editFormData.notes,
+        },
+        user?.uid
+      );
+
+      if (result.success) {
+        toast.success("İşlem başarıyla güncellendi. Hesap bakiyesi de düzeltildi.");
+        setEditDialog({ open: false, transaction: null });
+        loadData(); // Refresh list
+      } else {
+        toast.error(result.error || "Güncelleme başarısız");
+      }
+    } catch (error) {
+      toast.error(error.message || "Bir hata oluştu");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const getTypeIcon = (type, direction) => {
     if (type === TRANSACTION_TYPE.TRANSFER) {
@@ -511,7 +582,7 @@ export default function TransactionsListPage() {
                   <TableHead className="w-[120px]">Tür</TableHead>
                   <TableHead className="w-[100px]">Durum</TableHead>
                   <TableHead className="text-right w-[140px]">Tutar</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -560,11 +631,24 @@ export default function TransactionsListPage() {
                       {formatCurrency(tx.amount, tx.currency)}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/admin/finance/transactions/${tx.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        {/* Edit button - only for non-cancelled transactions */}
+                        {tx.status !== TRANSACTION_STATUS.CANCELLED && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleOpenEditDialog(tx)}
+                            title="Düzenle"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Link href={`/admin/finance/transactions/${tx.id}`}>
+                          <Button variant="ghost" size="sm" title="Detay">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -656,6 +740,153 @@ export default function TransactionsListPage() {
           )}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={editDialog.open}
+        onOpenChange={(open) => !open && setEditDialog({ open: false, transaction: null })}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Finans İşlemi Düzenleme</DialogTitle>
+            <DialogDescription>
+              <strong>{editDialog.transaction?.transactionNumber}</strong> numaralı işlemi düzenleyin.
+              Tutar değişikliği hesap bakiyesini otomatik güncelleyecektir.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editDialog.transaction && (
+            <div className="space-y-4 py-4">
+              {/* Current Info */}
+              <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">İşlem Türü:</span>
+                  <span className="font-medium">
+                    {getTransactionTypeLabel(editDialog.transaction.type)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Hesap:</span>
+                  <span className="font-medium">{editDialog.transaction.accountName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mevcut Tutar:</span>
+                  <span className={cn(
+                    "font-medium",
+                    editDialog.transaction.type === TRANSACTION_TYPE.INCOME ? "text-emerald-600" : "text-red-600"
+                  )}>
+                    {formatCurrency(editDialog.transaction.amount, editDialog.transaction.currency)}
+                  </span>
+                </div>
+                {editDialog.transaction.inventoryTransactionId && (
+                  <div className="flex justify-between text-blue-600">
+                    <span>Envanter Bağlantısı:</span>
+                    <span className="font-medium">Bağlantılı ✓</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Edit Form */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editAmount">Yeni Tutar ({getCurrencySymbol(editDialog.transaction.currency)}) *</Label>
+                  <Input
+                    id="editAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editFormData.amount}
+                    onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
+                    className="border-slate-300"
+                  />
+                </div>
+
+                {/* Preview */}
+                {editFormData.amount && Number(editFormData.amount) !== editDialog.transaction.amount && (
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-2 text-sm">
+                    <p className="font-medium text-blue-800">Değişiklik Önizleme:</p>
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Tutar Farkı:</span>
+                      <span className={cn(
+                        "font-medium",
+                        Number(editFormData.amount) > editDialog.transaction.amount ? "text-emerald-600" : "text-red-600"
+                      )}>
+                        {Number(editFormData.amount) > editDialog.transaction.amount ? "+" : ""}
+                        {formatCurrency(
+                          Number(editFormData.amount) - editDialog.transaction.amount,
+                          editDialog.transaction.currency
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Hesap Bakiye Etkisi:</span>
+                      <span className="font-medium">
+                        {editDialog.transaction.type === TRANSACTION_TYPE.INCOME ? (
+                          Number(editFormData.amount) > editDialog.transaction.amount
+                            ? `+${formatCurrency(Number(editFormData.amount) - editDialog.transaction.amount, editDialog.transaction.currency)} (artacak)`
+                            : `${formatCurrency(Number(editFormData.amount) - editDialog.transaction.amount, editDialog.transaction.currency)} (azalacak)`
+                        ) : (
+                          Number(editFormData.amount) > editDialog.transaction.amount
+                            ? `${formatCurrency(editDialog.transaction.amount - Number(editFormData.amount), editDialog.transaction.currency)} (daha az para kalacak)`
+                            : `+${formatCurrency(editDialog.transaction.amount - Number(editFormData.amount), editDialog.transaction.currency)} (daha çok para kalacak)`
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="editDescription">Açıklama</Label>
+                  <Input
+                    id="editDescription"
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    className="border-slate-300"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editNotes">Notlar</Label>
+                  <Textarea
+                    id="editNotes"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    className="border-slate-300"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog({ open: false, transaction: null })}
+              disabled={editSaving}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={editSaving}
+              className="bg-slate-900 hover:bg-slate-800"
+            >
+              {editSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Kaydet
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

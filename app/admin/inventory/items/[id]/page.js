@@ -644,6 +644,7 @@ export default function ItemDetailPage() {
                       <TableRow className="border-slate-200 bg-slate-50">
                         <TableHead className="text-slate-700">Tarih</TableHead>
                         <TableHead className="text-slate-700">Tip</TableHead>
+                        <TableHead className="text-slate-700">Firma</TableHead>
                         <TableHead className="text-slate-700 text-right">Miktar</TableHead>
                         <TableHead className="text-slate-700 text-right">Stok</TableHead>
                         <TableHead className="text-slate-700">Kullanıcı</TableHead>
@@ -666,6 +667,11 @@ export default function ItemDetailPage() {
                               {TRANSACTION_SUBTYPE_LABELS[t.subtype]}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-slate-600">
+                              {t.companyName || "-"}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right">
                             <span className={t.quantity > 0 ? "text-green-600" : "text-red-600"}>
                               {t.quantity > 0 ? "+" : ""}
@@ -684,7 +690,7 @@ export default function ItemDetailPage() {
                       ))}
                       {transactions.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center text-slate-500">
+                          <TableCell colSpan={6} className="h-24 text-center text-slate-500">
                             Henüz işlem yok.
                           </TableCell>
                         </TableRow>
@@ -717,9 +723,9 @@ export default function ItemDetailPage() {
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
                     <div className="text-center">
                       <p className="text-lg font-semibold text-green-600">
-                        {formatNumber(item.stock?.availableQuantity || 0)}
+                        {formatNumber(item.stock?.quantity || 0)}
                       </p>
-                      <p className="text-xs text-slate-500">Kullanılabilir</p>
+                      <p className="text-xs text-slate-500">Mevcut Stok</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold text-yellow-600">

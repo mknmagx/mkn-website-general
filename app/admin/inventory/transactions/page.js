@@ -17,13 +17,22 @@ import {
   transactionService,
 } from "../../../../lib/services/inventory-service";
 import { DeliveryService } from "../../../../lib/services/delivery-service";
+import { 
+  updateTransaction as updateFinanceTransaction,
+  getTransactions as getFinanceTransactions,
+  formatCurrency as formatFinanceCurrency,
+  TRANSACTION_TYPE as FINANCE_TRANSACTION_TYPE,
+} from "../../../../lib/services/finance";
 import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
 
 // UI Components
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
+import { Label } from "../../../../components/ui/label";
+import { Textarea } from "../../../../components/ui/textarea";
 import { Badge } from "../../../../components/ui/badge";
+import { Checkbox } from "../../../../components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -54,6 +63,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../../../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../../components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,10 +114,26 @@ export default function TransactionsPage() {
   const [cancelDialog, setCancelDialog] = useState({ open: false, transaction: null });
   const [creatingDelivery, setCreatingDelivery] = useState(null);
   
-  // Edit mode state
+  // Edit mode state (batch edit)
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedQuantities, setEditedQuantities] = useState({});
   const [saving, setSaving] = useState(false);
+
+  // Single transaction edit dialog
+  const [editDialog, setEditDialog] = useState({ open: false, transaction: null });
+  const [editFormData, setEditFormData] = useState({
+    quantity: "",
+    unitPrice: "",
+    notes: "",
+    correctionReason: "",
+    linkFinance: false,
+    selectedFinanceId: "",
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  
+  // Finance transactions for linking
+  const [financeTransactions, setFinanceTransactions] = useState([]);
+  const [loadingFinance, setLoadingFinance] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,6 +246,180 @@ export default function TransactionsPage() {
       const original = transactions.find(t => t.id === id);
       return original && Number(qty) !== original.quantity;
     }).length;
+  };
+
+  // Load finance transactions for linking
+  const loadFinanceTransactions = async (transaction) => {
+    if (transaction.financeTransactionId) {
+      // Already linked, no need to load
+      return;
+    }
+    
+    setLoadingFinance(true);
+    try {
+      // Get INCOME transactions that might match this outbound
+      const result = await getFinanceTransactions(
+        { type: FINANCE_TRANSACTION_TYPE.INCOME },
+        { limit: 100 }
+      );
+      
+      if (result.success) {
+        // Filter by company if available, and show recent ones
+        let filtered = result.data;
+        if (transaction.companyId) {
+          filtered = filtered.filter(f => f.companyId === transaction.companyId);
+        }
+        // Sort by date descending
+        filtered.sort((a, b) => {
+          const dateA = a.createdAt?.seconds || 0;
+          const dateB = b.createdAt?.seconds || 0;
+          return dateB - dateA;
+        });
+        setFinanceTransactions(filtered.slice(0, 50));
+      }
+    } catch (error) {
+      console.error("Error loading finance transactions:", error);
+    } finally {
+      setLoadingFinance(false);
+    }
+  };
+
+  // Open edit dialog for single transaction
+  const handleOpenEditDialog = async (transaction) => {
+    setEditFormData({
+      quantity: Math.abs(transaction.quantity),
+      unitPrice: transaction.unitPrice || 0,
+      notes: transaction.notes || "",
+      correctionReason: "",
+      linkFinance: false,
+      selectedFinanceId: "",
+    });
+    setFinanceTransactions([]);
+    setEditDialog({ open: true, transaction });
+    
+    // Load finance transactions if not linked
+    if (!transaction.financeTransactionId && transaction.type === TRANSACTION_TYPE.OUTBOUND) {
+      await loadFinanceTransactions(transaction);
+    }
+  };
+
+  // Save single transaction edit with stock and finance correction
+  const handleSaveEdit = async () => {
+    if (!editDialog.transaction) return;
+
+    const transaction = editDialog.transaction;
+    const newQuantity = Number(editFormData.quantity);
+    const oldQuantity = Math.abs(transaction.quantity);
+
+    if (isNaN(newQuantity) || newQuantity < 0) {
+      toast({
+        title: "Hata",
+        description: "Geçerli bir miktar girin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if only linking finance (no quantity change)
+    const onlyLinkingFinance = newQuantity === oldQuantity && 
+      Number(editFormData.unitPrice) === transaction.unitPrice &&
+      editFormData.linkFinance && 
+      editFormData.selectedFinanceId;
+
+    if (!onlyLinkingFinance && newQuantity === oldQuantity && Number(editFormData.unitPrice) === transaction.unitPrice && !editFormData.linkFinance) {
+      toast({
+        title: "Bilgi",
+        description: "Değişiklik yapılmadı.",
+      });
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      // Determine finance transaction ID (existing or newly linked)
+      let financeTransactionId = transaction.financeTransactionId;
+      
+      // Link new finance transaction if selected
+      if (editFormData.linkFinance && editFormData.selectedFinanceId && !financeTransactionId) {
+        financeTransactionId = editFormData.selectedFinanceId;
+        
+        // Update inventory transaction with finance link
+        const { updateDoc, doc } = await import("firebase/firestore");
+        const { db } = await import("../../../../lib/firebase");
+        await updateDoc(doc(db, "inventory_transactions", transaction.id), {
+          financeTransactionId: financeTransactionId,
+        });
+        
+        // Also update finance transaction with inventory link
+        await updateDoc(doc(db, "finance_transactions", financeTransactionId), {
+          inventoryTransactionId: transaction.id,
+        });
+      }
+
+      // 1. Update inventory transaction with stock correction (if quantity changed)
+      let result = null;
+      if (newQuantity !== oldQuantity || Number(editFormData.unitPrice) !== transaction.unitPrice) {
+        result = await transactionService.updateWithCorrection(
+          transaction.id,
+          {
+            quantity: newQuantity,
+            unitPrice: Number(editFormData.unitPrice),
+            notes: editFormData.notes,
+            correctionReason: editFormData.correctionReason || "Manuel düzeltme",
+            financeTransactionId: financeTransactionId,
+          },
+          user
+        );
+      }
+
+      // 2. Update linked finance record if exists and quantity/price changed
+      let financeUpdated = false;
+      if (financeTransactionId && (newQuantity !== oldQuantity || Number(editFormData.unitPrice) !== transaction.unitPrice)) {
+        const newTotalValue = newQuantity * Number(editFormData.unitPrice);
+        const financeResult = await updateFinanceTransaction(
+          financeTransactionId,
+          {
+            amount: newTotalValue,
+            description: `Stok Satışı (Düzeltildi): ${transaction.itemSnapshot?.name} (${newQuantity} adet)`,
+          },
+          user?.uid
+        );
+        financeUpdated = financeResult?.success;
+      }
+
+      // Build success message
+      let message = "";
+      if (result) {
+        message = `İşlem düzeltildi. Stok: ${result.oldStock} → ${result.newStock}`;
+      }
+      if (editFormData.linkFinance && editFormData.selectedFinanceId && !transaction.financeTransactionId) {
+        message += message ? ". " : "";
+        message += "Finans kaydı bağlandı";
+      }
+      if (financeUpdated) {
+        message += message ? ", " : "";
+        message += "Finans kaydı güncellendi";
+      }
+      if (!message) {
+        message = "İşlem güncellendi";
+      }
+
+      toast({
+        title: "Başarılı",
+        description: message,
+      });
+
+      setEditDialog({ open: false, transaction: null });
+      refresh();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const handleCancel = async () => {
@@ -605,6 +812,18 @@ export default function TransactionsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            {/* Edit/Correct transaction */}
+                            {transaction.status !== "cancelled" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenEditDialog(transaction)}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Düzelt
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
                             {canCreateDelivery(transaction) && (
                               <>
                                 <DropdownMenuItem
@@ -760,6 +979,255 @@ export default function TransactionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit/Correction Dialog */}
+      <Dialog
+        open={editDialog.open}
+        onOpenChange={(open) => !open && setEditDialog({ open: false, transaction: null })}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>İşlem Düzeltme</DialogTitle>
+            <DialogDescription>
+              <strong>{editDialog.transaction?.transactionNumber}</strong> numaralı işlemi düzeltin.
+              Stok ve finans kaydı otomatik güncellenecektir.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editDialog.transaction && (
+            <div className="space-y-4 py-4">
+              {/* Current Info */}
+              <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ürün:</span>
+                  <span className="font-medium">{editDialog.transaction.itemSnapshot?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mevcut Miktar:</span>
+                  <span className="font-medium text-red-600">
+                    {Math.abs(editDialog.transaction.quantity)} {UNIT_LABELS[editDialog.transaction.unit]}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mevcut Birim Fiyat:</span>
+                  <span className="font-medium">
+                    {formatCurrency(editDialog.transaction.unitPrice, editDialog.transaction.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mevcut Toplam:</span>
+                  <span className="font-medium">
+                    {formatCurrency(editDialog.transaction.totalValue, editDialog.transaction.currency)}
+                  </span>
+                </div>
+                {editDialog.transaction.financeTransactionId && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Finans Kaydı:</span>
+                    <span className="font-medium">Bağlantılı ✓</span>
+                  </div>
+                )}
+              </div>
+
+              {/* New Values */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editQuantity">Yeni Miktar *</Label>
+                    <Input
+                      id="editQuantity"
+                      type="number"
+                      min="0"
+                      value={editFormData.quantity}
+                      onChange={(e) => setEditFormData({ ...editFormData, quantity: e.target.value })}
+                      className="border-slate-300"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editUnitPrice">Birim Fiyat</Label>
+                    <Input
+                      id="editUnitPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.unitPrice}
+                      onChange={(e) => setEditFormData({ ...editFormData, unitPrice: e.target.value })}
+                      className="border-slate-300"
+                    />
+                  </div>
+                </div>
+
+                {/* Preview */}
+                {editFormData.quantity && (
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-2 text-sm">
+                    <p className="font-medium text-blue-800">Değişiklik Önizleme:</p>
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Miktar Farkı:</span>
+                      <span className={`font-medium ${
+                        Number(editFormData.quantity) - Math.abs(editDialog.transaction.quantity) > 0 
+                          ? "text-red-600" 
+                          : "text-green-600"
+                      }`}>
+                        {Number(editFormData.quantity) - Math.abs(editDialog.transaction.quantity) > 0 ? "+" : ""}
+                        {Number(editFormData.quantity) - Math.abs(editDialog.transaction.quantity)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Stok Değişimi:</span>
+                      <span className="font-medium">
+                        {editDialog.transaction.type === TRANSACTION_TYPE.OUTBOUND ? (
+                          Number(editFormData.quantity) < Math.abs(editDialog.transaction.quantity) 
+                            ? `+${Math.abs(editDialog.transaction.quantity) - Number(editFormData.quantity)} (geri eklenir)`
+                            : `-${Number(editFormData.quantity) - Math.abs(editDialog.transaction.quantity)} (daha fazla çıkar)`
+                        ) : (
+                          Number(editFormData.quantity) > Math.abs(editDialog.transaction.quantity)
+                            ? `+${Number(editFormData.quantity) - Math.abs(editDialog.transaction.quantity)}`
+                            : `-${Math.abs(editDialog.transaction.quantity) - Number(editFormData.quantity)}`
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Yeni Toplam Değer:</span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          Number(editFormData.quantity) * Number(editFormData.unitPrice),
+                          editDialog.transaction.currency
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="editReason">Düzeltme Nedeni</Label>
+                  <Textarea
+                    id="editReason"
+                    value={editFormData.correctionReason}
+                    onChange={(e) => setEditFormData({ ...editFormData, correctionReason: e.target.value })}
+                    placeholder="Örn: Yanlış miktar girilmişti, 9500 yerine 8500 olmalı"
+                    className="border-slate-300"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editNotes">Notlar</Label>
+                  <Textarea
+                    id="editNotes"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    className="border-slate-300"
+                    rows={2}
+                  />
+                </div>
+
+                {/* Finance Linking Section - only for outbound without existing link */}
+                {editDialog.transaction.type === TRANSACTION_TYPE.OUTBOUND && 
+                 !editDialog.transaction.financeTransactionId && (
+                  <div className="border-t border-slate-200 pt-4 mt-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Checkbox
+                        id="linkFinance"
+                        checked={editFormData.linkFinance}
+                        onCheckedChange={(checked) => setEditFormData({ 
+                          ...editFormData, 
+                          linkFinance: checked,
+                          selectedFinanceId: checked ? editFormData.selectedFinanceId : ""
+                        })}
+                      />
+                      <Label htmlFor="linkFinance" className="text-sm font-medium cursor-pointer">
+                        <LinkIcon className="h-4 w-4 inline mr-1" />
+                        Finans kaydı bağla
+                      </Label>
+                    </div>
+                    
+                    {editFormData.linkFinance && (
+                      <div className="space-y-3">
+                        {loadingFinance ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Finans kayıtları yükleniyor...
+                          </div>
+                        ) : financeTransactions.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            Eşleşebilecek finans kaydı bulunamadı.
+                          </p>
+                        ) : (
+                          <>
+                            <Label htmlFor="selectFinance">Finans Kaydı Seçin</Label>
+                            <Select
+                              value={editFormData.selectedFinanceId}
+                              onValueChange={(v) => setEditFormData({ ...editFormData, selectedFinanceId: v })}
+                            >
+                              <SelectTrigger className="border-slate-300">
+                                <SelectValue placeholder="Finans kaydı seçin..." />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[200px]">
+                                {financeTransactions.map((ft) => (
+                                  <SelectItem key={ft.id} value={ft.id}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">
+                                        {ft.transactionNumber} - {formatFinanceCurrency(ft.amount, ft.currency)}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {ft.description?.substring(0, 40)}...
+                                        {ft.companyName && ` (${ft.companyName})`}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            {editFormData.selectedFinanceId && (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                                <p className="text-green-800 font-medium flex items-center gap-1">
+                                  <LinkIcon className="h-4 w-4" />
+                                  Bağlantı kurulacak
+                                </p>
+                                <p className="text-green-600 text-xs mt-1">
+                                  Bu envanter işlemi seçilen finans kaydıyla bağlanacak. 
+                                  Bundan sonra yapılacak düzenlemeler her iki kaydı da etkileyecektir.
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog({ open: false, transaction: null })}
+              disabled={editSaving}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={editSaving}
+              className="bg-slate-900 hover:bg-slate-800"
+            >
+              {editSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Düzeltmeyi Kaydet
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

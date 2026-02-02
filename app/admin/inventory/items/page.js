@@ -68,6 +68,9 @@ import {
   AlertDialogTitle,
 } from "../../../../components/ui/alert-dialog";
 
+// PDF Export
+import InventoryPDFExport from "../../../../components/inventory-pdf-export";
+
 // Icons
 import {
   Search,
@@ -90,6 +93,7 @@ import {
   AlertTriangle,
   Warehouse,
   X,
+  FileDown,
 } from "lucide-react";
 
 // Cloudinary helper functions
@@ -110,19 +114,71 @@ export default function InventoryItemsPage() {
   const { user } = useAdminAuth();
   const { toast } = useToast();
 
-  // State
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [ownershipFilter, setOwnershipFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("active");
-  const [warehouseFilter, setWarehouseFilter] = useState(searchParams.get("warehouse") || "all");
-  const [stockFilter, setStockFilter] = useState(searchParams.get("filter") || "all");
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
+  // URL'den parametreleri oku (her render'da güncel değer)
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const urlSearch = searchParams.get("search") || "";
+  const urlCategory = searchParams.get("category") || "all";
+  const urlOwnership = searchParams.get("ownership") || "all";
+  const urlStatus = searchParams.get("status") || "active";
+  const urlWarehouse = searchParams.get("warehouse") || "all";
+  const urlStockFilter = searchParams.get("filter") || "all";
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  // State - URL değerlerini kullan
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [categoryFilter, setCategoryFilter] = useState(urlCategory);
+  const [ownershipFilter, setOwnershipFilter] = useState(urlOwnership);
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
+  const [warehouseFilter, setWarehouseFilter] = useState(urlWarehouse);
+  const [stockFilter, setStockFilter] = useState(urlStockFilter);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
+  const [currentPage, setCurrentPage] = useState(urlPage);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // URL değiştiğinde state'i güncelle (geri/ileri navigasyonu için)
+  useEffect(() => {
+    setCurrentPage(urlPage);
+    setSearchTerm(urlSearch);
+    setCategoryFilter(urlCategory);
+    setOwnershipFilter(urlOwnership);
+    setStatusFilter(urlStatus);
+    setWarehouseFilter(urlWarehouse);
+    setStockFilter(urlStockFilter);
+    setIsInitialized(true);
+  }, [urlPage, urlSearch, urlCategory, urlOwnership, urlStatus, urlWarehouse, urlStockFilter]);
+
+  // Scroll restore - sayfa yüklendiğinde
+  useEffect(() => {
+    if (isInitialized) {
+      const savedScroll = sessionStorage.getItem("inventory-items-scroll");
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(savedScroll, 10));
+          sessionStorage.removeItem("inventory-items-scroll");
+        }, 100);
+      }
+    }
+  }, [isInitialized]);
+
+  // URL'i güncelle fonksiyonu
+  const updateURL = useCallback((updates) => {
+    const params = new URLSearchParams();
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== "all" && value !== "active" && value !== "" && value !== "1") {
+        params.set(key, value);
+      }
+    });
+    
+    // Status için özel durum
+    if (updates.status && updates.status !== "active") {
+      params.set("status", updates.status);
+    }
+    
+    const newUrl = params.toString() ? `?${params.toString()}` : "";
+    router.replace(`/admin/inventory/items${newUrl}`, { scroll: false });
+  }, [router]);
 
   // Data
   const { items: allItems, loading, refresh } = useInventoryItems({
@@ -184,10 +240,31 @@ export default function InventoryItemsPage() {
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
-  // Reset page when filters change
+  // URL'i filtre değişikliklerinde güncelle
   useEffect(() => {
-    setCurrentPage(1);
-  }, [categoryFilter, ownershipFilter, warehouseFilter, stockFilter, searchTerm]);
+    updateURL({
+      page: currentPage.toString(),
+      search: searchTerm,
+      category: categoryFilter,
+      ownership: ownershipFilter,
+      status: statusFilter,
+      warehouse: warehouseFilter,
+      filter: stockFilter,
+    });
+  }, [currentPage, searchTerm, categoryFilter, ownershipFilter, statusFilter, warehouseFilter, stockFilter]);
+
+  // Filtre değişikliklerinde sayfayı sıfırla (ama URL güncelleme yukarıda yapılıyor)
+  const handleFilterChange = useCallback((setter, value, resetPage = true) => {
+    setter(value);
+    if (resetPage) {
+      setCurrentPage(1);
+    }
+  }, []);
+
+  // Detay sayfasına gitmeden önce scroll pozisyonunu kaydet
+  const saveScrollPosition = useCallback(() => {
+    sessionStorage.setItem("inventory-items-scroll", window.scrollY.toString());
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -235,6 +312,9 @@ export default function InventoryItemsPage() {
     setStockFilter("all");
     setSearchTerm("");
     setStatusFilter("active");
+    setCurrentPage(1);
+    // URL'i temizle
+    router.replace("/admin/inventory/items", { scroll: false });
   };
 
   const hasActiveFilters =
@@ -278,6 +358,15 @@ export default function InventoryItemsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <InventoryPDFExport
+              items={filteredItems}
+              filters={{
+                category: categoryFilter,
+                ownership: ownershipFilter,
+                search: searchTerm,
+              }}
+              warehouseName={selectedWarehouse?.name}
+            />
             <Button
               variant="ghost"
               size="sm"
@@ -333,13 +422,13 @@ export default function InventoryItemsPage() {
                 <Input
                   placeholder="Ürün adı, SKU veya açıklama ara..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleFilterChange(setSearchTerm, e.target.value)}
                   className="pl-10 border-slate-300"
                 />
               </div>
 
               {/* Category Filter */}
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={categoryFilter} onValueChange={(v) => handleFilterChange(setCategoryFilter, v)}>
                 <SelectTrigger className="w-[160px] border-slate-300">
                   <SelectValue placeholder="Kategori" />
                 </SelectTrigger>
@@ -354,7 +443,7 @@ export default function InventoryItemsPage() {
               </Select>
 
               {/* Ownership Filter */}
-              <Select value={ownershipFilter} onValueChange={setOwnershipFilter}>
+              <Select value={ownershipFilter} onValueChange={(v) => handleFilterChange(setOwnershipFilter, v)}>
                 <SelectTrigger className="w-[140px] border-slate-300">
                   <SelectValue placeholder="Sahiplik" />
                 </SelectTrigger>
@@ -369,7 +458,7 @@ export default function InventoryItemsPage() {
               </Select>
 
               {/* Warehouse Filter */}
-              <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+              <Select value={warehouseFilter} onValueChange={(v) => handleFilterChange(setWarehouseFilter, v)}>
                 <SelectTrigger className="w-[140px] border-slate-300">
                   <SelectValue placeholder="Depo" />
                 </SelectTrigger>
@@ -384,7 +473,7 @@ export default function InventoryItemsPage() {
               </Select>
 
               {/* Stock Filter */}
-              <Select value={stockFilter} onValueChange={setStockFilter}>
+              <Select value={stockFilter} onValueChange={(v) => handleFilterChange(setStockFilter, v)}>
                 <SelectTrigger className="w-[150px] border-slate-300">
                   <SelectValue placeholder="Stok Durumu" />
                 </SelectTrigger>
@@ -396,7 +485,7 @@ export default function InventoryItemsPage() {
               </Select>
 
               {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => handleFilterChange(setStatusFilter, v)}>
                 <SelectTrigger className="w-[130px] border-slate-300">
                   <SelectValue placeholder="Durum" />
                 </SelectTrigger>
@@ -432,15 +521,14 @@ export default function InventoryItemsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-200 bg-slate-50">
-                  <TableHead className="text-slate-700 font-semibold">Ürün</TableHead>
-                  <TableHead className="text-slate-700 font-semibold">SKU</TableHead>
-                  <TableHead className="text-slate-700 font-semibold">Boyut</TableHead>
-                  <TableHead className="text-slate-700 font-semibold">Kategori</TableHead>
-                  <TableHead className="text-slate-700 font-semibold">Sahiplik</TableHead>
-                  <TableHead className="text-slate-700 font-semibold text-right">Stok</TableHead>
-                  <TableHead className="text-slate-700 font-semibold text-right">Değer</TableHead>
-                  <TableHead className="text-slate-700 font-semibold">Depo</TableHead>
-                  <TableHead className="text-slate-700 font-semibold w-[80px]"></TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[30%]">Ürün</TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[10%]">SKU</TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[10%]">Kategori</TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[10%]">Sahiplik</TableHead>
+                  <TableHead className="text-slate-700 font-semibold text-right w-[12%]">Stok</TableHead>
+                  <TableHead className="text-slate-700 font-semibold text-right w-[12%]">Değer</TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[10%]">Depo</TableHead>
+                  <TableHead className="text-slate-700 font-semibold w-[6%]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -459,7 +547,7 @@ export default function InventoryItemsPage() {
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                               {item.images && item.images.length > 0 ? (
                                 <Image
                                   src={getProductImageSrc(item.images[0])}
@@ -482,11 +570,17 @@ export default function InventoryItemsPage() {
                                 <Package className="h-5 w-5 text-slate-400" />
                               </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-slate-900">{item.name}</p>
-                              {item.description && (
-                                <p className="text-xs text-slate-500 truncate max-w-[200px]">
-                                  {item.description}
+                            <div className="min-w-0">
+                              <Link 
+                                href={`/admin/inventory/items/${item.id}`}
+                                onClick={saveScrollPosition}
+                                className="font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors cursor-pointer block truncate"
+                              >
+                                {item.name}
+                              </Link>
+                              {item.specifications?.size && (
+                                <p className="text-xs text-slate-500">
+                                  {item.specifications.size}
                                 </p>
                               )}
                             </div>
@@ -498,12 +592,7 @@ export default function InventoryItemsPage() {
                           </code>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-slate-600">
-                            {item.specifications?.size || "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-slate-300 text-slate-700">
+                          <Badge variant="outline" className="border-slate-300 text-slate-700 text-xs">
                             {ITEM_CATEGORY_LABELS[item.category] || item.category}
                           </Badge>
                         </TableCell>
@@ -573,13 +662,13 @@ export default function InventoryItemsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
-                                <Link href={`/admin/inventory/items/${item.id}`}>
+                                <Link href={`/admin/inventory/items/${item.id}`} onClick={saveScrollPosition}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   Detay
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/admin/inventory/items/${item.id}/edit`}>
+                                <Link href={`/admin/inventory/items/${item.id}/edit`} onClick={saveScrollPosition}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Düzenle
                                 </Link>

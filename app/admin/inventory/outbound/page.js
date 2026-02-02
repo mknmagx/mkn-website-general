@@ -251,10 +251,10 @@ export default function OutboundPage() {
       return;
     }
 
-    if (quantity > (selectedItem.stock?.availableQuantity || 0)) {
+    if (quantity > (selectedItem.stock?.quantity || 0)) {
       toast({
         title: "Hata",
-        description: `Yetersiz stok. Mevcut: ${selectedItem.stock?.availableQuantity || 0} ${
+        description: `Yetersiz stok. Mevcut: ${selectedItem.stock?.quantity || 0} ${
           UNIT_LABELS[selectedItem.stock?.unit]
         }`,
         variant: "destructive",
@@ -284,6 +284,7 @@ export default function OutboundPage() {
           quantity,
           subtype: formData.subtype,
           unitPrice: Number(formData.unitPrice) || 0,
+          currency: formData.financeCurrency, // Currency bilgisini ekle
           warehouseId: formData.warehouseId,
           companyId: formData.companyId || null,
           companyName: formData.companyName || null,
@@ -313,10 +314,21 @@ export default function OutboundPage() {
           description: `Stok Satışı: ${selectedItem.name} (${quantity} ${UNIT_LABELS[selectedItem.stock?.unit]})`,
           notes: formData.financeNotes || formData.notes,
           reference: outboundResult?.transactionNumber || "",
+          // Link to inventory transaction
+          inventoryTransactionId: outboundResult?.id || null,
         }, user?.uid);
 
-        if (!financeResult.success) {
-          // Finance record failed but inventory transaction succeeded
+        // Update inventory transaction with finance transaction ID
+        if (financeResult?.success && financeResult?.id && outboundResult?.id) {
+          try {
+            const { updateDoc, doc } = await import("firebase/firestore");
+            const { db } = await import("../../../../lib/firebase");
+            await updateDoc(doc(db, "inventory_transactions", outboundResult.id), {
+              financeTransactionId: financeResult.id,
+            });
+          } catch (linkError) {
+            console.error("Error linking finance transaction:", linkError);
+          }
         }
       }
 
@@ -378,7 +390,7 @@ export default function OutboundPage() {
     );
   }
 
-  const availableStock = selectedItem?.stock?.availableQuantity || 0;
+  const availableStock = selectedItem?.stock?.quantity || 0;
   const requestedQuantity = Number(formData.quantity) || 0;
   const isOverStock = requestedQuantity > availableStock;
 
@@ -468,7 +480,7 @@ export default function OutboundPage() {
                       <CommandEmpty>Ürün bulunamadı.</CommandEmpty>
                       <CommandGroup>
                         {items.map((item) => {
-                          const stock = item.stock?.availableQuantity || 0;
+                          const stock = item.stock?.quantity || 0;
                           return (
                             <CommandItem
                               key={item.id}
@@ -665,15 +677,24 @@ export default function OutboundPage() {
                     Opsiyonel - İrsaliye ve takip için
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="pt-6 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company">Firma</Label>
-                    <Select value={formData.companyId} onValueChange={handleCompanySelect}>
+                    <Label htmlFor="company">Kayıtlı Firma</Label>
+                    <Select 
+                      value={formData.companyId || "none"} 
+                      onValueChange={(v) => {
+                        if (v === "none") {
+                          setFormData(prev => ({ ...prev, companyId: "", companyName: "" }));
+                        } else {
+                          handleCompanySelect(v);
+                        }
+                      }}
+                    >
                       <SelectTrigger className="border-slate-300">
                         <SelectValue placeholder="Firma seçin" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Seçilmedi</SelectItem>
+                        <SelectItem value="none">Seçilmedi / Manuel Giriş</SelectItem>
                         {companies.map((company) => (
                           <SelectItem key={company.id} value={company.id}>
                             {company.name}
@@ -682,6 +703,26 @@ export default function OutboundPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Manuel firma girişi - kayıtlı firma seçilmediyse göster */}
+                  {!formData.companyId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">
+                        Manuel Firma Adı
+                        <span className="text-xs text-slate-400 ml-2">(kayıtlı değilse)</span>
+                      </Label>
+                      <Input
+                        id="companyName"
+                        value={formData.companyName}
+                        onChange={(e) => handleChange("companyName", e.target.value)}
+                        placeholder="Firma adını yazın..."
+                        className="border-slate-300"
+                      />
+                      <p className="text-xs text-slate-500">
+                        Kayıtlı firmalar arasında yoksa manuel olarak firma adı girebilirsiniz.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

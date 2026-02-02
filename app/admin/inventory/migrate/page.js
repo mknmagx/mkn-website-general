@@ -76,6 +76,15 @@ export default function MigratePage() {
   const [migrating, setMigrating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  
+  // Reset system states
+  const [resetDialog, setResetDialog] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState(null);
+  
+  // Fix currency states
+  const [fixingCurrency, setFixingCurrency] = useState(false);
+  const [currencyFixResult, setCurrencyFixResult] = useState(null);
 
   const defaultWarehouse = warehouses.find((w) => w.isDefault);
   const selectedWarehouse =
@@ -144,6 +153,70 @@ export default function MigratePage() {
     } finally {
       setMigrating(false);
       setClearing(false);
+    }
+  };
+
+  // Reset all inventory data handler
+  const handleResetAllData = async () => {
+    setResetDialog(false);
+    setResetting(true);
+    setResetResult(null);
+
+    try {
+      const result = await migrationService.resetAllInventoryData();
+      
+      setResetResult(result);
+      
+      // Refresh items list
+      refreshItems();
+
+      toast({
+        title: "Başarılı",
+        description: `Sistem sıfırlandı. ${result.deletedItems} ürün, ${result.deletedTransactions} hareket, ${result.deletedWarehouses} depo silindi.`,
+      });
+    } catch (error) {
+      setResetResult({
+        success: false,
+        error: error.message,
+      });
+
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  // Fix outbound currency handler
+  const handleFixOutboundCurrency = async () => {
+    setFixingCurrency(true);
+    setCurrencyFixResult(null);
+
+    try {
+      const result = await migrationService.fixOutboundCurrency("TRY");
+      
+      setCurrencyFixResult(result);
+
+      toast({
+        title: "Başarılı",
+        description: result.message,
+      });
+    } catch (error) {
+      setCurrencyFixResult({
+        success: false,
+        error: error.message,
+      });
+
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setFixingCurrency(false);
     }
   };
 
@@ -468,6 +541,146 @@ export default function MigratePage() {
               )}
             </Card>
           )}
+
+          {/* Currency Fix Card */}
+          <Card className="bg-white border-yellow-200 border-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <RefreshCw className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg text-yellow-700">Currency Düzeltme</CardTitle>
+                  <CardDescription>
+                    Outbound transaction'lardaki yanlış currency değerlerini TRY olarak düzelt
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Alert className="border-yellow-300 bg-yellow-50 mb-4">
+                <AlertCircle className="h-4 w-4 text-yellow-700" />
+                <AlertTitle className="text-yellow-800">Bilgi</AlertTitle>
+                <AlertDescription className="text-yellow-700">
+                  Bu işlem tüm outbound (çıkış) transaction'larının currency değerini TRY olarak güncelleyecektir.
+                </AlertDescription>
+              </Alert>
+              
+              {currencyFixResult && (
+                <div className={`p-4 rounded-lg mb-4 ${currencyFixResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {currencyFixResult.success ? (
+                    <div className="text-green-700">
+                      <p className="font-medium flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Currency değerleri güncellendi!
+                      </p>
+                      <ul className="text-sm mt-2 space-y-1">
+                        <li>• {currencyFixResult.updatedCount} transaction güncellendi</li>
+                        <li>• Toplam {currencyFixResult.totalOutbound} outbound transaction mevcut</li>
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-red-700 flex items-center gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Hata: {currencyFixResult.error}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleFixOutboundCurrency}
+                  disabled={fixingCurrency}
+                  variant="outline"
+                  className="border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                >
+                  {fixingCurrency ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Düzeltiliyor...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Outbound Currency'leri Düzelt (TRY)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Reset Card - Test Amaçlı */}
+          <Card className="bg-white border-red-200 border-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg text-red-700">Sistemi Sıfırla (Test)</CardTitle>
+                  <CardDescription>
+                    Test sonrası tüm envanter verilerini temizlemek için kullanın
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Alert className="border-red-300 bg-red-50 mb-4">
+                <AlertCircle className="h-4 w-4 text-red-700" />
+                <AlertTitle className="text-red-800">Dikkat!</AlertTitle>
+                <AlertDescription className="text-red-700">
+                  Bu buton tüm ürünleri, stok hareketlerini ve depoları kalıcı olarak siler.
+                  Sadece test amaçlı kullanın!
+                </AlertDescription>
+              </Alert>
+              
+              {resetResult && (
+                <div className={`p-4 rounded-lg mb-4 ${resetResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  {resetResult.success ? (
+                    <div className="text-green-700">
+                      <p className="font-medium flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Sistem başarıyla sıfırlandı!
+                      </p>
+                      <ul className="text-sm mt-2 space-y-1">
+                        <li>• {resetResult.deletedItems} ürün silindi</li>
+                        <li>• {resetResult.deletedTransactions} stok hareketi silindi</li>
+                        <li>• {resetResult.deletedWarehouses} depo silindi</li>
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-red-700 flex items-center gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Hata: {resetResult.error}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setResetDialog(true)}
+                  disabled={resetting}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {resetting ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Sıfırlanıyor...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Tüm Veriyi Sıfırla
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -518,6 +731,52 @@ export default function MigratePage() {
               className={clearFirst ? "bg-red-600 hover:bg-red-700" : "bg-slate-900 hover:bg-slate-800"}
             >
               {clearFirst ? "Temizle ve Başlat" : "Başlat"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset System Dialog */}
+      <AlertDialog open={resetDialog} onOpenChange={setResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">
+              ⚠️ Sistemi Tamamen Sıfırla
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                  <p className="text-red-700 font-medium">
+                    DİKKAT! Bu işlem aşağıdaki tüm verileri silecektir:
+                  </p>
+                </div>
+                <ul className="space-y-2 mt-4">
+                  <li className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-red-500" />
+                    <span><strong>Ürünler</strong> (inventory_items) - {existingItems.length} kayıt</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-red-500" />
+                    <span><strong>Stok Hareketleri</strong> (inventory_transactions)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Warehouse className="h-4 w-4 text-red-500" />
+                    <span><strong>Depolar</strong> (inventory_warehouses) - {warehouses.length} kayıt</span>
+                  </li>
+                </ul>
+                <p className="text-red-600 font-medium mt-4">
+                  Bu işlem GERİ ALINAMAZ! Sadece test amaçlı kullanın.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetAllData}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Evet, Sıfırla
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
