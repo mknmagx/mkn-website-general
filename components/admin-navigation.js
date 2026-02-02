@@ -57,6 +57,7 @@ import {
   HandCoins,
   BarChart3,
   List,
+  MessageCircle,
 } from "lucide-react";
 import { useState, useMemo, useCallback, memo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -445,6 +446,7 @@ export default function AdminNavigation() {
         { id: "quote-requests", name: "Teklif Talepleri", href: "/admin/quotes", icon: FileText, show: hasPermission("quotes.view") },
         { id: "outlook-email", name: "Outlook E-posta", href: "/admin/outlook", icon: Mail, show: hasPermission("outlook.view") },
         { id: "meta-messages", name: "Meta Mesajlar", href: "/admin/meta-messenger", icon: MessageSquare, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "whatsapp", name: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },
     {

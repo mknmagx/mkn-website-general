@@ -38,10 +38,10 @@ export async function POST(request) {
         options: {
           format: "A4",
           margin: {
-            top: "15mm",
-            right: "15mm",
-            bottom: "15mm",
-            left: "15mm",
+            top: "10mm",
+            right: "10mm",
+            bottom: "10mm",
+            left: "10mm",
           },
           printBackground: true,
           preferCSSPageSize: false,
@@ -83,43 +83,90 @@ function generateFormulaHTML(formula, options = {}, logoBase64 = "") {
     day: "numeric",
   });
 
+  // Format number helper
+  const formatNumber = (num, decimals = 2) => {
+    const value = parseFloat(num) || 0;
+    return value.toLocaleString("tr-TR", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  };
+
+  // Adet ile seçilen bileşenleri yüzde hesaplamasından çıkar
+  // Sadece gram, ml, kg gibi ağırlık/hacim birimlerini yüzde hesaplamasına dahil et
+  const weightUnits = ["g", "gram", "gr", "ml", "kg", "l", "lt", "litre"];
+  
+  // Yüzde hesaplaması için toplam - sadece ağırlık/hacim birimlerini dahil et
+  const totalForPercentage = (formula.ingredients || []).reduce((sum, ing) => {
+    const unit = (ing.unit || "").toLowerCase().trim();
+    const isWeightUnit = weightUnits.some(wu => unit === wu || unit.includes(wu));
+    
+    if (!isWeightUnit) return sum; // Adet birimleri dahil etme
+    
+    const amount = parseFloat(ing.amount) || 0;
+    if (unit === "kg") return sum + (amount * 1000);
+    return sum + amount;
+  }, 0);
+
   // Calculate costs and statistics
   let totalCost = 0;
   let costPerGram = 0;
   let ingredientStats = {
     total: formula.ingredients?.length || 0,
-    withPrice: 0,
-    withFunction: 0,
+    weightBased: 0,
+    quantityBased: 0,
   };
 
-  if (formula.ingredients) {
-    formula.ingredients.forEach((ing) => {
-      if (ing.price) ingredientStats.withPrice++;
-      if (ing.function || ing.functionTr) ingredientStats.withFunction++;
-
-      if (includePricing) {
-        const amount = parseFloat(ing.amount) || 0;
-        const price = parseFloat(ing.price) || 0;
-        let cost = 0;
-
-        if (ing.unit === "g" || ing.unit === "gram") {
-          cost = (amount / 1000) * price;
-        } else if (ing.unit === "ml") {
-          cost = (amount / 1000) * price;
-        } else if (ing.unit === "kg") {
+  const processedIngredients = (formula.ingredients || []).map((ing) => {
+    const unit = (ing.unit || "").toLowerCase().trim();
+    const isWeightUnit = weightUnits.some(wu => unit === wu || unit.includes(wu));
+    const amount = parseFloat(ing.amount) || 0;
+    
+    // Ağırlık birimi mi, adet birimi mi belirle
+    if (isWeightUnit) {
+      ingredientStats.weightBased++;
+    } else {
+      ingredientStats.quantityBased++;
+    }
+    
+    // Yüzde hesaplama - sadece ağırlık/hacim birimleri için
+    let percentage = 0;
+    if (isWeightUnit && totalForPercentage > 0) {
+      const amountInGram = unit === "kg" ? amount * 1000 : amount;
+      percentage = ((amountInGram / totalForPercentage) * 100).toFixed(2);
+    }
+    
+    // Maliyet hesaplama (eğer fiyat gösterilecekse)
+    let cost = 0;
+    if (includePricing) {
+      const price = parseFloat(ing.price) || 0;
+      
+      if (isWeightUnit) {
+        // Ağırlık bazlı - kg fiyatı üzerinden
+        if (unit === "kg") {
           cost = amount * price;
         } else {
-          cost = amount * price;
+          cost = (amount / 1000) * price;
         }
-
-        totalCost += cost;
+      } else {
+        // Adet bazlı - direkt çarp
+        cost = amount * price;
       }
-    });
-
-    const volume = parseFloat(formula.productVolume) || 0;
-    if (volume > 0) {
-      costPerGram = totalCost / volume;
+      
+      totalCost += cost;
     }
+    
+    return {
+      ...ing,
+      percentage: isWeightUnit ? percentage : null, // Adet için yüzde yok
+      cost,
+      isWeightUnit,
+    };
+  });
+
+  const volume = parseFloat(formula.productVolume) || 0;
+  if (volume > 0 && includePricing) {
+    costPerGram = totalCost / volume;
   }
 
   return `
@@ -128,647 +175,607 @@ function generateFormulaHTML(formula, options = {}, logoBase64 = "") {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Formül Raporu - ${formula.name}</title>
+  <title>Formül - ${formula.name || "Ürün"}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body { 
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      font-size: 10pt;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 9pt;
       line-height: 1.5;
-      color: #1e293b;
-      background: #ffffff;
+      color: #1f2937;
+      background: #fff;
     }
     
     .page { 
-      max-width: 210mm; 
-      min-height: 297mm; 
-      padding: 20mm;
+      padding: 24px;
+      max-width: 100%;
     }
     
-    /* Typography */
-    h1 { 
-      font-size: 28pt; 
-      font-weight: 800; 
-      letter-spacing: -0.02em;
-      color: #0f172a;
-      margin-bottom: 12pt;
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
     }
     
-    h2 { 
-      font-size: 13pt; 
-      font-weight: 700; 
-      color: #1e293b;
-      margin-bottom: 10pt;
-      padding-bottom: 6pt;
-      border-bottom: 2px solid #e2e8f0;
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     
-    h3 {
-      font-size: 11pt;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 8pt;
+    .logo-area img {
+      height: 40px;
+      width: auto;
     }
     
-    /* Color System */
-    .text-primary { color: #0f172a; }
-    .text-secondary { color: #475569; }
-    .text-muted { color: #94a3b8; }
-    .text-accent { color: #3b82f6; }
-    .bg-primary { background-color: #0f172a; }
-    .bg-accent { background-color: #3b82f6; }
-    .bg-light { background-color: #f8fafc; }
-    .bg-gradient { 
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-    }
-    
-    /* Layout Components */
-    .card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+    .logo-placeholder {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
       border-radius: 8px;
-      padding: 16pt;
-      margin-bottom: 12pt;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 16pt;
     }
     
-    .card-compact {
-      padding: 12pt;
-      margin-bottom: 10pt;
+    .brand-text h1 {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.5px;
     }
     
-    .stat-card {
-      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 14pt;
-      text-align: center;
-    }
-    
-    .stat-label {
+    .brand-text p {
       font-size: 8pt;
-      font-weight: 600;
+      color: #6b7280;
+    }
+    
+    .doc-info {
+      text-align: right;
+    }
+    
+    .doc-info .label {
+      font-size: 7pt;
+      color: #9ca3af;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #64748b;
-      margin-bottom: 4pt;
+      letter-spacing: 0.5px;
     }
     
-    .stat-value {
-      font-size: 20pt;
-      font-weight: 800;
-      color: #0f172a;
-      line-height: 1.2;
-    }
-    
-    .stat-suffix {
-      font-size: 11pt;
+    .doc-info .date {
+      font-size: 9pt;
+      color: #374151;
       font-weight: 500;
-      color: #64748b;
-      margin-left: 2pt;
+      margin-top: 2px;
     }
     
-    /* Table Styling */
-    table { 
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      border: 1px solid #e2e8f0;
+    .doc-info .ref {
+      font-size: 8pt;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    
+    /* Company Card */
+    .company-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
-      overflow: hidden;
-      page-break-inside: auto;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    
+    .company-card h3 {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    
+    .company-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px 16px;
+      font-size: 8pt;
+    }
+    
+    .company-grid span {
+      color: #6b7280;
+    }
+    
+    .company-grid strong {
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    /* Product Title */
+    .product-title {
+      margin-bottom: 16px;
+    }
+    
+    .product-title h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    
+    .product-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
       font-size: 9pt;
     }
     
+    .product-meta span {
+      color: #6b7280;
+    }
+    
+    .product-meta strong {
+      color: #1f2937;
+      font-weight: 600;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(${includePricing ? 4 : 3}, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    
+    .stat-box .label {
+      font-size: 7pt;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+    
+    .stat-box .value {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #111827;
+    }
+    
+    .stat-box .unit {
+      font-size: 9pt;
+      font-weight: 400;
+      color: #6b7280;
+    }
+    
+    /* Section */
+    .section {
+      margin-bottom: 16px;
+    }
+    
+    .section-title {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #111827;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    /* Description Box */
+    .description-box {
+      background: #f9fafb;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 9pt;
+      color: #374151;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+    
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      margin-bottom: 12px;
+    }
+    
     thead tr {
-      background: #0f172a;
-      color: #ffffff;
+      background: #1f2937;
     }
     
     thead th {
-      padding: 10pt 12pt;
-      text-align: left;
-      font-size: 8pt;
-      font-weight: 700;
+      color: #fff;
+      font-weight: 500;
+      font-size: 7pt;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-right: 1px solid rgba(255,255,255,0.1);
+      letter-spacing: 0.3px;
+      padding: 8px 10px;
+      text-align: left;
     }
     
     thead th:last-child {
-      border-right: none;
+      text-align: right;
     }
     
     tbody tr {
-      page-break-inside: avoid; 
-      page-break-after: auto;
+      border-bottom: 1px solid #e5e7eb;
     }
     
     tbody tr:nth-child(even) {
-      background-color: #f8fafc;
-    }
-    
-    tbody tr:hover {
-      background-color: #f1f5f9;
+      background: #f9fafb;
     }
     
     tbody td {
-      padding: 10pt 12pt;
-      border-bottom: 1px solid #e2e8f0;
-      border-right: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      color: #374151;
+      vertical-align: middle;
     }
     
     tbody td:last-child {
-      border-right: none;
+      text-align: right;
     }
     
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .ingredient-name {
+    .ing-name {
       font-weight: 600;
-      color: #0f172a;
+      color: #111827;
     }
     
-    .ingredient-display-name {
-      font-size: 8pt;
-      color: #64748b;
-      font-weight: 400;
+    .ing-display {
+      font-size: 7pt;
+      color: #6b7280;
       display: block;
-      margin-top: 2pt;
+      margin-top: 1px;
     }
     
-    .percentage-badge {
+    .badge {
       display: inline-block;
-      padding: 3pt 8pt;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7pt;
+      font-weight: 500;
+    }
+    
+    .badge-blue {
       background: #dbeafe;
       color: #1e40af;
-      border-radius: 4px;
-      font-weight: 600;
-      font-size: 8pt;
     }
     
-    /* Info Boxes */
+    .badge-gray {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    tfoot tr {
+      background: #1f2937;
+    }
+    
+    tfoot td {
+      color: #fff;
+      font-weight: 600;
+      padding: 10px;
+      font-size: 9pt;
+    }
+    
+    /* Info Box */
     .info-box {
       border-radius: 6px;
-      padding: 12pt;
-      margin-bottom: 12pt;
+      padding: 12px;
+      margin-bottom: 12px;
       border-left: 3px solid;
-    }
-    
-    .info-box.blue {
-      background: #eff6ff;
-      border-color: #3b82f6;
-      color: #1e40af;
     }
     
     .info-box.green {
       background: #f0fdf4;
-      border-color: #10b981;
-      color: #065f46;
+      border-color: #22c55e;
     }
     
     .info-box.amber {
       background: #fffbeb;
       border-color: #f59e0b;
-      color: #92400e;
     }
     
     .info-box.red {
       background: #fef2f2;
       border-color: #ef4444;
-      color: #991b1b;
     }
     
-    .info-box-title {
-      font-weight: 700;
-      font-size: 10pt;
-      margin-bottom: 6pt;
-    }
-    
-    .info-box-content {
+    .info-box h4 {
       font-size: 9pt;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    
+    .info-box.green h4 { color: #166534; }
+    .info-box.amber h4 { color: #92400e; }
+    .info-box.red h4 { color: #991b1b; }
+    
+    .info-box p {
+      font-size: 8pt;
       line-height: 1.6;
       white-space: pre-line;
     }
     
-    /* Header & Footer */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding-bottom: 20pt;
-      margin-bottom: 20pt;
-      border-bottom: 3px solid #0f172a;
-    }
+    .info-box.green p { color: #15803d; }
+    .info-box.amber p { color: #a16207; }
+    .info-box.red p { color: #b91c1c; }
     
-    .logo-section {
-      display: flex;
-      align-items: center;
-      gap: 12pt;
-    }
-    
-    .company-name {
-      font-size: 22pt;
-      font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -0.01em;
-    }
-    
-    .company-tagline {
-      font-size: 8pt;
+    /* Note Box */
+    .note-box {
+      background: #f1f5f9;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 7pt;
       color: #64748b;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      margin-top: 8px;
     }
     
+    .note-box strong {
+      color: #475569;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    /* Footer */
     .footer {
-      margin-top: 30pt;
-      padding-top: 16pt;
-      border-top: 1px solid #e2e8f0;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
       text-align: center;
-      font-size: 8pt;
-      color: #64748b;
     }
     
     .footer-company {
+      font-size: 9pt;
       font-weight: 600;
-      color: #1e293b;
+      color: #374151;
+      margin-bottom: 4px;
     }
     
-    .footer-confidential {
-      margin-top: 8pt;
-      color: #94a3b8;
+    .footer-address {
+      font-size: 8pt;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    
+    .footer-contact {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      font-size: 8pt;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    
+    .footer-legal {
       font-size: 7pt;
+      color: #9ca3af;
+      max-width: 500px;
+      margin: 0 auto;
     }
     
-    /* Grid System */
-    .grid {
-      display: grid;
-      gap: 12pt;
-      margin-bottom: 16pt;
+    @media print {
+      body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .section { break-inside: avoid; }
     }
-    
-    .grid-2 { grid-template-columns: repeat(2, 1fr); }
-    .grid-3 { grid-template-columns: repeat(3, 1fr); }
-    .grid-4 { grid-template-columns: repeat(4, 1fr); }
-    
-    /* Utilities */
-    .mb-1 { margin-bottom: 4pt; }
-    .mb-2 { margin-bottom: 8pt; }
-    .mb-3 { margin-bottom: 12pt; }
-    .mb-4 { margin-bottom: 16pt; }
-    .text-right { text-align: right; }
-    .text-center { text-align: center; }
-    .font-bold { font-weight: 700; }
-    .font-semibold { font-weight: 600; }
-    .uppercase { text-transform: uppercase; }
-    
   </style>
 </head>
 <body>
   <div class="page">
     
-    <!-- Modern Header -->
+    <!-- Header -->
     <div class="header">
-      <div class="logo-section">
-        ${
-          logoBase64
-            ? `<img src="${logoBase64}" alt="MKN GROUP" style="height: 48px; width: auto;" />`
-            : `<div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 18pt;">M</div>`
+      <div class="logo-area">
+        ${logoBase64 
+          ? `<img src="${logoBase64}" alt="MKN GROUP" />`
+          : `<div class="logo-placeholder">M</div>`
         }
-        <div>
-          <div class="company-name">MKN GROUP</div>
-          <div class="company-tagline">Professional Formula Laboratory</div>
+        <div class="brand-text">
+          <h1>MKN GROUP</h1>
+          <p>Formül Laboratuvarı</p>
         </div>
       </div>
-      <div style="text-align: right;">
-        <div style="font-size: 8pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4pt;">Formül Raporu</div>
-        <div style="font-size: 10pt; color: #1e293b; font-weight: 600;">${currentDate}</div>
-        <div style="font-size: 8pt; color: #64748b; margin-top: 6pt;">Ref: ${
-          formula.id || "N/A"
-        }</div>
+      <div class="doc-info">
+        <div class="label">Formül Raporu</div>
+        <div class="date">${currentDate}</div>
+        <div class="ref">Ref: ${formula.id || "N/A"}</div>
       </div>
     </div>
-
-    <!-- Client Information -->
-    ${
-      companyData
-        ? `
-    <div class="info-box blue mb-4">
-      <div class="info-box-title">Müşteri Bilgileri</div>
-      <div style="font-size: 12pt; font-weight: 700; color: #0f172a; margin-bottom: 6pt;">${
-        companyData.name || ""
-      }</div>
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8pt; font-size: 8pt;">
-        ${
-          companyData.contactPerson
-            ? `<div><span style="color: #64748b;">Yetkili:</span> <span style="font-weight: 600; color: #1e293b;">${companyData.contactPerson}</span></div>`
-            : ""
-        }
-        ${
-          companyData.email
-            ? `<div><span style="color: #64748b;">E-posta:</span> <span style="font-weight: 600; color: #1e293b;">${companyData.email}</span></div>`
-            : ""
-        }
-        ${
-          companyData.phone
-            ? `<div><span style="color: #64748b;">Telefon:</span> <span style="font-weight: 600; color: #1e293b;">${companyData.phone}</span></div>`
-            : ""
-        }
-        ${
-          companyData.address
-            ? `<div><span style="color: #64748b;">Adres:</span> <span style="font-weight: 600; color: #1e293b;">${companyData.address}</span></div>`
-            : ""
-        }
+    
+    <!-- Company Info -->
+    ${companyData ? `
+    <div class="company-card">
+      <h3>${companyData.name || ""}</h3>
+      <div class="company-grid">
+        ${companyData.contactPerson ? `<div><span>Yetkili:</span> <strong>${companyData.contactPerson}</strong></div>` : ""}
+        ${companyData.email ? `<div><span>E-posta:</span> <strong>${companyData.email}</strong></div>` : ""}
+        ${companyData.phone ? `<div><span>Telefon:</span> <strong>${companyData.phone}</strong></div>` : ""}
+        ${companyData.address ? `<div><span>Adres:</span> <strong>${companyData.address}</strong></div>` : ""}
       </div>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Product Title -->
-    <div class="mb-4">
-      <h1>${formula.name || "Ürün Formülü"}</h1>
-      <div style="display: flex; gap: 16pt; font-size: 10pt; color: #475569;">
-        <div>
-          <span style="color: #94a3b8;">Kategori:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${
-            formula.productType || "Belirtilmemiş"
-          }</span>
-        </div>
-        ${
-          formula.productVolume
-            ? `
-        <div>
-          <span style="color: #94a3b8;">Hedef Hacim:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${formula.productVolume} ml</span>
-        </div>
-        `
-            : ""
-        }
-        <div>
-          <span style="color: #94a3b8;">Bileşen:</span>
-          <span style="font-weight: 600; color: #1e293b; margin-left: 4pt;">${
-            ingredientStats.total
-          } hammadde</span>
-        </div>
+    <div class="product-title">
+      <h2>${formula.name || "Ürün Formülü"}</h2>
+      <div class="product-meta">
+        <div><span>Kategori:</span> <strong>${formula.productType || "Belirtilmemiş"}</strong></div>
+        ${formula.productVolume ? `<div><span>Hacim:</span> <strong>${formula.productVolume} gr</strong></div>` : ""}
+        <div><span>Bileşen:</span> <strong>${ingredientStats.total} hammadde</strong></div>
+        ${ingredientStats.quantityBased > 0 ? `<div><span>Adet Bazlı:</span> <strong>${ingredientStats.quantityBased} kalem</strong></div>` : ""}
       </div>
     </div>
-
-    <!-- Statistics Grid -->
-    <div class="grid ${includePricing ? "grid-4" : "grid-3"} mb-4">
-      ${
-        includePricing
-          ? `
-      <div class="stat-card">
-        <div class="stat-label">Toplam Maliyet</div>
-        <div class="stat-value">₺${totalCost.toFixed(2)}</div>
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      ${includePricing ? `
+      <div class="stat-box">
+        <div class="label">Formül Maliyeti</div>
+        <div class="value">₺${formatNumber(totalCost)}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Birim Maliyet</div>
-        <div class="stat-value">₺${costPerGram.toFixed(
-          4
-        )}<span class="stat-suffix">/gr</span></div>
+      <div class="stat-box">
+        <div class="label">Gram Maliyeti</div>
+        <div class="value">₺${formatNumber(costPerGram, 4)}<span class="unit">/gr</span></div>
       </div>
-      `
-          : ""
-      }
-      <div class="stat-card">
-        <div class="stat-label">Üretim Hacmi</div>
-        <div class="stat-value">${
-          formula.productVolume || 0
-        }<span class="stat-suffix">gr</span></div>
+      ` : ""}
+      <div class="stat-box">
+        <div class="label">Üretim Hacmi</div>
+        <div class="value">${formula.productVolume || 0}<span class="unit"> gr</span></div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Bileşen Sayısı</div>
-        <div class="stat-value">${ingredientStats.total}</div>
+      <div class="stat-box">
+        <div class="label">Toplam Bileşen</div>
+        <div class="value">${ingredientStats.total}</div>
       </div>
-      ${
-        !includePricing
-          ? `
-      <div class="stat-card">
-        <div class="stat-label">Fonksiyonlu</div>
-        <div class="stat-value">${ingredientStats.withFunction}</div>
+      ${!includePricing ? `
+      <div class="stat-box">
+        <div class="label">Ağırlık Bazlı</div>
+        <div class="value">${ingredientStats.weightBased}</div>
       </div>
-      `
-          : ""
-      }
+      ` : ""}
     </div>
-
+    
     <!-- Product Description -->
-    ${
-      formula.productDescription
-        ? `
-    <div class="card mb-3">
-      <h2>Ürün Açıklaması</h2>
-      <div style="font-size: 10pt; color: #334155; line-height: 1.7; white-space: pre-line;">${formula.productDescription}</div>
+    ${formula.productDescription ? `
+    <div class="section">
+      <div class="section-title">Ürün Açıklaması</div>
+      <div class="description-box">${formula.productDescription}</div>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Ingredients Table -->
-    ${
-      formula.ingredients && formula.ingredients.length > 0
-        ? `
-    <div class="mb-4">
-      <h2>Formül Bileşimi ve İçerik Detayı</h2>
+    ${processedIngredients.length > 0 ? `
+    <div class="section">
+      <div class="section-title">Formül Bileşimi</div>
       <table>
         <thead>
           <tr>
-            <th style="width: 30px;">#</th>
-            <th style="width: ${
-              includePricing ? "25%" : "35%"
-            };">Hammadde (INCI Name)</th>
-            <th style="width: ${includePricing ? "18%" : "25%"};">Fonksiyon</th>
-            <th style="width: 12%; text-align: right;">Miktar</th>
-            <th style="width: 10%; text-align: center;">Oran</th>
-            ${
-              includePricing
-                ? `
-            <th style="width: 15%; text-align: right;">Birim Fiyat</th>
-            <th style="width: 12%; text-align: right;">Maliyet</th>
-            `
-                : ""
-            }
+            <th style="width: 25px;">#</th>
+            <th style="width: ${includePricing ? "28%" : "38%"};">Hammadde (INCI)</th>
+            <th style="width: ${includePricing ? "18%" : "24%"};">Fonksiyon</th>
+            <th style="width: 12%;">Miktar</th>
+            <th style="width: 10%;">Oran</th>
+            ${includePricing ? `
+            <th style="width: 12%;">B. Fiyat</th>
+            <th style="width: 10%;">Maliyet</th>
+            ` : ""}
           </tr>
         </thead>
         <tbody>
-          ${formula.ingredients
-            .map((ing, idx) => {
-              let cost = 0;
-              if (includePricing) {
-                const amount = parseFloat(ing.amount) || 0;
-                const price = parseFloat(ing.price) || 0;
-
-                if (ing.unit === "g" || ing.unit === "gram") {
-                  cost = (amount / 1000) * price;
-                } else if (ing.unit === "ml") {
-                  cost = (amount / 1000) * price;
-                } else if (ing.unit === "kg") {
-                  cost = amount * price;
-                } else {
-                  cost = amount * price;
-                }
-              }
-
-              return `
+          ${processedIngredients.map((ing, idx) => `
           <tr>
-            <td style="color: #64748b; font-weight: 600;">${idx + 1}</td>
+            <td style="color: #9ca3af; font-weight: 500;">${idx + 1}</td>
             <td>
-              <div class="ingredient-name">${ing.name || ""}</div>
-              ${
-                ing.displayName
-                  ? `<div class="ingredient-display-name">${ing.displayName}</div>`
-                  : ""
+              <span class="ing-name">${ing.name || ""}</span>
+              ${ing.displayName ? `<span class="ing-display">${ing.displayName}</span>` : ""}
+            </td>
+            <td style="font-size: 8pt; color: #6b7280;">${ing.functionTr || ing.function || "—"}</td>
+            <td style="font-weight: 600;">${ing.amount || 0} ${ing.unit || ""}</td>
+            <td>
+              ${ing.isWeightUnit && ing.percentage !== null 
+                ? `<span class="badge badge-blue">${ing.percentage}%</span>` 
+                : `<span class="badge badge-gray">—</span>`
               }
             </td>
-            <td style="color: #475569; font-size: 9pt;">${
-              ing.functionTr || ing.function || "—"
-            }</td>
-            <td style="text-align: right; font-weight: 600; color: #1e293b;">${
-              ing.amount || 0
-            } ${ing.unit || ""}</td>
-            <td style="text-align: center;">
-              <span class="percentage-badge">${ing.percentage || 0}%</span>
-            </td>
-            ${
-              includePricing
-                ? `
-            <td style="text-align: right; color: #475569;">${
-              ing.price ? `₺${parseFloat(ing.price).toFixed(2)}/kg` : "—"
-            }</td>
-            <td style="text-align: right; font-weight: 700; color: #0f172a;">₺${cost.toFixed(
-              2
-            )}</td>
-            `
-                : ""
-            }
+            ${includePricing ? `
+            <td style="color: #6b7280;">${ing.price ? `₺${formatNumber(ing.price)}/kg` : "—"}</td>
+            <td style="font-weight: 600;">₺${formatNumber(ing.cost)}</td>
+            ` : ""}
           </tr>
-          `;
-            })
-            .join("")}
+          `).join("")}
         </tbody>
-        ${
-          includePricing
-            ? `
+        ${includePricing ? `
         <tfoot>
-          <tr style="background: #0f172a; color: #ffffff; font-weight: 700;">
-            <td colspan="${
-              includePricing ? "6" : "4"
-            }" style="text-align: right; padding: 12pt; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.05em;">Toplam Formül Maliyeti</td>
-            <td style="text-align: right; padding: 12pt; font-size: 12pt;">₺${totalCost.toFixed(
-              2
-            )}</td>
+          <tr>
+            <td colspan="6" style="text-align: right;">Toplam Formül Maliyeti</td>
+            <td>₺${formatNumber(totalCost)}</td>
           </tr>
         </tfoot>
-        `
-            : ""
-        }
+        ` : ""}
       </table>
       
-      <!-- Ingredient Notes -->
-      <div style="margin-top: 10pt; padding: 10pt; background: #f8fafc; border-radius: 6px; font-size: 8pt; color: #64748b;">
-        <div style="font-weight: 600; color: #475569; margin-bottom: 4pt;">Not:</div>
-        <div>• Tüm hammadde miktarları formül standardına göre hesaplanmıştır.</div>
-        <div>• INCI isimleri uluslararası kozmetik hammadde standartlarına uygundur.</div>
-        ${
-          includePricing
-            ? `<div>• Fiyatlandırma güncel piyasa verilerine göre hesaplanmıştır ve değişkenlik gösterebilir.</div>`
-            : ""
-        }
+      <div class="note-box">
+        <strong>Not:</strong>
+        • Tüm hammadde miktarları formül standardına göre hesaplanmıştır.
+        • Yüzde oranları yalnızca ağırlık/hacim bazlı bileşenler için hesaplanır.
+        ${ingredientStats.quantityBased > 0 ? `• Adet bazlı bileşenler (${ingredientStats.quantityBased} kalem) yüzde hesaplamasına dahil edilmez.` : ""}
+        ${includePricing ? `• Fiyatlar güncel piyasa verilerine göre hesaplanmıştır.` : ""}
       </div>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Usage Instructions -->
-    ${
-      formula.usageInstructions
-        ? `
-    <div class="card mb-3">
-      <h2>Kullanım Talimatı</h2>
-      <div style="font-size: 10pt; color: #334155; line-height: 1.7; white-space: pre-line;">${formula.usageInstructions}</div>
+    ${formula.usageInstructions ? `
+    <div class="section">
+      <div class="section-title">Kullanım Talimatı</div>
+      <div class="description-box">${formula.usageInstructions}</div>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Benefits -->
-    ${
-      formula.benefits
-        ? `
-    <div class="info-box green mb-3">
-      <div class="info-box-title">Ürün Faydaları ve Özellikleri</div>
-      <div class="info-box-content">${formula.benefits}</div>
+    ${formula.benefits ? `
+    <div class="info-box green">
+      <h4>Ürün Faydaları</h4>
+      <p>${formula.benefits}</p>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Recommendations -->
-    ${
-      formula.recommendations
-        ? `
-    <div class="info-box amber mb-3">
-      <div class="info-box-title">Öneriler ve Kullanım İpuçları</div>
-      <div class="info-box-content">${formula.recommendations}</div>
+    ${formula.recommendations ? `
+    <div class="info-box amber">
+      <h4>Öneriler</h4>
+      <p>${formula.recommendations}</p>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Warnings -->
-    ${
-      formula.warnings
-        ? `
-    <div class="info-box red mb-3">
-      <div class="info-box-title">⚠️ Uyarılar ve Güvenlik Önlemleri</div>
-      <div class="info-box-content">${formula.warnings}</div>
+    ${formula.warnings ? `
+    <div class="info-box red">
+      <h4>⚠️ Uyarılar</h4>
+      <p>${formula.warnings}</p>
     </div>
-    `
-        : ""
-    }
-
+    ` : ""}
+    
     <!-- Production Notes -->
-    ${
-      formula.notes
-        ? `
-    <div class="card mb-3">
-      <h2>Üretim Notları ve Teknik Detaylar</h2>
-      <div style="font-size: 10pt; color: #334155; line-height: 1.7; white-space: pre-line; padding: 10pt; background: #f8fafc; border-radius: 4px;">${formula.notes}</div>
+    ${formula.notes ? `
+    <div class="section">
+      <div class="section-title">Üretim Notları</div>
+      <div class="description-box">${formula.notes}</div>
     </div>
-    `
-        : ""
-    }
-
-    <!-- Professional Footer -->
+    ` : ""}
+    
+    <!-- Footer -->
     <div class="footer">
-      <div style="margin-bottom: 10pt;">
-        <div class="footer-company">MKN GROUP KİMYA KOZMET. SAN. TİC. LTD. ŞTİ.</div>
-        <div style="margin-top: 4pt;">Akçaburgaz Mah, 3026 Sk, No:5, 34522 Esenyurt/İstanbul</div>
+      <div class="footer-company">MKN GROUP KİMYA KOZMET. SAN. TİC. LTD. ŞTİ.</div>
+      <div class="footer-address">Akçaburgaz Mah, 3026 Sk, No:5, 34522 Esenyurt/İstanbul</div>
+      <div class="footer-contact">
+        <span>📞 +90 531 494 25 94</span>
+        <span>📧 info@mkngroup.com.tr</span>
+        <span>🌐 www.mkngroup.com.tr</span>
       </div>
-      <div style="display: flex; justify-content: center; gap: 20pt; margin-bottom: 10pt;">
-        <div>📞 +90 531 494 25 94</div>
-        <div>📧 info@mkngroup.com.tr</div>
-        <div>🌐 www.mkngroup.com.tr</div>
-      </div>
-      <div class="footer-confidential">
-        Bu belge gizli ve özeldir. MKN GROUP'un yazılı izni olmadan çoğaltılamaz, paylaşılamaz veya ticari amaçla kullanılamaz.
-        <br>© ${new Date().getFullYear()} MKN GROUP - Tüm hakları saklıdır.
+      <div class="footer-legal">
+        Bu belge gizlidir. MKN GROUP'un yazılı izni olmadan çoğaltılamaz veya paylaşılamaz.
+        © ${new Date().getFullYear()} MKN GROUP
       </div>
     </div>
-
+    
   </div>
 </body>
 </html>

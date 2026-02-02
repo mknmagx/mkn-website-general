@@ -12,8 +12,9 @@ export default function AdminRootLayout({ children }) {
   const isAIPage = pathname.startsWith('/admin/ai');
   const isOutlookPage = pathname.startsWith('/admin/outlook');
   const isMetaMessengerPage = pathname.startsWith('/admin/meta-messenger');
+  const isWhatsAppPage = pathname.startsWith('/admin/whatsapp');
   const isFinancePage = pathname.startsWith('/admin/finance');
-  const isFullHeightPage = isAIPage || isOutlookPage || isMetaMessengerPage;
+  const isFullHeightPage = isAIPage || isOutlookPage || isMetaMessengerPage || isWhatsAppPage;
   const isFullWidthPage = isFinancePage;
 
   return (
@@ -25,7 +26,12 @@ export default function AdminRootLayout({ children }) {
           
           {/* Main Content Area - flex-1 to fill remaining space */}
           <main className={`flex-1 min-w-0 ${isLoginPage ? '' : 'pt-14 lg:pt-0'}`}>
-            {isFullHeightPage ? (
+            {isWhatsAppPage ? (
+              // WhatsApp için full height ve full width
+              <div className="h-[calc(100vh-3.5rem)] lg:h-screen overflow-hidden max-w-[1300px] mx-auto">
+                {children}
+              </div>
+            ) : isFullHeightPage ? (
               // AI, Outlook ve Instagram DM sayfaları için padding ve container yok - full height
               <div className="h-[calc(100vh-3.5rem)] lg:h-screen overflow-hidden max-w-[1300px] mx-auto">
                 {children}
