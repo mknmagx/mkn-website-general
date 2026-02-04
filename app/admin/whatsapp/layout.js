@@ -18,6 +18,7 @@ import {
   WifiOff,
   AlertCircle,
   BarChart3,
+  Users,
 } from "lucide-react";
 
 // Custom WhatsApp Icon
@@ -33,6 +34,11 @@ const navigation = [
     href: "/admin/whatsapp",
     icon: Inbox,
     exact: true,
+  },
+  {
+    name: "Rehber",
+    href: "/admin/whatsapp/contacts",
+    icon: Users,
   },
   {
     name: "Şablonlar",

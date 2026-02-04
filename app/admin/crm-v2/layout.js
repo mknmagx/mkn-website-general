@@ -155,8 +155,22 @@ export default function CrmV2Layout({ children }) {
       // result.skipped = false ise başarılı, skipped = true ise atlandı
       if (!result.skipped) {
         const { summary } = result;
-        const description = summary 
-          ? `${summary.forms || 0} form, ${summary.emails || 0} email senkronize edildi`
+        const parts = [];
+        if (summary?.forms) parts.push(`${summary.forms} form`);
+        if (summary?.emails) parts.push(`${summary.emails} email`);
+        
+        // WhatsApp detayları
+        const wpConv = summary?.whatsapp?.conversations || 0;
+        const wpMsg = summary?.whatsapp?.messages || 0;
+        if (wpConv || wpMsg) {
+          const wpParts = [];
+          if (wpConv) wpParts.push(`${wpConv} sohbet`);
+          if (wpMsg) wpParts.push(`${wpMsg} mesaj`);
+          parts.push(`${wpParts.join(', ')} (WhatsApp)`);
+        }
+        
+        const description = parts.length > 0 
+          ? `${parts.join(', ')} senkronize edildi`
           : "Veriler senkronize edildi";
         toast({
           title: "Senkronizasyon Tamamlandı",

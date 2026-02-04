@@ -27,6 +27,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// WhatsApp Modals
+import {
+  NewContactModal,
+  TemplatePickerModal,
+  NewMessageModal,
+  DeleteConversationDialog,
+} from "@/components/whatsapp-modals";
+
+// Contact Profile Dialog
+import ContactProfileDialog from "@/components/whatsapp-contact-profile-dialog";
+
+// Media Upload Dialog
+import MediaUploadDialog from "@/components/whatsapp-media-upload-dialog";
+
 // Icons
 import {
   Search,
@@ -50,6 +64,12 @@ import {
   Loader2,
   MessageSquare,
   ChevronDown,
+  ChevronUp,
+  Plus,
+  UserPlus,
+  Trash2,
+  Reply,
+  CornerDownLeft,
 } from "lucide-react";
 
 // Custom WhatsApp Icon
@@ -79,6 +99,7 @@ export default function WhatsAppInboxPage() {
   const { toast } = useToast();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const scrollViewportRef = useRef(null);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -90,6 +111,23 @@ export default function WhatsAppInboxPage() {
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+
+  // Modal States
+  const [showNewMessage, setShowNewMessage] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [contactInfo, setContactInfo] = useState(null); // Rehberde kayıtlı kişi bilgisi
+  const [addingToContacts, setAddingToContacts] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [messageSearchResults, setMessageSearchResults] = useState([]);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // Yanıtlanacak mesaj
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -150,6 +188,17 @@ export default function WhatsAppInboxPage() {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
+    // Check if window is open
+    if (!isWindowOpen(selectedConversation)) {
+      toast({
+        title: "24 Saat Penceresi Kapalı",
+        description: "Serbest mesaj gönderemezsiniz. Şablon kullanmanız gerekiyor.",
+        variant: "destructive",
+      });
+      setShowTemplates(true);
+      return;
+    }
+
     setSending(true);
     try {
       const response = await fetch("/api/admin/whatsapp/messages", {
@@ -160,6 +209,7 @@ export default function WhatsAppInboxPage() {
           to: selectedConversation.waId,
           conversationId: selectedConversation.id,
           text: newMessage.trim(),
+          replyToMessageId: replyingTo?.wamId || null,
         }),
       });
 
@@ -167,8 +217,17 @@ export default function WhatsAppInboxPage() {
 
       if (data.success) {
         setNewMessage("");
+        setReplyingTo(null); // Clear reply state
         fetchMessages(selectedConversation.id);
         fetchConversations();
+      } else if (data.requiresTemplate) {
+        // Backend says window is closed, open template picker
+        toast({
+          title: "Şablon Gerekli",
+          description: "24 saatlik pencere kapandı. Şablon seçmeniz gerekiyor.",
+          variant: "destructive",
+        });
+        setShowTemplates(true);
       } else {
         toast({
           title: "Hata",
@@ -205,6 +264,154 @@ export default function WhatsAppInboxPage() {
     }
   };
 
+  // Check if contact exists in phonebook
+  const checkContactInPhonebook = useCallback(async (waId) => {
+    if (!waId) {
+      setContactInfo(null);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/admin/whatsapp/contacts?search=${waId}&exactMatch=true`);
+      const data = await response.json();
+      
+      if (data.success && data.data?.length > 0) {
+        setContactInfo(data.data[0]);
+      } else {
+        setContactInfo(null);
+      }
+    } catch (error) {
+      console.error("Error checking contact:", error);
+      setContactInfo(null);
+    }
+  }, []);
+
+  // Add current conversation to contacts
+  const handleAddToContacts = async () => {
+    if (!selectedConversation) return;
+    
+    setAddingToContacts(true);
+    try {
+      const response = await fetch("/api/admin/whatsapp/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: selectedConversation.profileName || selectedConversation.waId,
+          phoneNumber: selectedConversation.waId,
+          profileName: selectedConversation.profileName,
+          group: "other",
+          notes: "WhatsApp konuşmasından eklendi",
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Başarılı",
+          description: "Kişi rehbere eklendi",
+        });
+        setContactInfo(data.contact);
+      } else {
+        toast({
+          title: "Hata",
+          description: data.error || "Kişi eklenemedi",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Kişi eklenemedi",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingToContacts(false);
+    }
+  };
+
+  // Search messages in current conversation
+  const handleMessageSearch = useCallback((query) => {
+    setMessageSearchQuery(query);
+    
+    if (!query.trim()) {
+      setMessageSearchResults([]);
+      setHighlightedMessageId(null);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    const results = messages.filter((msg) => {
+      const text = msg.text || msg.content?.text || "";
+      return text.toLowerCase().includes(lowerQuery);
+    });
+    
+    setMessageSearchResults(results);
+    
+    // Highlight first result
+    if (results.length > 0) {
+      setHighlightedMessageId(results[0].id);
+      // Scroll to message
+      setTimeout(() => {
+        const element = document.getElementById(`msg-${results[0].id}`);
+        element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    } else {
+      setHighlightedMessageId(null);
+    }
+  }, [messages]);
+
+  // Navigate to next/previous search result
+  const navigateSearchResult = (direction) => {
+    if (messageSearchResults.length === 0) return;
+    
+    const currentIndex = messageSearchResults.findIndex(
+      (msg) => msg.id === highlightedMessageId
+    );
+    
+    let newIndex;
+    if (direction === "next") {
+      newIndex = currentIndex < messageSearchResults.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : messageSearchResults.length - 1;
+    }
+    
+    const targetMsg = messageSearchResults[newIndex];
+    setHighlightedMessageId(targetMsg.id);
+    
+    setTimeout(() => {
+      const element = document.getElementById(`msg-${targetMsg.id}`);
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  // Close search
+  const closeMessageSearch = () => {
+    setShowMessageSearch(false);
+    setMessageSearchQuery("");
+    setMessageSearchResults([]);
+    setHighlightedMessageId(null);
+  };
+
+  // Scroll to bottom
+  const scrollToBottom = (behavior = "auto") => {
+    if (scrollViewportRef.current) {
+      const { scrollHeight, clientHeight } = scrollViewportRef.current;
+      scrollViewportRef.current.scrollTo({
+        top: scrollHeight - clientHeight,
+        behavior,
+      });
+    }
+  };
+
+  // Handle scroll event
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Show button if we are scrolled up more than 100px from bottom
+    const isBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 100;
+    setShowScrollButton(!isBottom);
+  };
+
   // Effects
   useEffect(() => {
     fetchConversations();
@@ -213,12 +420,39 @@ export default function WhatsAppInboxPage() {
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
+      checkContactInPhonebook(selectedConversation.waId);
+      // Reset message search and reply when conversation changes
+      closeMessageSearch();
+      setReplyingTo(null);
+      // Reset scroll state
+      setShowScrollButton(false);
+    } else {
+      setContactInfo(null);
     }
-  }, [selectedConversation, fetchMessages]);
+  }, [selectedConversation, fetchMessages, checkContactInPhonebook]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // Mesajlar yüklendiğinde anında en alta git
+    if (scrollViewportRef.current && messages.length > 0) {
+        // İlk renderda direkt en alta git
+        scrollToBottom("auto");
+        
+        // Görsellerin yüklenmesi ve DOM güncellemeleri için kısa bir gecikme ile tekrar kontrol et
+        const timer = setTimeout(() => {
+            scrollToBottom("auto");
+        }, 100);
+
+        // Daha uzun süren yüklemeler için bir güvenlik kontrolü (özellikle resimler varsa)
+        const longTimer = setTimeout(() => {
+            scrollToBottom("auto");
+        }, 500);
+        
+        return () => {
+            clearTimeout(timer);
+            clearTimeout(longTimer);
+        };
+    }
+  }, [messages, selectedConversation]); // selectedConversation değiştiğinde de tetikle
 
   // Polling for new messages
   useEffect(() => {
@@ -322,14 +556,23 @@ export default function WhatsAppInboxPage() {
       <div className="w-80 border-r border-gray-200 flex flex-col">
         {/* Search & Filter */}
         <div className="p-3 border-b border-gray-200 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 bg-gray-50 border-0"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9 bg-gray-50 border-0"
+              />
+            </div>
+            <Button
+              size="sm"
+              className="h-9 bg-green-600 hover:bg-green-700"
+              onClick={() => setShowNewMessage(true)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
           <div className="flex gap-1">
             {["all", "open", "closed", "pending"].map((status) => (
@@ -415,19 +658,25 @@ export default function WhatsAppInboxPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {selectedConversation ? (
           <>
             {/* Chat Header */}
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-200 bg-white">
               <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
+                <Avatar 
+                  className="h-9 w-9 cursor-pointer hover:ring-2 hover:ring-green-500 hover:ring-offset-1 transition-all"
+                  onClick={() => setShowProfileDialog(true)}
+                >
                   <AvatarFallback className="bg-green-100 text-green-700 text-sm">
                     {getInitials(selectedConversation.profileName)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h3 className="font-medium text-sm text-gray-900">
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => setShowProfileDialog(true)}
+                >
+                  <h3 className="font-medium text-sm text-gray-900 hover:text-green-600 transition-colors">
                     {selectedConversation.profileName || selectedConversation.waId}
                   </h3>
                   <p className="text-xs text-gray-500">
@@ -436,6 +685,50 @@ export default function WhatsAppInboxPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Contact in phonebook badge */}
+                {contactInfo && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                        >
+                          <User className="h-3 w-3 mr-1" />
+                          {contactInfo.name}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Rehberde kayıtlı: {contactInfo.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {!contactInfo && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                          onClick={handleAddToContacts}
+                          disabled={addingToContacts}
+                        >
+                          {addingToContacts ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-3 w-3 mr-1" />
+                          )}
+                          Rehbere Ekle
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Kişiyi rehbere ekle</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -460,6 +753,23 @@ export default function WhatsAppInboxPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setShowMessageSearch(!showMessageSearch)}
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Mesajlarda Ara</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -467,6 +777,22 @@ export default function WhatsAppInboxPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {!contactInfo && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={handleAddToContacts}
+                          disabled={addingToContacts}
+                        >
+                          {addingToContacts ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-4 w-4 mr-2" />
+                          )}
+                          Rehbere Ekle
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem
                       onClick={() => handleStatusChange(selectedConversation.id, "closed")}
                     >
@@ -481,13 +807,73 @@ export default function WhatsAppInboxPage() {
                       <User className="h-4 w-4 mr-2" />
                       Ata
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Konuşmayı Sil
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </div>
 
+            {/* Message Search Bar */}
+            {showMessageSearch && (
+              <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Mesajlarda ara..."
+                    value={messageSearchQuery}
+                    onChange={(e) => handleMessageSearch(e.target.value)}
+                    className="pl-9 h-8 bg-white"
+                    autoFocus
+                  />
+                </div>
+                {messageSearchResults.length > 0 && (
+                  <>
+                    <span className="text-xs text-gray-500 min-w-[60px] text-center">
+                      {messageSearchResults.findIndex((m) => m.id === highlightedMessageId) + 1} / {messageSearchResults.length}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => navigateSearchResult("prev")}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => navigateSearchResult("next")}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={closeMessageSearch}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 bg-[#e5ddd5]">
+            <div className="flex-1 min-h-0 relative">
+            <div 
+              ref={scrollViewportRef}
+              className="h-full overflow-y-auto p-4 bg-[#e5ddd5] minimal-scrollbar"
+              onScroll={handleScroll}
+            >
               {messagesLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -502,19 +888,63 @@ export default function WhatsAppInboxPage() {
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
+                      id={`msg-${msg.id}`}
                       className={cn(
-                        "flex",
-                        msg.direction === "outbound" ? "justify-end" : "justify-start"
+                        "flex transition-all duration-300 group",
+                        msg.direction === "outbound" ? "justify-end" : "justify-start",
+                        highlightedMessageId === msg.id && "scale-[1.02]"
                       )}
                     >
+                      {/* Reply button - left side for outbound */}
+                      {msg.direction === "outbound" && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity self-center mr-1"
+                                onClick={() => setReplyingTo(msg)}
+                              >
+                                <CornerDownLeft className="h-3 w-3 text-gray-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Yanıtla</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      
                       <div
                         className={cn(
-                          "max-w-[70%] rounded-lg px-3 py-2 shadow-sm",
+                          "max-w-[70%] rounded-lg px-3 py-2 shadow-sm transition-all duration-300",
                           msg.direction === "outbound"
                             ? "bg-[#dcf8c6] rounded-tr-none"
-                            : "bg-white rounded-tl-none"
+                            : "bg-white rounded-tl-none",
+                          highlightedMessageId === msg.id && "ring-2 ring-yellow-400 bg-yellow-50"
                         )}
                       >
+                        {/* Reply indicator */}
+                        {msg.replyToMessageId && (
+                          <div 
+                            className="bg-black/5 rounded px-2 py-1 mb-1 border-l-2 border-green-500 cursor-pointer text-xs"
+                            onClick={() => {
+                              const replyMsg = messages.find(m => m.wamId === msg.replyToMessageId);
+                              if (replyMsg) {
+                                setHighlightedMessageId(replyMsg.id);
+                                setTimeout(() => {
+                                  const element = document.getElementById(`msg-${replyMsg.id}`);
+                                  element?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                }, 100);
+                                setTimeout(() => setHighlightedMessageId(null), 2000);
+                              }
+                            }}
+                          >
+                            <span className="text-green-600 font-medium">Yanıt</span>
+                          </div>
+                        )}
+                        
                         {/* Message content based on type */}
                         {msg.type === "text" && (
                           <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">
@@ -565,58 +995,140 @@ export default function WhatsAppInboxPage() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* Reply button - right side for inbound */}
+                      {msg.direction === "inbound" && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity self-center ml-1"
+                                onClick={() => setReplyingTo(msg)}
+                              >
+                                <CornerDownLeft className="h-3 w-3 text-gray-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Yanıtla</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
               )}
-            </ScrollArea>
+            </div>
+
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg bg-white/90 hover:bg-white z-10 animate-in fade-in zoom-in duration-200"
+                onClick={() => scrollToBottom("smooth")}
+              >
+                <ChevronDown className="h-5 w-5 text-gray-600" />
+                {conversations.find(c => c.id === selectedConversation?.id)?.unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white">
+                    {conversations.find(c => c.id === selectedConversation?.id)?.unreadCount}
+                  </span>
+                )}
+              </Button>
+            )}
+            </div>
+
 
             {/* Message Input */}
-            <div className="p-3 border-t border-gray-200 bg-gray-50">
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-gray-500"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-gray-500"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Input
-                  ref={inputRef}
-                  placeholder="Mesaj yazın..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 h-9 bg-white"
-                  disabled={!isWindowOpen(selectedConversation)}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="h-9 w-9 bg-green-600 hover:bg-green-700"
-                  disabled={!newMessage.trim() || sending || !isWindowOpen(selectedConversation)}
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </form>
-              {!isWindowOpen(selectedConversation) && (
-                <p className="text-xs text-amber-600 mt-2 text-center">
-                  24 saatlik pencere kapalı. Şablon mesajı göndermek için Şablonlar sayfasını kullanın.
-                </p>
+            <div className="border-t border-gray-200 bg-gray-50">
+              {/* Reply Preview */}
+              {replyingTo && (
+                <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="w-1 h-8 bg-green-500 rounded-full flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-green-600">
+                        {replyingTo.direction === "inbound" 
+                          ? (selectedConversation?.profileName || selectedConversation?.waId)
+                          : "Siz"
+                        }
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {replyingTo.text || replyingTo.content?.text || `[${replyingTo.type}]`}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 flex-shrink-0"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </Button>
+                </div>
               )}
+              
+              <div className="p-3">
+              {isWindowOpen(selectedConversation) ? (
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-gray-500"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-gray-500 hover:text-green-600"
+                    onClick={() => setShowMediaUpload(true)}
+                  >
+                    <Paperclip className="h-5 w-5" />
+                  </Button>
+                  <Input
+                    ref={inputRef}
+                    placeholder="Mesaj yazın..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="flex-1 h-9 bg-white"
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="h-9 w-9 bg-green-600 hover:bg-green-700"
+                    disabled={!newMessage.trim() || sending}
+                  >
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-xs text-amber-600 mb-2">
+                    24 saatlik mesajlaşma penceresi kapalı. Şablon mesajı göndermeniz gerekiyor.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-green-500 text-green-600 hover:bg-green-50"
+                    onClick={() => setShowTemplates(true)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Şablon Gönder
+                  </Button>
+                </div>
+              )}
+              </div>
             </div>
           </>
         ) : (
@@ -637,6 +1149,86 @@ export default function WhatsAppInboxPage() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <NewMessageModal
+        open={showNewMessage}
+        onOpenChange={setShowNewMessage}
+        onConversationStart={(result) => {
+          fetchConversations();
+          toast({
+            title: "Mesaj Gönderildi",
+            description: "Şablon mesajı başarıyla gönderildi.",
+          });
+        }}
+      />
+
+      <NewContactModal
+        open={showNewContact}
+        onOpenChange={setShowNewContact}
+        onContactCreated={(contact) => {
+          toast({
+            title: "Kişi Eklendi",
+            description: `${contact.name || contact.phoneNumber} rehbere eklendi.`,
+          });
+        }}
+      />
+
+      <TemplatePickerModal
+        open={showTemplates}
+        onOpenChange={setShowTemplates}
+        onTemplateSelect={(result) => {
+          fetchConversations();
+          if (selectedConversation) {
+            fetchMessages(selectedConversation.id);
+          }
+          toast({
+            title: "Şablon Gönderildi",
+            description: "Şablon mesajı başarıyla gönderildi.",
+          });
+        }}
+        recipientPhone={selectedConversation?.waId}
+        recipientName={selectedConversation?.profileName}
+      />
+
+      <DeleteConversationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        conversation={selectedConversation}
+        onDeleted={() => {
+          setSelectedConversation(null);
+          setMessages([]);
+          fetchConversations();
+          toast({
+            title: "Konuşma Silindi",
+            description: "Konuşma ve tüm mesajlar silindi.",
+          });
+        }}
+      />
+
+      {/* Contact Profile Dialog */}
+      <ContactProfileDialog
+        open={showProfileDialog}
+        onOpenChange={setShowProfileDialog}
+        contact={contactInfo}
+        conversation={selectedConversation}
+        onContactUpdate={(updatedContact) => {
+          setContactInfo(updatedContact);
+        }}
+        onAddToContacts={handleAddToContacts}
+      />
+
+      {/* Media Upload Dialog */}
+      <MediaUploadDialog
+        open={showMediaUpload}
+        onOpenChange={setShowMediaUpload}
+        conversationId={selectedConversation?.id}
+        recipientPhone={selectedConversation?.waId}
+        onMediaSent={() => {
+          fetchMessages(selectedConversation?.id);
+          fetchConversations();
+        }}
+      />
     </div>
   );
 }

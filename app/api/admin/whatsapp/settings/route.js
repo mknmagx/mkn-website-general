@@ -102,6 +102,7 @@ export async function GET(request) {
       webhookVerifyToken: settings.webhookVerifyToken || verifyToken,
       webhookConfigured: settings.webhookConfigured,
       connectionStatus: settings.connectionStatus,
+      autoCreateContacts: settings.autoCreateContacts ?? true,
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };
@@ -133,6 +134,7 @@ export async function POST(request) {
       verifiedName,
       webhookVerifyToken,
       webhookConfigured,
+      autoCreateContacts,
     } = body;
 
     // Build update object (only include non-empty values)
@@ -147,6 +149,7 @@ export async function POST(request) {
     if (verifiedName !== undefined) updates.verifiedName = verifiedName;
     if (webhookVerifyToken) updates.webhookVerifyToken = webhookVerifyToken;
     if (webhookConfigured !== undefined) updates.webhookConfigured = webhookConfigured;
+    if (autoCreateContacts !== undefined) updates.autoCreateContacts = autoCreateContacts;
 
     await saveSettings(updates);
 

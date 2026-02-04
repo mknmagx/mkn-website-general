@@ -23,13 +23,19 @@ import {
   approveAndSendMessage,
   updateMessageContent,
   deleteMessage,
-  cleanupDuplicateMessages,
 } from "../../../../../lib/services/crm-v2/conversation-service";
 import { getCustomer } from "../../../../../lib/services/crm-v2/customer-service";
 import {
   createCaseFromConversation,
   getCaseByConversationId,
 } from "../../../../../lib/services/crm-v2/case-service";
+// WhatsApp Sync Service - 24 saat kuralı ve mesaj gönderme
+import {
+  checkServiceWindow,
+  sendWhatsAppFromCRM,
+  formatPhoneForWhatsApp,
+  validateWhatsAppPhone,
+} from "../../../../../lib/services/crm-v2/whatsapp-sync-service";
 // AI Reply constants (browser-safe)
 import {
   REPLY_TONE,
@@ -238,6 +244,59 @@ const isHtmlContent = (content) => {
   );
 };
 
+/**
+ * Güvenli tarih parse - Invalid time value hatalarını önler
+ * Firestore Timestamp, serialized timestamp, string veya number tarihleri destekler
+ */
+const safeParseDate = (dateValue) => {
+  if (!dateValue) return null;
+  
+  try {
+    // Firestore Timestamp (toDate metodu var)
+    if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    
+    // Serialized Firestore Timestamp (seconds property)
+    if (dateValue?.seconds) {
+      return new Date(dateValue.seconds * 1000);
+    }
+    
+    // Serialized Firestore Timestamp (_seconds property)
+    if (dateValue?._seconds) {
+      return new Date(dateValue._seconds * 1000);
+    }
+    
+    // String veya number
+    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    
+    return null;
+  } catch (e) {
+    console.warn('Date parsing error:', dateValue);
+    return null;
+  }
+};
+
+/**
+ * Güvenli tarih formatlama
+ */
+const safeFormatDate = (dateValue, formatString = "dd MMM yyyy HH:mm") => {
+  const date = safeParseDate(dateValue);
+  if (!date) return "";
+  
+  try {
+    return format(date, formatString, { locale: tr });
+  } catch (e) {
+    console.warn('Date format error:', dateValue);
+    return "";
+  }
+};
+
 export default function ConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -333,10 +392,22 @@ export default function ConversationDetailPage() {
   const [pendingSendMessageId, setPendingSendMessageId] = useState(null);
   const [sendChannels, setSendChannels] = useState({
     email: true, // Outlook Email - varsayılan aktif
-    whatsapp: false, // WhatsApp - şimdilik devre dışı
+    whatsapp: false, // WhatsApp
     manual: false, // Sadece CRM'e kaydet
   });
   const [sendingMessage, setSendingMessage] = useState(false);
+  
+  // WhatsApp 24 saat kuralı state'leri
+  const [whatsappWindowStatus, setWhatsappWindowStatus] = useState(null);
+  const [checkingWhatsappWindow, setCheckingWhatsappWindow] = useState(false);
+  const [whatsappTemplates, setWhatsappTemplates] = useState([]);
+  const [selectedWhatsappTemplate, setSelectedWhatsappTemplate] = useState(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  
+  // WhatsApp telefon düzenleme
+  const [editableWhatsappPhone, setEditableWhatsappPhone] = useState('');
+  const [whatsappPhoneError, setWhatsappPhoneError] = useState(null);
+  
   const [convertForm, setConvertForm] = useState({
     title: "",
     type: CASE_TYPE.OTHER,
@@ -440,7 +511,7 @@ export default function ConversationDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, router, toast]);
+  }, [conversationId, router, toast, user?.uid]);
 
   // Load linked documents from Company (for attachment picker)
   const loadLinkedDocuments = useCallback(async (companyId) => {
@@ -545,6 +616,7 @@ export default function ConversationDetailPage() {
   // Track previous message count to detect NEW messages only
   const prevMessageCount = useRef(0);
 
+  // ConversationId değişince sync flag'ini sıfırla
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -867,16 +939,68 @@ export default function ConversationDetailPage() {
     }
   };
 
-  // Gönderim modalını aç
-  const handleOpenSendModal = (messageId) => {
+  // Gönderim modalını aç - WhatsApp için 24 saat kuralını kontrol et
+  const handleOpenSendModal = async (messageId) => {
     setPendingSendMessageId(messageId);
+    
     // Müşteri email'i varsa email varsayılan olsun
     const hasEmail = conversation?.sender?.email;
+    const hasPhone = conversation?.sender?.phone;
+    const isWhatsAppChannel = conversation?.channel === 'whatsapp';
+    
+    // Telefon numarasını düzenlenebilir alana set et
+    if (hasPhone) {
+      const formattedPhone = formatPhoneForWhatsApp(conversation.sender.phone);
+      setEditableWhatsappPhone(formattedPhone);
+      // Doğrulama yap
+      const validation = validateWhatsAppPhone(formattedPhone);
+      setWhatsappPhoneError(validation.valid ? null : validation.message);
+    } else if (isWhatsAppChannel && conversation?.channelMetadata?.waId) {
+      setEditableWhatsappPhone(conversation.channelMetadata.waId);
+      setWhatsappPhoneError(null);
+    } else {
+      setEditableWhatsappPhone('');
+      setWhatsappPhoneError(null);
+    }
+    
+    // WhatsApp kanalıysa veya telefon numarası varsa 24 saat kontrolü yap
+    if (isWhatsAppChannel || hasPhone) {
+      setCheckingWhatsappWindow(true);
+      try {
+        const windowStatus = await checkServiceWindow(conversationId);
+        setWhatsappWindowStatus(windowStatus);
+        
+        // Eğer template gerekiyorsa template'leri yükle
+        if (windowStatus.requiresTemplate) {
+          setLoadingTemplates(true);
+          try {
+            const response = await fetch('/api/admin/whatsapp/templates');
+            const data = await response.json();
+            if (data.success) {
+              // Sadece onaylı template'leri göster
+              const approvedTemplates = (data.data || []).filter(t => t.status === 'APPROVED');
+              setWhatsappTemplates(approvedTemplates);
+            }
+          } catch (err) {
+            console.error('Template loading error:', err);
+          } finally {
+            setLoadingTemplates(false);
+          }
+        }
+      } catch (err) {
+        console.error('Service window check error:', err);
+        setWhatsappWindowStatus({ isOpen: false, requiresTemplate: true });
+      } finally {
+        setCheckingWhatsappWindow(false);
+      }
+    }
+    
     setSendChannels({
       email: hasEmail ? true : false,
-      whatsapp: false,
-      manual: !hasEmail, // Email yoksa manuel seçili olsun
+      whatsapp: isWhatsAppChannel ? true : false, // WhatsApp kanalıysa otomatik seç
+      manual: !hasEmail && !isWhatsAppChannel, // Email ve WhatsApp yoksa manuel seçili olsun
     });
+    setSelectedWhatsappTemplate(null);
     setShowSendModal(true);
   };
 
@@ -889,6 +1013,29 @@ export default function ConversationDetailPage() {
       toast({
         title: "Kanal Seçin",
         description: "En az bir gönderim kanalı seçmelisiniz.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // WhatsApp seçiliyse telefon doğrulama
+    if (sendChannels.whatsapp) {
+      const phoneValidation = validateWhatsAppPhone(editableWhatsappPhone);
+      if (!phoneValidation.valid) {
+        toast({
+          title: "Geçersiz Telefon Numarası",
+          description: phoneValidation.message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // WhatsApp seçiliyse ve 24 saat kapanmışsa template zorunlu
+    if (sendChannels.whatsapp && whatsappWindowStatus?.requiresTemplate && !selectedWhatsappTemplate) {
+      toast({
+        title: "Şablon Seçin",
+        description: "24 saat penceresi kapandığı için WhatsApp mesajı göndermek için şablon seçmelisiniz.",
         variant: "destructive",
       });
       return;
@@ -942,6 +1089,13 @@ export default function ConversationDetailPage() {
           }
         }
       }
+      
+      // WhatsApp template bilgilerini hazırla
+      const whatsappOptions = sendChannels.whatsapp ? {
+        templateName: selectedWhatsappTemplate?.name || null,
+        templateLanguage: selectedWhatsappTemplate?.language || 'tr',
+        forceTemplate: whatsappWindowStatus?.requiresTemplate || false,
+      } : {};
 
       // Mesajı onayla ve gönder (kanallarla ve attachment'larla birlikte)
       await approveAndSendMessage(
@@ -952,9 +1106,10 @@ export default function ConversationDetailPage() {
           channels: selectedChannels,
           recipientEmail: conversation?.sender?.email,
           recipientName: conversation?.sender?.name,
-          recipientPhone: conversation?.sender?.phone,
+          recipientPhone: sendChannels.whatsapp ? editableWhatsappPhone : conversation?.sender?.phone,
           subject: conversation?.subject,
           attachments: emailAttachments, // Hazırlanan attachment'ları gönder
+          ...whatsappOptions, // WhatsApp template bilgileri
         },
       );
 
@@ -1632,18 +1787,10 @@ export default function ConversationDetailPage() {
                   </Badge>
                   <span className="text-slate-400">•</span>
                   <span className="text-slate-500">
-                    {(() => {
-                      const originalDate =
-                        conversation.channelMetadata?.originalCreatedAt;
-                      const displayDate =
-                        originalDate || conversation.createdAt;
-                      if (!displayDate) return "";
-                      return format(
-                        displayDate?.toDate?.() || new Date(displayDate),
-                        "dd MMM yyyy HH:mm",
-                        { locale: tr },
-                      );
-                    })()}
+                    {safeFormatDate(
+                      conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
+                      "dd MMM yyyy HH:mm"
+                    )}
                   </span>
                 </div>
               </div>
@@ -1763,20 +1910,10 @@ export default function ConversationDetailPage() {
                               {conversation.sender?.name || "Bilinmiyor"}
                             </span>
                             <span className="text-xs text-slate-400">
-                              {(() => {
-                                const originalDate =
-                                  conversation.channelMetadata
-                                    ?.originalCreatedAt;
-                                const displayDate =
-                                  originalDate || conversation.createdAt;
-                                if (!displayDate) return "";
-                                return format(
-                                  displayDate?.toDate?.() ||
-                                    new Date(displayDate),
-                                  "dd MMM HH:mm",
-                                  { locale: tr },
-                                );
-                              })()}
+                              {safeFormatDate(
+                                conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
+                                "dd MMM HH:mm"
+                              )}
                             </span>
                           </div>
                           <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-slate-100">
@@ -1842,7 +1979,10 @@ export default function ConversationDetailPage() {
                                 : "bg-gradient-to-br from-blue-500 to-blue-600 text-white",
                             )}
                           >
-                            {getInitials(message.sender?.name)}
+                            {/* WhatsApp inbound mesajları için conversation bilgilerinden initials al */}
+                            {getInitials(!isOutbound && conversation?.channel === 'whatsapp' 
+                              ? (conversation?.name || conversation?.channelMetadata?.profileName || conversation?.sender?.name || conversation?.phone || "") 
+                              : (message.sender?.name || ""))}
                           </AvatarFallback>
                         </Avatar>
                         <div
@@ -1859,22 +1999,16 @@ export default function ConversationDetailPage() {
                               )}
                             >
                               <span className="text-sm font-semibold text-slate-800">
-                                {message.sender?.name || "Bilinmiyor"}
+                                {/* WhatsApp inbound mesajları için conversation bilgilerini kullan */}
+                                {!isOutbound && conversation?.channel === 'whatsapp'
+                                  ? (conversation?.name || conversation?.channelMetadata?.profileName || conversation?.sender?.name || conversation?.phone || "Bilinmiyor")
+                                  : (message.sender?.name || "Bilinmiyor")}
                               </span>
                               <span className="text-xs text-slate-400">
-                                {(() => {
-                                  const originalDate =
-                                    message.originalCreatedAt;
-                                  const displayDate =
-                                    originalDate || message.createdAt;
-                                  if (!displayDate) return "";
-                                  return format(
-                                    displayDate?.toDate?.() ||
-                                      new Date(displayDate),
-                                    "dd MMM HH:mm",
-                                    { locale: tr },
-                                  );
-                                })()}
+                                {safeFormatDate(
+                                  message.originalCreatedAt || message.createdAt,
+                                  "dd MMM HH:mm"
+                                )}
                               </span>
                               {/* AI Badge */}
                               {message.aiGenerated && (
@@ -2444,29 +2578,24 @@ export default function ConversationDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500">İlk Mesaj</span>
                   <span className="text-sm text-slate-700">
-                    {(() => {
-                      const originalDate =
-                        conversation.channelMetadata?.originalCreatedAt;
-                      const displayDate =
-                        originalDate || conversation.createdAt;
-                      if (!displayDate) return "";
-                      return format(
-                        displayDate?.toDate?.() || new Date(displayDate),
-                        "dd MMM yyyy",
-                        { locale: tr },
-                      );
-                    })()}
+                    {safeFormatDate(
+                      conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
+                      "dd MMM yyyy"
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500">Son Mesaj</span>
                   <span className="text-sm text-slate-700">
-                    {conversation.lastMessageAt &&
-                      formatDistanceToNow(
-                        conversation.lastMessageAt?.toDate?.() ||
-                          new Date(conversation.lastMessageAt),
-                        { addSuffix: true, locale: tr },
-                      )}
+                    {(() => {
+                      const date = safeParseDate(conversation.lastMessageAt);
+                      if (!date) return "";
+                      try {
+                        return formatDistanceToNow(date, { addSuffix: true, locale: tr });
+                      } catch (e) {
+                        return "";
+                      }
+                    })()}
                   </span>
                 </div>
               </div>
@@ -2475,12 +2604,7 @@ export default function ConversationDetailPage() {
                   <div className="flex items-center justify-between text-amber-600">
                     <span className="text-sm">Ertelendi</span>
                     <span className="text-sm font-medium">
-                      {format(
-                        conversation.snoozedUntil?.toDate?.() ||
-                          new Date(conversation.snoozedUntil),
-                        "dd MMM HH:mm",
-                        { locale: tr },
-                      )}
+                      {safeFormatDate(conversation.snoozedUntil, "dd MMM HH:mm")}
                     </span>
                   </div>
                 </div>
@@ -3832,23 +3956,169 @@ export default function ConversationDetailPage() {
                 />
               </label>
 
-              {/* WhatsApp - Yakında */}
-              <label className="flex items-center justify-between p-3 rounded-lg border-2 border-slate-200 opacity-50 cursor-not-allowed">
+              {/* WhatsApp */}
+              <label
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all",
+                  sendChannels.whatsapp
+                    ? "border-green-500 bg-green-50"
+                    : "border-slate-200 hover:border-slate-300",
+                )}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      sendChannels.whatsapp
+                        ? "bg-green-500 text-white"
+                        : "bg-slate-100 text-slate-500",
+                    )}
+                  >
                     <MessageCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-500">WhatsApp</p>
-                    <p className="text-xs text-slate-400">
-                      Yakında aktif olacak
+                    <p className="font-medium text-slate-900">WhatsApp</p>
+                    <p className="text-xs text-slate-500">
+                      {editableWhatsappPhone ? `+${editableWhatsappPhone}` : "Telefon numarası yok"}
                     </p>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  Yakında
-                </Badge>
+                <input
+                  type="checkbox"
+                  checked={sendChannels.whatsapp}
+                  onChange={(e) =>
+                    setSendChannels((prev) => ({
+                      ...prev,
+                      whatsapp: e.target.checked,
+                    }))
+                  }
+                  className="w-5 h-5 rounded border-slate-300 text-green-600 focus:ring-green-500"
+                />
               </label>
+              
+              {/* WhatsApp Telefon Numarası Düzenleme */}
+              {sendChannels.whatsapp && (
+                <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+                  <Label className="text-xs text-slate-700 flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    WhatsApp Numarası (E.164 formatı)
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="px-3 py-2 bg-slate-200 text-slate-600 text-sm rounded-l-md border border-r-0 border-slate-300">
+                          +
+                        </span>
+                        <Input
+                          type="text"
+                          value={editableWhatsappPhone}
+                          onChange={(e) => {
+                            // Sadece rakamları kabul et
+                            const value = e.target.value.replace(/\D/g, '');
+                            setEditableWhatsappPhone(value);
+                            // Doğrulama
+                            const validation = validateWhatsAppPhone(value);
+                            setWhatsappPhoneError(validation.valid ? null : validation.message);
+                          }}
+                          placeholder="905551234567"
+                          className={cn(
+                            "rounded-l-none",
+                            whatsappPhoneError && "border-red-500 focus:ring-red-500"
+                          )}
+                        />
+                      </div>
+                      {whatsappPhoneError && (
+                        <p className="text-xs text-red-600 mt-1">{whatsappPhoneError}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Ülke kodu dahil tam numara girin. Örn: Türkiye 905xx, Almanya 49xxx, ABD 1xxx
+                  </p>
+                </div>
+              )}
+              
+              {/* WhatsApp 24 Saat Kuralı Uyarısı */}
+              {sendChannels.whatsapp && whatsappWindowStatus && (
+                <div className={cn(
+                  "p-3 rounded-lg border",
+                  whatsappWindowStatus.requiresTemplate 
+                    ? "bg-amber-50 border-amber-200" 
+                    : "bg-green-50 border-green-200"
+                )}>
+                  {checkingWhatsappWindow ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      24 saat penceresi kontrol ediliyor...
+                    </div>
+                  ) : whatsappWindowStatus.requiresTemplate ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Clock className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">
+                            {whatsappWindowStatus.isFirstContact 
+                              ? "İlk WhatsApp İletişimi" 
+                              : "24 Saat Penceresi Kapandı"}
+                          </p>
+                          <p className="text-xs text-amber-700">
+                            {whatsappWindowStatus.reason || "Son müşteri mesajından 24 saat geçtiği için sadece şablon mesaj gönderilebilir."}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Template Seçimi */}
+                      <div className="space-y-2">
+                        <Label className="text-xs text-amber-800">Şablon Seçin:</Label>
+                        {loadingTemplates ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Şablonlar yükleniyor...
+                          </div>
+                        ) : whatsappTemplates.length > 0 ? (
+                          <Select
+                            value={selectedWhatsappTemplate?.name || ""}
+                            onValueChange={(value) => {
+                              const template = whatsappTemplates.find(t => t.name === value);
+                              setSelectedWhatsappTemplate(template);
+                            }}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Şablon seçin..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {whatsappTemplates.map((template) => (
+                                <SelectItem key={template.name} value={template.name}>
+                                  <div className="flex flex-col">
+                                    <span>{template.name}</span>
+                                    <span className="text-xs text-slate-500">{template.category}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-xs text-amber-700">
+                            Onaylı şablon bulunamadı. WhatsApp Admin panelinden şablon oluşturun.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          24 Saat Penceresi Açık
+                        </p>
+                        <p className="text-xs text-green-700">
+                          Kalan süre: {whatsappWindowStatus.remainingMinutes} dakika
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Manuel Kayıt */}
               <label
@@ -3909,6 +4179,10 @@ export default function ConversationDetailPage() {
               onClick={() => {
                 setShowSendModal(false);
                 setPendingSendMessageId(null);
+                setWhatsappWindowStatus(null);
+                setSelectedWhatsappTemplate(null);
+                setEditableWhatsappPhone('');
+                setWhatsappPhoneError(null);
               }}
               disabled={sendingMessage}
             >
@@ -3917,7 +4191,10 @@ export default function ConversationDetailPage() {
             <Button
               onClick={handleConfirmSend}
               disabled={
-                sendingMessage || (!sendChannels.email && !sendChannels.manual)
+                sendingMessage || 
+                (!sendChannels.email && !sendChannels.whatsapp && !sendChannels.manual) ||
+                (sendChannels.whatsapp && whatsappWindowStatus?.requiresTemplate && !selectedWhatsappTemplate) ||
+                (sendChannels.whatsapp && whatsappPhoneError)
               }
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -4067,11 +4344,7 @@ export default function ConversationDetailPage() {
                                 {proforma.proformaNumber || `#${proforma.id.slice(0, 8)}`}
                               </p>
                               <p className="text-xs text-slate-400">
-                                {proforma.createdAt && format(
-                                  proforma.createdAt?.toDate?.() || new Date(proforma.createdAt),
-                                  "dd MMM yyyy",
-                                  { locale: tr }
-                                )}
+                                {safeFormatDate(proforma.createdAt, "dd MMM yyyy")}
                                 {proforma.totals?.grandTotal && (
                                   <span className="ml-2 text-emerald-600">
                                     {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(proforma.totals.grandTotal)}
@@ -4145,11 +4418,7 @@ export default function ConversationDetailPage() {
                               </p>
                               <p className="text-xs text-slate-400">
                                 {contract.contractType && <span className="mr-2">{contract.contractType}</span>}
-                                {contract.createdAt && format(
-                                  contract.createdAt?.toDate?.() || new Date(contract.createdAt),
-                                  "dd MMM yyyy",
-                                  { locale: tr }
-                                )}
+                                {safeFormatDate(contract.createdAt, "dd MMM yyyy")}
                               </p>
                             </div>
                           </div>
@@ -4216,11 +4485,7 @@ export default function ConversationDetailPage() {
                                 {calc.productName || calc.name || "Hesaplama"}
                               </p>
                               <p className="text-xs text-slate-400">
-                                {calc.createdAt && format(
-                                  calc.createdAt?.toDate?.() || new Date(calc.createdAt),
-                                  "dd MMM yyyy",
-                                  { locale: tr }
-                                )}
+                                {safeFormatDate(calc.createdAt, "dd MMM yyyy")}
                                 {calc.totalCost && (
                                   <span className="ml-2 text-purple-600">
                                     {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calc.totalCost)}

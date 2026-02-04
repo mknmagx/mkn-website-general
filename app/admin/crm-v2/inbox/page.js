@@ -484,10 +484,19 @@ export default function InboxPage() {
                   }
 
                   if (!displayDate) return "";
-                  return formatDistanceToNow(
-                    displayDate?.toDate?.() || new Date(displayDate),
-                    { addSuffix: true, locale: tr },
-                  );
+                  try {
+                    const dateObj = displayDate?.toDate?.() || 
+                      (displayDate?.seconds ? new Date(displayDate.seconds * 1000) : null) ||
+                      (displayDate?._seconds ? new Date(displayDate._seconds * 1000) : null) ||
+                      (typeof displayDate === 'string' || typeof displayDate === 'number' ? new Date(displayDate) : null);
+                    
+                    if (!dateObj || isNaN(dateObj.getTime())) return "";
+                    
+                    return formatDistanceToNow(dateObj, { addSuffix: true, locale: tr });
+                  } catch (e) {
+                    console.warn('Date parsing error:', displayDate);
+                    return "";
+                  }
                 })()}
               </span>
             </div>
@@ -895,11 +904,19 @@ export default function InboxPage() {
                     conversation.channelMetadata?.originalCreatedAt;
                   const displayDate = originalDate || conversation.createdAt;
                   if (!displayDate) return "";
-                  return format(
-                    displayDate?.toDate?.() || new Date(displayDate),
-                    "d MMMM yyyy HH:mm",
-                    { locale: tr },
-                  );
+                  try {
+                    const dateObj = displayDate?.toDate?.() || 
+                      (displayDate?.seconds ? new Date(displayDate.seconds * 1000) : null) ||
+                      (displayDate?._seconds ? new Date(displayDate._seconds * 1000) : null) ||
+                      (typeof displayDate === 'string' || typeof displayDate === 'number' ? new Date(displayDate) : null);
+                    
+                    if (!dateObj || isNaN(dateObj.getTime())) return "";
+                    
+                    return format(dateObj, "d MMMM yyyy HH:mm", { locale: tr });
+                  } catch (e) {
+                    console.warn('Date format error:', displayDate);
+                    return "";
+                  }
                 })()}
               </p>
               {/* Son mesaj tarihi - sadece birden fazla mesaj varsa göster (yanıtlanmış conversation) */}
@@ -908,12 +925,21 @@ export default function InboxPage() {
                   <p className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     <span className="font-medium">Son mesaj:</span>
-                    {format(
-                      conversation.lastMessageAt?.toDate?.() ||
-                        new Date(conversation.lastMessageAt),
-                      "d MMMM yyyy HH:mm",
-                      { locale: tr },
-                    )}
+                    {(() => {
+                      const lm = conversation.lastMessageAt;
+                      try {
+                        const dateObj = lm?.toDate?.() || 
+                          (lm?.seconds ? new Date(lm.seconds * 1000) : null) ||
+                          (lm?._seconds ? new Date(lm._seconds * 1000) : null) ||
+                          (typeof lm === 'string' || typeof lm === 'number' ? new Date(lm) : null);
+                        
+                        if (!dateObj || isNaN(dateObj.getTime())) return "";
+                        
+                        return format(dateObj, "d MMMM yyyy HH:mm", { locale: tr });
+                      } catch (e) {
+                        return "";
+                      }
+                    })()}
                   </p>
                 )}
               {/* Mesaj sayısı bilgisi */}

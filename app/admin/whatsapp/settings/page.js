@@ -40,7 +40,10 @@ import {
   Building2,
   Smartphone,
   Link2,
+  UserPlus,
+  Settings2,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 // Custom WhatsApp Icon
 const WhatsAppIcon = ({ className }) => (
@@ -68,6 +71,7 @@ export default function WhatsAppSettingsPage() {
     wabaId: "",
     phoneNumberId: "",
     webhookVerifyToken: "",
+    autoCreateContacts: true,
   });
 
   // Generate webhook URL
@@ -91,12 +95,14 @@ export default function WhatsAppSettingsPage() {
           wabaId: data.data.wabaId ?? "",
           phoneNumberId: data.data.phoneNumberId ?? "",
           webhookVerifyToken: data.data.webhookVerifyToken ?? generateVerifyToken(),
+          autoCreateContacts: data.data.autoCreateContacts ?? true,
         });
         setConnectionStatus(data.data.connectionStatus);
       } else {
         setForm({
           ...form,
           webhookVerifyToken: generateVerifyToken(),
+          autoCreateContacts: true,
         });
       }
     } catch (error) {
@@ -208,6 +214,7 @@ export default function WhatsAppSettingsPage() {
           wabaId: form.wabaId || undefined,
           phoneNumberId: form.phoneNumberId || undefined,
           webhookVerifyToken: form.webhookVerifyToken,
+          autoCreateContacts: form.autoCreateContacts,
         }),
       });
 
@@ -258,6 +265,7 @@ export default function WhatsAppSettingsPage() {
           wabaId: "",
           phoneNumberId: "",
           webhookVerifyToken: generateVerifyToken(),
+          autoCreateContacts: true,
         });
       }
     } catch (error) {
@@ -266,6 +274,39 @@ export default function WhatsAppSettingsPage() {
         description: "Bağlantı kesilemedi",
         variant: "destructive",
       });
+    }
+  };
+
+  // Save automation settings
+  const handleSaveAutomation = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/whatsapp/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          autoCreateContacts: form.autoCreateContacts,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Başarılı",
+          description: "Otomasyon ayarları kaydedildi",
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: error.message || "Ayarlar kaydedilemedi",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -608,6 +649,55 @@ export default function WhatsAppSettingsPage() {
                   >
                     Meta Developer Console <ExternalLink className="h-3 w-3" />
                   </a>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+
+          {/* Automation Settings */}
+          <Card className="bg-white border-0 shadow-sm lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-gray-600" />
+                Otomasyon Ayarları
+              </CardTitle>
+              <CardDescription>
+                WhatsApp mesajları için otomasyon seçenekleri
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <UserPlus className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <Label htmlFor="autoCreateContacts" className="text-sm font-medium cursor-pointer">
+                      Otomatik Kişi Oluşturma
+                    </Label>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Gelen mesajlardan yeni kişiler otomatik olarak rehbere eklensin
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="autoCreateContacts"
+                  checked={form.autoCreateContacts}
+                  onCheckedChange={(checked) => {
+                    setForm({ ...form, autoCreateContacts: checked });
+                    // Auto-save when toggled
+                    setTimeout(() => {
+                      handleSaveAutomation();
+                    }, 100);
+                  }}
+                />
+              </div>
+
+              <Alert className="bg-blue-50 border-blue-200">
+                <UserPlus className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 text-sm">
+                  Bu özellik açıkken, rehberde kayıtlı olmayan numaralardan gelen mesajlar 
+                  otomatik olarak rehbere eklenir. Kişi ismi olarak WhatsApp profil adı kullanılır.
                 </AlertDescription>
               </Alert>
             </CardContent>
