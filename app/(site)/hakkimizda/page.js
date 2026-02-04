@@ -270,7 +270,8 @@ export default function HakkimizdaPage() {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer", "Corporation"],
     name: "MKN GROUP",
-    alternateName: ["MKN GROUP", "MKN Grup", "mkngroup", "MKN GROUP Turkey"],
+    legalName: "TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.",
+    alternateName: ["MKN GROUP", "MKN Grup", "mkngroup", "MKN GROUP Turkey", "Tongzi Bertug"],
     description:
       "Türkiye'nin en büyük contract manufacturing ve fason üretim şirketi. 10.600m² ISO sertifikalı tesislerde aylık 3.8+ milyon ünite üretim kapasitesi. Kozmetik, gıda takviyesi, temizlik ürünleri üretimi + 360° entegre çözümler: ambalaj, e-ticaret, depolama, lojistik, dijital pazarlama.",
     url: "https://www.mkngroup.com.tr",
@@ -2086,6 +2087,37 @@ export default function HakkimizdaPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Resmi Şirket Bilgileri Section */}
+        <section className="py-16 bg-gradient-to-br from-muted/50 via-background to-muted/30">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-card/80 backdrop-blur-sm rounded-2xl border p-8 text-center">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center">
+                    <Building className="h-8 w-8 text-primary" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">
+                  Resmi Şirket Bilgileri
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-lg text-muted-foreground leading-relaxed">
+                    <span className="font-semibold text-primary">MKN GROUP</span>, aşağıda belirtilen şirketin tescilli ticari markasıdır:
+                  </p>
+                  <div className="bg-primary/5 rounded-xl p-6 border border-primary/10">
+                    <p className="text-foreground font-semibold text-lg">
+                      TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Adres: Akçaburgaz Mah, 3026 Sk, No:5, Esenyurt, İstanbul, Türkiye
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>

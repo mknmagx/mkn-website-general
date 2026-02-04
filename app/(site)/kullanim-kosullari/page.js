@@ -29,12 +29,20 @@ export default function TermsOfServicePage() {
           {/* Content */}
           <div className="prose prose-lg prose-gray dark:prose-invert max-w-none">
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-6 mb-8">
-              <p className="text-gray-700 dark:text-gray-300 mb-0">
-                Bu kullanım koşulları, <strong>MKN Group</strong> ("Şirket",
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Bu kullanım koşulları, <strong>MKN GROUP</strong> ("Şirket",
                 "biz", "bizim") tarafından işletilen{" "}
                 <span className="font-medium">mkngroup.com.tr</span> web
                 sitesinin kullanımını düzenler.
               </p>
+              <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-0">
+                  <strong>Resmi Unvan:</strong> TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
+                  MKN GROUP, yukarıda belirtilen şirketin tescilli ticari markasıdır.
+                </p>
+              </div>
             </div>
 
             <h2>1. Kabul ve Uyum</h2>
@@ -248,6 +256,14 @@ export default function TermsOfServicePage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Resmi Şirket Bilgisi */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-8 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <strong className="text-gray-900 dark:text-white">MKN GROUP</strong>,{" "}
+                <strong>TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.</strong>'nin tescilli ticari markasıdır.
+              </p>
             </div>
           </div>
         </div>

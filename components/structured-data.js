@@ -308,8 +308,9 @@ export function OrganizationSchema() {
   const schema = {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer"],
-    name: "MKN GROUP",
-    alternateName: ["MKN GROUP", "MKN Grup"],
+    name: site.name,
+    legalName: site.legal?.companyName || "TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.",
+    alternateName: ["MKN GROUP", "MKN Grup", "Tongzi Bertug"],
     description:
       "Türkiye'nin önde gelen fason üretim şirketi. ISO sertifikalı kozmetik üretimi, premium ambalaj çözümleri, profesyonel e-ticaret operasyonları ve dijital pazarlama hizmetleri.",
     url: "https://www.mkngroup.com.tr",
@@ -1137,8 +1138,9 @@ export function ManufacturerSchema() {
     "@context": "https://schema.org",
     "@type": ["Organization", "Manufacturer"],
     "@id": "https://www.mkngroup.com.tr/#manufacturer",
-    name: "MKN Group",
-    alternateName: ["MKN GROUP", "MKN Grup"],
+    name: site.name,
+    legalName: site.legal?.companyName || "TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.",
+    alternateName: ["MKN GROUP", "MKN Grup", "Tongzi Bertug"],
     description:
       "ISO sertifikalı kozmetik üretimi ve premium ambalaj çözümleri sunan Türkiye'nin önde gelen fason üretim şirketi",
     url: "https://www.mkngroup.com.tr",

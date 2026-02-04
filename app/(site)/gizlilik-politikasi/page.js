@@ -46,12 +46,21 @@ export default function PrivacyPolicyPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    MKN Group
+                    MKN GROUP
                   </h3>
                   <p className="text-blue-600 dark:text-blue-400 font-medium">
                     Veri Sorumlusu
                   </p>
                 </div>
+              </div>
+
+              <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Resmi Unvan:</strong> TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  MKN GROUP, yukarıda belirtilen şirketin tescilli ticari markasıdır.
+                </p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -490,6 +499,14 @@ export default function PrivacyPolicyPage() {
                 Kanunu ve GDPR gereksinimlerine uygun olarak hazırlanmıştır.
                 Kişisel verilerinizin korunması konusunda yasal haklarınızı
                 kullanmaktan çekinmeyiniz.
+              </p>
+            </div>
+
+            {/* Resmi Şirket Bilgisi */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-8 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <strong className="text-gray-900 dark:text-white">MKN GROUP</strong>,{" "}
+                <strong>TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.</strong>'nin tescilli ticari markasıdır.
               </p>
             </div>
           </div>

@@ -41,6 +41,15 @@ import ContactProfileDialog from "@/components/whatsapp-contact-profile-dialog";
 // Media Upload Dialog
 import MediaUploadDialog from "@/components/whatsapp-media-upload-dialog";
 
+// Emoji Picker
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
 // Icons
 import {
   Search,
@@ -128,6 +137,7 @@ export default function WhatsAppInboxPage() {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // Yanıtlanacak mesaj
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -1144,14 +1154,37 @@ export default function WhatsAppInboxPage() {
               <div className="p-3">
               {isWindowOpen(selectedConversation) ? (
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-gray-500"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-gray-500 hover:text-yellow-500"
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      className="w-auto p-0 border-0" 
+                      side="top" 
+                      align="start"
+                      sideOffset={10}
+                    >
+                      <Picker 
+                        data={data} 
+                        onEmojiSelect={(emoji) => {
+                          setNewMessage(prev => prev + emoji.native);
+                          setShowEmojiPicker(false);
+                          inputRef.current?.focus();
+                        }}
+                        locale="tr"
+                        theme="light"
+                        previewPosition="none"
+                        skinTonePosition="none"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <Button
                     type="button"
                     variant="ghost"

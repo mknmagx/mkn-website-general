@@ -29,10 +29,10 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const MEDIA_TYPES = [
-  { id: "image", label: "Görsel", icon: ImageIcon, accept: "image/jpeg,image/png,image/webp", maxSize: 5 },
+  { id: "image", label: "Görsel", icon: ImageIcon, accept: "image/jpeg,image/png,image/webp,image/gif", maxSize: 5 },
   { id: "document", label: "Doküman", icon: FileText, accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt", maxSize: 100 },
-  { id: "video", label: "Video", icon: Film, accept: "video/mp4,video/3gpp", maxSize: 16 },
-  { id: "audio", label: "Ses", icon: Music, accept: "audio/aac,audio/mp4,audio/mpeg,audio/amr,audio/ogg", maxSize: 16 },
+  { id: "video", label: "Video", icon: Film, accept: "video/mp4,video/3gpp,video/quicktime,video/webm,video/x-msvideo,.mp4,.mov,.avi,.webm", maxSize: 16 },
+  { id: "audio", label: "Ses", icon: Music, accept: "audio/aac,audio/mp4,audio/mpeg,audio/amr,audio/ogg,audio/wav,.mp3,.aac,.ogg,.wav", maxSize: 16 },
 ];
 
 export function MediaUploadDialog({

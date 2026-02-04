@@ -223,6 +223,13 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-border">
+          {/* Resmi Şirket Bilgisi */}
+          <div className="mb-6 text-center">
+            <p className="text-muted-foreground text-xs leading-relaxed max-w-2xl mx-auto">
+              <span className="font-semibold">{site.name}</span>,{" "}
+              <span className="font-medium">{site.legal?.companyName}</span>'nin {site.legal?.brandRelation}.
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
             <p className="text-muted-foreground text-sm">
               {currentYear}{" "}

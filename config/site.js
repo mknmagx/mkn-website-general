@@ -5,6 +5,14 @@ export const site = {
   email: "info@mkngroup.com.tr",
   address: "Akçaburgaz Mah, 3026 Sk, No:5, İstanbul, Türkiye",
 
+  // Resmi Şirket Bilgileri
+  legal: {
+    companyName: "TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.",
+    brandName: "MKN GROUP",
+    brandRelation: "tescilli ticari markasıdır", // "iştiraki" veya "markasıdır" olarak da değiştirilebilir
+    fullLegalText: "MKN GROUP, TONGZI BERTUG MULTINATIONAL MEDİKAL ÜRÜNLER OTOMOTİV SANAYİ VE DIŞ TİCARET LTD. ŞTİ.'nin tescilli ticari markasıdır.",
+  },
+
   // İletişim bilgileri
   contact: {
     headquarters: {

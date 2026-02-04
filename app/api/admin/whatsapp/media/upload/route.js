@@ -24,7 +24,7 @@ const MEDIA_CONFIG = {
   video: {
     folder: 'whatsapp/videos',
     resourceType: 'video',
-    allowedTypes: ['video/mp4', 'video/3gpp'],
+    allowedTypes: ['video/mp4', 'video/3gpp', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
     maxSize: 16 * 1024 * 1024, // 16MB
   },
   document: {
@@ -93,20 +93,29 @@ export async function POST(request) {
     // Generate unique filename
     const timestamp = Date.now();
     const originalName = file.name?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'file';
-    const publicId = `${config.folder}/${timestamp}_${originalName}`;
+    const publicId = `${timestamp}_${originalName}`;
+
+    console.log(`[WhatsApp Media Upload] Uploading ${type}: ${originalName}, size: ${file.size}, type: ${file.type}`);
 
     // Upload to Cloudinary
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           resource_type: config.resourceType,
+          folder: config.folder,
           public_id: publicId,
-          folder: '', // Already in public_id
+          // Video için ek ayarlar
+          ...(type === 'video' && {
+            eager: [{ format: 'mp4' }],
+            eager_async: true,
+          }),
         },
         (error, result) => {
           if (error) {
+            console.error('[WhatsApp Media Upload] Cloudinary error:', error);
             reject(error);
           } else {
+            console.log('[WhatsApp Media Upload] Success:', result.secure_url);
             resolve(result);
           }
         }
@@ -127,6 +136,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: false,
       error: error.message || 'Dosya yüklenemedi',
+      details: error.http_code ? `Cloudinary error: ${error.http_code}` : undefined,
     }, { status: 500 });
   }
 }
