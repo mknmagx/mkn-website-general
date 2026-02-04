@@ -953,12 +953,20 @@ export default function WhatsAppInboxPage() {
                         )}
                         {msg.type === "image" && (
                           <div>
-                            {(msg.mediaUrl || msg.content?.mediaUrl) && (
+                            {(msg.mediaUrl || msg.content?.mediaUrl) ? (
                               <img
                                 src={msg.mediaUrl || msg.content?.mediaUrl}
                                 alt="Image"
-                                className="rounded max-w-full max-h-60 object-cover"
+                                className="rounded max-w-full max-h-60 object-cover cursor-pointer"
+                                onClick={() => window.open(msg.mediaUrl || msg.content?.mediaUrl, '_blank')}
                               />
+                            ) : (
+                              <div className="bg-gray-100 rounded p-4 flex items-center justify-center min-h-[120px]">
+                                <div className="text-center text-gray-500">
+                                  <ImageIcon className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                                  <p className="text-xs">Görsel yükleniyor...</p>
+                                </div>
+                              </div>
                             )}
                             {(msg.caption || msg.content?.caption) && (
                               <p className="text-sm text-gray-900 mt-1">
@@ -967,15 +975,76 @@ export default function WhatsAppInboxPage() {
                             )}
                           </div>
                         )}
+                        {msg.type === "video" && (
+                          <div>
+                            {(msg.mediaUrl || msg.content?.mediaUrl) ? (
+                              <video
+                                src={msg.mediaUrl || msg.content?.mediaUrl}
+                                controls
+                                className="rounded max-w-full max-h-60"
+                              />
+                            ) : (
+                              <div className="bg-gray-100 rounded p-4 flex items-center justify-center min-h-[120px]">
+                                <div className="text-center text-gray-500">
+                                  <FileText className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                                  <p className="text-xs">Video yükleniyor...</p>
+                                </div>
+                              </div>
+                            )}
+                            {(msg.caption || msg.content?.caption) && (
+                              <p className="text-sm text-gray-900 mt-1">
+                                {msg.caption || msg.content?.caption}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {msg.type === "audio" && (
+                          <div>
+                            {(msg.mediaUrl || msg.content?.mediaUrl) ? (
+                              <audio
+                                src={msg.mediaUrl || msg.content?.mediaUrl}
+                                controls
+                                className="max-w-full"
+                              />
+                            ) : (
+                              <div className="bg-gray-100 rounded p-3 text-center text-gray-500">
+                                <p className="text-xs">Ses dosyası yükleniyor...</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {msg.type === "document" && (
-                          <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
+                          <div 
+                            className="flex items-center gap-2 bg-gray-50 rounded p-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => {
+                              const url = msg.mediaUrl || msg.content?.mediaUrl;
+                              if (url) window.open(url, '_blank');
+                            }}
+                          >
                             <FileText className="h-8 w-8 text-gray-400" />
-                            <div>
-                              <p className="text-sm font-medium">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
                                 {msg.filename || msg.content?.filename || "Dosya"}
                               </p>
-                              <p className="text-xs text-gray-500">Doküman</p>
+                              <p className="text-xs text-gray-500">
+                                {(msg.mediaUrl || msg.content?.mediaUrl) ? 'İndirmek için tıklayın' : 'Yükleniyor...'}
+                              </p>
                             </div>
+                          </div>
+                        )}
+                        {msg.type === "sticker" && (
+                          <div>
+                            {(msg.mediaUrl || msg.content?.mediaUrl) ? (
+                              <img
+                                src={msg.mediaUrl || msg.content?.mediaUrl}
+                                alt="Sticker"
+                                className="max-w-[150px] max-h-[150px]"
+                              />
+                            ) : (
+                              <div className="bg-gray-100 rounded p-4 text-center text-gray-500">
+                                <p className="text-xs">🎭 Çıkartma</p>
+                              </div>
+                            )}
                           </div>
                         )}
                         {msg.type === "template" && (
