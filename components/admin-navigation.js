@@ -461,7 +461,7 @@ export default function AdminNavigation() {
     },
     {
       id: "sales",
-      name: "Satış",
+      name: "Satış & Hesaplamalar",
       icon: DollarSign,
       show: hasPermission("proformas.view") || hasAnyRole(["admin", "super_admin"]),
       items: [
@@ -473,22 +473,10 @@ export default function AdminNavigation() {
     },
     {
       id: "finance",
-      name: "Finans",
+      name: "Finans & Muhasebes",
       icon: PiggyBank,
+      href: "/admin/finance",
       show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]),
-      items: [
-        { id: "finance-dashboard", name: "Özet", href: "/admin/finance", icon: LayoutDashboard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-accounts", name: "Hesaplar", href: "/admin/finance/accounts", icon: Wallet, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-transactions", name: "Tüm İşlemler", href: "/admin/finance/transactions", icon: List, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-income", name: "Gelirler", href: "/admin/finance/income", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-expenses", name: "Giderler", href: "/admin/finance/expenses", icon: TrendingDown, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-receivables", name: "Alacaklar", href: "/admin/finance/receivables", icon: TrendingUp, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-payables", name: "Borçlar", href: "/admin/finance/payables", icon: TrendingDown, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-personnel", name: "Personel", href: "/admin/finance/personnel", icon: Users, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-salaries", name: "Maaşlar", href: "/admin/finance/salaries", icon: HandCoins, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-advances", name: "Avanslar", href: "/admin/finance/advances", icon: CreditCard, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "finance-reports", name: "Raporlar", href: "/admin/finance/reports", icon: BarChart3, show: hasPermission("finance.view") || hasAnyRole(["admin", "super_admin"]) },
-      ],
     },
     {
       id: "warehouse",
@@ -501,7 +489,7 @@ export default function AdminNavigation() {
         { id: "inventory-transactions", name: "Stok Hareketleri", href: "/admin/inventory/transactions", icon: Activity, show: hasAnyRole(["admin", "super_admin"]) },
         { id: "inventory-warehouses", name: "Depolar", href: "/admin/inventory/warehouses", icon: Box, show: hasAnyRole(["admin", "super_admin"]) },
         { id: "inventory-suppliers", name: "Tedarikçiler", href: "/admin/inventory/suppliers", icon: Truck, show: hasAnyRole(["admin", "super_admin"]) },
-        { id: "packaging", name: "Ambalajlar (Eski)", href: "/admin/packaging", icon: Package, show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "packaging", name: "Ambalajlar (Web Yayin)", href: "/admin/packaging", icon: Package, show: hasPermission("packaging.view") || hasAnyRole(["admin", "super_admin"]) },
         { id: "deliveries", name: "İrsaliyeler", href: "/admin/deliveries", icon: Truck, show: hasPermission("deliveries.view") || hasAnyRole(["admin", "super_admin"]) },
       ],
     },

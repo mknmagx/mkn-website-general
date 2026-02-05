@@ -20,6 +20,12 @@ import {
   generateSKU,
 } from "../../../../../lib/services/inventory-service";
 import { getDocuments } from "../../../../../lib/firestore";
+import { createTransaction } from "../../../../../lib/services/finance/transaction-service";
+import {
+  TRANSACTION_TYPE,
+  EXPENSE_CATEGORY,
+  TRANSACTION_STATUS,
+} from "../../../../../lib/services/finance/schema";
 
 // UI Components
 import { Button } from "../../../../../components/ui/button";
@@ -70,6 +76,8 @@ export default function NewInventoryItemPage() {
 
   const [companies, setCompanies] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -99,6 +107,15 @@ export default function NewInventoryItemPage() {
     supplierId: "",
     supplierName: "",
     notes: "",
+    // Finans kaydı (başlangıç stoğu için)
+    createFinanceRecord: false,
+    paymentStatus: "paid",
+    paymentAmount: "",
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: "bank_transfer",
+    financeAccountId: "",
+    invoiceNumber: "",
+    financeNotes: "",
   });
 
   // Load companies
@@ -114,6 +131,25 @@ export default function NewInventoryItemPage() {
       }
     };
     loadCompanies();
+  }, []);
+
+  // Load finance accounts
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const data = await getDocuments("finance_accounts");
+        setFinanceAccounts(data || []);
+        if (data && data.length > 0) {
+          const defaultAccount = data.find(acc => acc.isDefault) || data[0];
+          setFormData(prev => ({ ...prev, financeAccountId: defaultAccount.id }));
+        }
+      } catch (error) {
+        // Silent fail
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+    loadAccounts();
   }, []);
 
   // Set default warehouse
@@ -135,7 +171,20 @@ export default function NewInventoryItemPage() {
   }, [formData.name, formData.category]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      
+      // Ödeme tutarını otomatik hesapla
+      if ((field === "initialQuantity" || field === "costPrice") && prev.createFinanceRecord) {
+        const qty = field === "initialQuantity" ? value : prev.initialQuantity;
+        const price = field === "costPrice" ? value : prev.costPrice;
+        if (qty && price && Number(qty) > 0 && Number(price) > 0) {
+          newData.paymentAmount = (Number(qty) * Number(price)).toString();
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleCompanyChange = (companyId) => {
@@ -168,11 +217,87 @@ export default function NewInventoryItemPage() {
       return;
     }
 
+    // Finans kaydı kontrolü
+    if (formData.createFinanceRecord && formData.initialQuantity > 0) {
+      if (!formData.financeAccountId) {
+        toast({
+          title: "Hata",
+          description: "Lütfen bir hesap seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!formData.paymentAmount || Number(formData.paymentAmount) <= 0) {
+        toast({
+          title: "Hata",
+          description: "Geçerli bir ödeme tutarı girin.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       const result = await createItem(formData, user);
+
+      // Finans kaydı oluştur (eğer başlangıç stoğu varsa)
+      if (formData.createFinanceRecord && formData.initialQuantity > 0 && result) {
+        try {
+          // Kategoriyi belirle
+          let category = EXPENSE_CATEGORY.RAW_MATERIAL;
+          if (formData.category === "packaging") {
+            category = EXPENSE_CATEGORY.PACKAGING;
+          } else if (formData.category === "finished_product" || formData.category === "semi_finished") {
+            category = EXPENSE_CATEGORY.PRODUCTION_COST;
+          }
+
+          const selectedAccount = financeAccounts.find(acc => acc.id === formData.financeAccountId);
+          
+          const financeData = {
+            type: TRANSACTION_TYPE.EXPENSE,
+            status: formData.paymentStatus === "paid" ? TRANSACTION_STATUS.COMPLETED : TRANSACTION_STATUS.PENDING,
+            category: category,
+            amount: Number(formData.paymentAmount),
+            currency: selectedAccount?.currency || formData.currency || "TRY",
+            accountId: formData.financeAccountId,
+            accountName: selectedAccount?.name || "",
+            companyId: formData.companyId || null,
+            companyName: formData.companyName || null,
+            description: `Başlangıç stoğu: ${formData.name} (${formData.initialQuantity} ${UNIT_LABELS[formData.unit]})`,
+            notes: formData.financeNotes || `Yeni ürün kaydı: ${formData.sku}`,
+            reference: formData.invoiceNumber || "",
+            transactionDate: formData.paymentDate ? new Date(formData.paymentDate) : new Date(),
+            inventoryItemId: result.id,
+            inventoryItemName: formData.name,
+            inventoryItemSku: result.sku || formData.sku,
+          };
+
+          const financeResult = await createTransaction(financeData, user.uid);
+          
+          if (!financeResult.success) {
+            toast({
+              title: "Uyarı",
+              description: "Ürün oluşturuldu ancak finans kaydı oluşturulamadı: " + financeResult.error,
+              variant: "destructive",
+            });
+            router.push(`/admin/inventory/items/${result.id}`);
+            return;
+          }
+        } catch (financeError) {
+          console.error("Finance record error:", financeError);
+          toast({
+            title: "Uyarı",
+            description: "Ürün oluşturuldu ancak finans kaydı oluşturulamadı.",
+            variant: "destructive",
+          });
+        }
+      }
+
       toast({
         title: "Başarılı",
-        description: "Ürün başarıyla oluşturuldu.",
+        description: formData.createFinanceRecord && formData.initialQuantity > 0
+          ? "Ürün başarıyla oluşturuldu ve finans kaydı eklendi."
+          : "Ürün başarıyla oluşturuldu.",
       });
       router.push(`/admin/inventory/items/${result.id}`);
     } catch (error) {
@@ -184,7 +309,7 @@ export default function NewInventoryItemPage() {
     }
   };
 
-  const loading = warehousesLoading || suppliersLoading || loadingCompanies;
+  const loading = warehousesLoading || suppliersLoading || loadingCompanies || loadingAccounts;
 
   if (loading) {
     return (
@@ -603,6 +728,146 @@ export default function NewInventoryItemPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Finance Record - Only show if initial quantity > 0 */}
+          {formData.initialQuantity > 0 && (
+            <Card className="bg-white border-slate-200">
+              <CardHeader className="border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                    <DollarSign className="h-5 w-5 text-slate-600" />
+                    Finans Kaydı
+                  </CardTitle>
+                  <Switch
+                    checked={formData.createFinanceRecord}
+                    onCheckedChange={(checked) => {
+                      setFormData((prev) => {
+                        const newData = { ...prev, createFinanceRecord: checked };
+                        if (checked && prev.initialQuantity && prev.costPrice) {
+                          newData.paymentAmount = (Number(prev.initialQuantity) * Number(prev.costPrice)).toString();
+                        }
+                        return newData;
+                      });
+                    }}
+                  />
+                </div>
+                <CardDescription>
+                  Başlangıç stoğu için finans sistemi ile entegre gider kaydı oluştur
+                </CardDescription>
+              </CardHeader>
+              {formData.createFinanceRecord && (
+                <CardContent className="pt-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Ödeme Durumu</Label>
+                      <Select
+                        value={formData.paymentStatus}
+                        onValueChange={(value) => handleChange("paymentStatus", value)}
+                      >
+                        <SelectTrigger className="border-slate-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="paid">Ödendi</SelectItem>
+                          <SelectItem value="deferred">Vadeli</SelectItem>
+                          <SelectItem value="partial">Kısmi Ödeme</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ödeme Tutarı</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.paymentAmount}
+                        onChange={(e) => handleChange("paymentAmount", e.target.value)}
+                        className="border-slate-300"
+                        placeholder="Otomatik hesaplanır"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Ödeme Tarihi</Label>
+                      <Input
+                        type="date"
+                        value={formData.paymentDate}
+                        onChange={(e) => handleChange("paymentDate", e.target.value)}
+                        className="border-slate-300"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ödeme Yöntemi</Label>
+                      <Select
+                        value={formData.paymentMethod}
+                        onValueChange={(value) => handleChange("paymentMethod", value)}
+                      >
+                        <SelectTrigger className="border-slate-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Nakit</SelectItem>
+                          <SelectItem value="bank_transfer">Havale/EFT</SelectItem>
+                          <SelectItem value="credit_card">Kredi Kartı</SelectItem>
+                          <SelectItem value="check">Çek</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Hesap</Label>
+                      <Select
+                        value={formData.financeAccountId}
+                        onValueChange={(value) => handleChange("financeAccountId", value)}
+                      >
+                        <SelectTrigger className="border-slate-300">
+                          <SelectValue placeholder="Hesap seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {financeAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.name} ({account.currency || 'TRY'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fatura No (Opsiyonel)</Label>
+                      <Input
+                        value={formData.invoiceNumber}
+                        onChange={(e) => handleChange("invoiceNumber", e.target.value)}
+                        className="border-slate-300"
+                        placeholder="FA-2026-001"
+                      />
+                    </div>
+                  </div>
+
+                  {formData.paymentStatus !== "paid" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-sm text-amber-800">
+                        <strong>Not:</strong> {formData.paymentStatus === "deferred" ? "Vadeli ödeme olarak işaretlenecek" : "Kısmi ödeme olarak kaydedilecek"}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Finans Notları</Label>
+                    <Textarea
+                      value={formData.financeNotes}
+                      onChange={(e) => handleChange("financeNotes", e.target.value)}
+                      placeholder="Ödeme ile ilgili notlar..."
+                      rows={2}
+                      className="border-slate-300"
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Notes */}
           <Card className="bg-white border-slate-200">

@@ -44,6 +44,7 @@ import {
   formatConversationHistory,
 } from "../../../../../lib/services/crm-v2/ai-reply-constants";
 import {
+  CHANNEL,
   CONVERSATION_STATUS,
   CASE_TYPE,
   PRIORITY,
@@ -54,6 +55,7 @@ import {
   getConversationStatusColor,
   getChannelLabel,
   getChannelColor,
+  getChannelIcon,
   getCaseTypeLabel,
   getPriorityLabel,
   getMessageStatusLabel,
@@ -193,7 +195,54 @@ import {
   Link2,
   FolderOpen,
   XCircle,
+  PenLine,
+  Instagram,
+  Facebook,
+  Linkedin,
+  Twitter,
 } from "lucide-react";
+
+/**
+ * Kanal ikonunu döndür
+ * Schema'daki getChannelIcon fonksiyonundan gelen string'i gerçek React icon'a çevirir
+ */
+const CHANNEL_ICON_MAP = {
+  MessageSquare: MessageSquare,
+  FileText: FileText,
+  Mail: Mail,
+  Phone: Phone,
+  MessageCircle: MessageCircle,
+  Instagram: Instagram,
+  Facebook: Facebook,
+  Linkedin: Linkedin,
+  Twitter: Twitter,
+  PenLine: PenLine,
+};
+
+const getChannelIconComponent = (channel, className = "h-3 w-3") => {
+  const iconName = getChannelIcon(channel);
+  const IconComponent = CHANNEL_ICON_MAP[iconName] || MessageSquare;
+  return <IconComponent className={className} />;
+};
+
+/**
+ * Mesajın kanal rengini al (badge için daha açık tonlar)
+ */
+const getMessageChannelColor = (channel) => {
+  const colors = {
+    [CHANNEL.EMAIL]: 'bg-sky-50 text-sky-600 border-sky-200',
+    [CHANNEL.WHATSAPP]: 'bg-green-50 text-green-600 border-green-200',
+    [CHANNEL.CONTACT_FORM]: 'bg-blue-50 text-blue-600 border-blue-200',
+    [CHANNEL.QUOTE_FORM]: 'bg-purple-50 text-purple-600 border-purple-200',
+    [CHANNEL.PHONE]: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    [CHANNEL.SOCIAL_INSTAGRAM]: 'bg-pink-50 text-pink-600 border-pink-200',
+    [CHANNEL.SOCIAL_FACEBOOK]: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+    [CHANNEL.SOCIAL_LINKEDIN]: 'bg-blue-50 text-blue-600 border-blue-200',
+    [CHANNEL.SOCIAL_TWITTER]: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+    [CHANNEL.MANUAL]: 'bg-slate-50 text-slate-500 border-slate-200',
+  };
+  return colors[channel] || 'bg-slate-50 text-slate-500 border-slate-200';
+};
 
 /**
  * HTML içeriğini sanitize et (cid: referansları ve tehlikeli içerik)
@@ -407,6 +456,15 @@ export default function ConversationDetailPage() {
   // WhatsApp telefon düzenleme
   const [editableWhatsappPhone, setEditableWhatsappPhone] = useState('');
   const [whatsappPhoneError, setWhatsappPhoneError] = useState(null);
+  
+  // WhatsApp Şablon Direkt Gönderim Modal State
+  const [showWhatsAppTemplateModal, setShowWhatsAppTemplateModal] = useState(false);
+  const [directTemplatePhone, setDirectTemplatePhone] = useState('');
+  const [directTemplatePhoneError, setDirectTemplatePhoneError] = useState(null);
+  const [directSelectedTemplate, setDirectSelectedTemplate] = useState(null);
+  const [directTemplates, setDirectTemplates] = useState([]);
+  const [loadingDirectTemplates, setLoadingDirectTemplates] = useState(false);
+  const [sendingDirectTemplate, setSendingDirectTemplate] = useState(false);
   
   const [convertForm, setConvertForm] = useState({
     title: "",
@@ -888,6 +946,7 @@ export default function ConversationDetailPage() {
         content: replyContent,
         direction: "outbound",
         status: MESSAGE_STATUS.DRAFT,
+        channel: CHANNEL.MANUAL, // Kanal bilgisi - başlangıçta manuel, gönderimde değişecek
         replyChannel: REPLY_CHANNEL.MANUAL,
         sender: {
           name: user?.displayName || user?.email || "Admin",
@@ -1143,6 +1202,132 @@ export default function ConversationDetailPage() {
   // Eski fonksiyon - geriye uyumluluk için (direkt gönderim)
   const handleApproveAndSend = async (messageId) => {
     handleOpenSendModal(messageId);
+  };
+
+  // WhatsApp Şablon Modalını Aç (Direkt gönderim için)
+  const handleOpenWhatsAppTemplateModal = async () => {
+    // Telefon numarasını set et
+    const phone = conversation?.sender?.phone || conversation?.channelMetadata?.waId || '';
+    if (phone) {
+      const formattedPhone = formatPhoneForWhatsApp(phone);
+      setDirectTemplatePhone(formattedPhone);
+      const validation = validateWhatsAppPhone(formattedPhone);
+      setDirectTemplatePhoneError(validation.valid ? null : validation.message);
+    } else {
+      setDirectTemplatePhone('');
+      setDirectTemplatePhoneError(null);
+    }
+    
+    // Template'leri yükle
+    setLoadingDirectTemplates(true);
+    setDirectSelectedTemplate(null);
+    setShowWhatsAppTemplateModal(true);
+    
+    try {
+      const response = await fetch('/api/admin/whatsapp/templates');
+      const data = await response.json();
+      if (data.success) {
+        // Sadece onaylı template'leri göster
+        const approvedTemplates = (data.data || []).filter(t => t.status === 'APPROVED');
+        setDirectTemplates(approvedTemplates);
+      } else {
+        setDirectTemplates([]);
+        toast({
+          title: "Uyarı",
+          description: "WhatsApp şablonları yüklenemedi.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error('Template loading error:', err);
+      setDirectTemplates([]);
+    } finally {
+      setLoadingDirectTemplates(false);
+    }
+  };
+
+  // WhatsApp Şablon ile Direkt Gönder
+  const handleSendDirectTemplate = async () => {
+    // Validasyon
+    if (!directSelectedTemplate) {
+      toast({
+        title: "Şablon Seçin",
+        description: "Göndermek için bir WhatsApp şablonu seçmelisiniz.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const phoneValidation = validateWhatsAppPhone(directTemplatePhone);
+    if (!phoneValidation.valid) {
+      toast({
+        title: "Geçersiz Telefon Numarası",
+        description: phoneValidation.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSendingDirectTemplate(true);
+    try {
+      // 1. Önce mesajı taslak olarak oluştur (şablon içeriği ile)
+      const templateContent = `[WhatsApp Şablon: ${directSelectedTemplate.name}]\n\n${directSelectedTemplate.components?.map(c => {
+        if (c.type === 'BODY') return c.text;
+        if (c.type === 'HEADER' && c.format === 'TEXT') return c.text;
+        if (c.type === 'FOOTER') return c.text;
+        return '';
+      }).filter(Boolean).join('\n') || 'Şablon mesajı'}`;
+      
+      const messageData = {
+        content: templateContent,
+        direction: "outbound",
+        status: MESSAGE_STATUS.DRAFT,
+        channel: CHANNEL.WHATSAPP,
+        replyChannel: REPLY_CHANNEL.WHATSAPP,
+        sender: {
+          name: user?.displayName || user?.email || "Admin",
+          email: user?.email,
+        },
+        channelMetadata: {
+          templateName: directSelectedTemplate.name,
+          templateLanguage: directSelectedTemplate.language || 'tr',
+        },
+      };
+      
+      const newMessage = await addMessage(conversationId, messageData);
+      
+      // 2. Mesajı WhatsApp üzerinden gönder
+      await approveAndSendMessage(
+        conversationId,
+        newMessage.id,
+        user?.uid,
+        {
+          channels: ['whatsapp'],
+          recipientPhone: directTemplatePhone,
+          templateName: directSelectedTemplate.name,
+          templateLanguage: directSelectedTemplate.language || 'tr',
+          forceTemplate: true,
+        }
+      );
+      
+      toast({
+        title: "✅ WhatsApp Şablon Gönderildi",
+        description: `"${directSelectedTemplate.name}" şablonu başarıyla gönderildi.`,
+      });
+      
+      setShowWhatsAppTemplateModal(false);
+      setDirectSelectedTemplate(null);
+      loadData();
+    } catch (error) {
+      console.error("WhatsApp template send error:", error);
+      toast({
+        title: "Gönderim Hatası",
+        description: error.message || "Şablon gönderilemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingDirectTemplate(false);
+    }
   };
 
   // Taslak mesajı sil
@@ -1437,6 +1622,7 @@ export default function ConversationDetailPage() {
         content: replyContent,
         direction: "outbound",
         status: MESSAGE_STATUS.SENT,
+        channel: CHANNEL.MANUAL, // Kanal bilgisi
         replyChannel: REPLY_CHANNEL.MANUAL,
         sender: {
           name: user?.displayName || user?.email || "Admin",
@@ -1909,6 +2095,20 @@ export default function ConversationDetailPage() {
                             <span className="text-sm font-semibold text-slate-800">
                               {conversation.sender?.name || "Bilinmiyor"}
                             </span>
+                            {/* Kanal Badge - Konuşmanın geldiği kanal */}
+                            {conversation.channel && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] px-1.5 py-0 h-4 flex items-center gap-1 border",
+                                  getMessageChannelColor(conversation.channel)
+                                )}
+                                title={`Kanal: ${getChannelLabel(conversation.channel)}`}
+                              >
+                                {getChannelIconComponent(conversation.channel, "h-2.5 w-2.5")}
+                                <span className="hidden sm:inline">{getChannelLabel(conversation.channel)}</span>
+                              </Badge>
+                            )}
                             <span className="text-xs text-slate-400">
                               {safeFormatDate(
                                 conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
@@ -2004,6 +2204,20 @@ export default function ConversationDetailPage() {
                                   ? (conversation?.name || conversation?.channelMetadata?.profileName || conversation?.sender?.name || conversation?.phone || "Bilinmiyor")
                                   : (message.sender?.name || "Bilinmiyor")}
                               </span>
+                              {/* Kanal Badge - Mesajın geldiği/gönderildiği kanal */}
+                              {(message.channel || message.replyChannel) && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px] px-1.5 py-0 h-4 flex items-center gap-1 border",
+                                    getMessageChannelColor(message.channel || message.replyChannel)
+                                  )}
+                                  title={`${isOutbound ? 'Gönderim Kanalı' : 'Alınan Kanal'}: ${getChannelLabel(message.channel || message.replyChannel)}`}
+                                >
+                                  {getChannelIconComponent(message.channel || message.replyChannel, "h-2.5 w-2.5")}
+                                  <span className="hidden sm:inline">{getChannelLabel(message.channel || message.replyChannel)}</span>
+                                </Badge>
+                              )}
                               <span className="text-xs text-slate-400">
                                 {safeFormatDate(
                                   message.originalCreatedAt || message.createdAt,
@@ -2209,99 +2423,83 @@ export default function ConversationDetailPage() {
               )}
 
               {/* AI Controls - Compact & Responsive */}
-              <div className="flex items-center justify-between mb-3 px-1 gap-2 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* AI Tone Selector */}
-                  <Select value={aiTone} onValueChange={setAiTone}>
-                    <SelectTrigger className="w-32 h-8 text-xs">
-                      <SelectValue placeholder="Üslup" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(REPLY_TONE_LABELS).map(([key, label]) => (
-                        <SelectItem key={key} value={key} className="text-xs">
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="flex items-center justify-between mb-3 px-1 gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Grup 1: AI Araçları */}
+                  <div className="flex items-center gap-1.5 pr-2 border-r border-slate-200">
+                    {/* AI Tone Selector */}
+                    <Select value={aiTone} onValueChange={setAiTone}>
+                      <SelectTrigger className="w-28 h-8 text-xs">
+                        <SelectValue placeholder="Üslup" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(REPLY_TONE_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key} className="text-xs">
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                  {/* AI Generate Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGenerateAIReply}
-                    disabled={generatingAI || !conversation?.messages?.length}
-                    className="h-8 text-xs bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100"
-                  >
-                    {generatingAI ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                        Oluşturuluyor...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        AI ile Yanıtla
-                      </>
-                    )}
-                  </Button>
+                    {/* AI Generate Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateAIReply}
+                      disabled={generatingAI || !conversation?.messages?.length}
+                      className="h-8 text-xs bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100"
+                    >
+                      {generatingAI ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          <span className="hidden sm:inline">Oluşturuluyor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
+                          <span className="hidden sm:inline">AI ile Yanıtla</span>
+                        </>
+                      )}
+                    </Button>
 
-                  {/* Quick Reply Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowQuickReplyModal(true)}
-                    className="h-8 text-xs text-slate-600 hidden sm:flex"
-                  >
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    Hazır Yanıtlar
-                  </Button>
-
-                  {/* Attachment Buttons */}
-                  <div className="flex items-center gap-1">
-                    {/* File Upload Button */}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      multiple
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
-                    />
+                    {/* AI Settings Button - AI butonunun yanında */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                      title="Dosya Ekle"
+                      onClick={() => setShowAISettingsModal(true)}
+                      className="h-8 w-8 text-slate-400 hover:text-purple-600 hover:bg-purple-50"
+                      title="AI Ayarları"
                     >
-                      <Paperclip className="h-4 w-4" />
+                      <Settings className="h-4 w-4" />
                     </Button>
-
-                    {/* Linked Documents Button */}
-                    {customer?.linkedCompanyId && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowDocumentPicker(true)}
-                        className="h-8 w-8 text-slate-400 hover:text-blue-600"
-                        title="Belgelerden Seç (Proforma, Sözleşme)"
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
 
-                  {/* AI Settings Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowAISettingsModal(true)}
-                    className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                    title="AI Ayarları"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
+                  {/* Grup 2: Hazır Mesajlar */}
+                  <div className="flex items-center gap-1">
+                    {/* Quick Reply Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowQuickReplyModal(true)}
+                      className="h-8 text-xs text-slate-600 hover:bg-slate-100"
+                      title="Hazır Yanıtlar"
+                    >
+                      <FileText className="h-3.5 w-3.5 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Hazır Yanıtlar</span>
+                    </Button>
+
+                    {/* WhatsApp Şablon Gönder Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleOpenWhatsAppTemplateModal}
+                      className="h-8 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                      title="WhatsApp şablonu seçerek direkt mesaj gönder"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 sm:mr-1.5" />
+                      <span className="hidden sm:inline">WA Şablon</span>
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Status Badges - Right side */}
@@ -2414,7 +2612,42 @@ export default function ConversationDetailPage() {
                     }
                   }}
                 />
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 items-center">
+                  {/* Dosya İkonları - Gönder butonunun üstünde */}
+                  <div className="flex items-center gap-0.5">
+                    {/* File Upload Button */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      multiple
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                      title="Dosya Ekle"
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                    </Button>
+
+                    {/* Linked Documents Button */}
+                    {customer?.linkedCompanyId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowDocumentPicker(true)}
+                        className="h-7 w-7 text-slate-400 hover:text-blue-600"
+                        title="Belgelerden Seç (Proforma, Sözleşme)"
+                      >
+                        <FolderOpen className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
                   {editingDraft ? (
                     <>
                       <Button
@@ -4549,6 +4782,178 @@ export default function ConversationDetailPage() {
               className="bg-white border-slate-200 text-slate-600"
             >
               Kapat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp Şablon Direkt Gönderim Modal */}
+      <Dialog open={showWhatsAppTemplateModal} onOpenChange={setShowWhatsAppTemplateModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              WhatsApp Şablon Gönder
+            </DialogTitle>
+            <DialogDescription>
+              Mesaj yazmadan doğrudan WhatsApp şablonu seçerek gönderim yapın.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Alıcı Bilgisi */}
+            <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+              <p className="text-sm font-medium text-slate-700">Alıcı:</p>
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-slate-400" />
+                <span className="text-sm text-slate-600">
+                  {conversation?.sender?.name || "İsimsiz"}
+                </span>
+              </div>
+            </div>
+
+            {/* Telefon Numarası */}
+            <div className="space-y-2">
+              <Label className="text-sm text-slate-700 flex items-center gap-1">
+                <Phone className="h-3.5 w-3.5" />
+                WhatsApp Numarası
+              </Label>
+              <div className="flex items-center">
+                <span className="px-3 py-2 bg-slate-200 text-slate-600 text-sm rounded-l-md border border-r-0 border-slate-300">
+                  +
+                </span>
+                <Input
+                  type="text"
+                  value={directTemplatePhone}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setDirectTemplatePhone(value);
+                    const validation = validateWhatsAppPhone(value);
+                    setDirectTemplatePhoneError(validation.valid ? null : validation.message);
+                  }}
+                  placeholder="905551234567"
+                  className={cn(
+                    "rounded-l-none",
+                    directTemplatePhoneError && "border-red-500 focus:ring-red-500"
+                  )}
+                />
+              </div>
+              {directTemplatePhoneError && (
+                <p className="text-xs text-red-600">{directTemplatePhoneError}</p>
+              )}
+              <p className="text-xs text-slate-500">
+                Ülke kodu dahil tam numara girin. Örn: Türkiye 905xx
+              </p>
+            </div>
+
+            {/* Şablon Seçimi */}
+            <div className="space-y-2">
+              <Label className="text-sm text-slate-700 flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5" />
+                WhatsApp Şablonu
+              </Label>
+              {loadingDirectTemplates ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-600">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Şablonlar yükleniyor...
+                </div>
+              ) : directTemplates.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {directTemplates.map((template) => (
+                    <div
+                      key={template.name}
+                      onClick={() => setDirectSelectedTemplate(template)}
+                      className={cn(
+                        "p-3 rounded-lg border-2 cursor-pointer transition-all",
+                        directSelectedTemplate?.name === template.name
+                          ? "border-green-500 bg-green-50"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900">{template.name}</p>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {template.category}
+                            </Badge>
+                          </div>
+                          {/* Template İçeriği Preview */}
+                          <div className="mt-2 text-xs text-slate-600 bg-slate-50 rounded p-2">
+                            {template.components?.map((comp, idx) => {
+                              if (comp.type === 'BODY') {
+                                return <p key={idx} className="whitespace-pre-wrap">{comp.text}</p>;
+                              }
+                              if (comp.type === 'HEADER' && comp.format === 'TEXT') {
+                                return <p key={idx} className="font-medium mb-1">{comp.text}</p>;
+                              }
+                              if (comp.type === 'FOOTER') {
+                                return <p key={idx} className="text-slate-400 mt-1 text-[10px]">{comp.text}</p>;
+                              }
+                              return null;
+                            })}
+                          </div>
+                        </div>
+                        {directSelectedTemplate?.name === template.name && (
+                          <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 ml-2" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center">
+                    <MessageCircle className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700">Şablon Bulunamadı</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    WhatsApp Business'tan onaylı şablon oluşturun.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Seçili Şablon Özeti */}
+            {directSelectedTemplate && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">
+                    Seçili Şablon: {directSelectedTemplate.name}
+                  </span>
+                </div>
+                <p className="text-xs text-green-700">
+                  Bu şablon +{directTemplatePhone} numarasına gönderilecek.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowWhatsAppTemplateModal(false)}
+              disabled={sendingDirectTemplate}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleSendDirectTemplate}
+              disabled={sendingDirectTemplate || !directSelectedTemplate || !directTemplatePhone}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {sendingDirectTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Gönderiliyor...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Şablonu Gönder
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

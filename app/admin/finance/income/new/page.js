@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { getDocuments } from "@/lib/firestore";
 import {
   createTransaction,
   getAccounts,
@@ -45,6 +46,8 @@ export default function NewIncomePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [useCustomerSelect, setUseCustomerSelect] = useState(true);
   const [formData, setFormData] = useState({
     category: INCOME_CATEGORY.SALES,
     amount: "",
@@ -60,11 +63,12 @@ export default function NewIncomePage() {
   });
 
   useEffect(() => {
-    loadAccounts();
+    loadData();
   }, []);
 
-  const loadAccounts = async () => {
+  const loadData = async () => {
     try {
+      // Hesapları yükle
       const result = await getAccounts();
       if (result.success) {
         setAccounts(result.data);
@@ -75,6 +79,14 @@ export default function NewIncomePage() {
         } else if (result.data.length > 0) {
           setFormData((prev) => ({ ...prev, accountId: result.data[0].id }));
         }
+      }
+
+      // Müşterileri yükle
+      try {
+        const customersData = await getDocuments("crm_customers");
+        setCustomers(customersData || []);
+      } catch (error) {
+        // Silent fail - customers optional
       }
     } catch (error) {
       // Silent fail - will show empty dropdown
@@ -91,6 +103,25 @@ export default function NewIncomePage() {
       const matchingAccount = accounts.find((a) => a.currency === value && a.isDefault);
       if (matchingAccount) {
         setFormData((prev) => ({ ...prev, [field]: value, accountId: matchingAccount.id }));
+      }
+    }
+  };
+
+  // Müşteri seçildiğinde müşteri adını güncelle
+  const handleCustomerSelect = (customerId) => {
+    if (customerId === "manual") {
+      setUseCustomerSelect(false);
+      setFormData(prev => ({ ...prev, customerName: "", companyName: "" }));
+    } else if (customerId === "none") {
+      setFormData(prev => ({ ...prev, customerName: "", companyName: "" }));
+    } else {
+      const selectedCustomer = customers.find(c => c.id === customerId);
+      if (selectedCustomer) {
+        setFormData(prev => ({
+          ...prev,
+          customerName: selectedCustomer.name || '',
+          companyName: selectedCustomer.company || '',
+        }));
       }
     }
   };
@@ -301,22 +332,68 @@ export default function NewIncomePage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="customerName">Müşteri / Kişi Adı</Label>
-                <Input
-                  id="customerName"
-                  value={formData.customerName}
-                  onChange={(e) => handleChange("customerName", e.target.value)}
-                  placeholder="Müşteri adı"
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="customerName">Müşteri / Kişi Adı</Label>
+                  {!useCustomerSelect && customers.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setUseCustomerSelect(true)}
+                      className="h-6 text-xs text-blue-600"
+                    >
+                      <User className="w-3 h-3 mr-1" />
+                      Listeden Seç
+                    </Button>
+                  )}
+                </div>
+                {useCustomerSelect && customers.length > 0 ? (
+                  <Select
+                    value={formData.customerName ? customers.find(c => c.name === formData.customerName)?.id || "none" : "none"}
+                    onValueChange={handleCustomerSelect}
+                  >
+                    <SelectTrigger className="border-slate-300">
+                      <SelectValue placeholder="Müşteri seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Seçilmedi</SelectItem>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}{customer.company ? ` - ${customer.company}` : ''}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="manual" className="text-blue-600">
+                        Manuel Giriş Yap
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="customerName"
+                    value={formData.customerName}
+                    onChange={(e) => handleChange("customerName", e.target.value)}
+                    placeholder="Müşteri adı"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="companyName">Firma Adı</Label>
-                <Input
-                  id="companyName"
-                  value={formData.companyName}
-                  onChange={(e) => handleChange("companyName", e.target.value)}
-                  placeholder="Firma adı"
-                />
+                {useCustomerSelect && customers.length > 0 ? (
+                  <Input
+                    id="companyName"
+                    value={formData.companyName}
+                    readOnly
+                    placeholder="Müşteri seçince otomatik dolar"
+                    className="bg-slate-50"
+                  />
+                ) : (
+                  <Input
+                    id="companyName"
+                    value={formData.companyName}
+                    onChange={(e) => handleChange("companyName", e.target.value)}
+                    placeholder="Firma adı"
+                  />
+                )}
               </div>
             </div>
 

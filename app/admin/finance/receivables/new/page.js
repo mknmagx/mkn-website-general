@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { getDocuments } from "@/lib/firestore";
 import {
   createReceivable,
   CURRENCY,
@@ -37,6 +38,9 @@ export default function NewReceivablePage() {
   const { user } = useAdminAuth();
 
   const [saving, setSaving] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [useCustomerSelect, setUseCustomerSelect] = useState(true);
   
   const [formData, setFormData] = useState({
     customerName: "",
@@ -51,8 +55,41 @@ export default function NewReceivablePage() {
     notes: "",
   });
 
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const loadCustomers = async () => {
+    try {
+      const customersData = await getDocuments("crm_customers");
+      setCustomers(customersData || []);
+    } catch (error) {
+      // Silent fail
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomerSelect = (customerId) => {
+    if (customerId === "manual") {
+      setUseCustomerSelect(false);
+      setFormData(prev => ({ ...prev, customerName: "", customerId: "" }));
+    } else if (customerId === "none") {
+      setFormData(prev => ({ ...prev, customerName: "", customerId: "" }));
+    } else {
+      const selectedCustomer = customers.find(c => c.id === customerId);
+      if (selectedCustomer) {
+        setFormData(prev => ({
+          ...prev,
+          customerName: selectedCustomer.name || '',
+          customerId: customerId,
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -138,13 +175,49 @@ export default function NewReceivablePage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="customerName">Müşteri Adı *</Label>
-                <Input
-                  id="customerName"
-                  value={formData.customerName}
-                  onChange={(e) => handleChange("customerName", e.target.value)}
-                  placeholder="Müşteri veya firma adı"
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="customerName">Müşteri Adı *</Label>
+                  {!useCustomerSelect && customers.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setUseCustomerSelect(true)}
+                      className="h-6 text-xs text-blue-600"
+                    >
+                      <User className="w-3 h-3 mr-1" />
+                      Listeden Seç
+                    </Button>
+                  )}
+                </div>
+                {useCustomerSelect && customers.length > 0 ? (
+                  <Select
+                    value={formData.customerId || "none"}
+                    onValueChange={handleCustomerSelect}
+                  >
+                    <SelectTrigger className="border-slate-300">
+                      <SelectValue placeholder="Müşteri seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Seçilmedi</SelectItem>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}{customer.company ? ` - ${customer.company}` : ''}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="manual" className="text-blue-600">
+                        Manuel Giriş Yap
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="customerName"
+                    value={formData.customerName}
+                    onChange={(e) => handleChange("customerName", e.target.value)}
+                    placeholder="Müşteri veya firma adı"
+                  />
+                )}
               </div>
               
               <div className="space-y-2">

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { getDocuments } from "@/lib/firestore";
 import {
   createTransaction,
   getAccounts,
@@ -59,8 +60,10 @@ export default function NewExpensePage() {
 
   const [accounts, setAccounts] = useState([]);
   const [personnelList, setPersonnelList] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [useSupplierSelect, setUseSupplierSelect] = useState(true);
   
   // URL'den gelen parametreleri al
   const initialCategory = searchParams.get('category') || '';
@@ -112,6 +115,14 @@ export default function NewExpensePage() {
           }
         }
       }
+
+      // Tedarikçileri yükle
+      try {
+        const suppliersData = await getDocuments("inventory_suppliers");
+        setSuppliers(suppliersData || []);
+      } catch (error) {
+        // Silent fail - suppliers optional
+      }
     } catch (error) {
       // Silent fail - dropdowns will be empty
     } finally {
@@ -141,6 +152,22 @@ export default function NewExpensePage() {
       personnelId,
       personnelName: selectedPersonnel ? `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}` : '',
     }));
+  };
+
+  // Tedarikçi seçildiğinde tedarikçi adını güncelle
+  const handleSupplierSelect = (supplierId) => {
+    if (supplierId === "manual") {
+      setUseSupplierSelect(false);
+      setFormData(prev => ({ ...prev, supplierName: "" }));
+    } else if (supplierId === "none") {
+      setFormData(prev => ({ ...prev, supplierName: "" }));
+    } else {
+      const selectedSupplier = suppliers.find(s => s.id === supplierId);
+      setFormData(prev => ({
+        ...prev,
+        supplierName: selectedSupplier?.name || '',
+      }));
+    }
   };
 
   // Personel kategorisi mi kontrol et
@@ -405,17 +432,53 @@ export default function NewExpensePage() {
             {!isPersonnelCategory && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supplierName">Tedarikçi / Firma</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      id="supplierName"
-                      value={formData.supplierName}
-                      onChange={(e) => handleChange("supplierName", e.target.value)}
-                      placeholder="Tedarikçi adı"
-                      className="pl-9"
-                    />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="supplierName">Tedarikçi / Firma</Label>
+                    {!useSupplierSelect && suppliers.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUseSupplierSelect(true)}
+                        className="h-6 text-xs text-blue-600"
+                      >
+                        <Building2 className="w-3 h-3 mr-1" />
+                        Listeden Seç
+                      </Button>
+                    )}
                   </div>
+                  {useSupplierSelect && suppliers.length > 0 ? (
+                    <Select
+                      value={formData.supplierName ? suppliers.find(s => s.name === formData.supplierName)?.id || "none" : "none"}
+                      onValueChange={handleSupplierSelect}
+                    >
+                      <SelectTrigger className="border-slate-300">
+                        <SelectValue placeholder="Tedarikçi seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Seçilmedi</SelectItem>
+                        {suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="manual" className="text-blue-600">
+                        Manuel Giriş Yap
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        id="supplierName"
+                        value={formData.supplierName}
+                        onChange={(e) => handleChange("supplierName", e.target.value)}
+                        placeholder="Tedarikçi adı"
+                        className="pl-9"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

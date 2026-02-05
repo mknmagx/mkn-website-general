@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { getDocuments } from "@/lib/firestore";
 import {
   createPayable,
   CURRENCY,
@@ -36,6 +37,9 @@ export default function NewPayablePage() {
   const { user } = useAdminAuth();
 
   const [saving, setSaving] = useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [useSupplierSelect, setUseSupplierSelect] = useState(true);
   
   const [formData, setFormData] = useState({
     supplierName: "",
@@ -49,8 +53,41 @@ export default function NewPayablePage() {
     notes: "",
   });
 
+  useEffect(() => {
+    loadSuppliers();
+  }, []);
+
+  const loadSuppliers = async () => {
+    try {
+      const suppliersData = await getDocuments("inventory_suppliers");
+      setSuppliers(suppliersData || []);
+    } catch (error) {
+      // Silent fail
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSupplierSelect = (supplierId) => {
+    if (supplierId === "manual") {
+      setUseSupplierSelect(false);
+      setFormData(prev => ({ ...prev, supplierName: "", supplierId: "" }));
+    } else if (supplierId === "none") {
+      setFormData(prev => ({ ...prev, supplierName: "", supplierId: "" }));
+    } else {
+      const selectedSupplier = suppliers.find(s => s.id === supplierId);
+      if (selectedSupplier) {
+        setFormData(prev => ({
+          ...prev,
+          supplierName: selectedSupplier.name || '',
+          supplierId: supplierId,
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -123,13 +160,49 @@ export default function NewPayablePage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="supplierName">Tedarikçi Adı *</Label>
-                <Input
-                  id="supplierName"
-                  value={formData.supplierName}
-                  onChange={(e) => handleChange("supplierName", e.target.value)}
-                  placeholder="Tedarikçi veya firma adı"
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="supplierName">Tedarikçi Adı *</Label>
+                  {!useSupplierSelect && suppliers.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setUseSupplierSelect(true)}
+                      className="h-6 text-xs text-blue-600"
+                    >
+                      <Building2 className="w-3 h-3 mr-1" />
+                      Listeden Seç
+                    </Button>
+                  )}
+                </div>
+                {useSupplierSelect && suppliers.length > 0 ? (
+                  <Select
+                    value={formData.supplierId || "none"}
+                    onValueChange={handleSupplierSelect}
+                  >
+                    <SelectTrigger className="border-slate-300">
+                      <SelectValue placeholder="Tedarikçi seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Seçilmedi</SelectItem>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="manual" className="text-blue-600">
+                        Manuel Giriş Yap
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="supplierName"
+                    value={formData.supplierName}
+                    onChange={(e) => handleChange("supplierName", e.target.value)}
+                    placeholder="Tedarikçi veya firma adı"
+                  />
+                )}
               </div>
               
               <div className="space-y-2">

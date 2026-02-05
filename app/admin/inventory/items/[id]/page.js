@@ -129,6 +129,8 @@ export default function ItemDetailPage() {
         // Supplier
         supplierId: item.supplierId || "",
         supplierName: item.supplierName || "",
+        // Warehouse
+        warehouseId: item.warehouseId || "",
       });
     }
   }, [item]);
@@ -170,6 +172,8 @@ export default function ItemDetailPage() {
         // Supplier
         supplierId: editData.supplierId || null,
         supplierName: editData.supplierName || null,
+        // Warehouse
+        warehouseId: editData.warehouseId || null,
       }, user);
       toast({
         title: "Başarılı",
@@ -209,6 +213,14 @@ export default function ItemDetailPage() {
         supplierId: sup?.id || "",
         supplierName: sup?.name || "",
       });
+    }
+  };
+
+  const handleWarehouseSelect = (warehouseId) => {
+    if (warehouseId === "none") {
+      setEditData({ ...editData, warehouseId: "" });
+    } else {
+      setEditData({ ...editData, warehouseId });
     }
   };
 
@@ -590,6 +602,30 @@ export default function ItemDetailPage() {
                               {suppliers.map((sup) => (
                                 <SelectItem key={sup.id} value={sup.id}>
                                   {sup.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Warehouse Section */}
+                      <div className="pt-4 border-t border-slate-200">
+                        <h4 className="font-medium text-slate-900 mb-3">Depo</h4>
+                        <div className="space-y-2">
+                          <Label>Depo Seçimi</Label>
+                          <Select
+                            value={editData.warehouseId || "none"}
+                            onValueChange={handleWarehouseSelect}
+                          >
+                            <SelectTrigger className="border-slate-300">
+                              <SelectValue placeholder="Depo seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Seçilmedi</SelectItem>
+                              {warehouses.map((wh) => (
+                                <SelectItem key={wh.id} value={wh.id}>
+                                  {wh.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>

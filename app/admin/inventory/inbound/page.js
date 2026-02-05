@@ -17,6 +17,12 @@ import {
   UNIT_LABELS,
 } from "../../../../lib/services/inventory-service";
 import { getDocuments } from "../../../../lib/firestore";
+import { createTransaction } from "../../../../lib/services/finance/transaction-service";
+import {
+  TRANSACTION_TYPE,
+  EXPENSE_CATEGORY,
+  TRANSACTION_STATUS,
+} from "../../../../lib/services/finance/schema";
 
 // UI Components
 import { Button } from "../../../../components/ui/button";
@@ -70,6 +76,7 @@ import {
   ChevronsUpDown,
   Plus,
   Search,
+  DollarSign,
 } from "lucide-react";
 
 export default function InboundPage() {
@@ -86,6 +93,8 @@ export default function InboundPage() {
 
   const [companies, setCompanies] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
 
   // Form state
   const [selectedItem, setSelectedItem] = useState(null);
@@ -103,6 +112,15 @@ export default function InboundPage() {
     serialNumber: "",
     notes: "",
     createDelivery: true,
+    // Finans kaydı
+    createFinanceRecord: false,
+    paymentStatus: "paid", // paid, deferred, partial
+    paymentAmount: "",
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: "bank_transfer", // cash, bank_transfer, credit_card, check
+    financeAccountId: "",
+    invoiceNumber: "",
+    financeNotes: "",
   });
 
   // Load companies
@@ -118,6 +136,26 @@ export default function InboundPage() {
       }
     };
     loadCompanies();
+  }, []);
+
+  // Load finance accounts
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const data = await getDocuments("finance_accounts");
+        setFinanceAccounts(data || []);
+        // Set default account
+        if (data && data.length > 0) {
+          const defaultAccount = data.find(acc => acc.isDefault) || data[0];
+          setFormData(prev => ({ ...prev, financeAccountId: defaultAccount.id }));
+        }
+      } catch (error) {
+        // Silent fail
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+    loadAccounts();
   }, []);
 
   // Pre-select item from URL
@@ -144,7 +182,20 @@ export default function InboundPage() {
   }, [warehouses, formData.warehouseId]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      
+      // Ödeme tutarını otomatik hesapla
+      if ((field === "quantity" || field === "unitPrice") && prev.createFinanceRecord) {
+        const qty = field === "quantity" ? value : prev.quantity;
+        const price = field === "unitPrice" ? value : prev.unitPrice;
+        if (qty && price) {
+          newData.paymentAmount = (Number(qty) * Number(price)).toString();
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleItemSelect = (item) => {
@@ -196,6 +247,26 @@ export default function InboundPage() {
       return;
     }
 
+    // Finans kaydı kontrolü
+    if (formData.createFinanceRecord) {
+      if (!formData.financeAccountId) {
+        toast({
+          title: "Hata",
+          description: "Lütfen bir hesap seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!formData.paymentAmount || Number(formData.paymentAmount) <= 0) {
+        toast({
+          title: "Hata",
+          description: "Geçerli bir ödeme tutarı girin.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       const result = await inbound(
         {
@@ -211,14 +282,72 @@ export default function InboundPage() {
           lotNumber: formData.lotNumber || null,
           serialNumber: formData.serialNumber || null,
           notes: formData.notes,
-          // TODO: Create delivery note if enabled
         },
         user
       );
 
+      // Finans kaydı oluştur
+      if (formData.createFinanceRecord && result) {
+        try {
+          // Kategoriyi belirle
+          let category = EXPENSE_CATEGORY.RAW_MATERIAL;
+          if (selectedItem.category === "packaging") {
+            category = EXPENSE_CATEGORY.PACKAGING;
+          } else if (selectedItem.category === "finished_product" || selectedItem.category === "semi_finished") {
+            category = EXPENSE_CATEGORY.PRODUCTION_COST;
+          }
+
+          const selectedAccount = financeAccounts.find(acc => acc.id === formData.financeAccountId);
+          
+          const financeData = {
+            type: TRANSACTION_TYPE.EXPENSE,
+            status: formData.paymentStatus === "paid" ? TRANSACTION_STATUS.COMPLETED : TRANSACTION_STATUS.PENDING,
+            category: category,
+            amount: Number(formData.paymentAmount),
+            currency: selectedAccount?.currency || "TRY",
+            accountId: formData.financeAccountId,
+            accountName: selectedAccount?.name || "",
+            // İlişkiler
+            companyId: formData.companyId || null,
+            companyName: formData.companyName || null,
+            // Açıklama
+            description: `Stok girişi: ${selectedItem.name} (${formData.quantity} ${UNIT_LABELS[selectedItem.stock?.unit]})`,
+            notes: formData.financeNotes || `Envanter kaydı: ${selectedItem.sku}`,
+            reference: formData.invoiceNumber || "",
+            transactionDate: formData.paymentDate ? new Date(formData.paymentDate) : new Date(),
+            // Envanter bağlantısı
+            inventoryTransactionId: result.transactionId || null,
+            inventoryItemId: selectedItem.id,
+            inventoryItemName: selectedItem.name,
+            inventoryItemSku: selectedItem.sku,
+          };
+
+          const financeResult = await createTransaction(financeData, user.uid);
+          
+          if (!financeResult.success) {
+            // Finans kaydı başarısız olsa da envanter kaydı yapıldı
+            toast({
+              title: "Uyarı",
+              description: "Stok girişi yapıldı ancak finans kaydı oluşturulamadı: " + financeResult.error,
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (financeError) {
+          console.error("Finance record error:", financeError);
+          toast({
+            title: "Uyarı",
+            description: "Stok girişi yapıldı ancak finans kaydı oluşturulamadı.",
+            variant: "destructive",
+          });
+        }
+      }
+
       toast({
         title: "Başarılı",
-        description: `${formData.quantity} ${UNIT_LABELS[selectedItem.stock?.unit]} giriş yapıldı.`,
+        description: formData.createFinanceRecord 
+          ? `${formData.quantity} ${UNIT_LABELS[selectedItem.stock?.unit]} giriş yapıldı ve finans kaydı oluşturuldu.`
+          : `${formData.quantity} ${UNIT_LABELS[selectedItem.stock?.unit]} giriş yapıldı.`,
       });
 
       // Reset form or redirect
@@ -239,6 +368,15 @@ export default function InboundPage() {
           serialNumber: "",
           notes: "",
           createDelivery: true,
+          // Finans
+          createFinanceRecord: false,
+          paymentStatus: "paid",
+          paymentAmount: "",
+          paymentDate: new Date().toISOString().split('T')[0],
+          paymentMethod: "bank_transfer",
+          financeAccountId: formData.financeAccountId,
+          invoiceNumber: "",
+          financeNotes: "",
         });
         refreshItems();
       }
@@ -567,6 +705,145 @@ export default function InboundPage() {
                 </Card>
               )}
 
+              {/* Finance Record */}
+              <Card className="bg-white border-slate-200">
+                <CardHeader className="border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-slate-900">
+                      <DollarSign className="h-5 w-5 text-slate-600" />
+                      Finans Kaydı
+                    </CardTitle>
+                    <Switch
+                      checked={formData.createFinanceRecord}
+                      onCheckedChange={(checked) => {
+                        setFormData((prev) => {
+                          const newData = { ...prev, createFinanceRecord: checked };
+                          // Checkbox açıldığında ödeme tutarını hesapla
+                          if (checked && prev.quantity && prev.unitPrice) {
+                            newData.paymentAmount = (Number(prev.quantity) * Number(prev.unitPrice)).toString();
+                          }
+                          return newData;
+                        });
+                      }}
+                    />
+                  </div>
+                  <CardDescription>
+                    Stok girişi için finans sistemi ile entegre gider kaydı oluştur
+                  </CardDescription>
+                </CardHeader>
+                {formData.createFinanceRecord && (
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Ödeme Durumu</Label>
+                        <Select
+                          value={formData.paymentStatus}
+                          onValueChange={(value) => handleChange("paymentStatus", value)}
+                        >
+                          <SelectTrigger className="border-slate-300">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paid">Ödendi</SelectItem>
+                            <SelectItem value="deferred">Vadeli</SelectItem>
+                            <SelectItem value="partial">Kısmi Ödeme</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ödeme Tutarı</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.paymentAmount}
+                          onChange={(e) => handleChange("paymentAmount", e.target.value)}
+                          className="border-slate-300"
+                          placeholder="Otomatik hesaplanır"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Ödeme Tarihi</Label>
+                        <Input
+                          type="date"
+                          value={formData.paymentDate}
+                          onChange={(e) => handleChange("paymentDate", e.target.value)}
+                          className="border-slate-300"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ödeme Yöntemi</Label>
+                        <Select
+                          value={formData.paymentMethod}
+                          onValueChange={(value) => handleChange("paymentMethod", value)}
+                        >
+                          <SelectTrigger className="border-slate-300">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Nakit</SelectItem>
+                            <SelectItem value="bank_transfer">Havale/EFT</SelectItem>
+                            <SelectItem value="credit_card">Kredi Kartı</SelectItem>
+                            <SelectItem value="check">Çek</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Hesap</Label>
+                        <Select
+                          value={formData.financeAccountId}
+                          onValueChange={(value) => handleChange("financeAccountId", value)}
+                        >
+                          <SelectTrigger className="border-slate-300">
+                            <SelectValue placeholder="Hesap seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {financeAccounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.name} ({account.currency || 'TRY'})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fatura No (Opsiyonel)</Label>
+                        <Input
+                          value={formData.invoiceNumber}
+                          onChange={(e) => handleChange("invoiceNumber", e.target.value)}
+                          className="border-slate-300"
+                          placeholder="FA-2026-001"
+                        />
+                      </div>
+                    </div>
+
+                    {formData.paymentStatus !== "paid" && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-sm text-amber-800">
+                          <strong>Not:</strong> {formData.paymentStatus === "deferred" ? "Vadeli ödeme olarak işaretlenecek" : "Kısmi ödeme olarak kaydedilecek"}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Finans Notları</Label>
+                      <Textarea
+                        value={formData.financeNotes}
+                        onChange={(e) => handleChange("financeNotes", e.target.value)}
+                        placeholder="Ödeme ile ilgili notlar..."
+                        rows={2}
+                        className="border-slate-300"
+                      />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
               {/* Notes */}
               <Card className="bg-white border-slate-200">
                 <CardHeader className="border-b border-slate-100">
@@ -588,7 +865,7 @@ export default function InboundPage() {
 
               {/* Summary */}
               <Card className="bg-green-50 border-green-200">
-                <CardContent className="py-4">
+                <CardContent className="py-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-green-100 rounded-lg">
@@ -618,6 +895,28 @@ export default function InboundPage() {
                       </div>
                     )}
                   </div>
+                  
+                  {formData.createFinanceRecord && formData.paymentAmount && (
+                    <div className="pt-3 border-t border-green-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-green-700" />
+                          <span className="text-sm font-medium text-green-800">Finans Kaydı</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-green-700">
+                            {formData.paymentStatus === "paid" ? "Ödendi" : formData.paymentStatus === "deferred" ? "Vadeli" : "Kısmi"}
+                          </p>
+                          <p className="font-semibold text-green-900">
+                            {new Intl.NumberFormat("tr-TR", {
+                              style: "currency",
+                              currency: "TRY",
+                            }).format(Number(formData.paymentAmount))}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
