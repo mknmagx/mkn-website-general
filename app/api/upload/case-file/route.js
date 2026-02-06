@@ -21,10 +21,12 @@ export async function POST(request) {
       );
     }
 
-    // Dosya boyutu kontrolü (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Dosya boyutu kontrolü (500MB - client-side'da CRM ayarlarındaki limit kontrol edilir)
+    // Bu sadece güvenlik için bir üst sınırdır
+    const MAX_SERVER_LIMIT_MB = 500;
+    if (file.size > MAX_SERVER_LIMIT_MB * 1024 * 1024) {
       return NextResponse.json(
-        { error: "Dosya boyutu 10MB'dan büyük olamaz" },
+        { error: `Dosya boyutu ${MAX_SERVER_LIMIT_MB}MB'dan büyük olamaz` },
         { status: 400 }
       );
     }

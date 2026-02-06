@@ -26,6 +26,11 @@ import {
   deleteCase,
   addSummaryToCase,
   deleteSummaryFromCase,
+  // Local Settings - Dosya boyutu ayarları
+  getMaxFileSizeBytes,
+  getMaxFileSizeMB,
+  validateFileSize,
+  needsLargeUploadConfirmation,
 } from "../../../../../lib/services/crm-v2";
 import { getCustomer } from "../../../../../lib/services/crm-v2/customer-service";
 import {
@@ -57,6 +62,7 @@ import {
 import { formatDistanceToNow, format, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
 import { cn } from "../../../../../lib/utils";
+import { uploadFile } from "../../../../../lib/storage";
 
 // AI Hook
 import { useUnifiedAI, AI_CONTEXTS } from "../../../../../hooks/use-unified-ai";
@@ -815,55 +821,70 @@ export default function CaseDetailPage() {
   });
 
   // ==================== ATTACHMENT & NOTE HANDLERS ====================
+  
+  // Dosya boyutu formatlama helper
+  const formatFileSizeLocal = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+  
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Dosya boyutu kontrolü (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // CRM Ayarlarından dosya boyutu limitini al
+    const maxSizeMB = getMaxFileSizeMB();
+    const validation = validateFileSize(file.size);
+    
+    if (!validation.valid) {
       toast({
-        title: "Hata",
-        description: "Dosya boyutu 10MB'dan büyük olamaz.",
+        title: "Dosya çok büyük",
+        description: `${file.name} (${formatFileSizeLocal(file.size)}) maksimum ${maxSizeMB}MB limitini aşıyor.`,
         variant: "destructive",
       });
       return;
     }
+    
+    // Büyük dosya uyarısı (ayarlarda tanımlanan eşik üstü)
+    if (needsLargeUploadConfirmation(file.size)) {
+      const confirmed = window.confirm(
+        `${file.name} (${formatFileSizeLocal(file.size)}) büyük bir dosya.\n\nYüklemek istediğinizden emin misiniz?`
+      );
+      if (!confirmed) return;
+    }
 
     setUploadingFile(true);
     try {
-      // API route üzerinden Cloudinary'ye yükle
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("caseId", caseId);
-
-      const response = await fetch("/api/upload/case-file", {
-        method: "POST",
-        body: formData,
+      // Firebase Storage'a yükle (Cloudinary 10MB limiti yok)
+      const fileType = file.type || '';
+      const isImage = fileType.startsWith('image/');
+      const storagePath = `crm-cases/${caseId}/${Date.now()}_${file.name}`;
+      
+      toast({
+        title: "Yükleniyor",
+        description: `${file.name} (${formatFileSizeLocal(file.size)}) yükleniyor...`,
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      const result = data.data;
+      
+      const downloadUrl = await uploadFile(file, storagePath);
 
       // Case'e ekle
       await addAttachmentToCase(
         caseId,
         {
-          name: result.fileName,
-          url: result.url,
-          publicId: result.publicId,
-          type: result.isImage
+          name: file.name,
+          url: downloadUrl,
+          storagePath: storagePath,
+          type: isImage
             ? "image"
-            : result.fileType === "application/pdf"
+            : fileType === "application/pdf"
               ? "pdf"
               : "file",
-          size: result.fileSize,
+          size: file.size,
           category: "general",
-          isImage: result.isImage,
+          isImage: isImage,
         },
         user?.uid,
       );
