@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { PermissionGuard } from "../../../components/admin-route-guard";
 import { useAdminAuth } from "../../../hooks/use-admin-auth";
 import { useToast } from "../../../hooks/use-toast";
-import { 
+import {
   getReminderStats,
   autoSyncIfNeeded,
   getLastSyncTime,
@@ -113,7 +113,7 @@ export default function CrmV2Layout({ children }) {
     const loadCounts = async () => {
       try {
         const stats = await getReminderStats();
-        setCounts(prev => ({
+        setCounts((prev) => ({
           ...prev,
           reminders: (stats?.overdue || 0) + (stats?.today || 0),
         }));
@@ -121,9 +121,9 @@ export default function CrmV2Layout({ children }) {
         console.error("Error loading reminder counts:", error);
       }
     };
-    
+
     loadCounts();
-    
+
     // Her 60 saniyede bir güncelle
     const interval = setInterval(loadCounts, 60000);
     return () => clearInterval(interval);
@@ -151,14 +151,14 @@ export default function CrmV2Layout({ children }) {
     setSyncing(true);
     try {
       const result = await manualSync(user?.uid);
-      
+
       // result.skipped = false ise başarılı, skipped = true ise atlandı
       if (!result.skipped) {
         const { summary } = result;
         const parts = [];
         if (summary?.forms) parts.push(`${summary.forms} form`);
         if (summary?.emails) parts.push(`${summary.emails} email`);
-        
+
         // WhatsApp detayları
         const wpConv = summary?.whatsapp?.conversations || 0;
         const wpMsg = summary?.whatsapp?.messages || 0;
@@ -166,17 +166,18 @@ export default function CrmV2Layout({ children }) {
           const wpParts = [];
           if (wpConv) wpParts.push(`${wpConv} sohbet`);
           if (wpMsg) wpParts.push(`${wpMsg} mesaj`);
-          parts.push(`${wpParts.join(', ')} (WhatsApp)`);
+          parts.push(`${wpParts.join(", ")} (WhatsApp)`);
         }
-        
-        const description = parts.length > 0 
-          ? `${parts.join(', ')} senkronize edildi`
-          : "Veriler senkronize edildi";
+
+        const description =
+          parts.length > 0
+            ? `${parts.join(", ")} senkronize edildi`
+            : "Veriler senkronize edildi";
         toast({
           title: "Senkronizasyon Tamamlandı",
           description,
         });
-      } else if (result.skipReason === 'sync_locked') {
+      } else if (result.skipReason === "sync_locked") {
         toast({
           title: "Senkronizasyon Bekliyor",
           description: result.message || "Başka bir işlem devam ediyor",
@@ -204,53 +205,56 @@ export default function CrmV2Layout({ children }) {
   useEffect(() => {
     let syncIntervalId = null;
     let statusIntervalId = null;
-    
+
     const performAutoSync = async () => {
       if (!user?.uid) return;
-      
+
       try {
         console.log("[CRM Layout] Checking auto-sync (forms + emails)...");
         const result = await autoSyncIfNeeded(user.uid);
-        
+
         if (result && !result.skipped && result.summary) {
           const { imported, threadUpdates, forms, emails } = result.summary;
-          
+
           if (imported > 0 || threadUpdates > 0) {
-            let description = '';
+            let description = "";
             if (forms > 0) description += `${forms} form`;
-            if (emails > 0) description += `${description ? ', ' : ''}${emails} email`;
-            
+            if (emails > 0)
+              description += `${description ? ", " : ""}${emails} email`;
+
             toast({
               title: "Otomatik Senkronizasyon",
               description: `${description} senkronize edildi.`,
             });
           }
         }
-        
+
         // Sync sonrası status'u güncelle
         loadSyncStatus();
       } catch (error) {
         console.error("[CRM Layout] Auto-sync error:", error);
       }
     };
-    
+
     const initSync = async () => {
       if (!user?.uid) return;
-      
+
       // Önce sync status'u yükle
       loadSyncStatus();
-      
+
       // İlk sync kontrolü
       await performAutoSync();
-      
+
       // Ayarlardan sync interval'i al
       try {
         const settings = await getCrmSettings();
         const syncIntervalMinutes = settings?.sync?.syncInterval || 15;
         const intervalMs = syncIntervalMinutes * 60 * 1000; // dakikayı ms'ye çevir
-        
-        console.log(`[CRM Layout] Setting up auto-sync interval: ${syncIntervalMinutes} minutes`);
-        
+
+        console.log(
+          `[CRM Layout] Setting up auto-sync interval: ${syncIntervalMinutes} minutes`,
+        );
+
         // Periyodik senkronizasyon kontrolü (ayarlardaki interval'e göre)
         syncIntervalId = setInterval(performAutoSync, intervalMs);
       } catch (error) {
@@ -258,13 +262,13 @@ export default function CrmV2Layout({ children }) {
         // Hata durumunda varsayılan 15 dakika
         syncIntervalId = setInterval(performAutoSync, 15 * 60 * 1000);
       }
-      
+
       // UI status güncellemesi için ayrı interval (her 30 saniye)
       statusIntervalId = setInterval(loadSyncStatus, 30000);
     };
-    
+
     initSync();
-    
+
     return () => {
       if (syncIntervalId) clearInterval(syncIntervalId);
       if (statusIntervalId) clearInterval(statusIntervalId);
@@ -290,33 +294,40 @@ export default function CrmV2Layout({ children }) {
     const ls = syncStatus.lastSyncAt;
     if (ls.toDate) return ls.toDate(); // Firestore Timestamp
     if (ls instanceof Date) return ls; // Already Date
-    if (typeof ls === 'string' || typeof ls === 'number') return new Date(ls);
+    if (typeof ls === "string" || typeof ls === "number") return new Date(ls);
     return null;
   };
 
   return (
     <PermissionGuard requiredPermission="crm.view">
-      <div className="flex h-[calc(100vh-64px)] bg-slate-50">
+      <div className="flex h-full max-h-full overflow-hidden bg-slate-50">
         {/* Sidebar */}
         <aside
           className={cn(
-            "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col shadow-sm relative",
-            collapsed ? "w-16" : "w-64"
+            "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col shadow-sm relative flex-shrink-0",
+            collapsed ? "w-16" : "w-64",
           )}
         >
           {/* Header */}
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             {!collapsed && (
               <div>
-                <h2 className="font-semibold text-base text-slate-900">CRM v2</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Müşteri Yönetimi</p>
+                <h2 className="font-semibold text-base text-slate-900">
+                  CRM v2
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Müşteri Yönetimi
+                </p>
               </div>
             )}
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className={cn("h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100", collapsed && "mx-auto")}
+              className={cn(
+                "h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+                collapsed && "mx-auto",
+              )}
             >
               {collapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -341,19 +352,28 @@ export default function CrmV2Layout({ children }) {
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative group",
                     active
                       ? "bg-blue-50 text-blue-700 shadow-sm"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                   )}
                 >
-                  <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600")} />
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 flex-shrink-0",
+                      active && "text-blue-600",
+                    )}
+                  />
                   {!collapsed && (
                     <>
-                      <span className="flex-1 text-sm font-medium">{item.name}</span>
+                      <span className="flex-1 text-sm font-medium">
+                        {item.name}
+                      </span>
                       {badgeCount > 0 && (
                         <Badge
                           variant={active ? "default" : "secondary"}
                           className={cn(
                             "h-5 min-w-[20px] px-1.5 text-xs font-medium",
-                            active ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"
+                            active
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-200 text-slate-700",
                           )}
                         >
                           {badgeCount > 99 ? "99+" : badgeCount}
@@ -396,9 +416,14 @@ export default function CrmV2Layout({ children }) {
                 {/* Tooltip */}
                 <div className="fixed left-16 ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[9999]">
                   {syncing ? "Senkronize ediliyor..." : "Son sync: "}
-                  {!syncing && getLastSyncDate() ? (
-                    formatDistanceToNow(getLastSyncDate(), { addSuffix: true, locale: tr })
-                  ) : !syncing ? "Henüz yok" : ""}
+                  {!syncing && getLastSyncDate()
+                    ? formatDistanceToNow(getLastSyncDate(), {
+                        addSuffix: true,
+                        locale: tr,
+                      })
+                    : !syncing
+                      ? "Henüz yok"
+                      : ""}
                 </div>
               </button>
             ) : (
@@ -412,13 +437,16 @@ export default function CrmV2Layout({ children }) {
                       <Clock className="h-4 w-4 text-slate-400" />
                     )}
                     <div>
-                      <p className="text-xs font-medium text-slate-600">Son Sync</p>
+                      <p className="text-xs font-medium text-slate-600">
+                        Son Sync
+                      </p>
                       <p className="text-xs text-slate-400">
-                        {getLastSyncDate() ? (
-                          formatDistanceToNow(getLastSyncDate(), { addSuffix: true, locale: tr })
-                        ) : (
-                          "Henüz yok"
-                        )}
+                        {getLastSyncDate()
+                          ? formatDistanceToNow(getLastSyncDate(), {
+                              addSuffix: true,
+                              locale: tr,
+                            })
+                          : "Henüz yok"}
                       </p>
                     </div>
                   </div>
@@ -446,9 +474,7 @@ export default function CrmV2Layout({ children }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </PermissionGuard>
   );

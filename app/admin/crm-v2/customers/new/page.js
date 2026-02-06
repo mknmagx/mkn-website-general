@@ -100,7 +100,6 @@ export default function NewCustomerPage() {
 
   // Industry options
   const industryOptions = [
-    { value: "", label: "Seçiniz..." },
     { value: "kozmetik", label: "Kozmetik" },
     { value: "gida_takviyesi", label: "Gıda Takviyesi" },
     { value: "temizlik", label: "Temizlik Ürünleri" },
@@ -115,7 +114,6 @@ export default function NewCustomerPage() {
 
   // Company size options
   const companySizeOptions = [
-    { value: "", label: "Seçiniz..." },
     { value: "1-10", label: "1-10 Çalışan" },
     { value: "11-50", label: "11-50 Çalışan" },
     { value: "51-200", label: "51-200 Çalışan" },
@@ -124,9 +122,7 @@ export default function NewCustomerPage() {
   ];
 
   // Handle submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     // Validation
     if (!formData.name.trim() && !formData.companyName.trim()) {
       toast({ 
@@ -203,7 +199,7 @@ export default function NewCustomerPage() {
 
   if (authLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="h-full overflow-y-auto p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-[400px] w-full" />
       </div>
@@ -211,24 +207,25 @@ export default function NewCustomerPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-          className="h-9 w-9"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Yeni Müşteri</h1>
-          <p className="text-sm text-slate-500">CRM sistemine yeni müşteri ekleyin</p>
+    <div className="h-full overflow-y-auto">
+      <div className="p-6 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="h-9 w-9"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Yeni Müşteri</h1>
+            <p className="text-sm text-slate-500">CRM sistemine yeni müşteri ekleyin</p>
+          </div>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit}>
+        {/* Content */}
         <div className="space-y-6">
           {/* Kişisel Bilgiler */}
           <Card className="bg-white border-slate-200">
@@ -559,7 +556,7 @@ export default function NewCustomerPage() {
           </Card>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-4 pb-6">
             <Button
               type="button"
               variant="outline"
@@ -569,7 +566,8 @@ export default function NewCustomerPage() {
               İptal
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={saving}
               className="min-w-[140px]"
             >
@@ -587,7 +585,7 @@ export default function NewCustomerPage() {
             </Button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
