@@ -4191,7 +4191,7 @@ export default function ConversationDetailPage() {
 
       {/* Gönderim Kanalı Seçimi Modal */}
       <Dialog open={showSendModal} onOpenChange={setShowSendModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-blue-600" />
@@ -4203,7 +4203,7 @@ export default function ConversationDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
             {/* Alıcı Bilgisi */}
             <div className="bg-slate-50 rounded-lg p-3 space-y-2">
               <p className="text-sm font-medium text-slate-700">Alıcı:</p>

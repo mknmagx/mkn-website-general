@@ -1011,11 +1011,18 @@ export default function CustomerDetailPage() {
                                 conv.createdAt ||
                                 conv.lastMessageAt;
                               if (!displayDate) return "";
-                              return formatDistanceToNow(
-                                displayDate?.toDate?.() ||
-                                  new Date(displayDate),
-                                { addSuffix: true, locale: tr },
-                              );
+                              
+                              try {
+                                const dateObj = displayDate?.toDate?.() || new Date(displayDate);
+                                // Check if the date is valid
+                                if (isNaN(dateObj.getTime())) return "";
+                                return formatDistanceToNow(dateObj, {
+                                  addSuffix: true,
+                                  locale: tr,
+                                });
+                              } catch (error) {
+                                return "";
+                              }
                             })()}
                           </span>
                         </div>
