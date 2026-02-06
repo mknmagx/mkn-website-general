@@ -1346,8 +1346,19 @@ export default function ConversationDetailPage() {
 
   // WhatsApp Şablon Modalını Aç (Direkt gönderim için)
   const handleOpenWhatsAppTemplateModal = async () => {
-    // Telefon numarasını set et
-    const phone = conversation?.sender?.phone || conversation?.channelMetadata?.waId || '';
+    // Telefon numarasını set et - tüm olası kaynaklardan al
+    const phone = conversation?.sender?.phone 
+      || conversation?.channelMetadata?.waId 
+      || customer?.phone  // Customer'dan telefon al
+      || '';
+    
+    console.log('[WA Template] Phone sources:', {
+      senderPhone: conversation?.sender?.phone,
+      waId: conversation?.channelMetadata?.waId,
+      customerPhone: customer?.phone,
+      resolved: phone
+    });
+    
     if (phone) {
       const formattedPhone = formatPhoneForWhatsApp(phone);
       setDirectTemplatePhone(formattedPhone);
@@ -1355,7 +1366,7 @@ export default function ConversationDetailPage() {
       setDirectTemplatePhoneError(validation.valid ? null : validation.message);
     } else {
       setDirectTemplatePhone('');
-      setDirectTemplatePhoneError(null);
+      setDirectTemplatePhoneError('Müşterinin telefon numarası bulunamadı. Lütfen manuel girin.');
     }
     
     // Template'leri yükle
@@ -1431,6 +1442,13 @@ export default function ConversationDetailPage() {
       };
       
       const newMessage = await addMessage(conversationId, messageData);
+      
+      // Mesaj skip edildiyse (duplicate) uyar
+      if (newMessage.skipped) {
+        console.warn('[CRM] Message was skipped (duplicate):', newMessage.skipReason);
+      }
+      
+      console.log('[CRM] Message created for template:', newMessage.id);
       
       // 2. Mesajı WhatsApp üzerinden gönder (template components ile)
       const templateComponents = buildTemplateComponents(directSelectedTemplate, directTemplateVariables);
