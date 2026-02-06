@@ -466,6 +466,141 @@ export default function ConversationDetailPage() {
   const [loadingDirectTemplates, setLoadingDirectTemplates] = useState(false);
   const [sendingDirectTemplate, setSendingDirectTemplate] = useState(false);
   
+  // WhatsApp Şablon Değişkenleri (Her iki modal için)
+  const [templateVariables, setTemplateVariables] = useState({ header: "", body: [] });
+  const [directTemplateVariables, setDirectTemplateVariables] = useState({ header: "", body: [] });
+  
+  // ==========================================
+  // WHATSAPP TEMPLATE HELPER FUNCTIONS
+  // ==========================================
+  
+  // Şablondaki değişkenleri çıkar
+  const getTemplateVariables = useCallback((template) => {
+    const vars = { header: null, body: [] };
+    const regex = /\{\{(\d+)\}\}/g;
+    
+    for (const component of template?.components || []) {
+      if (component.type === 'HEADER' && component.format === 'TEXT') {
+        const matches = component.text?.match(regex);
+        if (matches) vars.header = true;
+      }
+      if (component.type === 'BODY' && component.text) {
+        const matches = [...component.text.matchAll(regex)];
+        vars.body = matches.map((m) => parseInt(m[1]));
+      }
+    }
+    
+    return vars;
+  }, []);
+  
+  // Değişken önerileri (context'e göre)
+  const getVariableSuggestions = useCallback((template, varNum, idx) => {
+    const suggestions = [];
+    const templateName = template?.name?.toLowerCase() || "";
+    const bodyText = template?.components?.find(c => c.type === "BODY")?.text?.toLowerCase() || "";
+    
+    // İlk değişken genellikle müşteri adı
+    if (varNum === 1 || idx === 0) {
+      if (bodyText.includes("merhaba") || bodyText.includes("sayın")) {
+        suggestions.push({ key: "customerName", label: "Müşteri Adı" });
+      }
+    }
+    
+    // İkinci değişken kalıpları
+    if (varNum === 2 || idx === 1) {
+      if (templateName.includes("talep") || bodyText.includes("talep") || bodyText.includes("konulu")) {
+        suggestions.push({ key: "requestTitle", label: "Talep Başlığı" });
+      }
+      if (templateName.includes("teklif") || bodyText.includes("teklif")) {
+        suggestions.push({ key: "offerTitle", label: "Teklif Başlığı" });
+      }
+      if (bodyText.includes("fiyat") || bodyText.includes("tutar")) {
+        suggestions.push({ key: "amount", label: "Tutar" });
+      }
+    }
+    
+    return suggestions;
+  }, []);
+  
+  // Canlı önizleme oluştur
+  const getLivePreview = useCallback((template, vars) => {
+    if (!template) return "";
+    
+    let preview = "";
+    for (const comp of template.components || []) {
+      if (comp.type === "HEADER" && comp.format === "TEXT") {
+        let headerText = comp.text || "";
+        if (vars?.header) {
+          headerText = headerText.replace(/\{\{1\}\}/g, vars.header);
+        }
+        preview += `*${headerText}*\n\n`;
+      }
+      if (comp.type === "BODY") {
+        let bodyText = comp.text || "";
+        const templateVars = getTemplateVariables(template);
+        templateVars.body.forEach((varNum, idx) => {
+          const value = vars?.body?.[idx] || `{{${varNum}}}`;
+          bodyText = bodyText.replace(new RegExp(`\\{\\{${varNum}\\}\\}`, 'g'), value);
+        });
+        preview += bodyText;
+      }
+      if (comp.type === "FOOTER") {
+        preview += `\n\n_${comp.text || ""}_`;
+      }
+    }
+    return preview;
+  }, [getTemplateVariables]);
+  
+  // API için component parametreleri oluştur
+  const buildTemplateComponents = useCallback((template, vars) => {
+    const components = [];
+    
+    for (const component of template?.components || []) {
+      if (component.type === "HEADER" && vars?.header) {
+        if (component.format === "TEXT") {
+          components.push({
+            type: "header",
+            parameters: [{ type: "text", text: vars.header }],
+          });
+        }
+      }
+      
+      if (component.type === "BODY" && vars?.body?.length > 0) {
+        components.push({
+          type: "body",
+          parameters: vars.body.map((v) => ({ type: "text", text: v || "" })),
+        });
+      }
+    }
+    
+    return components;
+  }, []);
+  
+  // Şablon seçildiğinde değişkenleri otomatik doldur
+  const autoFillTemplateVariables = useCallback((template, setVars) => {
+    const templateVars = getTemplateVariables(template);
+    const customerName = customer?.name || conversation?.sender?.name || "";
+    const subject = conversation?.subject || "";
+    
+    const autoFilledBody = templateVars.body.map((varNum, idx) => {
+      const suggestions = getVariableSuggestions(template, varNum, idx);
+      
+      // İlk değişken genellikle müşteri adı
+      if (idx === 0 && customerName) {
+        return customerName;
+      }
+      
+      // İkinci değişken için konu başlığı
+      if (idx === 1 && subject) {
+        return subject;
+      }
+      
+      return "";
+    });
+    
+    setVars({ header: "", body: autoFilledBody });
+  }, [customer, conversation, getTemplateVariables, getVariableSuggestions]);
+  
   const [convertForm, setConvertForm] = useState({
     title: "",
     type: CASE_TYPE.OTHER,
@@ -1154,6 +1289,9 @@ export default function ConversationDetailPage() {
         templateName: selectedWhatsappTemplate?.name || null,
         templateLanguage: selectedWhatsappTemplate?.language || 'tr',
         forceTemplate: whatsappWindowStatus?.requiresTemplate || false,
+        templateComponents: selectedWhatsappTemplate 
+          ? buildTemplateComponents(selectedWhatsappTemplate, templateVariables) 
+          : undefined,
       } : {};
 
       // Mesajı onayla ve gönder (kanallarla ve attachment'larla birlikte)
@@ -1186,6 +1324,8 @@ export default function ConversationDetailPage() {
       setShowSendModal(false);
       setPendingSendMessageId(null);
       setAttachments([]); // Attachment'ları temizle
+      setSelectedWhatsappTemplate(null);
+      setTemplateVariables({ header: "", body: [] });
       loadData();
     } catch (error) {
       console.error("Send message error:", error);
@@ -1270,13 +1410,9 @@ export default function ConversationDetailPage() {
     
     setSendingDirectTemplate(true);
     try {
-      // 1. Önce mesajı taslak olarak oluştur (şablon içeriği ile)
-      const templateContent = `[WhatsApp Şablon: ${directSelectedTemplate.name}]\n\n${directSelectedTemplate.components?.map(c => {
-        if (c.type === 'BODY') return c.text;
-        if (c.type === 'HEADER' && c.format === 'TEXT') return c.text;
-        if (c.type === 'FOOTER') return c.text;
-        return '';
-      }).filter(Boolean).join('\n') || 'Şablon mesajı'}`;
+      // 1. Canlı önizleme ile şablon içeriğini oluştur (değişkenler uygulanmış)
+      const livePreviewContent = getLivePreview(directSelectedTemplate, directTemplateVariables);
+      const templateContent = `[WhatsApp Şablon: ${directSelectedTemplate.name}]\n\n${livePreviewContent}`;
       
       const messageData = {
         content: templateContent,
@@ -1296,7 +1432,9 @@ export default function ConversationDetailPage() {
       
       const newMessage = await addMessage(conversationId, messageData);
       
-      // 2. Mesajı WhatsApp üzerinden gönder
+      // 2. Mesajı WhatsApp üzerinden gönder (template components ile)
+      const templateComponents = buildTemplateComponents(directSelectedTemplate, directTemplateVariables);
+      
       await approveAndSendMessage(
         conversationId,
         newMessage.id,
@@ -1306,6 +1444,7 @@ export default function ConversationDetailPage() {
           recipientPhone: directTemplatePhone,
           templateName: directSelectedTemplate.name,
           templateLanguage: directSelectedTemplate.language || 'tr',
+          templateComponents,
           forceTemplate: true,
         }
       );
@@ -1317,6 +1456,7 @@ export default function ConversationDetailPage() {
       
       setShowWhatsAppTemplateModal(false);
       setDirectSelectedTemplate(null);
+      setDirectTemplateVariables({ header: "", body: [] });
       loadData();
     } catch (error) {
       console.error("WhatsApp template send error:", error);
@@ -4301,7 +4441,7 @@ export default function ConversationDetailPage() {
                       </div>
                       
                       {/* Template Seçimi */}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="text-xs text-amber-800">Şablon Seçin:</Label>
                         {loadingTemplates ? (
                           <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -4309,27 +4449,92 @@ export default function ConversationDetailPage() {
                             Şablonlar yükleniyor...
                           </div>
                         ) : whatsappTemplates.length > 0 ? (
-                          <Select
-                            value={selectedWhatsappTemplate?.name || ""}
-                            onValueChange={(value) => {
-                              const template = whatsappTemplates.find(t => t.name === value);
-                              setSelectedWhatsappTemplate(template);
-                            }}
-                          >
-                            <SelectTrigger className="bg-white">
-                              <SelectValue placeholder="Şablon seçin..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {whatsappTemplates.map((template) => (
-                                <SelectItem key={template.name} value={template.name}>
-                                  <div className="flex flex-col">
-                                    <span>{template.name}</span>
-                                    <span className="text-xs text-slate-500">{template.category}</span>
+                          <>
+                            <Select
+                              value={selectedWhatsappTemplate?.name || ""}
+                              onValueChange={(value) => {
+                                const template = whatsappTemplates.find(t => t.name === value);
+                                setSelectedWhatsappTemplate(template);
+                                if (template) {
+                                  autoFillTemplateVariables(template, setTemplateVariables);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Şablon seçin..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {whatsappTemplates.map((template) => (
+                                  <SelectItem key={template.name} value={template.name}>
+                                    <div className="flex flex-col">
+                                      <span>{template.name}</span>
+                                      <span className="text-xs text-slate-500">{template.category}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            {/* Seçili şablon için değişkenler */}
+                            {selectedWhatsappTemplate && (
+                              <div className="space-y-3 mt-3 p-3 border border-amber-200 rounded-lg bg-white">
+                                {/* Header değişkeni */}
+                                {getTemplateVariables(selectedWhatsappTemplate).header && (
+                                  <div>
+                                    <Label className="text-xs text-slate-600 flex items-center gap-1">
+                                      Başlık Değişkeni
+                                      <span className="text-slate-400">{`{{1}}`}</span>
+                                    </Label>
+                                    <Input
+                                      placeholder="Başlık değeri"
+                                      value={templateVariables.header || ""}
+                                      onChange={(e) => setTemplateVariables({ ...templateVariables, header: e.target.value })}
+                                      className="mt-1 h-8 text-sm"
+                                    />
                                   </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                )}
+                                
+                                {/* Body değişkenleri */}
+                                {getTemplateVariables(selectedWhatsappTemplate).body.map((varNum, idx) => {
+                                  const suggestions = getVariableSuggestions(selectedWhatsappTemplate, varNum, idx);
+                                  const label = suggestions.length > 0 ? suggestions[0].label : `Değişken ${varNum}`;
+                                  return (
+                                    <div key={idx}>
+                                      <Label className="text-xs text-slate-600 flex items-center gap-1">
+                                        {label}
+                                        <span className="text-slate-400">{`{{${varNum}}}`}</span>
+                                      </Label>
+                                      <Input
+                                        placeholder={label}
+                                        value={templateVariables.body?.[idx] || ""}
+                                        onChange={(e) => {
+                                          const newBody = [...(templateVariables.body || [])];
+                                          newBody[idx] = e.target.value;
+                                          setTemplateVariables({ ...templateVariables, body: newBody });
+                                        }}
+                                        className="mt-1 h-8 text-sm"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                                
+                                {/* Canlı önizleme */}
+                                <div className="mt-3">
+                                  <Label className="text-xs text-slate-600 flex items-center gap-1 mb-2">
+                                    <Eye className="h-3 w-3" />
+                                    Önizleme
+                                  </Label>
+                                  <div className="bg-[#e5ddd5] rounded-lg p-2">
+                                    <div className="bg-white rounded-lg p-2 shadow-sm max-w-[90%] ml-auto">
+                                      <pre className="text-xs whitespace-pre-wrap font-sans text-gray-800">
+                                        {getLivePreview(selectedWhatsappTemplate, templateVariables)}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <p className="text-xs text-amber-700">
                             Onaylı şablon bulunamadı. WhatsApp Admin panelinden şablon oluşturun.
@@ -4414,6 +4619,7 @@ export default function ConversationDetailPage() {
                 setPendingSendMessageId(null);
                 setWhatsappWindowStatus(null);
                 setSelectedWhatsappTemplate(null);
+                setTemplateVariables({ header: "", body: [] });
                 setEditableWhatsappPhone('');
                 setWhatsappPhoneError(null);
               }}
@@ -4789,8 +4995,8 @@ export default function ConversationDetailPage() {
 
       {/* WhatsApp Şablon Direkt Gönderim Modal */}
       <Dialog open={showWhatsAppTemplateModal} onOpenChange={setShowWhatsAppTemplateModal}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-green-600" />
               WhatsApp Şablon Gönder
@@ -4800,7 +5006,7 @@ export default function ConversationDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 flex-1 overflow-y-auto">
             {/* Alıcı Bilgisi */}
             <div className="bg-slate-50 rounded-lg p-3 space-y-2">
               <p className="text-sm font-medium text-slate-700">Alıcı:</p>
@@ -4858,11 +5064,14 @@ export default function ConversationDetailPage() {
                   Şablonlar yükleniyor...
                 </div>
               ) : directTemplates.length > 0 ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {directTemplates.map((template) => (
                     <div
                       key={template.name}
-                      onClick={() => setDirectSelectedTemplate(template)}
+                      onClick={() => {
+                        setDirectSelectedTemplate(template);
+                        autoFillTemplateVariables(template, setDirectTemplateVariables);
+                      }}
                       className={cn(
                         "p-3 rounded-lg border-2 cursor-pointer transition-all",
                         directSelectedTemplate?.name === template.name
@@ -4878,21 +5087,10 @@ export default function ConversationDetailPage() {
                               {template.category}
                             </Badge>
                           </div>
-                          {/* Template İçeriği Preview */}
-                          <div className="mt-2 text-xs text-slate-600 bg-slate-50 rounded p-2">
-                            {template.components?.map((comp, idx) => {
-                              if (comp.type === 'BODY') {
-                                return <p key={idx} className="whitespace-pre-wrap">{comp.text}</p>;
-                              }
-                              if (comp.type === 'HEADER' && comp.format === 'TEXT') {
-                                return <p key={idx} className="font-medium mb-1">{comp.text}</p>;
-                              }
-                              if (comp.type === 'FOOTER') {
-                                return <p key={idx} className="text-slate-400 mt-1 text-[10px]">{comp.text}</p>;
-                              }
-                              return null;
-                            })}
-                          </div>
+                          {/* Template kısa özeti */}
+                          <p className="mt-1 text-xs text-slate-500 line-clamp-1">
+                            {template.components?.find(c => c.type === 'BODY')?.text?.slice(0, 60)}...
+                          </p>
                         </div>
                         {directSelectedTemplate?.name === template.name && (
                           <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 ml-2" />
@@ -4914,26 +5112,90 @@ export default function ConversationDetailPage() {
               )}
             </div>
 
-            {/* Seçili Şablon Özeti */}
+            {/* Seçili şablon için değişkenler ve önizleme */}
             {directSelectedTemplate && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-800">
-                    Seçili Şablon: {directSelectedTemplate.name}
-                  </span>
+              <div className="space-y-4 p-4 border border-green-200 rounded-lg bg-green-50/50">
+                {/* Değişken Girişleri */}
+                {(getTemplateVariables(directSelectedTemplate).header || 
+                  getTemplateVariables(directSelectedTemplate).body.length > 0) && (
+                  <div className="space-y-3">
+                    <Label className="text-sm text-slate-700 flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      Değişkenler
+                    </Label>
+                    
+                    {/* Header değişkeni */}
+                    {getTemplateVariables(directSelectedTemplate).header && (
+                      <div>
+                        <Label className="text-xs text-slate-600">
+                          Başlık Değişkeni <span className="text-slate-400">{`{{1}}`}</span>
+                        </Label>
+                        <Input
+                          placeholder="Başlık değeri"
+                          value={directTemplateVariables.header || ""}
+                          onChange={(e) => setDirectTemplateVariables({ 
+                            ...directTemplateVariables, 
+                            header: e.target.value 
+                          })}
+                          className="mt-1 h-8 text-sm bg-white"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Body değişkenleri */}
+                    {getTemplateVariables(directSelectedTemplate).body.map((varNum, idx) => {
+                      const suggestions = getVariableSuggestions(directSelectedTemplate, varNum, idx);
+                      const label = suggestions.length > 0 ? suggestions[0].label : `Değişken ${varNum}`;
+                      return (
+                        <div key={idx}>
+                          <Label className="text-xs text-slate-600">
+                            {label} <span className="text-slate-400">{`{{${varNum}}}`}</span>
+                          </Label>
+                          <Input
+                            placeholder={label}
+                            value={directTemplateVariables.body?.[idx] || ""}
+                            onChange={(e) => {
+                              const newBody = [...(directTemplateVariables.body || [])];
+                              newBody[idx] = e.target.value;
+                              setDirectTemplateVariables({ ...directTemplateVariables, body: newBody });
+                            }}
+                            className="mt-1 h-8 text-sm bg-white"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {/* Canlı Önizleme */}
+                <div>
+                  <Label className="text-sm text-slate-700 flex items-center gap-1 mb-2">
+                    <Eye className="h-3.5 w-3.5 text-blue-500" />
+                    Önizleme
+                  </Label>
+                  <div className="bg-[#e5ddd5] rounded-lg p-3">
+                    <div className="bg-white rounded-lg p-3 shadow-sm max-w-[90%] ml-auto">
+                      <pre className="text-sm whitespace-pre-wrap font-sans text-gray-800">
+                        {getLivePreview(directSelectedTemplate, directTemplateVariables)}
+                      </pre>
+                      <p className="text-[10px] text-gray-400 text-right mt-1">
+                        {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-green-700">
-                  Bu şablon +{directTemplatePhone} numarasına gönderilecek.
-                </p>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 shrink-0">
             <Button
               variant="outline"
-              onClick={() => setShowWhatsAppTemplateModal(false)}
+              onClick={() => {
+                setShowWhatsAppTemplateModal(false);
+                setDirectSelectedTemplate(null);
+                setDirectTemplateVariables({ header: "", body: [] });
+              }}
               disabled={sendingDirectTemplate}
             >
               İptal

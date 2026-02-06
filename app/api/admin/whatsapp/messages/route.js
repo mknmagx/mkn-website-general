@@ -109,7 +109,7 @@ export async function POST(request) {
             error: 'Resim URL\'i gerekli',
           }, { status: 400 });
         }
-        result = await sendImageMessage(convId, to, imageUrl || mediaUrl, caption || '');
+        result = await sendImageMessage(convId, to, imageUrl || mediaUrl, caption || '', filename);
         break;
 
       case 'document':
@@ -131,7 +131,7 @@ export async function POST(request) {
           }, { status: 400 });
         }
         // Use generic media message for video and audio
-        result = await sendGenericMediaMessage(convId, to, type, mediaUrl, caption || '');
+        result = await sendGenericMediaMessage(convId, to, type, mediaUrl, caption || '', filename);
         break;
 
       case 'template':

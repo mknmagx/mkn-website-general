@@ -39,6 +39,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 // Icons
 import {
@@ -59,6 +65,7 @@ import {
   Trash2,
   Phone,
   MessageSquare,
+  Users,
 } from "lucide-react";
 
 // Custom WhatsApp Icon
@@ -98,9 +105,14 @@ export default function WhatsAppTemplatesPage() {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
   // Send template state
+  const [phoneInputMode, setPhoneInputMode] = useState("manual"); // manual | contact
+  const [contacts, setContacts] = useState([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [sendForm, setSendForm] = useState({
     phoneNumber: "",
-    variables: [],
+    header: null,
+    body: [],
   });
   const [sending, setSending] = useState(false);
 
@@ -122,6 +134,30 @@ export default function WhatsAppTemplatesPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch contacts for picker
+  const fetchContacts = async () => {
+    if (contacts.length > 0) return;
+    setLoadingContacts(true);
+    try {
+      const response = await fetch("/api/admin/whatsapp/contacts");
+      const data = await response.json();
+      if (data.success) {
+        setContacts(
+          (data.data || []).filter((c) => c.phone).map((c) => ({
+            id: c.id,
+            name: c.name || c.contactName || "İsimsiz",
+            phone: c.phone,
+            company: c.company || "",
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Contacts fetch error:", error);
+    } finally {
+      setLoadingContacts(false);
     }
   };
 
@@ -165,6 +201,25 @@ export default function WhatsAppTemplatesPage() {
 
     setSending(true);
     try {
+      // Build components array
+      const components = [];
+      
+      // Add header component if has header variable
+      if (sendForm.header !== null && sendForm.header !== undefined) {
+        components.push({
+          type: "header",
+          parameters: [{ type: "text", text: sendForm.header || "" }],
+        });
+      }
+      
+      // Add body component if has body variables
+      if (sendForm.body?.length > 0) {
+        components.push({
+          type: "body",
+          parameters: sendForm.body.map((v) => ({ type: "text", text: v || "" })),
+        });
+      }
+
       const response = await fetch("/api/admin/whatsapp/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,9 +229,7 @@ export default function WhatsAppTemplatesPage() {
           template: {
             name: selectedTemplate.name,
             language: selectedTemplate.language,
-            components: sendForm.variables.length > 0
-              ? [{ type: "body", parameters: sendForm.variables.map((v) => ({ type: "text", text: v })) }]
-              : undefined,
+            components: components.length > 0 ? components : undefined,
           },
         }),
       });
@@ -189,7 +242,7 @@ export default function WhatsAppTemplatesPage() {
           description: "Şablon mesajı gönderildi",
         });
         setSendDialogOpen(false);
-        setSendForm({ phoneNumber: "", variables: [] });
+        setSendForm({ phoneNumber: "", header: null, body: [] });
       } else {
         throw new Error(data.error);
       }
@@ -206,12 +259,24 @@ export default function WhatsAppTemplatesPage() {
 
   // Extract variables from template
   const extractVariables = (template) => {
-    if (!template?.components) return [];
+    if (!template?.components) return { header: null, body: [] };
+    
+    const result = { header: null, body: [] };
+    
+    // Check header for variables
+    const headerComponent = template.components.find((c) => c.type === "HEADER" && c.format === "TEXT");
+    if (headerComponent?.text?.includes("{{1}}")) {
+      result.header = "";
+    }
+    
+    // Check body for variables
     const bodyComponent = template.components.find((c) => c.type === "BODY");
-    if (!bodyComponent?.text) return [];
-
-    const matches = bodyComponent.text.match(/\{\{\d+\}\}/g) || [];
-    return matches.map((_, i) => "");
+    if (bodyComponent?.text) {
+      const matches = bodyComponent.text.match(/\{\{\d+\}\}/g) || [];
+      result.body = matches.map(() => "");
+    }
+    
+    return result;
   };
 
   // Filter templates
@@ -231,7 +296,7 @@ export default function WhatsAppTemplatesPage() {
     setSelectedTemplate(template);
     setSendForm({
       phoneNumber: "",
-      variables: extractVariables(template),
+      ...extractVariables(template),
     });
     setSendDialogOpen(true);
   };
@@ -553,9 +618,16 @@ export default function WhatsAppTemplatesPage() {
       </Dialog>
 
       {/* Send Dialog */}
-      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
+      <Dialog open={sendDialogOpen} onOpenChange={(open) => {
+        setSendDialogOpen(open);
+        if (open) fetchContacts();
+        if (!open) {
+          setPhoneInputMode("manual");
+          setContactSearch("");
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-green-600" />
               Şablon Mesajı Gönder
@@ -565,32 +637,134 @@ export default function WhatsAppTemplatesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Telefon Numarası</Label>
-              <Input
-                placeholder="+905xxxxxxxxx"
-                value={sendForm.phoneNumber}
-                onChange={(e) => setSendForm({ ...sendForm, phoneNumber: e.target.value })}
-              />
-              <p className="text-xs text-gray-500">
-                Ülke kodu ile birlikte girin (örn: +905551234567)
-              </p>
-            </div>
+          <div className="space-y-4 py-4 overflow-y-auto min-h-0 flex-1">
+            {/* Phone Input Tabs */}
+            <Tabs value={phoneInputMode} onValueChange={(val) => {
+              setPhoneInputMode(val);
+              if (val === "contact" && contacts.length === 0) fetchContacts();
+            }}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Manuel Giriş
+                </TabsTrigger>
+                <TabsTrigger value="contact" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Rehberden Seç
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="manual" className="space-y-2 mt-4">
+                <Label>Telefon Numarası</Label>
+                <Input
+                  placeholder="+905xxxxxxxxx"
+                  value={sendForm.phoneNumber}
+                  onChange={(e) => setSendForm({ ...sendForm, phoneNumber: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">
+                  Ülke kodu ile birlikte girin (örn: +905551234567)
+                </p>
+              </TabsContent>
+              
+              <TabsContent value="contact" className="space-y-3 mt-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Müşteri ara..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="max-h-[250px] overflow-y-auto border rounded-lg divide-y">
+                  {loadingContacts ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    </div>
+                  ) : contacts.filter(c => 
+                    c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                    c.phone.includes(contactSearch) ||
+                    c.company.toLowerCase().includes(contactSearch.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      Müşteri bulunamadı
+                    </div>
+                  ) : (
+                    contacts
+                      .filter(c => 
+                        c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                        c.phone.includes(contactSearch) ||
+                        c.company.toLowerCase().includes(contactSearch.toLowerCase())
+                      )
+                      .map(contact => (
+                        <button
+                          key={contact.id}
+                          type="button"
+                          onClick={() => {
+                            setSendForm({ ...sendForm, phoneNumber: contact.phone });
+                            setPhoneInputMode("manual");
+                          }}
+                          className={cn(
+                            "w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-3",
+                            sendForm.phoneNumber === contact.phone && "bg-green-50"
+                          )}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                            <span className="text-green-700 text-sm font-medium">
+                              {contact.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{contact.name}</p>
+                            <p className="text-xs text-gray-500">{contact.phone}</p>
+                          </div>
+                          {contact.company && (
+                            <span className="text-xs text-gray-400 truncate max-w-[100px]">
+                              {contact.company}
+                            </span>
+                          )}
+                        </button>
+                      ))
+                  )}
+                </div>
+                {sendForm.phoneNumber && (
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Seçili: {sendForm.phoneNumber}
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
 
-            {sendForm.variables.length > 0 && (
+            {/* Header Variable */}
+            {sendForm.header !== null && sendForm.header !== undefined && (
               <div className="space-y-2">
-                <Label>Değişkenler</Label>
-                {sendForm.variables.map((v, i) => (
+                <Label>Başlık Değişkeni</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 w-16">Başlık</span>
+                  <Input
+                    placeholder="Başlık değeri"
+                    value={sendForm.header}
+                    onChange={(e) => setSendForm({ ...sendForm, header: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Body Variables */}
+            {sendForm.body?.length > 0 && (
+              <div className="space-y-2">
+                <Label>Mesaj Değişkenleri</Label>
+                {sendForm.body.map((v, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 w-12">{`{{${i + 1}}}`}</span>
                     <Input
                       placeholder={`Değişken ${i + 1}`}
                       value={v}
                       onChange={(e) => {
-                        const vars = [...sendForm.variables];
+                        const vars = [...sendForm.body];
                         vars[i] = e.target.value;
-                        setSendForm({ ...sendForm, variables: vars });
+                        setSendForm({ ...sendForm, body: vars });
                       }}
                     />
                   </div>
@@ -601,19 +775,29 @@ export default function WhatsAppTemplatesPage() {
             {/* Preview */}
             <div className="bg-gray-50 rounded-lg p-3">
               <Label className="text-xs text-gray-500 mb-2 block">Önizleme</Label>
+              {/* Header Preview */}
+              {getHeaderInfo(selectedTemplate)?.format === "TEXT" && (
+                <p className="text-sm font-medium text-gray-800 mb-1">
+                  {getHeaderInfo(selectedTemplate)?.text?.replace(
+                    /\{\{1\}\}/g,
+                    sendForm.header || "{{1}}"
+                  )}
+                </p>
+              )}
+              {/* Body Preview */}
               <p className="text-sm text-gray-800">
                 {getPreviewText(selectedTemplate)?.replace(
                   /\{\{(\d+)\}\}/g,
                   (match, num) => {
                     const idx = parseInt(num) - 1;
-                    return sendForm.variables[idx] || match;
+                    return sendForm.body?.[idx] || match;
                   }
                 )}
               </p>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setSendDialogOpen(false)}>
               İptal
             </Button>

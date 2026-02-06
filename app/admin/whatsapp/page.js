@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useConversations, useMessages } from "@/hooks/use-whatsapp-realtime";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -110,17 +111,31 @@ export default function WhatsAppInboxPage() {
   const inputRef = useRef(null);
   const scrollViewportRef = useRef(null);
 
-  // State
-  const [loading, setLoading] = useState(true);
-  const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [newMessage, setNewMessage] = useState("");
-  const [sending, setSending] = useState(false);
+  // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Real-time data from Firestore (no polling needed!)
+  const {
+    conversations,
+    loading: conversationsLoading,
+    markAsRead,
+  } = useConversations({ statusFilter, searchQuery });
+
+  const {
+    messages,
+    loading: messagesLoading,
+  } = useMessages(selectedConversationId);
+
+  // Derived state
+  const selectedConversation = useMemo(() => 
+    conversations.find(c => c.id === selectedConversationId),
+    [conversations, selectedConversationId]
+  );
 
 
   // Modal States
@@ -129,6 +144,7 @@ export default function WhatsAppInboxPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [contactInfo, setContactInfo] = useState(null); // Rehberde kayıtlı kişi bilgisi
+  const [contactsMap, setContactsMap] = useState({}); // Tüm rehber kişileri (telefon -> isim)
   const [addingToContacts, setAddingToContacts] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
@@ -139,59 +155,23 @@ export default function WhatsAppInboxPage() {
   const [replyingTo, setReplyingTo] = useState(null); // Yanıtlanacak mesaj
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // Fetch conversations
-  const fetchConversations = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (searchQuery) params.append("search", searchQuery);
+  // Scroll tracking refs
+  const userScrolledUpRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
 
-      const response = await fetch(`/api/admin/whatsapp/conversations?${params}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setConversations(data.data || []);
+  // Select conversation handler
+  const handleSelectConversation = useCallback((conversation) => {
+    if (conversation?.id !== selectedConversationId) {
+      setSelectedConversationId(conversation?.id || null);
+      isInitialLoadRef.current = true;
+      userScrolledUpRef.current = false;
+      prevMessageCountRef.current = 0;
+      if (conversation?.id) {
+        markAsRead(conversation.id);
       }
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-    } finally {
-      setLoading(false);
     }
-  }, [statusFilter, searchQuery]);
-
-  // Fetch messages for selected conversation
-  const fetchMessages = useCallback(async (conversationId) => {
-    if (!conversationId) return;
-
-    setMessagesLoading(true);
-    try {
-      const response = await fetch(
-        `/api/admin/whatsapp/messages?conversationId=${conversationId}`
-      );
-      const data = await response.json();
-
-      if (data.success) {
-        setMessages(data.data || []);
-        
-        // Mark as read
-        await fetch("/api/admin/whatsapp/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "markAsRead",
-            conversationId,
-          }),
-        });
-
-        // Refresh conversations to update unread count
-        fetchConversations();
-      }
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, [fetchConversations]);
+  }, [selectedConversationId, markAsRead]);
 
   // Send message
   const handleSendMessage = async (e) => {
@@ -228,8 +208,10 @@ export default function WhatsAppInboxPage() {
       if (data.success) {
         setNewMessage("");
         setReplyingTo(null); // Clear reply state
-        fetchMessages(selectedConversation.id);
-        fetchConversations();
+        userScrolledUpRef.current = false; // Reset scroll flag on send
+        // Real-time listener will auto-update messages, no need to fetch
+        // Scroll to bottom after sending
+        setTimeout(() => scrollToBottom("smooth"), 200);
       } else if (data.requiresTemplate) {
         // Backend says window is closed, open template picker
         toast({
@@ -268,7 +250,7 @@ export default function WhatsAppInboxPage() {
           data: { status },
         }),
       });
-      fetchConversations();
+      // Real-time listener will auto-update
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -296,6 +278,40 @@ export default function WhatsAppInboxPage() {
     }
   }, []);
 
+  // Fetch all contacts for name mapping
+  const fetchAllContacts = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/whatsapp/contacts?limit=1000");
+      const data = await response.json();
+      
+      if (data.success && data.data?.length > 0) {
+        const map = {};
+        data.data.forEach(contact => {
+          // Telefon numarasından + işaretini çıkar ve normalize et
+          const phone = (contact.phoneNumber || "").replace(/[^0-9]/g, "");
+          if (phone && contact.name) {
+            map[phone] = contact.name;
+          }
+        });
+        setContactsMap(map);
+      }
+    } catch (error) {
+      console.error("Error fetching contacts:", error);
+    }
+  }, []);
+
+  // Load contacts map on mount
+  useEffect(() => {
+    fetchAllContacts();
+  }, [fetchAllContacts]);
+
+  // Get display name for conversation (prioritize contacts)
+  const getDisplayName = useCallback((conv) => {
+    if (!conv) return "";
+    const waId = (conv.waId || conv.phoneNumber || "").replace(/[^0-9]/g, "");
+    return contactsMap[waId] || conv.profileName || conv.phoneNumber || conv.waId;
+  }, [contactsMap]);
+
   // Add current conversation to contacts
   const handleAddToContacts = async () => {
     if (!selectedConversation) return;
@@ -322,6 +338,14 @@ export default function WhatsAppInboxPage() {
           description: "Kişi rehbere eklendi",
         });
         setContactInfo(data.contact);
+        // Ayrıca contactsMap'i güncelle
+        if (data.contact?.phoneNumber && data.contact?.name) {
+          const phone = (data.contact.phoneNumber || "").replace(/[^0-9]/g, "");
+          setContactsMap(prev => ({
+            ...prev,
+            [phone]: data.contact.name
+          }));
+        }
       } else {
         toast({
           title: "Hata",
@@ -417,19 +441,26 @@ export default function WhatsAppInboxPage() {
   // Handle scroll event
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    // Show button if we are scrolled up more than 100px from bottom
-    const isBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 100;
-    setShowScrollButton(!isBottom);
+    // Calculate distance from bottom
+    const distanceFromBottom = scrollHeight - clientHeight - scrollTop;
+    const isAtBottom = distanceFromBottom < 100;
+    
+    // Track if user has scrolled up
+    userScrolledUpRef.current = !isAtBottom;
+    
+    // Show scroll button if we are scrolled up more than 100px from bottom
+    setShowScrollButton(!isAtBottom);
   };
 
-  // Effects
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+  // Scroll to bottom function
+  const scrollToBottomManual = () => {
+    userScrolledUpRef.current = false; // Reset flag when user clicks scroll button
+    scrollToBottom("smooth");
+  };
 
+  // Effects - Real-time listeners are handled by hooks, no need for manual fetching
   useEffect(() => {
     if (selectedConversation) {
-      fetchMessages(selectedConversation.id);
       checkContactInPhonebook(selectedConversation.waId);
       // Reset message search and reply when conversation changes
       closeMessageSearch();
@@ -439,42 +470,35 @@ export default function WhatsAppInboxPage() {
     } else {
       setContactInfo(null);
     }
-  }, [selectedConversation, fetchMessages, checkContactInPhonebook]);
+  }, [selectedConversation, checkContactInPhonebook]);
 
+  // Scroll to bottom on initial load and new messages
   useEffect(() => {
-    // Mesajlar yüklendiğinde anında en alta git
     if (scrollViewportRef.current && messages.length > 0) {
-        // İlk renderda direkt en alta git
+      const hasNewMessages = messages.length > prevMessageCountRef.current;
+      
+      // Scroll on initial load
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
         scrollToBottom("auto");
         
-        // Görsellerin yüklenmesi ve DOM güncellemeleri için kısa bir gecikme ile tekrar kontrol et
-        const timer = setTimeout(() => {
-            scrollToBottom("auto");
-        }, 100);
-
-        // Daha uzun süren yüklemeler için bir güvenlik kontrolü (özellikle resimler varsa)
-        const longTimer = setTimeout(() => {
-            scrollToBottom("auto");
-        }, 500);
+        // Delay for images loading
+        const timer = setTimeout(() => scrollToBottom("auto"), 150);
+        const longTimer = setTimeout(() => scrollToBottom("auto"), 500);
         
         return () => {
-            clearTimeout(timer);
-            clearTimeout(longTimer);
+          clearTimeout(timer);
+          clearTimeout(longTimer);
         };
-    }
-  }, [messages, selectedConversation]); // selectedConversation değiştiğinde de tetikle
-
-  // Polling for new messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchConversations();
-      if (selectedConversation) {
-        fetchMessages(selectedConversation.id);
       }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [selectedConversation, fetchConversations, fetchMessages]);
+      // Scroll on new message if user is at bottom
+      else if (hasNewMessages && !userScrolledUpRef.current) {
+        setTimeout(() => scrollToBottom("smooth"), 100);
+      }
+      
+      prevMessageCountRef.current = messages.length;
+    }
+  }, [messages]);
 
   // Format timestamp
   const formatTime = (timestamp) => {
@@ -534,15 +558,9 @@ export default function WhatsAppInboxPage() {
       .slice(0, 2);
   };
 
-  // Check if service window is open
-  const isWindowOpen = (conversation) => {
-    if (!conversation) return false;
-    
-    // If isWithinWindow is true, check if not expired
-    if (conversation.isWithinWindow) return true;
-    
-    const expiry = conversation.serviceWindowExpiry;
-    if (!expiry) return false;
+  // Parse expiry date from various formats
+  const parseExpiryDate = (expiry) => {
+    if (!expiry) return null;
     
     let expiryDate;
     if (expiry?.toDate && typeof expiry.toDate === 'function') {
@@ -554,10 +572,63 @@ export default function WhatsAppInboxPage() {
     } else if (typeof expiry === 'string' || typeof expiry === 'number') {
       expiryDate = new Date(expiry);
     } else {
-      return false;
+      return null;
     }
     
+    return expiryDate;
+  };
+  
+  // Check if service window is open - ALWAYS check expiry time
+  const isWindowOpen = (conversation) => {
+    if (!conversation) return false;
+    
+    const expiry = conversation.serviceWindowExpiry;
+    if (!expiry) return false;
+    
+    const expiryDate = parseExpiryDate(expiry);
+    if (!expiryDate || isNaN(expiryDate.getTime())) return false;
+    
+    // Always compare current time with expiry - isWithinWindow flag alone is not reliable
     return new Date() < expiryDate;
+  };
+  
+  // Get remaining time info for the service window
+  const getWindowTimeInfo = (conversation) => {
+    if (!conversation) return null;
+    
+    const expiry = conversation.serviceWindowExpiry;
+    if (!expiry) return null;
+    
+    const expiryDate = parseExpiryDate(expiry);
+    if (!expiryDate || isNaN(expiryDate.getTime())) return null;
+    
+    const now = new Date();
+    const diffMs = expiryDate.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      return { isOpen: false, expired: true, text: "Pencere kapandı" };
+    }
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    let timeText;
+    if (diffHours > 0) {
+      timeText = `${diffHours} saat ${diffMinutes} dakika kaldı`;
+    } else if (diffMinutes > 0) {
+      timeText = `${diffMinutes} dakika kaldı`;
+    } else {
+      timeText = "1 dakikadan az kaldı";
+    }
+    
+    return { 
+      isOpen: true, 
+      expired: false, 
+      text: timeText,
+      hours: diffHours,
+      minutes: diffMinutes,
+      expiryDate 
+    };
   };
 
   return (
@@ -607,7 +678,7 @@ export default function WhatsAppInboxPage() {
 
         {/* Conversation List */}
         <ScrollArea className="flex-1">
-          {loading ? (
+          {conversationsLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
@@ -628,18 +699,18 @@ export default function WhatsAppInboxPage() {
                     "p-3 cursor-pointer hover:bg-gray-50 transition-colors",
                     selectedConversation?.id === conv.id && "bg-green-50"
                   )}
-                  onClick={() => setSelectedConversation(conv)}
+                  onClick={() => handleSelectConversation(conv)}
                 >
                   <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarFallback className="bg-green-100 text-green-700 text-sm">
-                        {getInitials(conv.profileName)}
+                        {getInitials(getDisplayName(conv))}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm text-gray-900 truncate">
-                          {conv.profileName || conv.phoneNumber || conv.waId}
+                          {getDisplayName(conv)}
                         </span>
                         <span className="text-xs text-gray-500">
                           {formatTime(conv.lastMessageAt)}
@@ -679,7 +750,7 @@ export default function WhatsAppInboxPage() {
                   onClick={() => setShowProfileDialog(true)}
                 >
                   <AvatarFallback className="bg-green-100 text-green-700 text-sm">
-                    {getInitials(selectedConversation.profileName)}
+                    {getInitials(contactInfo?.name || selectedConversation.profileName)}
                   </AvatarFallback>
                 </Avatar>
                 <div 
@@ -687,7 +758,7 @@ export default function WhatsAppInboxPage() {
                   onClick={() => setShowProfileDialog(true)}
                 >
                   <h3 className="font-medium text-sm text-gray-900 hover:text-green-600 transition-colors">
-                    {selectedConversation.profileName || selectedConversation.waId}
+                    {contactInfo?.name || selectedConversation.profileName || selectedConversation.waId}
                   </h3>
                   <p className="text-xs text-gray-500">
                     {selectedConversation.phoneNumber || selectedConversation.waId}
@@ -754,12 +825,25 @@ export default function WhatsAppInboxPage() {
                         {isWindowOpen(selectedConversation) ? "Pencere Açık" : "Şablon Gerekli"}
                       </Badge>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">
-                        {isWindowOpen(selectedConversation)
-                          ? "24 saatlik mesajlaşma penceresi açık"
-                          : "Serbest mesaj göndermek için müşterinin mesaj göndermesi gerekli"}
-                      </p>
+                    <TooltipContent className="max-w-xs">
+                      {(() => {
+                        const timeInfo = getWindowTimeInfo(selectedConversation);
+                        if (timeInfo?.isOpen) {
+                          return (
+                            <div className="text-xs space-y-1">
+                              <p className="font-medium">24 saatlik mesajlaşma penceresi açık</p>
+                              <p className="text-green-500">⏱ {timeInfo.text}</p>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="text-xs space-y-1">
+                              <p className="font-medium">Pencere kapalı</p>
+                              <p className="text-amber-500">Serbest mesaj göndermek için müşterinin mesaj göndermesi gerekli</p>
+                            </div>
+                          );
+                        }
+                      })()}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -978,6 +1062,11 @@ export default function WhatsAppInboxPage() {
                                 </div>
                               </div>
                             )}
+                            {(msg.filename || msg.content?.filename) && !(msg.caption || msg.content?.caption) && (
+                              <p className="text-xs text-gray-500 mt-1 truncate">
+                                {msg.filename || msg.content?.filename}
+                              </p>
+                            )}
                             {(msg.caption || msg.content?.caption) && (
                               <p className="text-sm text-gray-900 mt-1">
                                 {msg.caption || msg.content?.caption}
@@ -1001,6 +1090,11 @@ export default function WhatsAppInboxPage() {
                                 </div>
                               </div>
                             )}
+                            {(msg.filename || msg.content?.filename) && (
+                              <p className="text-xs text-gray-500 mt-1 truncate">
+                                {msg.filename || msg.content?.filename}
+                              </p>
+                            )}
                             {(msg.caption || msg.content?.caption) && (
                               <p className="text-sm text-gray-900 mt-1">
                                 {msg.caption || msg.content?.caption}
@@ -1021,25 +1115,42 @@ export default function WhatsAppInboxPage() {
                                 <p className="text-xs">Ses dosyası yükleniyor...</p>
                               </div>
                             )}
+                            {(msg.filename || msg.content?.filename) && (
+                              <p className="text-xs text-gray-500 mt-1 truncate">
+                                {msg.filename || msg.content?.filename}
+                              </p>
+                            )}
+                            {(msg.caption || msg.content?.caption) && (
+                              <p className="text-sm text-gray-900 mt-1">
+                                {msg.caption || msg.content?.caption}
+                              </p>
+                            )}
                           </div>
                         )}
                         {msg.type === "document" && (
-                          <div 
-                            className="flex items-center gap-2 bg-gray-50 rounded p-2 cursor-pointer hover:bg-gray-100 transition-colors"
-                            onClick={() => {
-                              const url = msg.mediaUrl || msg.content?.mediaUrl;
-                              if (url) window.open(url, '_blank');
-                            }}
-                          >
-                            <FileText className="h-8 w-8 text-gray-400" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {msg.filename || msg.content?.filename || "Dosya"}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {(msg.mediaUrl || msg.content?.mediaUrl) ? 'İndirmek için tıklayın' : 'Yükleniyor...'}
-                              </p>
+                          <div>
+                            <div 
+                              className="flex items-center gap-2 bg-gray-50 rounded p-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                              onClick={() => {
+                                const url = msg.mediaUrl || msg.content?.mediaUrl;
+                                if (url) window.open(url, '_blank');
+                              }}
+                            >
+                              <FileText className="h-8 w-8 text-gray-400" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {msg.filename || msg.content?.filename || "Dosya"}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {(msg.mediaUrl || msg.content?.mediaUrl) ? 'İndirmek için tıklayın' : 'Yükleniyor...'}
+                                </p>
+                              </div>
                             </div>
+                            {(msg.caption || msg.content?.caption) && (
+                              <p className="text-sm text-gray-900 mt-1">
+                                {msg.caption || msg.content?.caption}
+                              </p>
+                            )}
                           </div>
                         )}
                         {msg.type === "sticker" && (
@@ -1060,7 +1171,11 @@ export default function WhatsAppInboxPage() {
                         {msg.type === "template" && (
                           <div className="text-sm">
                             <p className="text-gray-500 text-xs mb-1">📋 Şablon</p>
-                            <p className="text-gray-900">{msg.templateName || msg.content?.templateName}</p>
+                            {msg.text ? (
+                              <p className="text-gray-900 whitespace-pre-wrap">{msg.text}</p>
+                            ) : (
+                              <p className="text-gray-600 italic">{msg.templateName || msg.content?.templateName}</p>
+                            )}
                           </div>
                         )}
 
@@ -1108,7 +1223,7 @@ export default function WhatsAppInboxPage() {
                 variant="secondary"
                 size="icon"
                 className="absolute bottom-4 right-4 h-10 w-10 rounded-full shadow-lg bg-white/90 hover:bg-white z-10 animate-in fade-in zoom-in duration-200"
-                onClick={() => scrollToBottom("smooth")}
+                onClick={scrollToBottomManual}
               >
                 <ChevronDown className="h-5 w-5 text-gray-600" />
                 {conversations.find(c => c.id === selectedConversation?.id)?.unreadCount > 0 && (
@@ -1257,7 +1372,7 @@ export default function WhatsAppInboxPage() {
         open={showNewMessage}
         onOpenChange={setShowNewMessage}
         onConversationStart={(result) => {
-          fetchConversations();
+          // Real-time listener will auto-update
           toast({
             title: "Mesaj Gönderildi",
             description: "Şablon mesajı başarıyla gönderildi.",
@@ -1273,6 +1388,14 @@ export default function WhatsAppInboxPage() {
             title: "Kişi Eklendi",
             description: `${contact.name || contact.phoneNumber} rehbere eklendi.`,
           });
+          // contactsMap'i güncelle
+          if (contact?.phoneNumber && contact?.name) {
+            const phone = (contact.phoneNumber || "").replace(/[^0-9]/g, "");
+            setContactsMap(prev => ({
+              ...prev,
+              [phone]: contact.name
+            }));
+          }
         }}
       />
 
@@ -1280,17 +1403,20 @@ export default function WhatsAppInboxPage() {
         open={showTemplates}
         onOpenChange={setShowTemplates}
         onTemplateSelect={(result) => {
-          fetchConversations();
-          if (selectedConversation) {
-            fetchMessages(selectedConversation.id);
-          }
+          // Real-time listener will auto-update
+          userScrolledUpRef.current = false;
+          setTimeout(() => scrollToBottom("smooth"), 200);
           toast({
             title: "Şablon Gönderildi",
             description: "Şablon mesajı başarıyla gönderildi.",
           });
         }}
         recipientPhone={selectedConversation?.waId}
-        recipientName={selectedConversation?.profileName}
+        recipientName={contactInfo?.name || selectedConversation?.profileName}
+        hidePhoneInput={!!selectedConversation?.waId}
+        contextData={{
+          customerName: contactInfo?.name || selectedConversation?.profileName || "",
+        }}
       />
 
       <DeleteConversationDialog
@@ -1298,9 +1424,8 @@ export default function WhatsAppInboxPage() {
         onOpenChange={setShowDeleteDialog}
         conversation={selectedConversation}
         onDeleted={() => {
-          setSelectedConversation(null);
-          setMessages([]);
-          fetchConversations();
+          setSelectedConversationId(null);
+          // Real-time listener will auto-update conversations
           toast({
             title: "Konuşma Silindi",
             description: "Konuşma ve tüm mesajlar silindi.",
@@ -1316,6 +1441,14 @@ export default function WhatsAppInboxPage() {
         conversation={selectedConversation}
         onContactUpdate={(updatedContact) => {
           setContactInfo(updatedContact);
+          // contactsMap'i de güncelle
+          if (updatedContact?.phoneNumber && updatedContact?.name) {
+            const phone = (updatedContact.phoneNumber || "").replace(/[^0-9]/g, "");
+            setContactsMap(prev => ({
+              ...prev,
+              [phone]: updatedContact.name
+            }));
+          }
         }}
         onAddToContacts={handleAddToContacts}
       />
@@ -1327,8 +1460,9 @@ export default function WhatsAppInboxPage() {
         conversationId={selectedConversation?.id}
         recipientPhone={selectedConversation?.waId}
         onMediaSent={() => {
-          fetchMessages(selectedConversation?.id);
-          fetchConversations();
+          // Real-time listener will auto-update
+          userScrolledUpRef.current = false;
+          setTimeout(() => scrollToBottom("smooth"), 200);
         }}
       />
     </div>

@@ -156,6 +156,7 @@ export function MediaUploadDialog({
           conversationId,
           mediaUrl: finalMediaUrl,
           caption: caption.trim() || undefined,
+          filename: selectedFile?.name || undefined,
         }),
       });
 

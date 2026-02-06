@@ -1,35 +1,25 @@
 /**
  * WhatsApp Media Upload API Route
- * POST: Medya yükle (Cloudinary üzerinden)
+ * POST: Medya yükle (Firebase Storage üzerinden)
  */
 
 import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import admin from '@/lib/firebase-admin';
 
 // Allowed media types and their configurations
 const MEDIA_CONFIG = {
   image: {
-    folder: 'whatsapp/images',
-    resourceType: 'image',
+    folder: 'whatsapp/outbound/images',
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxSize: 5 * 1024 * 1024, // 5MB
   },
   video: {
-    folder: 'whatsapp/videos',
-    resourceType: 'video',
+    folder: 'whatsapp/outbound/videos',
     allowedTypes: ['video/mp4', 'video/3gpp', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
     maxSize: 16 * 1024 * 1024, // 16MB
   },
   document: {
-    folder: 'whatsapp/documents',
-    resourceType: 'raw',
+    folder: 'whatsapp/outbound/documents',
     allowedTypes: [
       'application/pdf',
       'application/msword',
@@ -43,8 +33,7 @@ const MEDIA_CONFIG = {
     maxSize: 100 * 1024 * 1024, // 100MB
   },
   audio: {
-    folder: 'whatsapp/audio',
-    resourceType: 'video', // Cloudinary uses 'video' for audio
+    folder: 'whatsapp/outbound/audio',
     allowedTypes: [
       'audio/aac',
       'audio/mp4',
@@ -93,50 +82,45 @@ export async function POST(request) {
     // Generate unique filename
     const timestamp = Date.now();
     const originalName = file.name?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'file';
-    const publicId = `${timestamp}_${originalName}`;
+    const filename = `${config.folder}/${timestamp}_${originalName}`;
 
     console.log(`[WhatsApp Media Upload] Uploading ${type}: ${originalName}, size: ${file.size}, type: ${file.type}`);
 
-    // Upload to Cloudinary
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: config.resourceType,
-          folder: config.folder,
-          public_id: publicId,
-          // Video için ek ayarlar
-          ...(type === 'video' && {
-            eager: [{ format: 'mp4' }],
-            eager_async: true,
-          }),
-        },
-        (error, result) => {
-          if (error) {
-            console.error('[WhatsApp Media Upload] Cloudinary error:', error);
-            reject(error);
-          } else {
-            console.log('[WhatsApp Media Upload] Success:', result.secure_url);
-            resolve(result);
-          }
-        }
-      );
+    // Upload to Firebase Storage
+    const bucket = admin.storage().bucket('mkngroup-general.firebasestorage.app');
+    const storageFile = bucket.file(filename);
 
-      uploadStream.end(buffer);
+    await storageFile.save(buffer, {
+      metadata: {
+        contentType: file.type,
+        metadata: {
+          source: 'whatsapp-admin',
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+        },
+      },
     });
+
+    // Make file publicly accessible
+    await storageFile.makePublic();
+
+    // Get public URL
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+
+    console.log(`[WhatsApp Media Upload] Success: ${publicUrl}`);
 
     return NextResponse.json({
       success: true,
-      mediaUrl: uploadResult.secure_url,
-      mediaId: uploadResult.public_id,
-      format: uploadResult.format,
-      size: uploadResult.bytes,
+      mediaUrl: publicUrl,
+      mediaId: filename,
+      format: file.type,
+      size: file.size,
     });
   } catch (error) {
     console.error('WhatsApp media upload error:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Dosya yüklenemedi',
-      details: error.http_code ? `Cloudinary error: ${error.http_code}` : undefined,
     }, { status: 500 });
   }
 }
