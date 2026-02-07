@@ -381,11 +381,15 @@ export async function POST(request) {
       const startTime = Date.now();
       console.log(`🚀 Generating with: Provider=${provider.id}, Model=${apiModelId}, SystemPrompt: ${systemPrompt?.substring(0, 50)}...`);
 
+      // Config'den gelen settings'i fallback olarak kullan
+      const effectiveMaxTokens = options.maxTokens || configData?.settings?.maxTokens || 4096;
+      const effectiveTemperature = options.temperature ?? configData?.settings?.temperature ?? 0.7;
+
       // İçerik üret (returnMetadata: true ile metadata da döner)
       const result = await provider.generateContent(finalUserPrompt, {
         systemPrompt,
-        maxTokens: options.maxTokens || 4096,
-        temperature: options.temperature || 0.7,
+        maxTokens: effectiveMaxTokens,
+        temperature: effectiveTemperature,
         apiId: apiModelId,
         model: apiModelId,
         returnMetadata: true, // ⭐ Always get metadata
@@ -431,8 +435,8 @@ export async function POST(request) {
             operation: configData.operation,
           } : null,
           settings: {
-            temperature: options.temperature || 0.7,
-            maxTokens: options.maxTokens || 4096,
+            temperature: effectiveTemperature,
+            maxTokens: effectiveMaxTokens,
           },
           performance: {
             duration: `${duration}s`,

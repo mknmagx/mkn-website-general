@@ -151,6 +151,11 @@ import {
   checkFormulaPromptsV4Seeded,
 } from "@/lib/services/formula-prompts-v4";
 
+import {
+  seedWhatsAppAI,
+  checkWhatsAppAISeeded,
+} from "@/lib/services/whatsapp-ai-seed";
+
 // ============================================================================
 // PROVIDER CARD COMPONENT
 // ============================================================================
@@ -1914,6 +1919,10 @@ export default function AiSettingsPage() {
   const [seedingFormulaV4, setSeedingFormulaV4] = useState(false);
   const [formulaV4Seeded, setFormulaV4Seeded] = useState({ allSeeded: false, seeded: 0, total: 4 });
 
+  // WhatsApp AI seed states
+  const [seedingWhatsApp, setSeedingWhatsApp] = useState(false);
+  const [whatsAppSeeded, setWhatsAppSeeded] = useState({ isFullySeeded: false, configurationExists: false, promptExists: false });
+
   // CRM Case Summary seed durumunu kontrol et
   useEffect(() => {
     const checkCaseSummary = async () => {
@@ -1938,6 +1947,19 @@ export default function AiSettingsPage() {
       }
     };
     checkFormulaV4();
+  }, []);
+
+  // WhatsApp AI seed durumunu kontrol et
+  useEffect(() => {
+    const checkWhatsApp = async () => {
+      try {
+        const result = await checkWhatsAppAISeeded();
+        setWhatsAppSeeded(result);
+      } catch (error) {
+        console.error("WhatsApp AI seed kontrolü hatası:", error);
+      }
+    };
+    checkWhatsApp();
   }, []);
 
   /**
@@ -1997,6 +2019,36 @@ export default function AiSettingsPage() {
       });
     } finally {
       setSeedingFormulaV4(false);
+    }
+  };
+
+  /**
+   * WHATSAPP AI AYARLARINI YÜKLE
+   */
+  const handleSeedWhatsApp = async () => {
+    setSeedingWhatsApp(true);
+    try {
+      const result = await seedWhatsAppAI();
+      if (result.success) {
+        toast({
+          title: "📱 WhatsApp AI Ayarları Yüklendi!",
+          description: "Metin düzeltme konfigürasyonu ve prompt başarıyla eklendi.",
+        });
+        const updatedStatus = await checkWhatsAppAISeeded();
+        setWhatsAppSeeded(updatedStatus);
+        loadData();
+      } else {
+        throw new Error(result.error || "Bilinmeyen hata");
+      }
+    } catch (error) {
+      console.error("WhatsApp AI seed hatası:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingWhatsApp(false);
     }
   };
 
@@ -3325,6 +3377,72 @@ export default function AiSettingsPage() {
                           <>
                             <Upload className="mr-2 h-4 w-4" />
                             {caseSummarySeeded?.isSeeded ? "Güncelle" : "Yükle"}
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* WhatsApp AI Text Revision */}
+                  <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-green-100 dark:bg-green-900/50 rounded-xl">
+                            <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                              WhatsApp Metin Düzeltme
+                            </CardTitle>
+                            <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
+                              AI ile mesaj düzeltme özelliği
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={whatsAppSeeded?.isFullySeeded 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                          }
+                        >
+                          {whatsAppSeeded?.isFullySeeded ? "Yüklendi" : "Yüklenmedi"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">İçerik:</p>
+                        <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                          <li className="flex items-center gap-2">
+                            {whatsAppSeeded?.configurationExists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            AI Konfigürasyonu
+                          </li>
+                          <li className="flex items-center gap-2">
+                            {whatsAppSeeded?.promptExists 
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                              : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                            Metin Düzeltme Prompt'u
+                          </li>
+                        </ul>
+                      </div>
+                      <Button
+                        onClick={handleSeedWhatsApp}
+                        disabled={seedingWhatsApp}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {seedingWhatsApp ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {whatsAppSeeded?.isFullySeeded ? "Güncelle" : "Yükle"}
                           </>
                         )}
                       </Button>

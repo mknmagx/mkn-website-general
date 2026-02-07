@@ -47,6 +47,7 @@ import {
   DEFAULT_LOCAL_SETTINGS,
   resetLocalSettings,
 } from "../../../../lib/services/crm-v2";
+import { authenticatedFetch } from "../../../../lib/api/auth-fetch";
 
 // UI Components
 import {
@@ -183,6 +184,14 @@ export default function CrmSettingsPage() {
   const [loadingSyncStatus, setLoadingSyncStatus] = useState(false);
   const [runningSync, setRunningSync] = useState(false);
   const [syncPhase, setSyncPhase] = useState('');
+
+  // Duplicate Detection & Merge state
+  const [duplicateData, setDuplicateData] = useState(null);
+  const [detectingDuplicates, setDetectingDuplicates] = useState(false);
+  const [mergingDuplicates, setMergingDuplicates] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState(null);
+  const [selectedMasterId, setSelectedMasterId] = useState(null);
 
   // Message Count Recalculation state
   const [recalculatingCounts, setRecalculatingCounts] = useState(false);
@@ -633,6 +642,184 @@ export default function CrmSettingsPage() {
     } finally {
       setRunningSync(false);
       setSyncPhase('');
+    }
+  };
+
+  // Duplicate Detection & Merge handlers (API üzerinden)
+  const handleDetectDuplicates = async () => {
+    if (detectingDuplicates) return;
+    
+    setDetectingDuplicates(true);
+    try {
+      const response = await authenticatedFetch('/api/admin/crm-v2/duplicate-merge');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'API hatası');
+      }
+      
+      if (result.success) {
+        setDuplicateData(result);
+        
+        const totalDupes = result.summary.totalCustomerDuplicates + result.summary.totalCompanyDuplicates;
+        
+        if (totalDupes > 0) {
+          toast({
+            title: "🔍 Duplicate Tespiti Tamamlandı",
+            description: `${result.summary.customerGroups} CRM grubu (${result.summary.totalCustomerDuplicates} duplicate), ${result.summary.companyGroups} Company grubu (${result.summary.totalCompanyDuplicates} duplicate) bulundu.`,
+          });
+        } else {
+          toast({
+            title: "✅ Temiz",
+            description: "Duplicate kayıt bulunamadı.",
+          });
+        }
+      } else {
+        throw new Error(result.error || 'Tespit başarısız');
+      }
+    } catch (error) {
+      console.error("Detect duplicates error:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDetectingDuplicates(false);
+    }
+  };
+
+  const handleMergeDuplicateGroup = async (type, group) => {
+    if (mergingDuplicates) return;
+    
+    // Master ID kontrolü
+    if (!selectedMasterId) {
+      toast({
+        title: "Master Seçin",
+        description: "Lütfen ana kayıt olarak kullanılacak kaydı seçin.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const confirmed = window.confirm(
+      `⚠️ Dikkat!\n\n` +
+      `Bu işlem ${group.records.length - 1} duplicate kaydı silecek ve tüm ilişkili verileri ` +
+      `seçtiğiniz ana kayda taşıyacak.\n\n` +
+      `Bu işlem geri alınamaz!\n\n` +
+      `Devam etmek istiyor musunuz?`
+    );
+    
+    if (!confirmed) return;
+    
+    setMergingDuplicates(true);
+    try {
+      const ids = group.records.map(r => r.id);
+      
+      const response = await authenticatedFetch('/api/admin/crm-v2/duplicate-merge', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          ids,
+          masterId: selectedMasterId,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        const errorMsg = result.details ? `${result.error}: ${result.details}` : result.error;
+        throw new Error(errorMsg || 'API hatası');
+      }
+      
+      if (result.success) {
+        toast({
+          title: "✅ Birleştirme Tamamlandı",
+          description: `${result.mergedCount} kayıt birleştirildi ve silindi.`,
+        });
+        
+        // Refresh data
+        setShowDuplicateDialog(false);
+        setSelectedDuplicateGroup(null);
+        setSelectedMasterId(null);
+        await handleDetectDuplicates();
+        await loadCompanySyncStatus();
+      } else {
+        throw new Error(result.error || 'Birleştirme başarısız');
+      }
+    } catch (error) {
+      console.error("Merge error:", error);
+      toast({
+        title: "Birleştirme Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setMergingDuplicates(false);
+    }
+  };
+
+  const handleMergeAllDuplicates = async () => {
+    if (mergingDuplicates) return;
+    
+    const totalDupes = (duplicateData?.summary?.totalCustomerDuplicates || 0) + 
+                        (duplicateData?.summary?.totalCompanyDuplicates || 0);
+    
+    const confirmed = window.confirm(
+      `⚠️ TEHLİKELİ İŞLEM!\n\n` +
+      `Bu işlem TÜM duplicate kayıtları (${totalDupes} adet) otomatik olarak birleştirecek.\n\n` +
+      `• Her grupta en eski kayıt master olarak seçilecek\n` +
+      `• Diğer kayıtlar silinecek\n` +
+      `• İlişkili veriler master'a taşınacak\n\n` +
+      `Bu işlem GERİ ALINAMAZ!\n\n` +
+      `Devam etmek istediğinizden emin misiniz?`
+    );
+    
+    if (!confirmed) return;
+    
+    // İkinci onay
+    const doubleConfirm = window.confirm(
+      `Son onay: ${totalDupes} duplicate kaydı birleştirilecek ve silinecek.\n\nOnaylıyor musunuz?`
+    );
+    
+    if (!doubleConfirm) return;
+    
+    setMergingDuplicates(true);
+    try {
+      const response = await authenticatedFetch('/api/admin/crm-v2/duplicate-merge', {
+        method: 'POST',
+        body: JSON.stringify({ mergeAll: true }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        const errorMsg = result.details ? `${result.error}: ${result.details}` : result.error;
+        throw new Error(errorMsg || 'API hatası');
+      }
+      
+      if (result.success) {
+        toast({
+          title: "✅ Tüm Birleştirmeler Tamamlandı",
+          description: `CRM: ${result.customers.merged} birleştirildi, Companies: ${result.companies.merged} birleştirildi.`,
+        });
+        
+        // Refresh
+        setDuplicateData(null);
+        await handleDetectDuplicates();
+        await loadCompanySyncStatus();
+      } else {
+        throw new Error(result.error || 'Toplu birleştirme başarısız');
+      }
+    } catch (error) {
+      console.error("Merge all error:", error);
+      toast({
+        title: "Birleştirme Hatası",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setMergingDuplicates(false);
     }
   };
 
@@ -1599,6 +1786,171 @@ export default function CrmSettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Duplicate Detection & Merge */}
+        <Card className="bg-white border-orange-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-50 rounded-lg">
+                <GitMerge className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <CardTitle>Duplicate Tespiti ve Birleştirme</CardTitle>
+                <CardDescription>
+                  Email ve telefon numarasına göre duplicate kayıtları tespit edip birleştirin
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Duplicate Status */}
+            {duplicateData && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                  <Users className="h-5 w-5 text-blue-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-blue-900">{duplicateData.summary.customerGroups}</div>
+                  <div className="text-xs text-blue-600">CRM Grupları</div>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                  <AlertTriangle className="h-5 w-5 text-blue-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-blue-900">{duplicateData.summary.totalCustomerDuplicates}</div>
+                  <div className="text-xs text-blue-600">CRM Duplicates</div>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 text-center">
+                  <Building2 className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-amber-900">{duplicateData.summary.companyGroups}</div>
+                  <div className="text-xs text-amber-600">Company Grupları</div>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 text-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-amber-900">{duplicateData.summary.totalCompanyDuplicates}</div>
+                  <div className="text-xs text-amber-600">Company Duplicates</div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleDetectDuplicates}
+                disabled={detectingDuplicates}
+                variant="outline"
+              >
+                {detectingDuplicates ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4 mr-2" />
+                )}
+                Duplicateleri Tespit Et
+              </Button>
+              
+              {duplicateData && (duplicateData.summary.totalCustomerDuplicates > 0 || duplicateData.summary.totalCompanyDuplicates > 0) && (
+                <Button
+                  onClick={handleMergeAllDuplicates}
+                  disabled={mergingDuplicates}
+                  variant="destructive"
+                >
+                  {mergingDuplicates ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <GitMerge className="h-4 w-4 mr-2" />
+                  )}
+                  Tümünü Birleştir
+                </Button>
+              )}
+            </div>
+
+            {/* Duplicate Groups List */}
+            {duplicateData && (
+              <div className="space-y-4">
+                {/* CRM Customer Duplicates */}
+                {duplicateData.customers.duplicateGroups?.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      CRM Customer Duplicates ({duplicateData.customers.duplicateGroups.length} grup)
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {duplicateData.customers.duplicateGroups.map((group, idx) => (
+                        <div 
+                          key={idx}
+                          className="p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                          onClick={() => {
+                            setSelectedDuplicateGroup({ type: 'customer', group });
+                            setSelectedMasterId(null);
+                            setShowDuplicateDialog(true);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Badge variant="secondary" className="text-xs mb-1">
+                                {group.matchType === 'email' ? 'Email Eşleşmesi' : 'Telefon Eşleşmesi'}
+                              </Badge>
+                              <p className="text-sm font-medium text-blue-900">{group.matchValue}</p>
+                              <p className="text-xs text-blue-600">{group.records.length} kayıt</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-blue-400" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Company Duplicates */}
+                {duplicateData.companies.duplicateGroups?.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Company Duplicates ({duplicateData.companies.duplicateGroups.length} grup)
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {duplicateData.companies.duplicateGroups.map((group, idx) => (
+                        <div 
+                          key={idx}
+                          className="p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
+                          onClick={() => {
+                            setSelectedDuplicateGroup({ type: 'company', group });
+                            setSelectedMasterId(null);
+                            setShowDuplicateDialog(true);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Badge variant="secondary" className="text-xs mb-1">
+                                {group.matchType === 'email' ? 'Email Eşleşmesi' : 'Telefon Eşleşmesi'}
+                              </Badge>
+                              <p className="text-sm font-medium text-amber-900">{group.matchValue}</p>
+                              <p className="text-xs text-amber-600">{group.records.length} kayıt</p>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-amber-400" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {duplicateData.customers.duplicateGroups?.length === 0 && duplicateData.companies.duplicateGroups?.length === 0 && (
+                  <div className="text-center py-6 text-slate-500">
+                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+                    <p>Duplicate kayıt bulunamadı. Verileriniz temiz!</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div className="text-sm text-orange-800">
+                  <p className="font-medium mb-1">Dikkat</p>
+                  <p>Birleştirme işlemi geri alınamaz. İşlem sırasında tüm ilişkili veriler (konuşmalar, teklifler, sözleşmeler) ana kayda taşınır ve duplicate kayıtlar silinir.</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Hızlı Yanıtlar */}
         <Card className="bg-white">
           <CardHeader>
@@ -2538,6 +2890,161 @@ export default function CrmSettingsPage() {
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Gönder
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Merge Dialog */}
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitMerge className="h-5 w-5 text-orange-600" />
+              Duplicate Kayıtları Birleştir
+            </DialogTitle>
+            <DialogDescription>
+              Ana kayıt olarak kullanılacak kaydı seçin. Diğer kayıtlar silinecek ve verileri ana kayda taşınacak.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDuplicateGroup && (
+            <div className="space-y-4">
+              {/* Match Info */}
+              <div className="p-3 bg-slate-100 rounded-lg">
+                <p className="text-sm text-slate-600">
+                  <strong>Eşleşme:</strong> {selectedDuplicateGroup.group.matchType === 'email' ? 'Email' : 'Telefon'} - {selectedDuplicateGroup.group.matchValue}
+                </p>
+              </div>
+
+              {/* Records List */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">
+                  Kayıtlar ({selectedDuplicateGroup.group.records.length} adet) - Ana kaydı seçin:
+                </p>
+                {selectedDuplicateGroup.group.records.map((record) => (
+                  <div
+                    key={record.id}
+                    className={cn(
+                      "p-4 border rounded-lg cursor-pointer transition-all",
+                      selectedMasterId === record.id
+                        ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    )}
+                    onClick={() => setSelectedMasterId(record.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-slate-900">{record.name || 'İsimsiz'}</span>
+                          {selectedMasterId === record.id && (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                              Ana Kayıt
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-slate-600 space-y-0.5">
+                          {record.email && (
+                            <p className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {record.email}
+                            </p>
+                          )}
+                          {record.phone && (
+                            <p className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {record.phone}
+                            </p>
+                          )}
+                          {record.companyName && (
+                            <p className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {record.companyName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          {record.type && <Badge variant="secondary" className="text-xs">{record.type}</Badge>}
+                          {record.status && <Badge variant="secondary" className="text-xs">{record.status}</Badge>}
+                          {record.linkedCompanyId && (
+                            <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200">
+                              <Link2 className="h-3 w-3 mr-1" />
+                              Bağlı
+                            </Badge>
+                          )}
+                          {record.linkedCustomerId && (
+                            <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200">
+                              <Link2 className="h-3 w-3 mr-1" />
+                              Bağlı
+                            </Badge>
+                          )}
+                          {(record.conversationCount > 0 || record.proformaCount > 0) && (
+                            <Badge variant="outline" className="text-xs">
+                              {record.conversationCount > 0 && `${record.conversationCount} konuşma`}
+                              {record.proformaCount > 0 && `${record.proformaCount} proje`}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                        selectedMasterId === record.id
+                          ? "border-emerald-500 bg-emerald-500"
+                          : "border-slate-300"
+                      )}>
+                        {selectedMasterId === record.id && (
+                          <CheckCircle2 className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Warning */}
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
+                  <p className="text-sm text-orange-800">
+                    <strong>Dikkat:</strong> Seçili olmayan {selectedDuplicateGroup.group.records.length - 1} kayıt silinecek. 
+                    Bu kayıtlara ait tüm ilişkili veriler (konuşmalar, teklifler, sözleşmeler) ana kayda taşınacak.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDuplicateDialog(false);
+                setSelectedDuplicateGroup(null);
+                setSelectedMasterId(null);
+              }}
+              disabled={mergingDuplicates}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={() => handleMergeDuplicateGroup(
+                selectedDuplicateGroup.type,
+                selectedDuplicateGroup.group
+              )}
+              disabled={mergingDuplicates || !selectedMasterId}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {mergingDuplicates ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Birleştiriliyor...
+                </>
+              ) : (
+                <>
+                  <GitMerge className="h-4 w-4 mr-2" />
+                  Birleştir
                 </>
               )}
             </Button>

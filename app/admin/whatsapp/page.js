@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useConversations, useMessages } from "@/hooks/use-whatsapp-realtime";
+import { useUnifiedAI, AI_CONTEXTS } from "@/hooks/use-unified-ai";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -80,6 +81,7 @@ import {
   Trash2,
   Reply,
   CornerDownLeft,
+  Wand2,
 } from "lucide-react";
 
 // Custom WhatsApp Icon
@@ -110,6 +112,15 @@ export default function WhatsAppInboxPage() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const scrollViewportRef = useRef(null);
+
+  // AI Text Revision Hook
+  const {
+    generateContent: reviseText,
+    loading: revisingText,
+    configLoading: aiConfigLoading,
+    config: aiConfig,
+    error: aiError,
+  } = useUnifiedAI(AI_CONTEXTS.WHATSAPP_TEXT_REVISION);
 
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,6 +183,38 @@ export default function WhatsAppInboxPage() {
       }
     }
   }, [selectedConversationId, markAsRead]);
+
+  // AI Text Revision - Metin düzeltme
+  const handleReviseText = useCallback(async () => {
+    if (!newMessage.trim() || revisingText) return;
+
+    try {
+      const result = await reviseText(null, {
+        promptVariables: {
+          original_text: newMessage.trim(),
+        },
+      });
+
+      if (result.success && result.content) {
+        setNewMessage(result.content);
+        toast({
+          title: "Metin Düzeltildi",
+          description: "Mesajınız gramer ve söz dizilimi açısından iyileştirildi.",
+        });
+        // Focus back to input
+        inputRef.current?.focus();
+      } else {
+        throw new Error(result.error || "Düzeltme başarısız");
+      }
+    } catch (error) {
+      console.error("AI text revision error:", error);
+      toast({
+        title: "Düzeltme Hatası",
+        description: error.message || "Metin düzeltilemedi. Tekrar deneyin.",
+        variant: "destructive",
+      });
+    }
+  }, [newMessage, revisingText, reviseText, toast]);
 
   // Send message
   const handleSendMessage = async (e) => {
@@ -1268,14 +1311,14 @@ export default function WhatsAppInboxPage() {
               
               <div className="p-3">
               {isWindowOpen(selectedConversation) ? (
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <form onSubmit={handleSendMessage} className="flex items-end gap-2">
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 text-gray-500 hover:text-yellow-500"
+                        className="h-9 w-9 text-gray-500 hover:text-yellow-500 shrink-0"
                       >
                         <Smile className="h-5 w-5" />
                       </Button>
@@ -1304,22 +1347,64 @@ export default function WhatsAppInboxPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-gray-500 hover:text-green-600"
+                    className="h-9 w-9 text-gray-500 hover:text-green-600 shrink-0"
                     onClick={() => setShowMediaUpload(true)}
                   >
                     <Paperclip className="h-5 w-5" />
                   </Button>
-                  <Input
-                    ref={inputRef}
-                    placeholder="Mesaj yazın..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="flex-1 h-9 bg-white"
-                  />
+                  <div className="flex-1 relative">
+                    <textarea
+                      ref={inputRef}
+                      placeholder="Mesaj yazın..."
+                      value={newMessage}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        // Auto-resize textarea
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        // Shift+Enter = yeni satır, sadece Enter = gönder
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (newMessage.trim() && !sending) {
+                            handleSendMessage(e);
+                          }
+                        }
+                      }}
+                      className="w-full min-h-[36px] max-h-[120px] px-3 py-2 text-sm bg-white border border-gray-200 rounded-md resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      rows={1}
+                    />
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-gray-500 hover:text-purple-600 shrink-0"
+                          onClick={handleReviseText}
+                          disabled={!newMessage.trim() || revisingText || aiConfigLoading || !!aiError}
+                        >
+                          {revisingText ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : aiConfigLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-300" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{aiConfigLoading ? "AI yükleniyor..." : aiError ? "AI yapılandırma hatası" : "AI ile düzelt"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Button
                     type="submit"
                     size="icon"
-                    className="h-9 w-9 bg-green-600 hover:bg-green-700"
+                    className="h-9 w-9 bg-green-600 hover:bg-green-700 shrink-0"
                     disabled={!newMessage.trim() || sending}
                   >
                     {sending ? (
