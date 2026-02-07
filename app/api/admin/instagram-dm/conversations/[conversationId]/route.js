@@ -13,6 +13,8 @@ import {
   addTag,
   removeTag,
   assignTo,
+  clearMessages,
+  deleteConversation,
 } from '@/lib/services/instagram-dm';
 
 export async function GET(request, { params }) {
@@ -73,6 +75,9 @@ export async function PATCH(request, { params }) {
       case 'markAsRead':
         await markAsRead(conversationId);
         break;
+      case 'clearMessages':
+        await clearMessages(conversationId);
+        break;
       default:
         return NextResponse.json(
           { success: false, error: 'Invalid action' },
@@ -88,6 +93,25 @@ export async function PATCH(request, { params }) {
     });
   } catch (error) {
     console.error('Error updating conversation:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const { conversationId } = await params;
+
+    await deleteConversation(conversationId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Conversation deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

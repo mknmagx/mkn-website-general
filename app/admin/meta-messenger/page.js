@@ -42,6 +42,8 @@ import {
   Settings,
   RotateCcw,
   Facebook,
+  Trash2,
+  Eraser,
 } from "lucide-react";
 
 // Custom Meta Icon Component
@@ -273,6 +275,77 @@ export default function MetaMessengerInboxPage() {
     } catch (error) {
       toast({
         title: "Etiket eklenemedi",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Clear conversation messages
+  const handleClearMessages = async (conversationId) => {
+    if (!confirm("Bu konuşmanın tüm mesajları silinecek. Emin misiniz?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/instagram-dm/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "clearMessages",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Mesajlar Temizlendi",
+          description: "Konuşma içeriği silindi",
+        });
+        // Refresh messages
+        if (selectedConversation?.id === conversationId) {
+          await fetchMessages(conversationId);
+        }
+      } else {
+        throw new Error(data.error || "İşlem başarısız");
+      }
+    } catch (error) {
+      toast({
+        title: "Mesajlar temizlenemedi",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Delete conversation
+  const handleDeleteConversation = async (conversationId) => {
+    if (!confirm("Bu konuşma kalıcı olarak silinecek. Emin misiniz?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/instagram-dm/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Konuşma Silindi",
+          description: "Konuşma kalıcı olarak kaldırıldı",
+        });
+        // Clear selected conversation if it was deleted
+        if (selectedConversation?.id === conversationId) {
+          setSelectedConversation(null);
+          setMessages([]);
+        }
+        // Refresh conversation list
+        await fetchConversations();
+      } else {
+        throw new Error(data.error || "İşlem başarısız");
+      }
+    } catch (error) {
+      toast({
+        title: "Konuşma silinemedi",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -622,7 +695,7 @@ export default function MetaMessengerInboxPage() {
                         <MoreVertical className="h-4 w-4 text-gray-500" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-56">
                       {selectedConversation.status === 'open' ? (
                         <DropdownMenuItem onClick={() => handleUpdateStatus(selectedConversation.id, CONVERSATION_STATUS.CLOSED)}>
                           <Archive className="h-4 w-4 mr-2" />
@@ -634,6 +707,21 @@ export default function MetaMessengerInboxPage() {
                           Yeniden Aç
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => handleClearMessages(selectedConversation.id)}
+                        className="text-orange-600 focus:text-orange-700 focus:bg-orange-50"
+                      >
+                        <Eraser className="h-4 w-4 mr-2" />
+                        İçeriği Temizle
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteConversation(selectedConversation.id)}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Konuşmayı Sil
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <div className="px-2 py-1.5 text-xs font-medium text-gray-500">Etiket Ekle</div>
                       {Object.values(CONVERSATION_TAGS).map((tag) => (

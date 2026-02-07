@@ -772,15 +772,19 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Instagram Account Info */}
+        {/* Instagram & Facebook Account Info */}
         <Card className="bg-white border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Instagram className="h-5 w-5 text-purple-600" />
-              Instagram Hesap Bilgileri
+              <div className="flex items-center gap-1.5">
+                <Facebook className="h-4.5 w-4.5 text-blue-600" />
+                <span className="text-gray-400">+</span>
+                <Instagram className="h-5 w-5 text-pink-600" />
+              </div>
+              Instagram & Facebook Bilgileri
             </CardTitle>
             <CardDescription>
-              Bağlanacak Instagram Business hesabı
+              Bağlanacak Facebook sayfası ve Instagram Business hesabı
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -830,7 +834,7 @@ export default function SettingsPage() {
 
             <Separator className="my-4" />
 
-            <Button onClick={handleSave} disabled={saving} className="w-full bg-purple-600 hover:bg-purple-700">
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Hesap Bilgilerini Kaydet
             </Button>
@@ -967,35 +971,20 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Debug & Test Panel */}
+        {/* Quick Actions Panel */}
         <Card className="lg:col-span-2 bg-white border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Bug className="h-5 w-5 text-amber-600" />
-              Debug & Test
+              <Settings2 className="h-5 w-5 text-gray-600" />
+              Hızlı İşlemler
             </CardTitle>
             <CardDescription>
-              API bağlantılarını test edin
+              Sistem kurulumu ve test işlemleri
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Action Buttons - Grouped */}
+            {/* Main Action Buttons */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Button 
-                variant="outline" 
-                onClick={fullApiTest}
-                disabled={debugLoading}
-                className="justify-start h-auto py-3 px-4"
-              >
-                <div className="flex items-center gap-3">
-                  {debugLoading ? <Loader2 className="h-5 w-5 animate-spin text-green-600" /> : <CheckCircle2 className="h-5 w-5 text-green-600" />}
-                  <div className="text-left">
-                    <div className="font-medium text-sm">Full API Test</div>
-                    <div className="text-xs text-gray-500">Tüm endpoint'leri test et</div>
-                  </div>
-                </div>
-              </Button>
-              
               <Button 
                 variant="outline" 
                 onClick={fetchAccountInfo}
@@ -1005,8 +994,8 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-3">
                   {debugLoading ? <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> : <MetaIcon className="h-5 w-5 text-blue-600" />}
                   <div className="text-left">
-                    <div className="font-medium text-sm">Hesap Bilgileri</div>
-                    <div className="text-xs text-gray-500">Token'dan hesap çek</div>
+                    <div className="font-medium text-sm">Hesap Bilgilerini Çek</div>
+                    <div className="text-xs text-gray-500">Token'dan otomatik al</div>
                   </div>
                 </div>
               </Button>
@@ -1020,8 +1009,8 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-3">
                   {debugLoading ? <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> : <Link2 className="h-5 w-5 text-blue-600" />}
                   <div className="text-left">
-                    <div className="font-medium text-sm">Page Subscribe</div>
-                    <div className="text-xs text-gray-500">Webhook'a bağla</div>
+                    <div className="font-medium text-sm">Webhook Bağlantısı</div>
+                    <div className="text-xs text-gray-500">Page'i subscribe et</div>
                   </div>
                 </div>
               </Button>
@@ -1035,87 +1024,25 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-3">
                   {debugLoading ? <Loader2 className="h-5 w-5 animate-spin text-amber-600" /> : <RefreshCw className="h-5 w-5 text-amber-600" />}
                   <div className="text-left">
-                    <div className="font-medium text-sm">Mesaj Sync</div>
+                    <div className="font-medium text-sm">Mesajları Senkronize Et</div>
                     <div className="text-xs text-gray-500">Eski mesajları çek</div>
                   </div>
                 </div>
               </Button>
-            </div>
-
-            {/* Secondary Actions */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+              
               <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={debugFirestore}
+                variant="outline" 
+                onClick={fullApiTest}
                 disabled={debugLoading}
-                className="text-xs"
+                className="justify-start h-auto py-3 px-4"
               >
-                <Database className="h-3.5 w-3.5 mr-1.5" />
-                Firestore
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={debugToken}
-                disabled={debugLoading}
-                className="text-xs"
-              >
-                <Key className="h-3.5 w-3.5 mr-1.5" />
-                Token Debug
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={debugConversations}
-                disabled={debugLoading}
-                className="text-xs"
-              >
-                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                Konuşmalar
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    disabled={debugLoading}
-                    className="text-xs"
-                  >
-                    <Send className="h-3.5 w-3.5 mr-1.5" />
-                    Test Webhook
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => testWebhookManual('instagram')}>
-                    <Instagram className="h-4 w-4 mr-2 text-pink-600" />
-                    Instagram Webhook
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => testWebhookManual('facebook')}>
-                    <Facebook className="h-4 w-4 mr-2 text-blue-600" />
-                    Facebook Webhook
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={checkPageSubscription}
-                disabled={debugLoading}
-                className="text-xs"
-              >
-                <Shield className="h-3.5 w-3.5 mr-1.5" />
-                Subscription Check
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={clearMessagesData}
-                disabled={debugLoading}
-                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                Temizle
+                <div className="flex items-center gap-3">
+                  {debugLoading ? <Loader2 className="h-5 w-5 animate-spin text-green-600" /> : <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Bağlantı Testi</div>
+                    <div className="text-xs text-gray-500">API kontrolü</div>
+                  </div>
+                </div>
               </Button>
             </div>
 
