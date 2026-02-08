@@ -13,6 +13,7 @@ import {
   toggleUserStatus,
   deleteUser,
   updateUser,
+  createUserRecordByUID,
   USER_ROLES,
 } from "../../../lib/services/admin-user-service";
 import { ROLE_LEVELS } from "../../../lib/services/admin-permissions-service";
@@ -235,38 +236,71 @@ export default function UsersPage() {
     }
   };
 
-  const handleCreateUser = async (userData) => {
+  const handleCreateUser = async (userData, creationMode = "auto") => {
     try {
-      const result = await createUserWithAdmin(userData, currentUser?.role);
+      let result;
 
-      if (result.success) {
-        await logger.logUserAction(
-          "user_created",
-          result.userId,
-          `Yeni kullanıcı oluşturuldu: ${userData.email}`,
-          {
-            newUserEmail: userData.email,
-            newUserRole: userData.role,
-            newUserName: userData.displayName,
-          }
-        );
+      if (creationMode === "manual") {
+        // Manuel UID modu - sadece Firestore'a kayıt ekle
+        result = await createUserRecordByUID(userData.uid, userData, currentUser?.role);
+        
+        if (result.success) {
+          await logger.logUserAction(
+            "user_record_created_manual",
+            result.userId,
+            `Manuel kullanıcı kaydı oluşturuldu: ${userData.email}`,
+            {
+              newUserEmail: userData.email,
+              newUserRole: userData.role,
+              mode: "manual",
+              uid: userData.uid,
+            }
+          );
 
-        setShowCreateModal(false);
-
-        setGeneratedPassword(result.generatedPassword);
-        setNewUserEmail(userData.email);
-        setShowPasswordModal(true);
-
-        toast({
-          title: "Başarılı",
-          description: "Yeni kullanıcı oluşturuldu.",
-        });
+          setShowCreateModal(false);
+          await loadData();
+          
+          toast({
+            title: "Başarılı",
+            description: "Kullanıcı kaydı başarıyla oluşturuldu.",
+          });
+        } else {
+          throw new Error(result.error);
+        }
       } else {
-        throw new Error(result.error);
+        // Otomatik mod - API ile Authentication + Firestore
+        result = await createUserWithAdmin(userData, currentUser?.role);
+
+        if (result.success) {
+          await logger.logUserAction(
+            "user_created",
+            result.userId,
+            `Yeni kullanıcı oluşturuldu: ${userData.email}`,
+            {
+              newUserEmail: userData.email,
+              newUserRole: userData.role,
+              newUserName: userData.displayName,
+              mode: "auto",
+            }
+          );
+
+          setShowCreateModal(false);
+          setGeneratedPassword(result.generatedPassword);
+          setNewUserEmail(userData.email);
+          setShowPasswordModal(true);
+
+          toast({
+            title: "Başarılı",
+            description: "Yeni kullanıcı oluşturuldu.",
+          });
+        } else {
+          throw new Error(result.error);
+        }
       }
     } catch (error) {
       await logger.logErrorAction("user_create_failed", error, {
         email: userData.email,
+        mode: creationMode,
       });
 
       toast({
@@ -909,6 +943,8 @@ export default function UsersPage() {
 }
 
 function CreateUserModal({ onClose, onCreate, currentUserRole }) {
+  const [creationMode, setCreationMode] = useState("auto"); // "auto" or "manual"
+  const [manualUID, setManualUID] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     displayName: "",
@@ -946,6 +982,13 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
     setLoading(true);
 
     try {
+      // Validation for manual mode
+      if (creationMode === "manual" && !manualUID.trim()) {
+        alert("Lütfen kullanıcı UID'sini girin");
+        setLoading(false);
+        return;
+      }
+
       const processedData = {
         ...formData,
         displayName:
@@ -957,23 +1000,24 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
             formData.company.employeeId ||
             `MKN-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
         },
+        ...(creationMode === "manual" && { uid: manualUID.trim() }),
       };
 
-      await onCreate(processedData);
+      await onCreate(processedData, creationMode);
     } catch (error) {
-      // Error handling without console spam
+      console.error("Error creating user:", error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-xl font-semibold text-gray-900">
-            Yeni Kullanıcı Oluştur
+            Yeni Kullanıcı Ekle
           </h3>
           <button
             onClick={onClose}
@@ -993,6 +1037,110 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
               />
             </svg>
           </button>
+        </div>
+
+        {/* Mode Selection */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Kullanıcı Oluşturma Modu
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setCreationMode("auto")}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                creationMode === "auto"
+                  ? "border-blue-500 bg-white shadow-sm"
+                  : "border-gray-300 bg-white hover:border-gray-400"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                    creationMode === "auto"
+                      ? "border-blue-500"
+                      : "border-gray-300"
+                  }`}
+                >
+                  {creationMode === "auto" && (
+                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                  )}
+                </div>
+                <div className="text-left">
+                  <h4 className="font-medium text-gray-900">
+                    Otomatik Oluştur
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Email ve otomatik şifre ile yeni kullanıcı hesabı oluştur
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCreationMode("manual")}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                creationMode === "manual"
+                  ? "border-blue-500 bg-white shadow-sm"
+                  : "border-gray-300 bg-white hover:border-gray-400"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                    creationMode === "manual"
+                      ? "border-blue-500"
+                      : "border-gray-300"
+                  }`}
+                >
+                  {creationMode === "manual" && (
+                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+                  )}
+                </div>
+                <div className="text-left">
+                  <h4 className="font-medium text-gray-900">Manuel UID</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Firebase Auth'da mevcut kullanıcı için kayıt oluştur
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {creationMode === "manual" && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex gap-2 mb-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-yellow-800">
+                    Manuel Mod Kullanımı
+                  </h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Bu modu kullanmadan önce Firebase Authentication panelinden
+                    kullanıcı oluşturmuş olmanız gerekir. Kullanıcının UID'sini
+                    aşağıya girin.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Kullanıcı UID *
+                </label>
+                <input
+                  type="text"
+                  required={creationMode === "manual"}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  placeholder="5OoIoWuUKHV7jqDZucThgpNP7Sg1"
+                  value={manualUID}
+                  onChange={(e) => setManualUID(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Firebase Console → Authentication → Users → UID sütunu
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -1044,7 +1192,7 @@ function CreateUserModal({ onClose, onCreate, currentUserRole }) {
         {/* Content */}
         <div className="max-h-[60vh] overflow-y-auto">
           <div className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">{/* FORM CONTENT CONTINUES... */}
               {/* Temel Bilgiler Tab */}
               {activeTab === "basic" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1520,7 +1668,7 @@ function ViewUserModal({ user, onClose }) {
   const [activeTab, setActiveTab] = useState("basic");
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -1977,7 +2125,7 @@ function EditUserModal({ user, onClose, onUpdate, currentUserRole }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -2367,7 +2515,7 @@ function PasswordDisplayModal({ email, password, onClose }) {
 
   if (showWarning) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
         <div className="bg-white rounded-lg max-w-md w-full p-6">
           <div className="text-center">
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />

@@ -130,6 +130,12 @@ import {
   checkAiSettingsSeeded,
 } from "@/lib/services/ai-settings-seed";
 
+import {
+  seedOpenAIGPT5Models,
+  checkGPT5ModelsSeeded,
+  getGPT5ModelStatistics,
+} from "@/lib/services/ai-settings-openai-gpt5-seed";
+
 import { AI_CONTENT_SETTINGS } from "@/lib/ai-models";
 
 import {
@@ -1923,6 +1929,10 @@ export default function AiSettingsPage() {
   const [seedingWhatsApp, setSeedingWhatsApp] = useState(false);
   const [whatsAppSeeded, setWhatsAppSeeded] = useState({ isFullySeeded: false, configurationExists: false, promptExists: false });
 
+  // OpenAI GPT-5+ models seed states
+  const [seedingGPT5, setSeedingGPT5] = useState(false);
+  const [gpt5Seeded, setGpt5Seeded] = useState({ allSeeded: false, seededCount: 0, totalCount: 5 });
+
   // CRM Case Summary seed durumunu kontrol et
   useEffect(() => {
     const checkCaseSummary = async () => {
@@ -1960,6 +1970,19 @@ export default function AiSettingsPage() {
       }
     };
     checkWhatsApp();
+  }, []);
+
+  // OpenAI GPT-5+ models seed durumunu kontrol et
+  useEffect(() => {
+    const checkGPT5 = async () => {
+      try {
+        const result = await checkGPT5ModelsSeeded();
+        setGpt5Seeded(result);
+      } catch (error) {
+        console.error("GPT-5+ models seed kontrolü hatası:", error);
+      }
+    };
+    checkGPT5();
   }, []);
 
   /**
@@ -2049,6 +2072,36 @@ export default function AiSettingsPage() {
       });
     } finally {
       setSeedingWhatsApp(false);
+    }
+  };
+
+  /**
+   * OPENAI GPT-5+ MODELLERİNİ YÜKLE
+   */
+  const handleSeedGPT5Models = async () => {
+    setSeedingGPT5(true);
+    try {
+      const result = await seedOpenAIGPT5Models();
+      if (result.success) {
+        toast({
+          title: "🚀 GPT-5+ Modelleri Yüklendi!",
+          description: result.message,
+        });
+        const updatedStatus = await checkGPT5ModelsSeeded();
+        setGpt5Seeded(updatedStatus);
+        loadData();
+      } else {
+        throw new Error(result.error || "Bilinmeyen hata");
+      }
+    } catch (error) {
+      console.error("GPT-5+ models seed hatası:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSeedingGPT5(false);
     }
   };
 
@@ -3443,6 +3496,92 @@ export default function AiSettingsPage() {
                           <>
                             <Upload className="mr-2 h-4 w-4" />
                             {whatsAppSeeded?.isFullySeeded ? "Güncelle" : "Yükle"}
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* OpenAI GPT-5+ Models */}
+                  <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
+                            <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                              OpenAI GPT-5+ Modelleri
+                            </CardTitle>
+                            <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
+                              Yeni nesil GPT-5, 5.2, 5.2 Pro modelleri
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={gpt5Seeded?.allSeeded 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400" 
+                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                          }
+                        >
+                          {gpt5Seeded?.seededCount}/{gpt5Seeded?.totalCount}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">İçerik:</p>
+                        <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                          {gpt5Seeded?.models?.map((model) => (
+                            <li key={model.id} className="flex items-center gap-2">
+                              {model.exists 
+                                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> 
+                                : <XCircle className="h-3.5 w-3.5 text-slate-300" />}
+                              {model.name}
+                            </li>
+                          ))}
+                          {(!gpt5Seeded?.models || gpt5Seeded.models.length === 0) && (
+                            <>
+                              <li className="flex items-center gap-2">
+                                <XCircle className="h-3.5 w-3.5 text-slate-300" />
+                                GPT-5
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <XCircle className="h-3.5 w-3.5 text-slate-300" />
+                                GPT-5.2
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <XCircle className="h-3.5 w-3.5 text-slate-300" />
+                                GPT-5.2 Pro
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <XCircle className="h-3.5 w-3.5 text-slate-300" />
+                                GPT-5 Turbo
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <XCircle className="h-3.5 w-3.5 text-slate-300" />
+                                GPT-5 Mini
+                              </li>
+                            </>
+                          )}
+                        </ul>
+                      </div>
+                      <Button
+                        onClick={handleSeedGPT5Models}
+                        disabled={seedingGPT5}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        {seedingGPT5 ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {gpt5Seeded?.allSeeded ? "Güncelle" : "Yükle"}
                           </>
                         )}
                       </Button>
