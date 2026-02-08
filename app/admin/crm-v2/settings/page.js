@@ -208,6 +208,19 @@ export default function CrmSettingsPage() {
   const [localSettings, setLocalSettings] = useState(DEFAULT_LOCAL_SETTINGS);
   const [savingLocalSettings, setSavingLocalSettings] = useState(false);
 
+  // Migration state - Müşteri bazlı conversation birleştirme
+  const [migrationStats, setMigrationStats] = useState(null);
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [migrationRunning, setMigrationRunning] = useState(false);
+  const [migrationResult, setMigrationResult] = useState(null);
+  const [showMigrationDetails, setShowMigrationDetails] = useState(false);
+
+  // WhatsApp Contacts Migration state
+  const [waMigrationStats, setWaMigrationStats] = useState(null);
+  const [waMigrationLoading, setWaMigrationLoading] = useState(false);
+  const [waMigrationRunning, setWaMigrationRunning] = useState(false);
+  const [waMigrationResult, setWaMigrationResult] = useState(null);
+
   // Load settings
   useEffect(() => {
     loadSettings();
@@ -522,6 +535,237 @@ export default function CrmSettingsPage() {
       });
     } finally {
       setResettingSettings(false);
+    }
+  };
+
+  // ========================================================================
+  // MIGRATION HANDLERS - Müşteri bazlı conversation birleştirme
+  // ========================================================================
+
+  // Migration istatistiklerini yükle
+  const loadMigrationStats = async () => {
+    setMigrationLoading(true);
+    try {
+      const response = await fetch('/api/admin/crm/migration');
+      const data = await response.json();
+      if (data.success) {
+        setMigrationStats(data);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error loading migration stats:', error);
+      toast({
+        title: "Hata",
+        description: "Migration istatistikleri yüklenemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setMigrationLoading(false);
+    }
+  };
+
+  // Migration dry-run (test)
+  const handleMigrationDryRun = async () => {
+    setMigrationRunning(true);
+    setMigrationResult(null);
+    try {
+      const response = await fetch('/api/admin/crm/migration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'merge-all',
+          dryRun: true,
+          createdBy: user?.email || user?.uid,
+        }),
+      });
+      const data = await response.json();
+      setMigrationResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "✅ Test Tamamlandı",
+          description: `${data.mergedGroups || 0} grup birleştirilebilir, ${data.movedMessages || 0} mesaj taşınacak.`,
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Migration dry-run error:', error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setMigrationRunning(false);
+    }
+  };
+
+  // Gerçek migration
+  const handleMigrationRun = async () => {
+    const confirmed = window.confirm(
+      "⚠️ CONVERSATION BİRLEŞTİRME İŞLEMİ\n\n" +
+      "Bu işlem:\n" +
+      "• Aynı müşteriye ait tüm conversation'ları tek bir conversation'da birleştirir\n" +
+      "• Tüm mesajları ana conversation'a taşır\n" +
+      "• Duplicate conversation'ları SİLER\n\n" +
+      "Bu işlem GERİ ALINAMAZ!\n\n" +
+      "Devam etmek istiyor musunuz?"
+    );
+    
+    if (!confirmed) return;
+    
+    // İkinci onay
+    const doubleConfirmed = window.confirm(
+      "Son kez onaylayın:\n\n" +
+      "Tüm duplicate conversation'lar silinecek ve mesajlar birleştirilecek.\n\n" +
+      "Onaylıyor musunuz?"
+    );
+    
+    if (!doubleConfirmed) return;
+    
+    setMigrationRunning(true);
+    setMigrationResult(null);
+    try {
+      const response = await fetch('/api/admin/crm/migration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'merge-all',
+          dryRun: false,
+          deleteDuplicates: true,
+          createdBy: user?.email || user?.uid,
+        }),
+      });
+      const data = await response.json();
+      setMigrationResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "✅ Migration Tamamlandı",
+          description: `${data.mergedGroups} grup birleştirildi, ${data.movedMessages} mesaj taşındı, ${data.deletedConversations} conversation silindi.`,
+        });
+        // Stats'ı yenile
+        loadMigrationStats();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setMigrationRunning(false);
+    }
+  };
+
+  // ========================================================================
+  // WHATSAPP CONTACTS MIGRATION HANDLERS
+  // ========================================================================
+
+  // WhatsApp contacts migration istatistiklerini yükle
+  const loadWaMigrationStats = async () => {
+    setWaMigrationLoading(true);
+    try {
+      const response = await fetch('/api/admin/crm-v2/whatsapp-migration');
+      const data = await response.json();
+      if (data.success) {
+        setWaMigrationStats(data.stats);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp migration stats:', error);
+      toast({
+        title: "Hata",
+        description: "WhatsApp migration istatistikleri yüklenemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setWaMigrationLoading(false);
+    }
+  };
+
+  // WhatsApp contacts migration analiz (dry-run)
+  const handleWaMigrationAnalyze = async () => {
+    setWaMigrationRunning(true);
+    setWaMigrationResult(null);
+    try {
+      const response = await fetch('/api/admin/crm-v2/whatsapp-migration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyze' }),
+      });
+      const data = await response.json();
+      setWaMigrationResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "✅ Analiz Tamamlandı",
+          description: `${data.results.toMigrate} contact taşınabilir, ${data.results.alreadyExists} zaten CRM'de mevcut.`,
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('WhatsApp migration analyze error:', error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setWaMigrationRunning(false);
+    }
+  };
+
+  // WhatsApp contacts gerçek migration
+  const handleWaMigrationRun = async () => {
+    const confirmed = window.confirm(
+      "⚠️ WHATSAPP CONTACTS MIGRATION\n\n" +
+      "Bu işlem:\n" +
+      "• Tüm WhatsApp rehber kişilerini CRM müşterisi olarak oluşturur\n" +
+      "• Mevcut CRM müşteriler korunur (duplikasyon olmaz)\n" +
+      "• Companies ile otomatik senkronize olur\n\n" +
+      "Devam etmek istiyor musunuz?"
+    );
+    
+    if (!confirmed) return;
+    
+    setWaMigrationRunning(true);
+    setWaMigrationResult(null);
+    try {
+      const response = await fetch('/api/admin/crm-v2/whatsapp-migration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'migrate' }),
+      });
+      const data = await response.json();
+      setWaMigrationResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "✅ Migration Tamamlandı",
+          description: `${data.results.migrated} contact CRM'e taşındı.`,
+        });
+        // Stats'ı yenile
+        loadWaMigrationStats();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('WhatsApp migration error:', error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setWaMigrationRunning(false);
     }
   };
 
@@ -2136,6 +2380,330 @@ export default function CrmSettingsPage() {
                 Email Ara ve Import Et
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Müşteri Bazlı Conversation Birleştirme (Migration) */}
+        <Card className="bg-white border-purple-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-50 rounded-lg">
+                <GitMerge className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <CardTitle>Conversation Birleştirme</CardTitle>
+                <CardDescription>
+                  Aynı müşteriye ait duplicate conversation'ları tek conversation'da birleştir
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Açıklama */}
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-sm text-purple-800 mb-2">
+                <strong>Müşteri Bazlı Sistem:</strong> Aynı email veya telefon ile gelen tüm mesajlar
+                (WhatsApp, Email, Quote Form, Contact Form) tek bir conversation'da birleştirilir.
+              </p>
+              <p className="text-xs text-purple-600">
+                Bu araç, eski duplicate conversation'ları tespit edip birleştirir.
+              </p>
+            </div>
+
+            {/* İstatistikleri Yükle */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={loadMigrationStats}
+                disabled={migrationLoading}
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {migrationLoading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analiz Ediliyor...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" /> Duplicate'leri Analiz Et</>
+                )}
+              </Button>
+              {migrationStats && (
+                <span className="text-sm text-slate-500">
+                  Son analiz: {migrationStats.duplicateGroups} grup bulundu
+                </span>
+              )}
+            </div>
+
+            {/* İstatistikler */}
+            {migrationStats && (
+              <div className="p-4 bg-slate-100 rounded-lg border border-slate-200 space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{migrationStats.totalConversations}</p>
+                    <p className="text-xs text-slate-500">Toplam Conv.</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-purple-600">{migrationStats.duplicateGroups}</p>
+                    <p className="text-xs text-slate-500">Duplicate Grup</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">{migrationStats.totalDuplicateConversations}</p>
+                    <p className="text-xs text-slate-500">Silinecek Conv.</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-600">{migrationStats.estimatedSavings}</p>
+                    <p className="text-xs text-slate-500">Tasarruf</p>
+                  </div>
+                </div>
+
+                {/* En Büyük Duplicate Grupları */}
+                {migrationStats.topDuplicateGroups?.length > 0 && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowMigrationDetails(!showMigrationDetails)}
+                      className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800"
+                    >
+                      <ChevronRight className={cn("h-4 w-4 transition-transform", showMigrationDetails && "rotate-90")} />
+                      En büyük duplicate grupları ({migrationStats.topDuplicateGroups.length})
+                    </button>
+                    {showMigrationDetails && (
+                      <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                        {migrationStats.topDuplicateGroups.map((group, idx) => (
+                          <div key={idx} className="p-2 bg-white rounded border border-slate-200 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{group.customerName || 'İsimsiz'}</span>
+                              <Badge variant="outline" className="text-purple-600">
+                                {group.duplicateCount} duplicate
+                              </Badge>
+                            </div>
+                            <div className="text-slate-500 mt-1">
+                              {group.customerEmail !== '-' && <span>{group.customerEmail}</span>}
+                              {group.customerPhone !== '-' && <span className="ml-2">{group.customerPhone}</span>}
+                            </div>
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {group.channels?.map(ch => (
+                                <Badge key={ch} variant="secondary" className="text-[10px]">{ch}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Migration Sonucu */}
+            {migrationResult && (
+              <div className={cn(
+                "p-4 rounded-lg border",
+                migrationResult.success 
+                  ? migrationResult.dryRun 
+                    ? "bg-blue-50 border-blue-200" 
+                    : "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  {migrationResult.success ? (
+                    migrationResult.dryRun ? (
+                      <><Info className="h-5 w-5 text-blue-600" /> <span className="font-medium text-blue-800">Test Sonucu (Dry Run)</span></>
+                    ) : (
+                      <><CheckCircle2 className="h-5 w-5 text-green-600" /> <span className="font-medium text-green-800">Migration Tamamlandı</span></>
+                    )
+                  ) : (
+                    <><AlertCircle className="h-5 w-5 text-red-600" /> <span className="font-medium text-red-800">Hata</span></>
+                  )}
+                </div>
+                {migrationResult.success && (
+                  <div className="text-sm space-y-1">
+                    <p>Birleştirilen grup: <strong>{migrationResult.mergedGroups}</strong></p>
+                    <p>Taşınan mesaj: <strong>{migrationResult.movedMessages}</strong></p>
+                    {!migrationResult.dryRun && (
+                      <p>Silinen conversation: <strong>{migrationResult.deletedConversations}</strong></p>
+                    )}
+                    {migrationResult.errors?.length > 0 && (
+                      <p className="text-orange-600">Hata sayısı: {migrationResult.errors.length}</p>
+                    )}
+                  </div>
+                )}
+                {!migrationResult.success && (
+                  <p className="text-sm text-red-700">{migrationResult.error}</p>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleMigrationDryRun}
+                disabled={migrationRunning || !migrationStats || migrationStats.duplicateGroups === 0}
+                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                {migrationRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> İşleniyor...</>
+                ) : (
+                  <><Eye className="h-4 w-4 mr-2" /> Test Et (Dry Run)</>
+                )}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleMigrationRun}
+                disabled={migrationRunning || !migrationStats || migrationStats.duplicateGroups === 0}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {migrationRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> İşleniyor...</>
+                ) : (
+                  <><GitMerge className="h-4 w-4 mr-2" /> Birleştir</>
+                )}
+              </Button>
+            </div>
+            {(!migrationStats || migrationStats.duplicateGroups === 0) && (
+              <p className="text-xs text-slate-500">
+                Önce "Duplicate'leri Analiz Et" butonuna tıklayın.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* WhatsApp Contacts → CRM Customers Migration */}
+        <Card className="bg-white border-green-200">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <Phone className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <CardTitle>WhatsApp Rehber → CRM</CardTitle>
+                <CardDescription>
+                  WhatsApp rehberindeki kişileri CRM müşterilerine taşı
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Açıklama */}
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm text-green-800 mb-2">
+                <strong>Merkezi Müşteri Yönetimi:</strong> WhatsApp rehberindeki kişiler CRM müşterisi olarak kaydedilir 
+                ve Companies ile otomatik senkronize olur.
+              </p>
+              <p className="text-xs text-green-600">
+                WhatsApp'tan gelen yeni mesajlar artık otomatik olarak CRM müşterisine bağlanır.
+              </p>
+            </div>
+
+            {/* İstatistikleri Yükle */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={loadWaMigrationStats}
+                disabled={waMigrationLoading}
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                {waMigrationLoading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Yükleniyor...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" /> İstatistikleri Yükle</>
+                )}
+              </Button>
+            </div>
+
+            {/* İstatistikler */}
+            {waMigrationStats && (
+              <div className="p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-green-600">{waMigrationStats.whatsappContacts}</p>
+                    <p className="text-xs text-slate-500">WhatsApp Rehber</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-purple-600">{waMigrationStats.crmCustomers}</p>
+                    <p className="text-xs text-slate-500">CRM Müşteri</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-blue-600">{waMigrationStats.migratedFromWhatsApp}</p>
+                    <p className="text-xs text-slate-500">Daha Önce Taşınan</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">{waMigrationStats.pendingMigration}</p>
+                    <p className="text-xs text-slate-500">Taşınacak</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Migration Sonucu */}
+            {waMigrationResult && (
+              <div className={cn(
+                "p-4 rounded-lg border",
+                waMigrationResult.success 
+                  ? waMigrationResult.action === 'analyze' 
+                    ? "bg-blue-50 border-blue-200" 
+                    : "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  {waMigrationResult.success ? (
+                    waMigrationResult.action === 'analyze' ? (
+                      <><Info className="h-5 w-5 text-blue-600" /> <span className="font-medium text-blue-800">Analiz Sonucu</span></>
+                    ) : (
+                      <><CheckCircle2 className="h-5 w-5 text-green-600" /> <span className="font-medium text-green-800">Migration Tamamlandı</span></>
+                    )
+                  ) : (
+                    <><AlertCircle className="h-5 w-5 text-red-600" /> <span className="font-medium text-red-800">Hata</span></>
+                  )}
+                </div>
+                {waMigrationResult.success && (
+                  <div className="text-sm space-y-1">
+                    <p>Toplam contact: <strong>{waMigrationResult.results?.total}</strong></p>
+                    <p>Zaten CRM'de mevcut: <strong>{waMigrationResult.results?.alreadyExists}</strong></p>
+                    <p>Taşınabilir: <strong>{waMigrationResult.results?.toMigrate}</strong></p>
+                    {waMigrationResult.action === 'migrate' && (
+                      <>
+                        <p className="text-green-700">Taşınan: <strong>{waMigrationResult.results?.migrated}</strong></p>
+                        {waMigrationResult.results?.failed > 0 && (
+                          <p className="text-red-600">Başarısız: <strong>{waMigrationResult.results?.failed}</strong></p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                {!waMigrationResult.success && (
+                  <p className="text-sm text-red-700">{waMigrationResult.error}</p>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleWaMigrationAnalyze}
+                disabled={waMigrationRunning}
+                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                {waMigrationRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> İşleniyor...</>
+                ) : (
+                  <><Eye className="h-4 w-4 mr-2" /> Analiz Et</>
+                )}
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleWaMigrationRun}
+                disabled={waMigrationRunning}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {waMigrationRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> İşleniyor...</>
+                ) : (
+                  <><Users className="h-4 w-4 mr-2" /> CRM'e Taşı</>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Bu işlem WhatsApp rehber verilerini silmez, sadece CRM'e kopyalar.
+            </p>
           </CardContent>
         </Card>
 

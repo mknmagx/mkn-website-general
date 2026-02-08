@@ -207,6 +207,67 @@ export function useMessages(conversationId) {
 }
 
 /**
+ * Real-time unread count listener (for badge in navigation)
+ */
+export function useUnreadCount() {
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const unsubscribeRef = useRef(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Query all conversations with unread messages
+      const q = query(
+        collection(db, COLLECTIONS.CONVERSATIONS),
+        orderBy("lastMessageAt", "desc"),
+        limit(100)
+      );
+
+      // Set up real-time listener
+      unsubscribeRef.current = onSnapshot(
+        q,
+        (snapshot) => {
+          // Calculate total unread count from all conversations
+          const total = snapshot.docs.reduce((sum, doc) => {
+            const data = doc.data();
+            return sum + (data.unreadCount || 0);
+          }, 0);
+
+          setTotalUnreadCount(total);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Unread count listener error:", err);
+          setError(err.message);
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error("Error setting up unread count listener:", err);
+      setError(err.message);
+      setLoading(false);
+    }
+
+    // Cleanup
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, []);
+
+  return {
+    totalUnreadCount,
+    loading,
+    error,
+  };
+}
+
+/**
  * Combined hook for WhatsApp real-time functionality
  */
 export function useWhatsAppRealtime(options = {}) {

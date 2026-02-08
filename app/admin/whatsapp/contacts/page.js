@@ -83,6 +83,8 @@ import {
   Loader2,
   Filter,
   Tag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const GROUP_LABELS = {
@@ -102,6 +104,12 @@ export default function WhatsAppContactsPage() {
   const [stats, setStats] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -126,12 +134,20 @@ export default function WhatsAppContactsPage() {
       if (searchQuery) params.append("search", searchQuery);
       if (groupFilter !== "all") params.append("group", groupFilter);
       params.append("stats", "true");
+      params.append("limit", String(pageSize * 10)); // Load more for client-side pagination
 
       const response = await fetch(`/api/admin/whatsapp/contacts?${params}`);
       const data = await response.json();
 
       if (data.success) {
-        setContacts(data.data || []);
+        const allContacts = data.data || [];
+        setTotalCount(allContacts.length);
+        
+        // Client-side pagination
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = startIdx + pageSize;
+        setContacts(allContacts.slice(startIdx, endIdx));
+        
         setStats(data.stats || {});
       }
     } catch (error) {
@@ -144,11 +160,16 @@ export default function WhatsAppContactsPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, groupFilter, toast]);
+  }, [searchQuery, groupFilter, currentPage, pageSize, toast]);
 
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, groupFilter]);
 
   // Reset form
   const resetForm = () => {
@@ -526,6 +547,79 @@ export default function WhatsAppContactsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          
+          {/* Pagination */}
+          {!loading && contacts.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t px-6 py-4">
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">{totalCount}</span> kişiden{" "}
+                <span className="font-medium">
+                  {(currentPage - 1) * pageSize + 1}
+                </span>
+                -
+                <span className="font-medium">
+                  {Math.min(currentPage * pageSize, totalCount)}
+                </span>{" "}
+                arası gösteriliyor
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Önceki
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {[...Array(totalPages)].map((_, idx) => {
+                    const page = idx + 1;
+                    // Show first, last, current, and nearby pages
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          className="w-9"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span key={page} className="px-1 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Sonraki
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

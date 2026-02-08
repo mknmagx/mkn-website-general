@@ -897,7 +897,7 @@ export function NewMessageModal({ open, onOpenChange, onConversationStart }) {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/admin/whatsapp/contacts?search=${encodeURIComponent(searchQuery)}&quick=true`
+        `/api/admin/whatsapp/contacts?search=${encodeURIComponent(searchQuery)}`
       );
       const data = await response.json();
       if (data.success) {

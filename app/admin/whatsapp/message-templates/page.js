@@ -146,10 +146,10 @@ export default function WhatsAppTemplatesPage() {
       const data = await response.json();
       if (data.success) {
         setContacts(
-          (data.data || []).filter((c) => c.phone).map((c) => ({
+          (data.data || []).filter((c) => c.phoneNumber).map((c) => ({
             id: c.id,
-            name: c.name || c.contactName || "İsimsiz",
-            phone: c.phone,
+            name: c.name || "İsimsiz",
+            phone: c.phoneNumber,
             company: c.company || "",
           }))
         );

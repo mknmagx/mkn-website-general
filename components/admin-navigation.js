@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAdminAuth } from "../hooks/use-admin-auth";
 import { usePermissions } from "./admin-route-guard";
 import { useNavigationSettings } from "../hooks/use-navigation-settings";
+import { useUnreadCount } from "../hooks/use-whatsapp-realtime";
 import {
   LayoutDashboard,
   FileText,
@@ -117,6 +118,7 @@ const SubmenuItem = memo(function SubmenuItem({
   isPinned,
   onNavigate,
   onTogglePin,
+  badge,
 }) {
   const SubIcon = item.icon;
   return (
@@ -131,7 +133,14 @@ const SubmenuItem = memo(function SubmenuItem({
         }`}
       >
         <SubIcon className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}`} />
-        <span className="truncate">{item.name}</span>
+        <span className="truncate flex-1">{item.name}</span>
+        {badge > 0 && (
+          <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${
+            isActive ? "bg-white text-gray-900" : "bg-green-500 text-white"
+          }`}>
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </Link>
       <button
         onClick={(e) => {
@@ -209,6 +218,7 @@ const MenuWithItemsComponent = memo(function MenuWithItemsComponent({
                 const SubIcon = item.icon;
                 const isSubActive = isItemActive(item.href, menu.items);
                 const isSubPinned = isMenuPinned(item.id);
+                const itemBadge = item.badge || 0;
                 return (
                   <div key={item.id} className="group/item flex items-center">
                     <Link
@@ -221,7 +231,14 @@ const MenuWithItemsComponent = memo(function MenuWithItemsComponent({
                       }`}
                     >
                       <SubIcon className={`h-4 w-4 ${isSubActive ? "text-white" : "text-gray-400"}`} />
-                      <span className="truncate">{item.name}</span>
+                      <span className="truncate flex-1">{item.name}</span>
+                      {itemBadge > 0 && (
+                        <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full ${
+                          isSubActive ? "bg-white text-gray-900" : "bg-green-500 text-white"
+                        }`}>
+                          {itemBadge > 99 ? "99+" : itemBadge}
+                        </span>
+                      )}
                     </Link>
                     {!isSubActive && (
                       <button
@@ -282,6 +299,7 @@ const MenuWithItemsComponent = memo(function MenuWithItemsComponent({
                 isPinned={isSubPinned}
                 onNavigate={onNavigate}
                 onTogglePin={onTogglePin}
+                badge={item.badge || 0}
               />
             );
           })}
@@ -415,6 +433,9 @@ export default function AdminNavigation() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // WhatsApp unread count for badge
+  const { totalUnreadCount } = useUnreadCount();
+  
   // Scroll pozisyonunu korumak için ref
   const navScrollRef = useRef(null);
 
@@ -446,7 +467,7 @@ export default function AdminNavigation() {
         { id: "quote-requests", name: "Teklif Talepleri", href: "/admin/quotes", icon: FileText, show: hasPermission("quotes.view") },
         { id: "outlook-email", name: "Outlook E-posta", href: "/admin/outlook", icon: Mail, show: hasPermission("outlook.view") },
         { id: "meta-messages", name: "Meta Mesajlar", href: "/admin/meta-messenger", icon: MessageSquare, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
-        { id: "whatsapp", name: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]) },
+        { id: "whatsapp", name: "WhatsApp", href: "/admin/whatsapp", icon: MessageCircle, show: hasPermission("integrations.view") || hasAnyRole(["admin", "super_admin"]), badge: totalUnreadCount },
       ],
     },
     {
@@ -554,7 +575,7 @@ export default function AdminNavigation() {
         { id: "debug", name: "Debug", href: "/admin/debug", icon: Bug, show: hasRole("super_admin") },
       ],
     },
-  ], [hasPermission, hasRole, hasAnyRole]);
+  ], [hasPermission, hasRole, hasAnyRole, totalUnreadCount]);
 
   // Filtered menu structure
   const menuStructure = useMemo(() => {

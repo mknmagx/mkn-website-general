@@ -137,6 +137,12 @@ import {
   TabsTrigger,
 } from "../../../../../components/ui/tabs";
 import { Switch } from "../../../../../components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../../../components/ui/tooltip";
 
 // AI Constants
 import { PROVIDER_INFO } from "../../../../../lib/ai-constants";
@@ -200,7 +206,14 @@ import {
   Facebook,
   Linkedin,
   Twitter,
+  Image as ImageIcon,
+  Film,
+  Music,
+  Download,
 } from "lucide-react";
+
+// WhatsApp Media Upload Dialog
+import MediaUploadDialog from "../../../../../components/whatsapp-media-upload-dialog";
 
 /**
  * Kanal ikonunu döndür
@@ -448,6 +461,7 @@ export default function ConversationDetailPage() {
   
   // WhatsApp 24 saat kuralı state'leri
   const [whatsappWindowStatus, setWhatsappWindowStatus] = useState(null);
+  const [showWhatsAppMediaUpload, setShowWhatsAppMediaUpload] = useState(false);
   const [checkingWhatsappWindow, setCheckingWhatsappWindow] = useState(false);
   const [whatsappTemplates, setWhatsappTemplates] = useState([]);
   const [selectedWhatsappTemplate, setSelectedWhatsappTemplate] = useState(null);
@@ -1140,7 +1154,10 @@ export default function ConversationDetailPage() {
     // Müşteri email'i varsa email varsayılan olsun
     const hasEmail = conversation?.sender?.email;
     const hasPhone = conversation?.sender?.phone;
+    // WhatsApp iletişimi başlamışsa (kanal veya metadata kontrolu)
     const isWhatsAppChannel = conversation?.channel === 'whatsapp';
+    const hasWhatsAppData = conversation?.channelMetadata?.waId || conversation?.channelMetadata?.whatsappConversationId;
+    const isWhatsAppEnabled = isWhatsAppChannel || hasWhatsAppData;
     
     // Telefon numarasını düzenlenebilir alana set et
     if (hasPhone) {
@@ -1149,8 +1166,8 @@ export default function ConversationDetailPage() {
       // Doğrulama yap
       const validation = validateWhatsAppPhone(formattedPhone);
       setWhatsappPhoneError(validation.valid ? null : validation.message);
-    } else if (isWhatsAppChannel && conversation?.channelMetadata?.waId) {
-      setEditableWhatsappPhone(conversation.channelMetadata.waId);
+    } else if (hasWhatsAppData) {
+      setEditableWhatsappPhone(conversation.channelMetadata.waId || '');
       setWhatsappPhoneError(null);
     } else {
       setEditableWhatsappPhone('');
@@ -1158,7 +1175,7 @@ export default function ConversationDetailPage() {
     }
     
     // WhatsApp kanalıysa veya telefon numarası varsa 24 saat kontrolü yap
-    if (isWhatsAppChannel || hasPhone) {
+    if (isWhatsAppEnabled || hasPhone) {
       setCheckingWhatsappWindow(true);
       try {
         const windowStatus = await checkServiceWindow(conversationId);
@@ -1191,8 +1208,8 @@ export default function ConversationDetailPage() {
     
     setSendChannels({
       email: hasEmail ? true : false,
-      whatsapp: isWhatsAppChannel ? true : false, // WhatsApp kanalıysa otomatik seç
-      manual: !hasEmail && !isWhatsAppChannel, // Email ve WhatsApp yoksa manuel seçili olsun
+      whatsapp: isWhatsAppEnabled ? true : false, // WhatsApp iletişimi başlamışsa otomatik seç
+      manual: !hasEmail && !isWhatsAppEnabled, // Email ve WhatsApp yoksa manuel seçili olsun
     });
     setSelectedWhatsappTemplate(null);
     setShowSendModal(true);
@@ -2417,21 +2434,135 @@ export default function ConversationDetailPage() {
                                   : "bg-white border border-slate-100 rounded-2xl rounded-tl-md",
                               )}
                             >
-                              <div
-                                className={cn(
-                                  "whitespace-pre-wrap text-sm leading-relaxed",
-                                  isOutbound
-                                    ? isDraft
-                                      ? "text-amber-800"
-                                      : "text-slate-100"
-                                    : "text-slate-700",
-                                )}
-                              >
-                                {/* HTML içerik varsa temizleyerek göster, yoksa direkt göster */}
-                                {isHtmlContent(message.content)
-                                  ? stripHtmlToText(message.content)
-                                  : message.content}
-                              </div>
+                              {/* WhatsApp Media Content */}
+                              {message.channel === 'whatsapp' && message.channelMetadata?.type && message.channelMetadata?.type !== 'text' ? (
+                                <div className="space-y-2">
+                                  {/* Image */}
+                                  {message.channelMetadata.type === 'image' && (
+                                    <div>
+                                      {message.channelMetadata.mediaUrl ? (
+                                        <img
+                                          src={message.channelMetadata.mediaUrl}
+                                          alt="WhatsApp Image"
+                                          className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer"
+                                          onClick={() => window.open(message.channelMetadata.mediaUrl, '_blank')}
+                                        />
+                                      ) : (
+                                        <div className={cn("rounded-lg p-4 flex items-center justify-center min-h-[120px]", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
+                                          <div className="text-center text-slate-500">
+                                            <ImageIcon className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                                            <p className="text-xs">Görsel yükleniyor...</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {message.channelMetadata.caption && (
+                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                          {message.channelMetadata.caption}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Video */}
+                                  {message.channelMetadata.type === 'video' && (
+                                    <div>
+                                      {message.channelMetadata.mediaUrl ? (
+                                        <video
+                                          src={message.channelMetadata.mediaUrl}
+                                          controls
+                                          className="rounded-lg max-w-full max-h-60"
+                                        />
+                                      ) : (
+                                        <div className={cn("rounded-lg p-4 flex items-center justify-center min-h-[120px]", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
+                                          <div className="text-center text-slate-500">
+                                            <Film className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                                            <p className="text-xs">Video yükleniyor...</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {message.channelMetadata.caption && (
+                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                          {message.channelMetadata.caption}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Audio */}
+                                  {message.channelMetadata.type === 'audio' && (
+                                    <div>
+                                      {message.channelMetadata.mediaUrl ? (
+                                        <audio
+                                          src={message.channelMetadata.mediaUrl}
+                                          controls
+                                          className="max-w-full"
+                                        />
+                                      ) : (
+                                        <div className={cn("rounded-lg p-3 text-center", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
+                                          <Music className={cn("h-6 w-6 mx-auto mb-1", isOutbound ? "text-slate-300" : "text-slate-500")} />
+                                          <p className={cn("text-xs", isOutbound ? "text-slate-300" : "text-slate-500")}>Ses dosyası yükleniyor...</p>
+                                        </div>
+                                      )}
+                                      {message.channelMetadata.filename && (
+                                        <p className={cn("text-xs mt-1 truncate", isOutbound ? "text-slate-400" : "text-slate-500")}>
+                                          {message.channelMetadata.filename}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Document */}
+                                  {message.channelMetadata.type === 'document' && (
+                                    <div>
+                                      <button
+                                        className={cn(
+                                          "flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-colors w-full",
+                                          isOutbound ? "bg-slate-700" : "bg-slate-100"
+                                        )}
+                                        onClick={() => {
+                                          if (message.channelMetadata.mediaUrl) {
+                                            window.open(message.channelMetadata.mediaUrl, '_blank');
+                                          }
+                                        }}
+                                      >
+                                        <FileText className={cn("h-8 w-8", isOutbound ? "text-slate-300" : "text-slate-500")} />
+                                        <div className="flex-1 min-w-0 text-left">
+                                          <p className={cn("text-sm font-medium truncate", isOutbound ? "text-slate-100" : "text-slate-700")}>
+                                            {message.channelMetadata.filename || "Dosya"}
+                                          </p>
+                                          <p className={cn("text-xs", isOutbound ? "text-slate-400" : "text-slate-500")}>
+                                            {message.channelMetadata.mediaUrl ? 'İndirmek için tıklayın' : 'Yükleniyor...'}
+                                          </p>
+                                        </div>
+                                        {message.channelMetadata.mediaUrl && (
+                                          <Download className={cn("h-4 w-4", isOutbound ? "text-slate-400" : "text-slate-500")} />
+                                        )}
+                                      </button>
+                                      {message.channelMetadata.caption && (
+                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                          {message.channelMetadata.caption}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    "whitespace-pre-wrap text-sm leading-relaxed",
+                                    isOutbound
+                                      ? isDraft
+                                        ? "text-amber-800"
+                                        : "text-slate-100"
+                                      : "text-slate-700",
+                                  )}
+                                >
+                                  {/* HTML içerik varsa temizleyerek göster, yoksa direkt göster */}
+                                  {isHtmlContent(message.content)
+                                    ? stripHtmlToText(message.content)
+                                    : message.content}
+                                </div>
+                              )}
 
                               {/* Mesaja ekli dosyalar */}
                               {message.attachments && message.attachments.length > 0 && (
@@ -2773,6 +2904,28 @@ export default function ConversationDetailPage() {
                 <div className="flex flex-col gap-2 items-center">
                   {/* Dosya İkonları - Gönder butonunun üstünde */}
                   <div className="flex items-center gap-0.5">
+                    {/* WhatsApp Media Upload Button - Sadece WhatsApp konuşmalarında */}
+                    {conversation?.channel === 'whatsapp' && conversation?.channelMetadata?.whatsappConversationId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => setShowWhatsAppMediaUpload(true)}
+                            >
+                              <ImageIcon className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs">WhatsApp Medya Gönder</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    
                     {/* File Upload Button */}
                     <input
                       type="file"
@@ -5271,6 +5424,24 @@ export default function ConversationDetailPage() {
         modelSettings={summaryModelSettings}
         setModelSettings={setSummaryModelSettings}
       />
+
+      {/* WhatsApp Media Upload Dialog */}
+      {conversation?.channel === 'whatsapp' && conversation?.channelMetadata?.whatsappConversationId && (
+        <MediaUploadDialog
+          open={showWhatsAppMediaUpload}
+          onOpenChange={setShowWhatsAppMediaUpload}
+          conversationId={conversation.channelMetadata.whatsappConversationId}
+          recipientPhone={conversation.phone || customer?.phone}
+          onMediaSent={() => {
+            // Medya gönderildikten sonra konuşmayı yenile
+            fetchConversation();
+            toast({
+              title: "Medya Gönderildi",
+              description: "WhatsApp medyanız başarıyla gönderildi",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
