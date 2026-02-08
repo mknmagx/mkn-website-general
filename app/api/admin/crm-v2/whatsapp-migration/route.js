@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
-import { normalizePhone } from '@/utils/phone-utils';
+import { normalizePhone } from '@/lib/utils/phone-utils';
 
 // CRM v2 Collections
 const CRM_COLLECTIONS = {
