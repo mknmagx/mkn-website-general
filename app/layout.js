@@ -191,6 +191,8 @@ export default function RootLayout({ children }) {
           }}
         />
 
+        <meta name="facebook-domain-verification" content="yd5cdcc0n6brd6oyr5fmpe09gr1ne1" />
+
         {/* PWA Manifest and Icons */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
