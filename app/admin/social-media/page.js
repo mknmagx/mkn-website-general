@@ -2,367 +2,424 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PermissionGuard } from "@/components/admin-route-guard";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
   FileText,
-  PenTool,
-  BarChart3,
+  Sparkles,
   Instagram,
   Facebook,
-  Twitter,
   Linkedin,
+  ArrowRight,
   TrendingUp,
   TrendingDown,
-  ArrowRight,
   Clock,
   CheckCircle,
   Edit3,
-  Sparkles,
-  RefreshCw,
   Plus,
+  BarChart3,
+  Target,
+  Zap,
 } from "lucide-react";
 
-export default function SocialMediaDashboard() {
-  const [stats, setStats] = useState({
-    totalTitles: 0,
-    scheduledPosts: 0,
-    draftContent: 0,
-    publishedThisMonth: 0,
-  });
+// X (Twitter) Icon
+const XIcon = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
+// Mock data for stats
+const mockStats = {
+  totalTitles: 156,
+  scheduledPosts: 12,
+  draftContent: 8,
+  publishedThisMonth: 34,
+};
+
+// Platform data
+const platforms = [
+  {
+    id: "instagram",
+    name: "Instagram",
+    icon: Instagram,
+    followers: "12.5K",
+    engagement: "4.2%",
+    trend: "up",
+    color: "from-purple-500 via-pink-500 to-orange-400",
+    bgColor: "bg-gradient-to-br from-purple-50 to-pink-50",
+    textColor: "text-purple-600",
+  },
+  {
+    id: "facebook",
+    name: "Facebook",
+    icon: Facebook,
+    followers: "8.3K",
+    engagement: "3.1%",
+    trend: "up",
+    color: "from-blue-600 to-blue-500",
+    bgColor: "bg-blue-50",
+    textColor: "text-blue-600",
+  },
+  {
+    id: "twitter",
+    name: "X",
+    icon: XIcon,
+    followers: "5.2K",
+    engagement: "2.8%",
+    trend: "down",
+    color: "from-slate-800 to-slate-900",
+    bgColor: "bg-slate-50",
+    textColor: "text-slate-800",
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn",
+    icon: Linkedin,
+    followers: "3.8K",
+    engagement: "5.6%",
+    trend: "up",
+    color: "from-blue-700 to-blue-600",
+    bgColor: "bg-blue-50",
+    textColor: "text-blue-700",
+  },
+];
+
+// Quick actions
+const quickActions = [
+  {
+    id: "new-content",
+    title: "Yeni İçerik",
+    description: "AI ile içerik oluştur",
+    icon: Sparkles,
+    href: "/admin/social-media/content-studio",
+    color: "bg-violet-500",
+    hoverColor: "hover:bg-violet-600",
+  },
+  {
+    id: "schedule",
+    title: "Planla",
+    description: "Takvime ekle",
+    icon: Calendar,
+    href: "/admin/social-media/calendar-view",
+    color: "bg-emerald-500",
+    hoverColor: "hover:bg-emerald-600",
+  },
+  {
+    id: "titles",
+    title: "Başlıklar",
+    description: "Kütüphaneyi gör",
+    icon: FileText,
+    href: "/admin/social-media/title-library",
+    color: "bg-blue-500",
+    hoverColor: "hover:bg-blue-600",
+  },
+];
+
+// Stat Card Component
+function StatCard({ title, value, subtitle, icon: Icon, trend, change, color }) {
+  return (
+    <Card className="bg-white border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-2xl font-bold text-slate-900">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-slate-400">{subtitle}</p>
+            )}
+          </div>
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center",
+            color
+          )}>
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+        </div>
+        {trend && (
+          <div className="mt-3 flex items-center gap-1">
+            {trend === "up" ? (
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+            )}
+            <span className={cn(
+              "text-xs font-medium",
+              trend === "up" ? "text-emerald-600" : "text-red-600"
+            )}>
+              {change}
+            </span>
+            <span className="text-xs text-slate-400 ml-1">bu ay</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Platform Card Component
+function PlatformCard({ platform }) {
+  const Icon = platform.icon;
+  return (
+    <div className={cn(
+      "relative p-4 rounded-xl border border-slate-200/60 transition-all hover:shadow-md cursor-pointer group",
+      platform.bgColor
+    )}>
+      <div className="flex items-start justify-between">
+        <div className={cn(
+          "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm",
+          platform.color
+        )}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <Badge variant="secondary" className="bg-white/80 text-slate-600 text-[10px]">
+          {platform.engagement} etkileşim
+        </Badge>
+      </div>
+      <div className="mt-3">
+        <h3 className="font-semibold text-slate-800">{platform.name}</h3>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-lg font-bold text-slate-900">{platform.followers}</span>
+          <span className="text-xs text-slate-500">takipçi</span>
+          {platform.trend === "up" ? (
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+          ) : (
+            <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+          )}
+        </div>
+      </div>
+      <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-slate-300 transition-colors" />
+    </div>
+  );
+}
+
+// Quick Action Button
+function QuickActionButton({ action }) {
+  const Icon = action.icon;
+  return (
+    <Link href={action.href}>
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all group cursor-pointer">
+        <div className={cn(
+          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+          action.color,
+          action.hoverColor
+        )}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-slate-800 group-hover:text-slate-900">{action.title}</h4>
+          <p className="text-xs text-slate-500">{action.description}</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+      </div>
+    </Link>
+  );
+}
+
+// Recent Activity Item
+function ActivityItem({ title, time, type, status }) {
+  const statusStyles = {
+    published: { icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
+    scheduled: { icon: Clock, color: "text-blue-500", bg: "bg-blue-50" },
+    draft: { icon: Edit3, color: "text-amber-500", bg: "bg-amber-50" },
+  };
+  
+  const { icon: StatusIcon, color, bg } = statusStyles[status] || statusStyles.draft;
+  
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", bg)}>
+        <StatusIcon className={cn("w-4 h-4", color)} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-800 truncate">{title}</p>
+        <p className="text-xs text-slate-500">{time}</p>
+      </div>
+    </div>
+  );
+}
+
+// Main Dashboard Component
+export default function SocialMediaDashboard() {
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(mockStats);
 
   useEffect(() => {
-    loadStats();
+    // Simulate loading
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
   }, []);
 
-  const loadStats = async () => {
-    // TODO: API'den gerçek istatistikleri çek
-    setLoading(false);
-  };
-
-  const statCards = [
-    {
-      title: "Toplam Başlık",
-      value: stats.totalTitles,
-      change: "+12%",
-      trend: "up",
-      icon: FileText,
-      description: "Kütüphanede",
-      color: "text-blue-600",
-    },
-    {
-      title: "Planlanmış",
-      value: stats.scheduledPosts,
-      change: "+8%",
-      trend: "up",
-      icon: Calendar,
-      description: "Takvimde",
-      color: "text-green-600",
-    },
-    {
-      title: "Taslaklar",
-      value: stats.draftContent,
-      change: "-3%",
-      trend: "down",
-      icon: Edit3,
-      description: "Hazırlanıyor",
-      color: "text-orange-600",
-    },
-    {
-      title: "Bu Ay",
-      value: stats.publishedThisMonth,
-      change: "+23%",
-      trend: "up",
-      icon: CheckCircle,
-      description: "Yayınlandı",
-      color: "text-purple-600",
-    },
+  const recentActivity = [
+    { title: "Instagram post yayınlandı", time: "2 saat önce", type: "post", status: "published" },
+    { title: "Haftalık kampanya planlandı", time: "5 saat önce", type: "campaign", status: "scheduled" },
+    { title: "LinkedIn makalesi taslağı", time: "Dün", type: "article", status: "draft" },
+    { title: "Facebook hikayesi", time: "2 gün önce", type: "story", status: "published" },
   ];
 
-  const platforms = [
-    {
-      name: "Instagram",
-      icon: Instagram,
-      followers: "12.5K",
-      engagement: "4.2%",
-      color: "from-purple-500 to-pink-500",
-      posts: 156,
-    },
-    {
-      name: "Facebook",
-      icon: Facebook,
-      followers: "8.3K",
-      engagement: "3.1%",
-      color: "from-blue-600 to-blue-500",
-      posts: 134,
-    },
-    {
-      name: "Twitter",
-      icon: Twitter,
-      followers: "5.2K",
-      engagement: "2.8%",
-      color: "from-black to-gray-800",
-      posts: 289,
-    },
-    {
-      name: "LinkedIn",
-      icon: Linkedin,
-      followers: "3.8K",
-      engagement: "5.6%",
-      color: "from-blue-700 to-blue-600",
-      posts: 78,
-    },
-  ];
-
-  const quickActions = [
-    {
-      title: "Başlık Kütüphanesi",
-      description: "AI ile toplu başlık üret ve yönet",
-      icon: FileText,
-      href: "/admin/social-media/title-library",
-      color: "bg-blue-50 hover:bg-blue-100 border-blue-200",
-      iconColor: "text-blue-600",
-    },
-    {
-      title: "İçerik Takvimi",
-      description: "Takvim setleri ile organize edin",
-      icon: Calendar,
-      href: "/admin/social-media/calendar-view",
-      color: "bg-green-50 hover:bg-green-100 border-green-200",
-      iconColor: "text-green-600",
-    },
-    {
-      title: "İçerik Stüdyosu",
-      description: "AI destekli içerik oluştur",
-      icon: PenTool,
-      href: "/admin/social-media/content-studio",
-      color: "bg-purple-50 hover:bg-purple-100 border-purple-200",
-      iconColor: "text-purple-600",
-    },
-    {
-      title: "Performans",
-      description: "İçerik analitiği ve raporlar",
-      icon: BarChart3,
-      href: "/admin/social-media/analytics",
-      color: "bg-orange-50 hover:bg-orange-100 border-orange-200",
-      iconColor: "text-orange-600",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <PermissionGuard requiredPermission="social_media.read">
-      <div className="min-h-screen bg-gray-50/50">
-        <div className="container mx-auto p-6 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Sosyal Medya
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                AI destekli içerik yönetimi ve planlama
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={loadStats}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Yenile
-              </Button>
-              <Link href="/admin/social-media/content-studio?action=create">
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Yeni İçerik
-                </Button>
-              </Link>
+    <div className="p-6 space-y-6 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Sosyal Medya</h1>
+          <p className="text-sm text-slate-500 mt-1">İçeriklerinizi yönetin ve planlayın</p>
+        </div>
+        <Link href="/admin/social-media/content-studio">
+          <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Yeni İçerik
+          </Button>
+        </Link>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Toplam Başlık"
+          value={stats.totalTitles}
+          subtitle="Kütüphanede"
+          icon={FileText}
+          trend="up"
+          change="+12%"
+          color="bg-blue-500"
+        />
+        <StatCard
+          title="Planlanmış"
+          value={stats.scheduledPosts}
+          subtitle="Takvimde"
+          icon={Calendar}
+          trend="up"
+          change="+8%"
+          color="bg-emerald-500"
+        />
+        <StatCard
+          title="Taslaklar"
+          value={stats.draftContent}
+          subtitle="Hazırlanıyor"
+          icon={Edit3}
+          color="bg-amber-500"
+        />
+        <StatCard
+          title="Bu Ay"
+          value={stats.publishedThisMonth}
+          subtitle="Yayınlandı"
+          icon={CheckCircle}
+          trend="up"
+          change="+23%"
+          color="bg-violet-500"
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Quick Actions & Platforms */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Quick Actions */}
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500" />
+              Hızlı İşlemler
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {quickActions.map((action) => (
+                <QuickActionButton key={action.id} action={action} />
+              ))}
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statCards.map((stat) => {
-              const Icon = stat.icon;
-              const TrendIcon = stat.trend === "up" ? TrendingUp : TrendingDown;
-              return (
-                <Card
-                  key={stat.title}
-                  className="bg-white border-l-4 hover:shadow-md transition-shadow"
-                  style={{ borderLeftColor: stat.color.replace("text-", "") }}
-                >
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {stat.title}
-                    </CardTitle>
-                    <Icon className={`w-4 h-4 ${stat.color}`} />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <div className="text-2xl font-bold">{stat.value}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {stat.description}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={`${
-                          stat.trend === "up"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-700"
-                        }`}
-                      >
-                        <TrendIcon className="w-3 h-3 mr-1" />
-                        {stat.change}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          {/* Platforms */}
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4 text-violet-500" />
+              Platformlar
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {platforms.map((platform) => (
+                <PlatformCard key={platform.id} platform={platform} />
+              ))}
+            </div>
           </div>
 
-          {/* Platforms Overview */}
-          <Card className="bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Platform Performansı
-              </CardTitle>
-              <CardDescription>
-                Sosyal medya hesaplarınızın özet durumu
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {platforms.map((platform) => {
-                  const Icon = platform.icon;
-                  return (
-                    <div
-                      key={platform.name}
-                      className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-white via-gray-50/30 to-white p-4 hover:shadow-lg hover:border-gray-300 transition-all hover:-translate-y-1"
-                    >
-                      <div
-                        className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${platform.color}`}
-                      ></div>
-                      <div className="flex items-start justify-between mb-3">
-                        <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-br ${platform.color} flex items-center justify-center`}
-                        >
-                          <Icon className="w-5 h-5 text-white" />
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {platform.posts} post
-                        </Badge>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-sm">{platform.name}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{platform.followers} takipçi</span>
-                          <span>•</span>
-                          <span className="text-green-600 font-medium">
-                            {platform.engagement} etkileşim
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Performance Overview */}
+          <Card className="bg-white border-slate-200/60">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-emerald-500" />
+                  Performans Özeti
+                </h2>
+                <Badge variant="secondary" className="text-xs">Son 30 gün</Badge>
+              </div>
+              <div className="h-48 flex items-center justify-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                <div className="text-center">
+                  <BarChart3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">Grafik yakında eklenecek</p>
+                </div>
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link key={action.title} href={action.href}>
-                  <Card
-                    className={`h-full bg-white border-2 transition-all ${action.color} hover:shadow-lg hover:-translate-y-1 cursor-pointer group`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div
-                        className={`w-12 h-12 rounded-lg bg-white shadow-sm flex items-center justify-center mb-3 ${action.iconColor}`}
-                      >
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <CardTitle className="text-base">
-                        {action.title}
-                      </CardTitle>
-                      <CardDescription className="text-sm">
-                        {action.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div
-                        className={`flex items-center text-sm font-medium ${action.iconColor} group-hover:gap-2 transition-all`}
-                      >
-                        Başlat
-                        <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </CardContent>
-                  </Card>
+        {/* Right Column - Recent Activity */}
+        <div>
+          <Card className="bg-white border-slate-200/60 sticky top-6">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" />
+                  Son Aktiviteler
+                </h2>
+                <Link href="/admin/social-media/content-list">
+                  <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-700 h-7 px-2">
+                    Tümü
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
                 </Link>
-              );
-            })}
-          </div>
-
-          {/* Recent Activity */}
-          <Card className="bg-white">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Son Aktiviteler</CardTitle>
-                  <CardDescription>
-                    Son içerik hareketleri ve işlemler
-                  </CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin/social-media/calendar-view">
-                    Tümünü Gör
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
-                </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3].map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-gray-50/50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">İçerik planlandı</p>
-                      <p className="text-xs text-muted-foreground">
-                        {idx === 0
-                          ? "5 dakika önce"
-                          : idx === 1
-                          ? "1 saat önce"
-                          : "3 saat önce"}
-                      </p>
-                    </div>
-                    <Badge variant="outline">Instagram</Badge>
-                  </div>
+              <div className="space-y-1">
+                {recentActivity.map((item, index) => (
+                  <ActivityItem key={index} {...item} />
                 ))}
+              </div>
+              
+              {/* Quick Stats */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-slate-50 rounded-lg">
+                    <p className="text-lg font-bold text-slate-900">89%</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">Başarı Oranı</p>
+                  </div>
+                  <div className="text-center p-3 bg-slate-50 rounded-lg">
+                    <p className="text-lg font-bold text-slate-900">4.2K</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">Etkileşim</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-    </PermissionGuard>
+    </div>
   );
 }

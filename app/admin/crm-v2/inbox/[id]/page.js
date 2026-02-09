@@ -2434,8 +2434,8 @@ export default function ConversationDetailPage() {
                                   : "bg-white border border-slate-100 rounded-2xl rounded-tl-md",
                               )}
                             >
-                              {/* WhatsApp Media Content */}
-                              {message.channel === 'whatsapp' && message.channelMetadata?.type && message.channelMetadata?.type !== 'text' ? (
+                              {/* WhatsApp Media Content - template ve text dışındaki tipler */}
+                              {message.channel === 'whatsapp' && message.channelMetadata?.type && !['text', 'template'].includes(message.channelMetadata?.type) ? (
                                 <div className="space-y-2">
                                   {/* Image */}
                                   {message.channelMetadata.type === 'image' && (

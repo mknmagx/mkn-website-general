@@ -10,6 +10,7 @@ import {
   updateCase,
   getCaseStatistics,
 } from "../../../../lib/services/crm-v2";
+import { getCustomer } from "../../../../lib/services/crm-v2/customer-service";
 import {
   CASE_STATUS,
   CASE_TYPE,
@@ -87,6 +88,15 @@ function CaseCard({ caseItem, onClick }) {
       onClick={onClick}
     >
       <h4 className="font-medium text-sm text-slate-900 line-clamp-2">{caseItem.title}</h4>
+      
+      {caseItem.customer && (
+        <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-500">
+          <span className="font-medium">{caseItem.customer.name}</span>
+          {caseItem.customer.companyName && (
+            <span className="text-slate-400">• {caseItem.customer.companyName}</span>
+          )}
+        </div>
+      )}
       
       <div className="flex items-center gap-2 mt-2">
         <Badge variant="outline" className="text-xs border-slate-200 text-slate-600">
@@ -201,8 +211,33 @@ export default function CasesPipelinePage() {
         getCaseStatistics(),
       ]);
 
-      setPipeline(pipelineData.pipeline);
-      setAllCases(pipelineData.all);
+      // Fetch customer data for each case
+      const casesWithCustomers = await Promise.all(
+        pipelineData.all.map(async (caseItem) => {
+          if (caseItem.customerId) {
+            try {
+              const customer = await getCustomer(caseItem.customerId);
+              return { ...caseItem, customer };
+            } catch (error) {
+              console.error(`Error fetching customer ${caseItem.customerId}:`, error);
+              return caseItem;
+            }
+          }
+          return caseItem;
+        })
+      );
+
+      // Rebuild pipeline with customer data
+      const pipelineWithCustomers = {};
+      Object.keys(pipelineData.pipeline).forEach((status) => {
+        pipelineWithCustomers[status] = pipelineData.pipeline[status].map((caseItem) => {
+          const caseWithCustomer = casesWithCustomers.find((c) => c.id === caseItem.id);
+          return caseWithCustomer || caseItem;
+        });
+      });
+
+      setPipeline(pipelineWithCustomers);
+      setAllCases(casesWithCustomers);
       setStats(statsData);
       
       // Restore scroll to last viewed case
@@ -430,6 +465,7 @@ export default function CasesPipelinePage() {
               <TableHeader>
                 <TableRow className="border-slate-100">
                   <TableHead className="text-slate-700 font-semibold">Talep</TableHead>
+                  <TableHead className="text-slate-700 font-semibold">Müşteri</TableHead>
                   <TableHead className="text-slate-700 font-semibold">Tür</TableHead>
                   <TableHead className="text-slate-700 font-semibold">Durum</TableHead>
                   <TableHead className="text-slate-700 font-semibold">Öncelik</TableHead>
@@ -441,7 +477,7 @@ export default function CasesPipelinePage() {
               <TableBody>
                 {allCases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                    <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                       <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>Talep bulunamadı</p>
                     </TableCell>
@@ -461,6 +497,19 @@ export default function CasesPipelinePage() {
                             <p className="text-xs text-slate-500">#{caseItem.caseNumber}</p>
                           )}
                         </div>
+                      </TableCell>
+
+                      <TableCell>
+                        {caseItem.customer ? (
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{caseItem.customer.name}</p>
+                            {caseItem.customer.companyName && (
+                              <p className="text-xs text-slate-500">{caseItem.customer.companyName}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">—</span>
+                        )}
                       </TableCell>
 
                       <TableCell>

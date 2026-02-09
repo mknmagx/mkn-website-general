@@ -525,11 +525,7 @@ export default function AdminNavigation() {
         { id: "blog-ai", name: "Blog AI Oluşturucu", href: "/admin/blog/ai-generator", icon: Sparkles, show: hasPermission("blog.read") },
         { id: "blog-categories", name: "Blog Kategorileri", href: "/admin/blog/categories", icon: FolderTree, show: hasPermission("blog.read") },
         { id: "blog-titles", name: "Blog Başlıkları", href: "/admin/blog/title-management", icon: StickyNote, show: hasPermission("blog.read") },
-        { id: "sm-dashboard", name: "SM Genel Bakış", href: "/admin/social-media", icon: Share2, show: hasPermission("blog.read") },
-        { id: "sm-titles", name: "SM Başlık Kütüphanesi", href: "/admin/social-media/title-library", icon: StickyNote, show: hasPermission("blog.read") },
-        { id: "sm-calendar", name: "SM İçerik Takvimi", href: "/admin/social-media/calendar-view", icon: CalendarIcon, show: hasPermission("blog.read") },
-        { id: "sm-studio", name: "SM İçerik Stüdyosu", href: "/admin/social-media/content-studio", icon: Sparkles, show: hasPermission("blog.read") },
-        { id: "sm-library", name: "SM İçerik Arşivi", href: "/admin/social-media/content-list", icon: Database, show: hasPermission("blog.read") },
+        { id: "social-media", name: "Sosyal Medya", href: "/admin/social-media", icon: Share2, show: hasPermission("social_media.read") || hasPermission("blog.read") },
       ],
     },
     {

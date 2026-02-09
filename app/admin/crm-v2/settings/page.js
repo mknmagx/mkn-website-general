@@ -41,6 +41,9 @@ import {
   importSingleEmailById,
   importMultipleEmails,
   reimportEmailById,
+  // Mesaj Yönetimi
+  reimportWhatsAppMessageById,
+  getConversationMessagesForManagement,
   // Local Settings (localStorage)
   getLocalSettings,
   saveLocalSettings,
@@ -220,6 +223,13 @@ export default function CrmSettingsPage() {
   const [waMigrationLoading, setWaMigrationLoading] = useState(false);
   const [waMigrationRunning, setWaMigrationRunning] = useState(false);
   const [waMigrationResult, setWaMigrationResult] = useState(null);
+
+  // Manuel Sync state (Outlook + WhatsApp + Forms)
+  const [runningSyncNow, setRunningSyncNow] = useState(false);
+  const [lastSyncResult, setLastSyncResult] = useState(null);
+
+  // Mesaj Yöneticisi ek state (reloading için)
+  const [reloadingMessageId, setReloadingMessageId] = useState(null);
 
   // Load settings
   useEffect(() => {
@@ -1503,6 +1513,58 @@ export default function CrmSettingsPage() {
     }
   };
 
+  // Mesaj içeriğini yeniden yükle
+  const handleReloadMessageContent = async (message) => {
+    if (!message?.id) return;
+    
+    setReloadingMessageId(message.id);
+    try {
+      const { reimportWhatsAppMessageById, reimportEmailById } = await import('@/lib/services/crm-v2/sync-service');
+      
+      let result;
+      if (message.channel === 'whatsapp') {
+        // WhatsApp: wamId kullan - channelMetadata'dan al
+        const wamId = message.channelMetadata?.wamId || message.id;
+        result = await reimportWhatsAppMessageById(wamId, user?.email);
+      } else if (message.channel === 'email') {
+        // Email: Outlook message ID kullan - emailMetadata veya channelMetadata'dan al
+        const outlookMessageId = message.emailMetadata?.outlookMessageId || 
+                                  message.channelMetadata?.outlookMessageId ||
+                                  message.channelMetadata?.messageId;
+        
+        if (!outlookMessageId || outlookMessageId === message.id) {
+          throw new Error('Bu mesaj için Outlook message ID bulunamadı. Manuel senkronizasyon gerekebilir.');
+        }
+        
+        result = await reimportEmailById(outlookMessageId, user?.email);
+      } else {
+        throw new Error('Bu mesaj türü için yeniden yükleme desteklenmiyor');
+      }
+      
+      // Sonucu kontrol et
+      if (!result.success) {
+        throw new Error(result.error || 'Bilinmeyen hata');
+      }
+      
+      toast({
+        title: "✅ Başarılı",
+        description: `${result.action}: ${result.contentLength || 0} karakter içerik yüklendi`,
+      });
+      
+      // Listeyi yenile
+      await handleLoadConversationMessages();
+    } catch (error) {
+      console.error("Reload message error:", error);
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setReloadingMessageId(null);
+    }
+  };
+
   const formatMessageDate = (timestamp) => {
     if (!timestamp) return '-';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -1650,6 +1712,88 @@ export default function CrmSettingsPage() {
                   İlk import'ta kaç günlük email çekilecek
                 </p>
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Manuel Sync Butonu */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Manuel Senkronizasyon</Label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tüm kaynakları şimdi senkronize et (Outlook, WhatsApp, Formlar)
+                  </p>
+                </div>
+                <Button
+                  onClick={async () => {
+                    if (runningSyncNow) return;
+                    setRunningSyncNow(true);
+                    setLastSyncResult(null);
+                    try {
+                      const result = await manualSync(user?.uid);
+                      setLastSyncResult(result);
+                      toast({
+                        title: "✅ Senkronizasyon Tamamlandı",
+                        description: `Email: ${result?.summary?.emails || 0}, WhatsApp: ${result?.summary?.whatsapp || 0}, Form: ${result?.summary?.forms || 0}`,
+                      });
+                    } catch (error) {
+                      console.error("Sync error:", error);
+                      toast({
+                        title: "Senkronizasyon Hatası",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setRunningSyncNow(false);
+                    }
+                  }}
+                  disabled={runningSyncNow}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {runningSyncNow ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Senkronize Ediliyor...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Şimdi Senkronize Et
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {lastSyncResult && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                  <div className="font-medium text-green-800 mb-1">Son Senkronizasyon Sonuçları:</div>
+                  <div className="text-green-700 space-y-1">
+                    <div>• Outlook Email: {lastSyncResult?.outlook?.imported || 0} yeni, {lastSyncResult?.outlook?.skipped || 0} atlandı</div>
+                    <div>• WhatsApp: {lastSyncResult?.whatsapp?.conversations?.imported || 0} conversation, {lastSyncResult?.whatsapp?.messages?.imported || 0} mesaj</div>
+                    <div>• Formlar: {lastSyncResult?.contacts?.imported || 0} iletişim, {lastSyncResult?.quotes?.imported || 0} teklif</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Mesaj Yöneticisi */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Mesaj Yöneticisi</Label>
+                <p className="text-xs text-slate-500 mt-1">
+                  Boş mesaj içeriklerini düzelt, mesajları yeniden yükle
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowMessageManagerDialog(true)}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Mesaj Yöneticisi
+              </Button>
             </div>
 
             <div className="flex justify-end pt-4">
@@ -3083,6 +3227,22 @@ export default function CrmSettingsPage() {
                               title="Tekrar Gönder"
                             >
                               <Send className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(message.channel === 'whatsapp' || message.channel === 'email') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              onClick={() => handleReloadMessageContent(message)}
+                              disabled={reloadingMessageId === message.id}
+                              title="İçeriği Yeniden Yükle"
+                            >
+                              {reloadingMessageId === message.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4" />
+                              )}
                             </Button>
                           )}
                           <Button
