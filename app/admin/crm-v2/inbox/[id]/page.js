@@ -1262,42 +1262,21 @@ export default function ConversationDetailPage() {
       // Attachment'ları hazırla - state'ten veya mesajdan al
       let emailAttachments = attachments;
       
-      // Eğer state'te attachment yoksa, mesajdaki attachment'ları Storage'dan indir
+      // Eğer state'te attachment yoksa, mesajdaki attachment'ları al
+      // ⚠️ Storage'daki dosyaları INDIRMEYE GEREK YOK, sadece URL'leri kullan
       if (emailAttachments.length === 0 && sendChannels.email) {
         const pendingMessage = conversation?.messages?.find(m => m.id === pendingSendMessageId);
         if (pendingMessage?.attachments?.length > 0) {
-          toast({
-            title: "Dosyalar Hazırlanıyor",
-            description: "Ekler e-posta için hazırlanıyor...",
-          });
+          // Attachments'ları direkt kullan (URL varsa, contentBytes olmadan)
+          emailAttachments = pendingMessage.attachments.map(att => ({
+            name: att.name,
+            url: att.url,
+            size: att.size || 0,
+            contentType: att.contentType || 'application/octet-stream',
+            // contentBytes yok - sendEmailViaOutlook bunları URL olarak işleyecek
+          }));
           
-          emailAttachments = [];
-          for (const att of pendingMessage.attachments) {
-            if (att.url) {
-              try {
-                // Storage proxy API ile dosyayı indir (CORS bypass)
-                const proxyResponse = await fetch('/api/admin/storage-proxy', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ url: att.url }),
-                });
-                
-                const proxyResult = await proxyResponse.json();
-                
-                if (proxyResult.success && proxyResult.contentBytes) {
-                  emailAttachments.push({
-                    ...att,
-                    contentType: proxyResult.contentType || att.contentType || 'application/octet-stream',
-                    contentBytes: proxyResult.contentBytes,
-                  });
-                } else {
-                  console.error('Proxy error:', proxyResult.error);
-                }
-              } catch (err) {
-                console.error('Attachment download error:', err);
-              }
-            }
-          }
+          console.log('[CRM] Using existing storage URLs for attachments:', emailAttachments.length);
         }
       }
       
