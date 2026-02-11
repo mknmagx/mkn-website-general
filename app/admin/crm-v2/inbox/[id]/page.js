@@ -6,7 +6,12 @@ import { useRouter, useParams } from "next/navigation";
 import { useAdminAuth } from "../../../../../hooks/use-admin-auth";
 import { useToast } from "../../../../../hooks/use-toast";
 // Unified AI Hook - mevcut AI altyapısı
-import { useUnifiedAI, AI_CONTEXTS, getAIErrorTitle, getAIErrorMessage } from "../../../../../hooks/use-unified-ai";
+import {
+  useUnifiedAI,
+  AI_CONTEXTS,
+  getAIErrorTitle,
+  getAIErrorMessage,
+} from "../../../../../hooks/use-unified-ai";
 // HTML to Text utility - Mesaj temizleme
 import {
   cleanTextForAI,
@@ -28,6 +33,7 @@ import { getCustomer } from "../../../../../lib/services/crm-v2/customer-service
 import {
   createCaseFromConversation,
   getCaseByConversationId,
+  getCustomerCases,
 } from "../../../../../lib/services/crm-v2/case-service";
 // WhatsApp Sync Service - 24 saat kuralı ve mesaj gönderme
 import {
@@ -243,18 +249,18 @@ const getChannelIconComponent = (channel, className = "h-3 w-3") => {
  */
 const getMessageChannelColor = (channel) => {
   const colors = {
-    [CHANNEL.EMAIL]: 'bg-sky-50 text-sky-600 border-sky-200',
-    [CHANNEL.WHATSAPP]: 'bg-green-50 text-green-600 border-green-200',
-    [CHANNEL.CONTACT_FORM]: 'bg-blue-50 text-blue-600 border-blue-200',
-    [CHANNEL.QUOTE_FORM]: 'bg-purple-50 text-purple-600 border-purple-200',
-    [CHANNEL.PHONE]: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-    [CHANNEL.SOCIAL_INSTAGRAM]: 'bg-pink-50 text-pink-600 border-pink-200',
-    [CHANNEL.SOCIAL_FACEBOOK]: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-    [CHANNEL.SOCIAL_LINKEDIN]: 'bg-blue-50 text-blue-600 border-blue-200',
-    [CHANNEL.SOCIAL_TWITTER]: 'bg-cyan-50 text-cyan-600 border-cyan-200',
-    [CHANNEL.MANUAL]: 'bg-slate-50 text-slate-500 border-slate-200',
+    [CHANNEL.EMAIL]: "bg-sky-50 text-sky-600 border-sky-200",
+    [CHANNEL.WHATSAPP]: "bg-green-50 text-green-600 border-green-200",
+    [CHANNEL.CONTACT_FORM]: "bg-blue-50 text-blue-600 border-blue-200",
+    [CHANNEL.QUOTE_FORM]: "bg-purple-50 text-purple-600 border-purple-200",
+    [CHANNEL.PHONE]: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    [CHANNEL.SOCIAL_INSTAGRAM]: "bg-pink-50 text-pink-600 border-pink-200",
+    [CHANNEL.SOCIAL_FACEBOOK]: "bg-indigo-50 text-indigo-600 border-indigo-200",
+    [CHANNEL.SOCIAL_LINKEDIN]: "bg-blue-50 text-blue-600 border-blue-200",
+    [CHANNEL.SOCIAL_TWITTER]: "bg-cyan-50 text-cyan-600 border-cyan-200",
+    [CHANNEL.MANUAL]: "bg-slate-50 text-slate-500 border-slate-200",
   };
-  return colors[channel] || 'bg-slate-50 text-slate-500 border-slate-200';
+  return colors[channel] || "bg-slate-50 text-slate-500 border-slate-200";
 };
 
 /**
@@ -312,34 +318,34 @@ const isHtmlContent = (content) => {
  */
 const safeParseDate = (dateValue) => {
   if (!dateValue) return null;
-  
+
   try {
     // Firestore Timestamp (toDate metodu var)
-    if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
+    if (dateValue?.toDate && typeof dateValue.toDate === "function") {
       return dateValue.toDate();
     }
-    
+
     // Serialized Firestore Timestamp (seconds property)
     if (dateValue?.seconds) {
       return new Date(dateValue.seconds * 1000);
     }
-    
+
     // Serialized Firestore Timestamp (_seconds property)
     if (dateValue?._seconds) {
       return new Date(dateValue._seconds * 1000);
     }
-    
+
     // String veya number
-    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+    if (typeof dateValue === "string" || typeof dateValue === "number") {
       const date = new Date(dateValue);
       if (!isNaN(date.getTime())) {
         return date;
       }
     }
-    
+
     return null;
   } catch (e) {
-    console.warn('Date parsing error:', dateValue);
+    console.warn("Date parsing error:", dateValue);
     return null;
   }
 };
@@ -350,11 +356,11 @@ const safeParseDate = (dateValue) => {
 const safeFormatDate = (dateValue, formatString = "dd MMM yyyy HH:mm") => {
   const date = safeParseDate(dateValue);
   if (!date) return "";
-  
+
   try {
     return format(date, formatString, { locale: tr });
   } catch (e) {
-    console.warn('Date format error:', dateValue);
+    console.warn("Date format error:", dateValue);
     return "";
   }
 };
@@ -436,7 +442,8 @@ export default function ConversationDetailPage() {
   const [showCalcOptionsModal, setShowCalcOptionsModal] = useState(false); // Hesaplama PDF ayarları modalı
   const [pendingCalculation, setPendingCalculation] = useState(null); // Eklenecek hesaplama
   const [calcShowCostDetails, setCalcShowCostDetails] = useState(false); // Maliyet detayları gösterilsin mi
-  const [linkedDocuments, setLinkedDocuments] = useState({ // Müşteriye bağlı belgeler
+  const [linkedDocuments, setLinkedDocuments] = useState({
+    // Müşteriye bağlı belgeler
     proformas: [],
     contracts: [],
     calculations: [],
@@ -444,6 +451,10 @@ export default function ConversationDetailPage() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [linkedCompany, setLinkedCompany] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Customer Cases State
+  const [customerCases, setCustomerCases] = useState([]);
+  const [casesLoading, setCasesLoading] = useState(false);
 
   // Modals
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -458,71 +469,87 @@ export default function ConversationDetailPage() {
     manual: false, // Sadece CRM'e kaydet
   });
   const [sendingMessage, setSendingMessage] = useState(false);
-  
+
   // WhatsApp 24 saat kuralı state'leri
   const [whatsappWindowStatus, setWhatsappWindowStatus] = useState(null);
   const [showWhatsAppMediaUpload, setShowWhatsAppMediaUpload] = useState(false);
   const [checkingWhatsappWindow, setCheckingWhatsappWindow] = useState(false);
   const [whatsappTemplates, setWhatsappTemplates] = useState([]);
-  const [selectedWhatsappTemplate, setSelectedWhatsappTemplate] = useState(null);
+  const [selectedWhatsappTemplate, setSelectedWhatsappTemplate] =
+    useState(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
-  
+
   // WhatsApp telefon düzenleme
-  const [editableWhatsappPhone, setEditableWhatsappPhone] = useState('');
+  const [editableWhatsappPhone, setEditableWhatsappPhone] = useState("");
   const [whatsappPhoneError, setWhatsappPhoneError] = useState(null);
-  
+
   // WhatsApp Şablon Direkt Gönderim Modal State
-  const [showWhatsAppTemplateModal, setShowWhatsAppTemplateModal] = useState(false);
-  const [directTemplatePhone, setDirectTemplatePhone] = useState('');
-  const [directTemplatePhoneError, setDirectTemplatePhoneError] = useState(null);
+  const [showWhatsAppTemplateModal, setShowWhatsAppTemplateModal] =
+    useState(false);
+  const [directTemplatePhone, setDirectTemplatePhone] = useState("");
+  const [directTemplatePhoneError, setDirectTemplatePhoneError] =
+    useState(null);
   const [directSelectedTemplate, setDirectSelectedTemplate] = useState(null);
   const [directTemplates, setDirectTemplates] = useState([]);
   const [loadingDirectTemplates, setLoadingDirectTemplates] = useState(false);
   const [sendingDirectTemplate, setSendingDirectTemplate] = useState(false);
-  
+
   // WhatsApp Şablon Değişkenleri (Her iki modal için)
-  const [templateVariables, setTemplateVariables] = useState({ header: "", body: [] });
-  const [directTemplateVariables, setDirectTemplateVariables] = useState({ header: "", body: [] });
-  
+  const [templateVariables, setTemplateVariables] = useState({
+    header: "",
+    body: [],
+  });
+  const [directTemplateVariables, setDirectTemplateVariables] = useState({
+    header: "",
+    body: [],
+  });
+
   // ==========================================
   // WHATSAPP TEMPLATE HELPER FUNCTIONS
   // ==========================================
-  
+
   // Şablondaki değişkenleri çıkar
   const getTemplateVariables = useCallback((template) => {
     const vars = { header: null, body: [] };
     const regex = /\{\{(\d+)\}\}/g;
-    
+
     for (const component of template?.components || []) {
-      if (component.type === 'HEADER' && component.format === 'TEXT') {
+      if (component.type === "HEADER" && component.format === "TEXT") {
         const matches = component.text?.match(regex);
         if (matches) vars.header = true;
       }
-      if (component.type === 'BODY' && component.text) {
+      if (component.type === "BODY" && component.text) {
         const matches = [...component.text.matchAll(regex)];
         vars.body = matches.map((m) => parseInt(m[1]));
       }
     }
-    
+
     return vars;
   }, []);
-  
+
   // Değişken önerileri (context'e göre)
   const getVariableSuggestions = useCallback((template, varNum, idx) => {
     const suggestions = [];
     const templateName = template?.name?.toLowerCase() || "";
-    const bodyText = template?.components?.find(c => c.type === "BODY")?.text?.toLowerCase() || "";
-    
+    const bodyText =
+      template?.components
+        ?.find((c) => c.type === "BODY")
+        ?.text?.toLowerCase() || "";
+
     // İlk değişken genellikle müşteri adı
     if (varNum === 1 || idx === 0) {
       if (bodyText.includes("merhaba") || bodyText.includes("sayın")) {
         suggestions.push({ key: "customerName", label: "Müşteri Adı" });
       }
     }
-    
+
     // İkinci değişken kalıpları
     if (varNum === 2 || idx === 1) {
-      if (templateName.includes("talep") || bodyText.includes("talep") || bodyText.includes("konulu")) {
+      if (
+        templateName.includes("talep") ||
+        bodyText.includes("talep") ||
+        bodyText.includes("konulu")
+      ) {
         suggestions.push({ key: "requestTitle", label: "Talep Başlığı" });
       }
       if (templateName.includes("teklif") || bodyText.includes("teklif")) {
@@ -532,43 +559,49 @@ export default function ConversationDetailPage() {
         suggestions.push({ key: "amount", label: "Tutar" });
       }
     }
-    
+
     return suggestions;
   }, []);
-  
+
   // Canlı önizleme oluştur
-  const getLivePreview = useCallback((template, vars) => {
-    if (!template) return "";
-    
-    let preview = "";
-    for (const comp of template.components || []) {
-      if (comp.type === "HEADER" && comp.format === "TEXT") {
-        let headerText = comp.text || "";
-        if (vars?.header) {
-          headerText = headerText.replace(/\{\{1\}\}/g, vars.header);
+  const getLivePreview = useCallback(
+    (template, vars) => {
+      if (!template) return "";
+
+      let preview = "";
+      for (const comp of template.components || []) {
+        if (comp.type === "HEADER" && comp.format === "TEXT") {
+          let headerText = comp.text || "";
+          if (vars?.header) {
+            headerText = headerText.replace(/\{\{1\}\}/g, vars.header);
+          }
+          preview += `*${headerText}*\n\n`;
         }
-        preview += `*${headerText}*\n\n`;
+        if (comp.type === "BODY") {
+          let bodyText = comp.text || "";
+          const templateVars = getTemplateVariables(template);
+          templateVars.body.forEach((varNum, idx) => {
+            const value = vars?.body?.[idx] || `{{${varNum}}}`;
+            bodyText = bodyText.replace(
+              new RegExp(`\\{\\{${varNum}\\}\\}`, "g"),
+              value,
+            );
+          });
+          preview += bodyText;
+        }
+        if (comp.type === "FOOTER") {
+          preview += `\n\n_${comp.text || ""}_`;
+        }
       }
-      if (comp.type === "BODY") {
-        let bodyText = comp.text || "";
-        const templateVars = getTemplateVariables(template);
-        templateVars.body.forEach((varNum, idx) => {
-          const value = vars?.body?.[idx] || `{{${varNum}}}`;
-          bodyText = bodyText.replace(new RegExp(`\\{\\{${varNum}\\}\\}`, 'g'), value);
-        });
-        preview += bodyText;
-      }
-      if (comp.type === "FOOTER") {
-        preview += `\n\n_${comp.text || ""}_`;
-      }
-    }
-    return preview;
-  }, [getTemplateVariables]);
-  
+      return preview;
+    },
+    [getTemplateVariables],
+  );
+
   // API için component parametreleri oluştur
   const buildTemplateComponents = useCallback((template, vars) => {
     const components = [];
-    
+
     for (const component of template?.components || []) {
       if (component.type === "HEADER" && vars?.header) {
         if (component.format === "TEXT") {
@@ -578,7 +611,7 @@ export default function ConversationDetailPage() {
           });
         }
       }
-      
+
       if (component.type === "BODY" && vars?.body?.length > 0) {
         components.push({
           type: "body",
@@ -586,35 +619,38 @@ export default function ConversationDetailPage() {
         });
       }
     }
-    
+
     return components;
   }, []);
-  
+
   // Şablon seçildiğinde değişkenleri otomatik doldur
-  const autoFillTemplateVariables = useCallback((template, setVars) => {
-    const templateVars = getTemplateVariables(template);
-    const customerName = customer?.name || conversation?.sender?.name || "";
-    const subject = conversation?.subject || "";
-    
-    const autoFilledBody = templateVars.body.map((varNum, idx) => {
-      const suggestions = getVariableSuggestions(template, varNum, idx);
-      
-      // İlk değişken genellikle müşteri adı
-      if (idx === 0 && customerName) {
-        return customerName;
-      }
-      
-      // İkinci değişken için konu başlığı
-      if (idx === 1 && subject) {
-        return subject;
-      }
-      
-      return "";
-    });
-    
-    setVars({ header: "", body: autoFilledBody });
-  }, [customer, conversation, getTemplateVariables, getVariableSuggestions]);
-  
+  const autoFillTemplateVariables = useCallback(
+    (template, setVars) => {
+      const templateVars = getTemplateVariables(template);
+      const customerName = customer?.name || conversation?.sender?.name || "";
+      const subject = conversation?.subject || "";
+
+      const autoFilledBody = templateVars.body.map((varNum, idx) => {
+        const suggestions = getVariableSuggestions(template, varNum, idx);
+
+        // İlk değişken genellikle müşteri adı
+        if (idx === 0 && customerName) {
+          return customerName;
+        }
+
+        // İkinci değişken için konu başlığı
+        if (idx === 1 && subject) {
+          return subject;
+        }
+
+        return "";
+      });
+
+      setVars({ header: "", body: autoFilledBody });
+    },
+    [customer, conversation, getTemplateVariables, getVariableSuggestions],
+  );
+
   const [convertForm, setConvertForm] = useState({
     title: "",
     type: CASE_TYPE.OTHER,
@@ -635,7 +671,7 @@ export default function ConversationDetailPage() {
   // Firestore config yüklendiğinde summaryModelSettings'i güncelle
   useEffect(() => {
     if (summaryConfig?.settings) {
-      setSummaryModelSettings(prev => ({
+      setSummaryModelSettings((prev) => ({
         ...prev,
         maxTokens: summaryConfig.settings.maxTokens || prev.maxTokens,
         temperature: summaryConfig.settings.temperature ?? prev.temperature,
@@ -744,7 +780,7 @@ export default function ConversationDetailPage() {
           collection(db, "proformas"),
           where("companyId", "==", companyId),
           orderBy("createdAt", "desc"),
-          limit(20)
+          limit(20),
         );
         const proformasSnapshot = await getDocs(proformasQuery);
         proformas = proformasSnapshot.docs.map((doc) => ({
@@ -762,7 +798,7 @@ export default function ConversationDetailPage() {
           collection(db, "contracts"),
           where("companyId", "==", companyId),
           orderBy("createdAt", "desc"),
-          limit(20)
+          limit(20),
         );
         const contractsSnapshot = await getDocs(contractsQuery);
         contracts = contractsSnapshot.docs.map((doc) => ({
@@ -779,25 +815,30 @@ export default function ConversationDetailPage() {
       let calculations = [];
       try {
         const allCalcs = await PricingService.getPricingCalculations();
-        
+
         // Kaynak 1: linkedCompanies içinde companyId olanlar
         const linkedFromCalcCollection = allCalcs.filter(
-          (calc) => calc.linkedCompanies && calc.linkedCompanies.includes(companyId)
+          (calc) =>
+            calc.linkedCompanies && calc.linkedCompanies.includes(companyId),
         );
-        
+
         // Kaynak 2: Firma dokümanındaki pricingCalculations array'i
         const companyDocRef = await getDoc(doc(db, "companies", companyId));
         let linkedFromCompanyDoc = [];
         if (companyDocRef.exists()) {
           const companyData = companyDocRef.data();
-          const companyCalcIds = (companyData.pricingCalculations || []).map(c => c.calculationId || c.id);
-          linkedFromCompanyDoc = allCalcs.filter(calc => companyCalcIds.includes(calc.id));
+          const companyCalcIds = (companyData.pricingCalculations || []).map(
+            (c) => c.calculationId || c.id,
+          );
+          linkedFromCompanyDoc = allCalcs.filter((calc) =>
+            companyCalcIds.includes(calc.id),
+          );
         }
-        
+
         // İki kaynağı birleştir (duplicate'leri kaldır)
         calculations = [...linkedFromCalcCollection];
         for (const calc of linkedFromCompanyDoc) {
-          if (!calculations.some(c => c.id === calc.id)) {
+          if (!calculations.some((c) => c.id === calc.id)) {
             calculations.push(calc);
           }
         }
@@ -819,6 +860,34 @@ export default function ConversationDetailPage() {
       loadLinkedDocuments(customer.linkedCompanyId);
     }
   }, [customer?.linkedCompanyId, loadLinkedDocuments]);
+
+  // Load customer cases
+  const loadCustomerCases = useCallback(async () => {
+    if (!customer?.id) {
+      setCustomerCases([]);
+      return;
+    }
+
+    setCasesLoading(true);
+    try {
+      const cases = await getCustomerCases(customer.id, {
+        sortBy: "updatedAt",
+        sortDirection: "desc",
+        limitCount: 10,
+      });
+      setCustomerCases(cases);
+    } catch (error) {
+      console.error("Error loading customer cases:", error);
+      setCustomerCases([]);
+    } finally {
+      setCasesLoading(false);
+    }
+  }, [customer?.id]);
+
+  // Load customer cases when customer changes
+  useEffect(() => {
+    loadCustomerCases();
+  }, [loadCustomerCases]);
 
   // Track previous message count to detect NEW messages only
   const prevMessageCount = useRef(0);
@@ -1112,7 +1181,7 @@ export default function ConversationDetailPage() {
 
       // Ekleri ekle
       if (attachments.length > 0) {
-        messageData.attachments = attachments.map(att => ({
+        messageData.attachments = attachments.map((att) => ({
           type: att.type,
           name: att.name,
           size: att.size || null,
@@ -1150,15 +1219,17 @@ export default function ConversationDetailPage() {
   // Gönderim modalını aç - WhatsApp için 24 saat kuralını kontrol et
   const handleOpenSendModal = async (messageId) => {
     setPendingSendMessageId(messageId);
-    
+
     // Müşteri email'i varsa email varsayılan olsun
     const hasEmail = conversation?.sender?.email;
     const hasPhone = conversation?.sender?.phone;
     // WhatsApp iletişimi başlamışsa (kanal veya metadata kontrolu)
-    const isWhatsAppChannel = conversation?.channel === 'whatsapp';
-    const hasWhatsAppData = conversation?.channelMetadata?.waId || conversation?.channelMetadata?.whatsappConversationId;
+    const isWhatsAppChannel = conversation?.channel === "whatsapp";
+    const hasWhatsAppData =
+      conversation?.channelMetadata?.waId ||
+      conversation?.channelMetadata?.whatsappConversationId;
     const isWhatsAppEnabled = isWhatsAppChannel || hasWhatsAppData;
-    
+
     // Telefon numarasını düzenlenebilir alana set et
     if (hasPhone) {
       const formattedPhone = formatPhoneForWhatsApp(conversation.sender.phone);
@@ -1167,45 +1238,47 @@ export default function ConversationDetailPage() {
       const validation = validateWhatsAppPhone(formattedPhone);
       setWhatsappPhoneError(validation.valid ? null : validation.message);
     } else if (hasWhatsAppData) {
-      setEditableWhatsappPhone(conversation.channelMetadata.waId || '');
+      setEditableWhatsappPhone(conversation.channelMetadata.waId || "");
       setWhatsappPhoneError(null);
     } else {
-      setEditableWhatsappPhone('');
+      setEditableWhatsappPhone("");
       setWhatsappPhoneError(null);
     }
-    
+
     // WhatsApp kanalıysa veya telefon numarası varsa 24 saat kontrolü yap
     if (isWhatsAppEnabled || hasPhone) {
       setCheckingWhatsappWindow(true);
       try {
         const windowStatus = await checkServiceWindow(conversationId);
         setWhatsappWindowStatus(windowStatus);
-        
+
         // Eğer template gerekiyorsa template'leri yükle
         if (windowStatus.requiresTemplate) {
           setLoadingTemplates(true);
           try {
-            const response = await fetch('/api/admin/whatsapp/templates');
+            const response = await fetch("/api/admin/whatsapp/templates");
             const data = await response.json();
             if (data.success) {
               // Sadece onaylı template'leri göster
-              const approvedTemplates = (data.data || []).filter(t => t.status === 'APPROVED');
+              const approvedTemplates = (data.data || []).filter(
+                (t) => t.status === "APPROVED",
+              );
               setWhatsappTemplates(approvedTemplates);
             }
           } catch (err) {
-            console.error('Template loading error:', err);
+            console.error("Template loading error:", err);
           } finally {
             setLoadingTemplates(false);
           }
         }
       } catch (err) {
-        console.error('Service window check error:', err);
+        console.error("Service window check error:", err);
         setWhatsappWindowStatus({ isOpen: false, requiresTemplate: true });
       } finally {
         setCheckingWhatsappWindow(false);
       }
     }
-    
+
     setSendChannels({
       email: hasEmail ? true : false,
       whatsapp: isWhatsAppEnabled ? true : false, // WhatsApp iletişimi başlamışsa otomatik seç
@@ -1228,7 +1301,7 @@ export default function ConversationDetailPage() {
       });
       return;
     }
-    
+
     // WhatsApp seçiliyse telefon doğrulama
     if (sendChannels.whatsapp) {
       const phoneValidation = validateWhatsAppPhone(editableWhatsappPhone);
@@ -1241,12 +1314,17 @@ export default function ConversationDetailPage() {
         return;
       }
     }
-    
+
     // WhatsApp seçiliyse ve 24 saat kapanmışsa template zorunlu
-    if (sendChannels.whatsapp && whatsappWindowStatus?.requiresTemplate && !selectedWhatsappTemplate) {
+    if (
+      sendChannels.whatsapp &&
+      whatsappWindowStatus?.requiresTemplate &&
+      !selectedWhatsappTemplate
+    ) {
       toast({
         title: "Şablon Seçin",
-        description: "24 saat penceresi kapandığı için WhatsApp mesajı göndermek için şablon seçmelisiniz.",
+        description:
+          "24 saat penceresi kapandığı için WhatsApp mesajı göndermek için şablon seçmelisiniz.",
         variant: "destructive",
       });
       return;
@@ -1261,34 +1339,44 @@ export default function ConversationDetailPage() {
 
       // Attachment'ları hazırla - state'ten veya mesajdan al
       let emailAttachments = attachments;
-      
+
       // Eğer state'te attachment yoksa, mesajdaki attachment'ları al
       // ⚠️ Storage'daki dosyaları INDIRMEYE GEREK YOK, sadece URL'leri kullan
       if (emailAttachments.length === 0 && sendChannels.email) {
-        const pendingMessage = conversation?.messages?.find(m => m.id === pendingSendMessageId);
+        const pendingMessage = conversation?.messages?.find(
+          (m) => m.id === pendingSendMessageId,
+        );
         if (pendingMessage?.attachments?.length > 0) {
           // Attachments'ları direkt kullan (URL varsa, contentBytes olmadan)
-          emailAttachments = pendingMessage.attachments.map(att => ({
+          emailAttachments = pendingMessage.attachments.map((att) => ({
             name: att.name,
             url: att.url,
             size: att.size || 0,
-            contentType: att.contentType || 'application/octet-stream',
+            contentType: att.contentType || "application/octet-stream",
             // contentBytes yok - sendEmailViaOutlook bunları URL olarak işleyecek
           }));
-          
-          console.log('[CRM] Using existing storage URLs for attachments:', emailAttachments.length);
+
+          console.log(
+            "[CRM] Using existing storage URLs for attachments:",
+            emailAttachments.length,
+          );
         }
       }
-      
+
       // WhatsApp template bilgilerini hazırla
-      const whatsappOptions = sendChannels.whatsapp ? {
-        templateName: selectedWhatsappTemplate?.name || null,
-        templateLanguage: selectedWhatsappTemplate?.language || 'tr',
-        forceTemplate: whatsappWindowStatus?.requiresTemplate || false,
-        templateComponents: selectedWhatsappTemplate 
-          ? buildTemplateComponents(selectedWhatsappTemplate, templateVariables) 
-          : undefined,
-      } : {};
+      const whatsappOptions = sendChannels.whatsapp
+        ? {
+            templateName: selectedWhatsappTemplate?.name || null,
+            templateLanguage: selectedWhatsappTemplate?.language || "tr",
+            forceTemplate: whatsappWindowStatus?.requiresTemplate || false,
+            templateComponents: selectedWhatsappTemplate
+              ? buildTemplateComponents(
+                  selectedWhatsappTemplate,
+                  templateVariables,
+                )
+              : undefined,
+          }
+        : {};
 
       // Mesajı onayla ve gönder (kanallarla ve attachment'larla birlikte)
       await approveAndSendMessage(
@@ -1299,7 +1387,9 @@ export default function ConversationDetailPage() {
           channels: selectedChannels,
           recipientEmail: conversation?.sender?.email,
           recipientName: conversation?.sender?.name,
-          recipientPhone: sendChannels.whatsapp ? editableWhatsappPhone : conversation?.sender?.phone,
+          recipientPhone: sendChannels.whatsapp
+            ? editableWhatsappPhone
+            : conversation?.sender?.phone,
           subject: conversation?.subject,
           attachments: emailAttachments, // Hazırlanan attachment'ları gönder
           ...whatsappOptions, // WhatsApp template bilgileri
@@ -1343,39 +1433,44 @@ export default function ConversationDetailPage() {
   // WhatsApp Şablon Modalını Aç (Direkt gönderim için)
   const handleOpenWhatsAppTemplateModal = async () => {
     // Telefon numarasını set et - tüm olası kaynaklardan al
-    const phone = conversation?.sender?.phone 
-      || conversation?.channelMetadata?.waId 
-      || customer?.phone  // Customer'dan telefon al
-      || '';
-    
-    console.log('[WA Template] Phone sources:', {
+    const phone =
+      conversation?.sender?.phone ||
+      conversation?.channelMetadata?.waId ||
+      customer?.phone || // Customer'dan telefon al
+      "";
+
+    console.log("[WA Template] Phone sources:", {
       senderPhone: conversation?.sender?.phone,
       waId: conversation?.channelMetadata?.waId,
       customerPhone: customer?.phone,
-      resolved: phone
+      resolved: phone,
     });
-    
+
     if (phone) {
       const formattedPhone = formatPhoneForWhatsApp(phone);
       setDirectTemplatePhone(formattedPhone);
       const validation = validateWhatsAppPhone(formattedPhone);
       setDirectTemplatePhoneError(validation.valid ? null : validation.message);
     } else {
-      setDirectTemplatePhone('');
-      setDirectTemplatePhoneError('Müşterinin telefon numarası bulunamadı. Lütfen manuel girin.');
+      setDirectTemplatePhone("");
+      setDirectTemplatePhoneError(
+        "Müşterinin telefon numarası bulunamadı. Lütfen manuel girin.",
+      );
     }
-    
+
     // Template'leri yükle
     setLoadingDirectTemplates(true);
     setDirectSelectedTemplate(null);
     setShowWhatsAppTemplateModal(true);
-    
+
     try {
-      const response = await fetch('/api/admin/whatsapp/templates');
+      const response = await fetch("/api/admin/whatsapp/templates");
       const data = await response.json();
       if (data.success) {
         // Sadece onaylı template'leri göster
-        const approvedTemplates = (data.data || []).filter(t => t.status === 'APPROVED');
+        const approvedTemplates = (data.data || []).filter(
+          (t) => t.status === "APPROVED",
+        );
         setDirectTemplates(approvedTemplates);
       } else {
         setDirectTemplates([]);
@@ -1386,7 +1481,7 @@ export default function ConversationDetailPage() {
         });
       }
     } catch (err) {
-      console.error('Template loading error:', err);
+      console.error("Template loading error:", err);
       setDirectTemplates([]);
     } finally {
       setLoadingDirectTemplates(false);
@@ -1404,7 +1499,7 @@ export default function ConversationDetailPage() {
       });
       return;
     }
-    
+
     const phoneValidation = validateWhatsAppPhone(directTemplatePhone);
     if (!phoneValidation.valid) {
       toast({
@@ -1414,13 +1509,16 @@ export default function ConversationDetailPage() {
       });
       return;
     }
-    
+
     setSendingDirectTemplate(true);
     try {
       // 1. Canlı önizleme ile şablon içeriğini oluştur (değişkenler uygulanmış)
-      const livePreviewContent = getLivePreview(directSelectedTemplate, directTemplateVariables);
+      const livePreviewContent = getLivePreview(
+        directSelectedTemplate,
+        directTemplateVariables,
+      );
       const templateContent = `[WhatsApp Şablon: ${directSelectedTemplate.name}]\n\n${livePreviewContent}`;
-      
+
       const messageData = {
         content: templateContent,
         direction: "outbound",
@@ -1433,41 +1531,42 @@ export default function ConversationDetailPage() {
         },
         channelMetadata: {
           templateName: directSelectedTemplate.name,
-          templateLanguage: directSelectedTemplate.language || 'tr',
+          templateLanguage: directSelectedTemplate.language || "tr",
         },
       };
-      
+
       const newMessage = await addMessage(conversationId, messageData);
-      
+
       // Mesaj skip edildiyse (duplicate) uyar
       if (newMessage.skipped) {
-        console.warn('[CRM] Message was skipped (duplicate):', newMessage.skipReason);
+        console.warn(
+          "[CRM] Message was skipped (duplicate):",
+          newMessage.skipReason,
+        );
       }
-      
-      console.log('[CRM] Message created for template:', newMessage.id);
-      
+
+      console.log("[CRM] Message created for template:", newMessage.id);
+
       // 2. Mesajı WhatsApp üzerinden gönder (template components ile)
-      const templateComponents = buildTemplateComponents(directSelectedTemplate, directTemplateVariables);
-      
-      await approveAndSendMessage(
-        conversationId,
-        newMessage.id,
-        user?.uid,
-        {
-          channels: ['whatsapp'],
-          recipientPhone: directTemplatePhone,
-          templateName: directSelectedTemplate.name,
-          templateLanguage: directSelectedTemplate.language || 'tr',
-          templateComponents,
-          forceTemplate: true,
-        }
+      const templateComponents = buildTemplateComponents(
+        directSelectedTemplate,
+        directTemplateVariables,
       );
-      
+
+      await approveAndSendMessage(conversationId, newMessage.id, user?.uid, {
+        channels: ["whatsapp"],
+        recipientPhone: directTemplatePhone,
+        templateName: directSelectedTemplate.name,
+        templateLanguage: directSelectedTemplate.language || "tr",
+        templateComponents,
+        forceTemplate: true,
+      });
+
       toast({
         title: "✅ WhatsApp Şablon Gönderildi",
         description: `"${directSelectedTemplate.name}" şablonu başarıyla gönderildi.`,
       });
-      
+
       setShowWhatsAppTemplateModal(false);
       setDirectSelectedTemplate(null);
       setDirectTemplateVariables({ header: "", body: [] });
@@ -1565,7 +1664,7 @@ export default function ConversationDetailPage() {
       // Büyük dosya uyarısı
       if (needsLargeUploadConfirmation(file.size)) {
         const confirmed = window.confirm(
-          `${file.name} (${formatFileSize(file.size)}) büyük bir dosya.\n\nYüklemek istediğinizden emin misiniz?`
+          `${file.name} (${formatFileSize(file.size)}) büyük bir dosya.\n\nYüklemek istediğinizden emin misiniz?`,
         );
         if (!confirmed) continue;
       }
@@ -1584,7 +1683,7 @@ export default function ConversationDetailPage() {
         const base64 = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => {
-            const base64String = reader.result.split(',')[1];
+            const base64String = reader.result.split(",")[1];
             resolve(base64String);
           };
           reader.readAsDataURL(file);
@@ -1593,22 +1692,22 @@ export default function ConversationDetailPage() {
         const attachment = {
           id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: file.name,
-          contentType: file.type || 'application/octet-stream',
+          contentType: file.type || "application/octet-stream",
           contentBytes: base64,
           size: file.size,
-          type: 'file',
+          type: "file",
           url: storageUrl,
           storagePath: storagePath,
         };
 
-        setAttachments(prev => [...prev, attachment]);
-        
+        setAttachments((prev) => [...prev, attachment]);
+
         toast({
           title: "✅ Yüklendi",
           description: `${file.name} başarıyla eklendi.`,
         });
       } catch (error) {
-        console.error('Dosya yükleme hatası:', error);
+        console.error("Dosya yükleme hatası:", error);
         toast({
           title: "Hata",
           description: `${file.name} yüklenemedi: ${error.message}`,
@@ -1616,10 +1715,10 @@ export default function ConversationDetailPage() {
         });
       }
     }
-    
+
     // Reset file input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -1627,7 +1726,7 @@ export default function ConversationDetailPage() {
   // Hesaplama için önce modal açılır
   const handleAddLinkedDocument = async (docType, document, options = {}) => {
     // Hesaplama için önce ayar modalı aç
-    if (docType === 'calculation' && !options.skipModal) {
+    if (docType === "calculation" && !options.skipModal) {
       setPendingCalculation(document);
       setCalcShowCostDetails(false); // Varsayılan: maliyet detayları gizli
       setShowCalcOptionsModal(true);
@@ -1636,7 +1735,7 @@ export default function ConversationDetailPage() {
 
     // Duplicate kontrolü
     const attachmentId = `${docType}-${document.id}`;
-    const exists = attachments.some(a => a.id === attachmentId);
+    const exists = attachments.some((a) => a.id === attachmentId);
     if (exists) {
       toast({
         title: "Zaten ekli",
@@ -1653,36 +1752,36 @@ export default function ConversationDetailPage() {
     });
 
     try {
-      let apiEndpoint = '';
+      let apiEndpoint = "";
       let requestBody = {};
-      let fileName = '';
-      
+      let fileName = "";
+
       switch (docType) {
-        case 'proforma':
-          apiEndpoint = '/api/generate-pdf';
+        case "proforma":
+          apiEndpoint = "/api/generate-pdf";
           // Proforma için şirket bilgilerini de al
-          requestBody = { 
+          requestBody = {
             proforma: document,
-            companyData: linkedCompany || null
+            companyData: linkedCompany || null,
           };
           fileName = `Proforma_${document.proformaNumber || document.id.slice(0, 8)}.pdf`;
           break;
-        case 'contract':
-          apiEndpoint = '/api/generate-contract-pdf';
-          requestBody = { 
+        case "contract":
+          apiEndpoint = "/api/generate-contract-pdf";
+          requestBody = {
             contract: document,
-            companyData: linkedCompany || null
+            companyData: linkedCompany || null,
           };
           fileName = `Sozlesme_${document.contractNumber || document.id.slice(0, 8)}.pdf`;
           break;
-        case 'calculation':
-          apiEndpoint = '/api/generate-pricing-calculation-pdf';
-          requestBody = { 
+        case "calculation":
+          apiEndpoint = "/api/generate-pricing-calculation-pdf";
+          requestBody = {
             calculation: document,
             options: {
               showCostDetails: options.showCostDetails || false,
-              companyData: linkedCompany || null
-            }
+              companyData: linkedCompany || null,
+            },
           };
           fileName = `Hesaplama_${document.productName || document.id.slice(0, 8)}.pdf`;
           break;
@@ -1690,8 +1789,8 @@ export default function ConversationDetailPage() {
 
       // PDF API'yi çağır
       const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
 
@@ -1701,7 +1800,9 @@ export default function ConversationDetailPage() {
 
       // PDF blob'unu al
       const pdfBlob = await response.blob();
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], fileName, {
+        type: "application/pdf",
+      });
 
       // Firebase Storage'a yükle
       const storagePath = `crm-attachments/${conversationId}/${Date.now()}_${fileName}`;
@@ -1711,7 +1812,7 @@ export default function ConversationDetailPage() {
       const base64 = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = () => {
-          const base64String = reader.result.split(',')[1];
+          const base64String = reader.result.split(",")[1];
           resolve(base64String);
         };
         reader.readAsDataURL(pdfBlob);
@@ -1722,7 +1823,7 @@ export default function ConversationDetailPage() {
         id: attachmentId,
         name: fileName,
         type: docType,
-        contentType: 'application/pdf',
+        contentType: "application/pdf",
         contentBytes: base64,
         size: pdfBlob.size,
         url: storageUrl,
@@ -1730,20 +1831,23 @@ export default function ConversationDetailPage() {
         documentId: document.id,
         documentType: docType,
         documentInfo: {
-          number: document.proformaNumber || document.contractNumber || document.productName,
+          number:
+            document.proformaNumber ||
+            document.contractNumber ||
+            document.productName,
           status: document.status,
           total: document.totals?.grandTotal || document.totalCost,
           createdAt: document.createdAt,
         },
       };
 
-      setAttachments(prev => [...prev, attachment]);
+      setAttachments((prev) => [...prev, attachment]);
       toast({
         title: "✅ Eklendi",
         description: `${fileName} başarıyla eklendi.`,
       });
     } catch (error) {
-      console.error('PDF oluşturma hatası:', error);
+      console.error("PDF oluşturma hatası:", error);
       toast({
         title: "Hata",
         description: `PDF oluşturulamadı: ${error.message}`,
@@ -1754,16 +1858,16 @@ export default function ConversationDetailPage() {
 
   // Attachment'ı kaldır
   const handleRemoveAttachment = (attachmentId) => {
-    setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
   };
 
   // Dosya boyutunu formatla
   const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
   // Hemen gönder (onay adımı olmadan)
@@ -1793,7 +1897,7 @@ export default function ConversationDetailPage() {
 
       // Attachment'ları ekle
       if (attachments.length > 0) {
-        messageData.attachments = attachments.map(att => ({
+        messageData.attachments = attachments.map((att) => ({
           name: att.name,
           type: att.type,
           contentType: att.contentType,
@@ -1903,7 +2007,9 @@ export default function ConversationDetailPage() {
           promptVariables,
           options: {
             temperature: summaryModelSettings.temperature,
-            maxTokens: summaryModelSettings.autoMaxTokens ? undefined : summaryModelSettings.maxTokens,
+            maxTokens: summaryModelSettings.autoMaxTokens
+              ? undefined
+              : summaryModelSettings.maxTokens,
           },
         }),
       });
@@ -1926,22 +2032,22 @@ export default function ConversationDetailPage() {
 
           // Kesilmiş/eksik JSON'ı düzeltmeye çalış
           jsonContent = jsonContent.trim();
-          
+
           // Eğer JSON tam değilse tamamlamaya çalış
           const openBraces = (jsonContent.match(/{/g) || []).length;
           const closeBraces = (jsonContent.match(/}/g) || []).length;
           const openBrackets = (jsonContent.match(/\[/g) || []).length;
           const closeBrackets = (jsonContent.match(/\]/g) || []).length;
-          
+
           // Eksik kapanış parantezlerini ekle
           if (openBrackets > closeBrackets) {
-            jsonContent += ']'.repeat(openBrackets - closeBrackets);
+            jsonContent += "]".repeat(openBrackets - closeBrackets);
           }
           if (openBraces > closeBraces) {
             // Eğer son karakter virgül veya açık tırnak ise düzelt
-            jsonContent = jsonContent.replace(/,\s*$/, '');
+            jsonContent = jsonContent.replace(/,\s*$/, "");
             jsonContent = jsonContent.replace(/"[^"]*$/, '""');
-            jsonContent += '}'.repeat(openBraces - closeBraces);
+            jsonContent += "}".repeat(openBraces - closeBraces);
           }
 
           const summaryData = JSON.parse(jsonContent.trim());
@@ -1953,14 +2059,21 @@ export default function ConversationDetailPage() {
           });
         } catch (parseError) {
           console.error("JSON parse error:", parseError, result.content);
-          
+
           // Fallback: Ham içerikten özet çıkarmaya çalış
-          const summaryMatch = result.content.match(/"summary"\s*:\s*"([^"]+)"/);
-          const mainRequestMatch = result.content.match(/"mainRequest"\s*:\s*"([^"]+)"/);
-          
+          const summaryMatch = result.content.match(
+            /"summary"\s*:\s*"([^"]+)"/,
+          );
+          const mainRequestMatch = result.content.match(
+            /"mainRequest"\s*:\s*"([^"]+)"/,
+          );
+
           if (summaryMatch || mainRequestMatch) {
             setAiSummary({
-              summary: summaryMatch?.[1] || mainRequestMatch?.[1] || "Özet ayrıştırılamadı",
+              summary:
+                summaryMatch?.[1] ||
+                mainRequestMatch?.[1] ||
+                "Özet ayrıştırılamadı",
               mainRequest: mainRequestMatch?.[1] || "",
               parseError: true,
               rawContent: result.content,
@@ -1990,7 +2103,8 @@ export default function ConversationDetailPage() {
       console.error("AI summary error:", error);
       toast({
         title: "AI Hatası",
-        description: error.message || "Özet oluşturulamadı. Lütfen tekrar deneyin.",
+        description:
+          error.message || "Özet oluşturulamadı. Lütfen tekrar deneyin.",
         variant: "destructive",
       });
     } finally {
@@ -2128,8 +2242,9 @@ export default function ConversationDetailPage() {
                   <span className="text-slate-400">•</span>
                   <span className="text-slate-500">
                     {safeFormatDate(
-                      conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
-                      "dd MMM yyyy HH:mm"
+                      conversation.channelMetadata?.originalCreatedAt ||
+                        conversation.createdAt,
+                      "dd MMM yyyy HH:mm",
                     )}
                   </span>
                 </div>
@@ -2255,18 +2370,24 @@ export default function ConversationDetailPage() {
                                 variant="outline"
                                 className={cn(
                                   "text-[10px] px-1.5 py-0 h-4 flex items-center gap-1 border",
-                                  getMessageChannelColor(conversation.channel)
+                                  getMessageChannelColor(conversation.channel),
                                 )}
                                 title={`Kanal: ${getChannelLabel(conversation.channel)}`}
                               >
-                                {getChannelIconComponent(conversation.channel, "h-2.5 w-2.5")}
-                                <span className="hidden sm:inline">{getChannelLabel(conversation.channel)}</span>
+                                {getChannelIconComponent(
+                                  conversation.channel,
+                                  "h-2.5 w-2.5",
+                                )}
+                                <span className="hidden sm:inline">
+                                  {getChannelLabel(conversation.channel)}
+                                </span>
                               </Badge>
                             )}
                             <span className="text-xs text-slate-400">
                               {safeFormatDate(
-                                conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
-                                "dd MMM HH:mm"
+                                conversation.channelMetadata
+                                  ?.originalCreatedAt || conversation.createdAt,
+                                "dd MMM HH:mm",
                               )}
                             </span>
                           </div>
@@ -2334,9 +2455,17 @@ export default function ConversationDetailPage() {
                             )}
                           >
                             {/* WhatsApp inbound mesajları için conversation bilgilerinden initials al */}
-                            {getInitials(!isOutbound && conversation?.channel === 'whatsapp' 
-                              ? (conversation?.name || conversation?.channelMetadata?.profileName || conversation?.sender?.name || conversation?.phone || "") 
-                              : (message.sender?.name || ""))}
+                            {getInitials(
+                              !isOutbound &&
+                                conversation?.channel === "whatsapp"
+                                ? conversation?.name ||
+                                    conversation?.channelMetadata
+                                      ?.profileName ||
+                                    conversation?.sender?.name ||
+                                    conversation?.phone ||
+                                    ""
+                                : message.sender?.name || "",
+                            )}
                           </AvatarFallback>
                         </Avatar>
                         <div
@@ -2354,9 +2483,15 @@ export default function ConversationDetailPage() {
                             >
                               <span className="text-sm font-semibold text-slate-800">
                                 {/* WhatsApp inbound mesajları için conversation bilgilerini kullan */}
-                                {!isOutbound && conversation?.channel === 'whatsapp'
-                                  ? (conversation?.name || conversation?.channelMetadata?.profileName || conversation?.sender?.name || conversation?.phone || "Bilinmiyor")
-                                  : (message.sender?.name || "Bilinmiyor")}
+                                {!isOutbound &&
+                                conversation?.channel === "whatsapp"
+                                  ? conversation?.name ||
+                                    conversation?.channelMetadata
+                                      ?.profileName ||
+                                    conversation?.sender?.name ||
+                                    conversation?.phone ||
+                                    "Bilinmiyor"
+                                  : message.sender?.name || "Bilinmiyor"}
                               </span>
                               {/* Kanal Badge - Mesajın geldiği/gönderildiği kanal */}
                               {(message.channel || message.replyChannel) && (
@@ -2364,18 +2499,28 @@ export default function ConversationDetailPage() {
                                   variant="outline"
                                   className={cn(
                                     "text-[10px] px-1.5 py-0 h-4 flex items-center gap-1 border",
-                                    getMessageChannelColor(message.channel || message.replyChannel)
+                                    getMessageChannelColor(
+                                      message.channel || message.replyChannel,
+                                    ),
                                   )}
-                                  title={`${isOutbound ? 'Gönderim Kanalı' : 'Alınan Kanal'}: ${getChannelLabel(message.channel || message.replyChannel)}`}
+                                  title={`${isOutbound ? "Gönderim Kanalı" : "Alınan Kanal"}: ${getChannelLabel(message.channel || message.replyChannel)}`}
                                 >
-                                  {getChannelIconComponent(message.channel || message.replyChannel, "h-2.5 w-2.5")}
-                                  <span className="hidden sm:inline">{getChannelLabel(message.channel || message.replyChannel)}</span>
+                                  {getChannelIconComponent(
+                                    message.channel || message.replyChannel,
+                                    "h-2.5 w-2.5",
+                                  )}
+                                  <span className="hidden sm:inline">
+                                    {getChannelLabel(
+                                      message.channel || message.replyChannel,
+                                    )}
+                                  </span>
                                 </Badge>
                               )}
                               <span className="text-xs text-slate-400">
                                 {safeFormatDate(
-                                  message.originalCreatedAt || message.createdAt,
-                                  "dd MMM HH:mm"
+                                  message.originalCreatedAt ||
+                                    message.createdAt,
+                                  "dd MMM HH:mm",
                                 )}
                               </span>
                               {/* AI Badge */}
@@ -2414,36 +2559,63 @@ export default function ConversationDetailPage() {
                               )}
                             >
                               {/* WhatsApp Media Content - template ve text dışındaki tipler */}
-                              {message.channel === 'whatsapp' && message.channelMetadata?.type && !['text', 'template'].includes(message.channelMetadata?.type) ? (
+                              {message.channel === "whatsapp" &&
+                              message.channelMetadata?.type &&
+                              !["text", "template"].includes(
+                                message.channelMetadata?.type,
+                              ) ? (
                                 <div className="space-y-2">
                                   {/* Image */}
-                                  {message.channelMetadata.type === 'image' && (
+                                  {message.channelMetadata.type === "image" && (
                                     <div>
                                       {message.channelMetadata.mediaUrl ? (
                                         <img
                                           src={message.channelMetadata.mediaUrl}
                                           alt="WhatsApp Image"
                                           className="rounded-lg max-w-full max-h-60 object-cover cursor-pointer"
-                                          onClick={() => window.open(message.channelMetadata.mediaUrl, '_blank')}
+                                          onClick={() =>
+                                            window.open(
+                                              message.channelMetadata.mediaUrl,
+                                              "_blank",
+                                            )
+                                          }
                                         />
                                       ) : (
-                                        <div className={cn("rounded-lg p-4 flex items-center justify-center min-h-[120px]", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
+                                        <div
+                                          className={cn(
+                                            "rounded-lg p-4 flex items-center justify-center min-h-[120px]",
+                                            isOutbound
+                                              ? "bg-slate-700"
+                                              : "bg-slate-100",
+                                          )}
+                                        >
                                           <div className="text-center text-slate-500">
                                             <ImageIcon className="h-8 w-8 mx-auto mb-1 opacity-50" />
-                                            <p className="text-xs">Görsel yükleniyor...</p>
+                                            <p className="text-xs">
+                                              Görsel yükleniyor...
+                                            </p>
                                           </div>
                                         </div>
                                       )}
                                       {message.channelMetadata.caption && (
-                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                        <p
+                                          className={cn(
+                                            "text-sm mt-2",
+                                            isOutbound
+                                              ? isDraft
+                                                ? "text-amber-800"
+                                                : "text-slate-100"
+                                              : "text-slate-700",
+                                          )}
+                                        >
                                           {message.channelMetadata.caption}
                                         </p>
                                       )}
                                     </div>
                                   )}
-                                  
+
                                   {/* Video */}
-                                  {message.channelMetadata.type === 'video' && (
+                                  {message.channelMetadata.type === "video" && (
                                     <div>
                                       {message.channelMetadata.mediaUrl ? (
                                         <video
@@ -2452,23 +2624,41 @@ export default function ConversationDetailPage() {
                                           className="rounded-lg max-w-full max-h-60"
                                         />
                                       ) : (
-                                        <div className={cn("rounded-lg p-4 flex items-center justify-center min-h-[120px]", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
+                                        <div
+                                          className={cn(
+                                            "rounded-lg p-4 flex items-center justify-center min-h-[120px]",
+                                            isOutbound
+                                              ? "bg-slate-700"
+                                              : "bg-slate-100",
+                                          )}
+                                        >
                                           <div className="text-center text-slate-500">
                                             <Film className="h-8 w-8 mx-auto mb-1 opacity-50" />
-                                            <p className="text-xs">Video yükleniyor...</p>
+                                            <p className="text-xs">
+                                              Video yükleniyor...
+                                            </p>
                                           </div>
                                         </div>
                                       )}
                                       {message.channelMetadata.caption && (
-                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                        <p
+                                          className={cn(
+                                            "text-sm mt-2",
+                                            isOutbound
+                                              ? isDraft
+                                                ? "text-amber-800"
+                                                : "text-slate-100"
+                                              : "text-slate-700",
+                                          )}
+                                        >
                                           {message.channelMetadata.caption}
                                         </p>
                                       )}
                                     </div>
                                   )}
-                                  
+
                                   {/* Audio */}
-                                  {message.channelMetadata.type === 'audio' && (
+                                  {message.channelMetadata.type === "audio" && (
                                     <div>
                                       {message.channelMetadata.mediaUrl ? (
                                         <audio
@@ -2477,48 +2667,126 @@ export default function ConversationDetailPage() {
                                           className="max-w-full"
                                         />
                                       ) : (
-                                        <div className={cn("rounded-lg p-3 text-center", isOutbound ? "bg-slate-700" : "bg-slate-100")}>
-                                          <Music className={cn("h-6 w-6 mx-auto mb-1", isOutbound ? "text-slate-300" : "text-slate-500")} />
-                                          <p className={cn("text-xs", isOutbound ? "text-slate-300" : "text-slate-500")}>Ses dosyası yükleniyor...</p>
+                                        <div
+                                          className={cn(
+                                            "rounded-lg p-3 text-center",
+                                            isOutbound
+                                              ? "bg-slate-700"
+                                              : "bg-slate-100",
+                                          )}
+                                        >
+                                          <Music
+                                            className={cn(
+                                              "h-6 w-6 mx-auto mb-1",
+                                              isOutbound
+                                                ? "text-slate-300"
+                                                : "text-slate-500",
+                                            )}
+                                          />
+                                          <p
+                                            className={cn(
+                                              "text-xs",
+                                              isOutbound
+                                                ? "text-slate-300"
+                                                : "text-slate-500",
+                                            )}
+                                          >
+                                            Ses dosyası yükleniyor...
+                                          </p>
                                         </div>
                                       )}
                                       {message.channelMetadata.filename && (
-                                        <p className={cn("text-xs mt-1 truncate", isOutbound ? "text-slate-400" : "text-slate-500")}>
+                                        <p
+                                          className={cn(
+                                            "text-xs mt-1 truncate",
+                                            isOutbound
+                                              ? "text-slate-400"
+                                              : "text-slate-500",
+                                          )}
+                                        >
                                           {message.channelMetadata.filename}
                                         </p>
                                       )}
                                     </div>
                                   )}
-                                  
+
                                   {/* Document */}
-                                  {message.channelMetadata.type === 'document' && (
+                                  {message.channelMetadata.type ===
+                                    "document" && (
                                     <div>
                                       <button
                                         className={cn(
                                           "flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-colors w-full",
-                                          isOutbound ? "bg-slate-700" : "bg-slate-100"
+                                          isOutbound
+                                            ? "bg-slate-700"
+                                            : "bg-slate-100",
                                         )}
                                         onClick={() => {
-                                          if (message.channelMetadata.mediaUrl) {
-                                            window.open(message.channelMetadata.mediaUrl, '_blank');
+                                          if (
+                                            message.channelMetadata.mediaUrl
+                                          ) {
+                                            window.open(
+                                              message.channelMetadata.mediaUrl,
+                                              "_blank",
+                                            );
                                           }
                                         }}
                                       >
-                                        <FileText className={cn("h-8 w-8", isOutbound ? "text-slate-300" : "text-slate-500")} />
+                                        <FileText
+                                          className={cn(
+                                            "h-8 w-8",
+                                            isOutbound
+                                              ? "text-slate-300"
+                                              : "text-slate-500",
+                                          )}
+                                        />
                                         <div className="flex-1 min-w-0 text-left">
-                                          <p className={cn("text-sm font-medium truncate", isOutbound ? "text-slate-100" : "text-slate-700")}>
-                                            {message.channelMetadata.filename || "Dosya"}
+                                          <p
+                                            className={cn(
+                                              "text-sm font-medium truncate",
+                                              isOutbound
+                                                ? "text-slate-100"
+                                                : "text-slate-700",
+                                            )}
+                                          >
+                                            {message.channelMetadata.filename ||
+                                              "Dosya"}
                                           </p>
-                                          <p className={cn("text-xs", isOutbound ? "text-slate-400" : "text-slate-500")}>
-                                            {message.channelMetadata.mediaUrl ? 'İndirmek için tıklayın' : 'Yükleniyor...'}
+                                          <p
+                                            className={cn(
+                                              "text-xs",
+                                              isOutbound
+                                                ? "text-slate-400"
+                                                : "text-slate-500",
+                                            )}
+                                          >
+                                            {message.channelMetadata.mediaUrl
+                                              ? "İndirmek için tıklayın"
+                                              : "Yükleniyor..."}
                                           </p>
                                         </div>
                                         {message.channelMetadata.mediaUrl && (
-                                          <Download className={cn("h-4 w-4", isOutbound ? "text-slate-400" : "text-slate-500")} />
+                                          <Download
+                                            className={cn(
+                                              "h-4 w-4",
+                                              isOutbound
+                                                ? "text-slate-400"
+                                                : "text-slate-500",
+                                            )}
+                                          />
                                         )}
                                       </button>
                                       {message.channelMetadata.caption && (
-                                        <p className={cn("text-sm mt-2", isOutbound ? (isDraft ? "text-amber-800" : "text-slate-100") : "text-slate-700")}>
+                                        <p
+                                          className={cn(
+                                            "text-sm mt-2",
+                                            isOutbound
+                                              ? isDraft
+                                                ? "text-amber-800"
+                                                : "text-slate-100"
+                                              : "text-slate-700",
+                                          )}
+                                        >
                                           {message.channelMetadata.caption}
                                         </p>
                                       )}
@@ -2544,80 +2812,137 @@ export default function ConversationDetailPage() {
                               )}
 
                               {/* Mesaja ekli dosyalar */}
-                              {message.attachments && message.attachments.length > 0 && (
-                                <div className={cn(
-                                  "mt-3 pt-3 border-t",
-                                  isDraft ? "border-amber-200" : isOutbound ? "border-slate-600" : "border-slate-200"
-                                )}>
-                                  <div className={cn(
-                                    "flex items-center gap-1.5 mb-2 text-xs font-medium",
-                                    isDraft ? "text-amber-700" : isOutbound ? "text-slate-300" : "text-slate-500"
-                                  )}>
-                                    <Paperclip className="h-3 w-3" />
-                                    Ekler ({message.attachments.length})
+                              {message.attachments &&
+                                message.attachments.length > 0 && (
+                                  <div
+                                    className={cn(
+                                      "mt-3 pt-3 border-t",
+                                      isDraft
+                                        ? "border-amber-200"
+                                        : isOutbound
+                                          ? "border-slate-600"
+                                          : "border-slate-200",
+                                    )}
+                                  >
+                                    <div
+                                      className={cn(
+                                        "flex items-center gap-1.5 mb-2 text-xs font-medium",
+                                        isDraft
+                                          ? "text-amber-700"
+                                          : isOutbound
+                                            ? "text-slate-300"
+                                            : "text-slate-500",
+                                      )}
+                                    >
+                                      <Paperclip className="h-3 w-3" />
+                                      Ekler ({message.attachments.length})
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      {message.attachments.map(
+                                        (att, attIndex) => (
+                                          <button
+                                            key={attIndex}
+                                            onClick={() => {
+                                              // Önce Storage URL'i kontrol et (her zaman tercih edilir)
+                                              if (att.url) {
+                                                window.open(att.url, "_blank");
+                                              }
+                                              // Yoksa belge tipine göre admin sayfasına yönlendir
+                                              else if (att.documentId) {
+                                                if (att.type === "proforma") {
+                                                  window.open(
+                                                    `/admin/proformas/${att.documentId}`,
+                                                    "_blank",
+                                                  );
+                                                } else if (
+                                                  att.type === "contract"
+                                                ) {
+                                                  window.open(
+                                                    `/admin/contracts/${att.documentId}`,
+                                                    "_blank",
+                                                  );
+                                                } else if (
+                                                  att.type === "calculation"
+                                                ) {
+                                                  window.open(
+                                                    `/admin/pricing-calculator?id=${att.documentId}`,
+                                                    "_blank",
+                                                  );
+                                                }
+                                              }
+                                            }}
+                                            className={cn(
+                                              "flex items-center gap-2 w-full p-2 rounded-lg text-left transition-colors",
+                                              isDraft
+                                                ? "bg-amber-50 hover:bg-amber-200 border border-amber-200"
+                                                : isOutbound
+                                                  ? "bg-slate-700 hover:bg-slate-600 border border-slate-600"
+                                                  : "bg-slate-50 hover:bg-slate-100 border border-slate-200",
+                                            )}
+                                          >
+                                            n{" "}
+                                            {att.type === "file" ? (
+                                              <FileIcon
+                                                className={cn(
+                                                  "h-4 w-4 flex-shrink-0",
+                                                  isDraft
+                                                    ? "text-amber-600"
+                                                    : isOutbound
+                                                      ? "text-slate-300"
+                                                      : "text-slate-500",
+                                                )}
+                                              />
+                                            ) : att.type === "proforma" ? (
+                                              <Receipt className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                            ) : att.type === "contract" ? (
+                                              <FileText className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                            ) : (
+                                              <Calculator className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                              <p
+                                                className={cn(
+                                                  "text-xs font-medium truncate",
+                                                  isDraft
+                                                    ? "text-amber-800"
+                                                    : isOutbound
+                                                      ? "text-slate-200"
+                                                      : "text-slate-700",
+                                                )}
+                                              >
+                                                {att.name}
+                                              </p>
+                                              {att.size && (
+                                                <p
+                                                  className={cn(
+                                                    "text-xs",
+                                                    isDraft
+                                                      ? "text-amber-600"
+                                                      : isOutbound
+                                                        ? "text-slate-400"
+                                                        : "text-slate-500",
+                                                  )}
+                                                >
+                                                  {formatFileSize(att.size)}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <ExternalLink
+                                              className={cn(
+                                                "h-3 w-3 flex-shrink-0",
+                                                isDraft
+                                                  ? "text-amber-500"
+                                                  : isOutbound
+                                                    ? "text-slate-400"
+                                                    : "text-slate-400",
+                                              )}
+                                            />
+                                          </button>
+                                        ),
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="space-y-1.5">
-                                    {message.attachments.map((att, attIndex) => (
-                                      <button
-                                        key={attIndex}
-                                        onClick={() => {
-                                          // Önce Storage URL'i kontrol et (her zaman tercih edilir)
-                                          if (att.url) {
-                                            window.open(att.url, '_blank');
-                                          } 
-                                          // Yoksa belge tipine göre admin sayfasına yönlendir
-                                          else if (att.documentId) {
-                                            if (att.type === 'proforma') {
-                                              window.open(`/admin/proformas/${att.documentId}`, '_blank');
-                                            } else if (att.type === 'contract') {
-                                              window.open(`/admin/contracts/${att.documentId}`, '_blank');
-                                            } else if (att.type === 'calculation') {
-                                              window.open(`/admin/pricing-calculator?id=${att.documentId}`, '_blank');
-                                            }
-                                          }
-                                        }}
-                                        className={cn(
-                                          "flex items-center gap-2 w-full p-2 rounded-lg text-left transition-colors",
-                                          isDraft 
-                                            ? "bg-amber-50 hover:bg-amber-200 border border-amber-200" 
-                                            : isOutbound 
-                                              ? "bg-slate-700 hover:bg-slate-600 border border-slate-600" 
-                                              : "bg-slate-50 hover:bg-slate-100 border border-slate-200"
-                                        )}
-                                      >n                                        {att.type === 'file' ? (
-                                          <FileIcon className={cn("h-4 w-4 flex-shrink-0", isDraft ? "text-amber-600" : isOutbound ? "text-slate-300" : "text-slate-500")} />
-                                        ) : att.type === 'proforma' ? (
-                                          <Receipt className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                        ) : att.type === 'contract' ? (
-                                          <FileText className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                        ) : (
-                                          <Calculator className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <p className={cn(
-                                            "text-xs font-medium truncate",
-                                            isDraft ? "text-amber-800" : isOutbound ? "text-slate-200" : "text-slate-700"
-                                          )}>
-                                            {att.name}
-                                          </p>
-                                          {att.size && (
-                                            <p className={cn(
-                                              "text-xs",
-                                              isDraft ? "text-amber-600" : isOutbound ? "text-slate-400" : "text-slate-500"
-                                            )}>
-                                              {formatFileSize(att.size)}
-                                            </p>
-                                          )}
-                                        </div>
-                                        <ExternalLink className={cn(
-                                          "h-3 w-3 flex-shrink-0",
-                                          isDraft ? "text-amber-500" : isOutbound ? "text-slate-400" : "text-slate-400"
-                                        )} />
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                                )}
                             </div>
 
                             {/* Draft Actions */}
@@ -2701,11 +3026,17 @@ export default function ConversationDetailPage() {
                         <SelectValue placeholder="Üslup" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(REPLY_TONE_LABELS).map(([key, label]) => (
-                          <SelectItem key={key} value={key} className="text-xs">
-                            {label}
-                          </SelectItem>
-                        ))}
+                        {Object.entries(REPLY_TONE_LABELS).map(
+                          ([key, label]) => (
+                            <SelectItem
+                              key={key}
+                              value={key}
+                              className="text-xs"
+                            >
+                              {label}
+                            </SelectItem>
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
 
@@ -2720,12 +3051,16 @@ export default function ConversationDetailPage() {
                       {generatingAI ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                          <span className="hidden sm:inline">Oluşturuluyor...</span>
+                          <span className="hidden sm:inline">
+                            Oluşturuluyor...
+                          </span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
-                          <span className="hidden sm:inline">AI ile Yanıtla</span>
+                          <span className="hidden sm:inline">
+                            AI ile Yanıtla
+                          </span>
                         </>
                       )}
                     </Button>
@@ -2816,15 +3151,15 @@ export default function ConversationDetailPage() {
                       key={attachment.id}
                       className={cn(
                         "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs",
-                        attachment.type === 'linked_document'
+                        attachment.type === "linked_document"
                           ? "bg-blue-50 border border-blue-200"
-                          : "bg-slate-100 border border-slate-200"
+                          : "bg-slate-100 border border-slate-200",
                       )}
                     >
-                      {attachment.type === 'linked_document' ? (
-                        attachment.docType === 'proforma' ? (
+                      {attachment.type === "linked_document" ? (
+                        attachment.docType === "proforma" ? (
                           <Receipt className="h-3.5 w-3.5 text-blue-500" />
-                        ) : attachment.docType === 'contract' ? (
+                        ) : attachment.docType === "contract" ? (
                           <FileText className="h-3.5 w-3.5 text-green-500" />
                         ) : (
                           <Calculator className="h-3.5 w-3.5 text-purple-500" />
@@ -2884,27 +3219,28 @@ export default function ConversationDetailPage() {
                   {/* Dosya İkonları - Gönder butonunun üstünde */}
                   <div className="flex items-center gap-0.5">
                     {/* WhatsApp Media Upload Button - Sadece WhatsApp konuşmalarında */}
-                    {conversation?.channel === 'whatsapp' && conversation?.channelMetadata?.whatsappConversationId && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="button"
-                              className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => setShowWhatsAppMediaUpload(true)}
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            <p className="text-xs">WhatsApp Medya Gönder</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    
+                    {conversation?.channel === "whatsapp" &&
+                      conversation?.channelMetadata?.whatsappConversationId && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => setShowWhatsAppMediaUpload(true)}
+                              >
+                                <ImageIcon className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">WhatsApp Medya Gönder</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+
                     {/* File Upload Button */}
                     <input
                       type="file"
@@ -3063,6 +3399,109 @@ export default function ConversationDetailPage() {
             </div>
           </div>
 
+          {/* Customer Cases (Müşteriye ait talepler) */}
+          {customer?.id && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-slate-400" />
+                  Müşteri Talepleri
+                </h3>
+                {!casesLoading && customerCases.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-white">
+                    {customerCases.length}
+                  </Badge>
+                )}
+              </div>
+
+              {casesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 bg-slate-200" />
+                  <Skeleton className="h-16 bg-slate-200" />
+                </div>
+              ) : customerCases.length > 0 ? (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {customerCases.map((caseItem) => (
+                    <Link
+                      key={caseItem.id}
+                      href={`/admin/crm-v2/cases/${caseItem.id}`}
+                      className="block p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h4 className="text-sm font-medium text-slate-800 line-clamp-2">
+                          {caseItem.title}
+                        </h4>
+                        <ExternalLink className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 h-4",
+                            getConversationStatusColor(caseItem.status),
+                          )}
+                        >
+                          {getConversationStatusLabel(caseItem.status)}
+                        </Badge>
+
+                        {caseItem.type && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 bg-slate-50 text-slate-600"
+                          >
+                            {getCaseTypeLabel(caseItem.type)}
+                          </Badge>
+                        )}
+
+                        {caseItem.priority &&
+                          caseItem.priority !== "normal" && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] px-1.5 py-0 h-4",
+                                caseItem.priority === "high" &&
+                                  "bg-red-50 text-red-600 border-red-200",
+                                caseItem.priority === "urgent" &&
+                                  "bg-orange-50 text-orange-600 border-orange-200",
+                              )}
+                            >
+                              {getPriorityLabel(caseItem.priority)}
+                            </Badge>
+                          )}
+                      </div>
+
+                      {caseItem.description && (
+                        <p className="text-xs text-slate-500 mt-2 line-clamp-2">
+                          {caseItem.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-400">
+                          {safeFormatDate(caseItem.updatedAt, "dd MMM yyyy")}
+                        </span>
+                        {caseItem.financials?.estimatedValue > 0 && (
+                          <span className="text-xs font-medium text-green-600">
+                            {new Intl.NumberFormat("tr-TR", {
+                              style: "currency",
+                              currency: caseItem.financials?.currency || "TRY",
+                            }).format(caseItem.financials.estimatedValue)}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-50/50 rounded-xl p-4 text-center">
+                  <Briefcase className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500">Henüz talep yok</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Conversation Details */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
@@ -3102,8 +3541,9 @@ export default function ConversationDetailPage() {
                   <span className="text-sm text-slate-500">İlk Mesaj</span>
                   <span className="text-sm text-slate-700">
                     {safeFormatDate(
-                      conversation.channelMetadata?.originalCreatedAt || conversation.createdAt,
-                      "dd MMM yyyy"
+                      conversation.channelMetadata?.originalCreatedAt ||
+                        conversation.createdAt,
+                      "dd MMM yyyy",
                     )}
                   </span>
                 </div>
@@ -3114,7 +3554,10 @@ export default function ConversationDetailPage() {
                       const date = safeParseDate(conversation.lastMessageAt);
                       if (!date) return "";
                       try {
-                        return formatDistanceToNow(date, { addSuffix: true, locale: tr });
+                        return formatDistanceToNow(date, {
+                          addSuffix: true,
+                          locale: tr,
+                        });
                       } catch (e) {
                         return "";
                       }
@@ -3127,7 +3570,10 @@ export default function ConversationDetailPage() {
                   <div className="flex items-center justify-between text-amber-600">
                     <span className="text-sm">Ertelendi</span>
                     <span className="text-sm font-medium">
-                      {safeFormatDate(conversation.snoozedUntil, "dd MMM HH:mm")}
+                      {safeFormatDate(
+                        conversation.snoozedUntil,
+                        "dd MMM HH:mm",
+                      )}
                     </span>
                   </div>
                 </div>
@@ -3286,7 +3732,6 @@ export default function ConversationDetailPage() {
             </div>
           )}
 
-          {/* Original Data */}
           {conversation.originalData && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-800">
@@ -3372,7 +3817,10 @@ export default function ConversationDetailPage() {
             >
               İptal
             </Button>
-            <Button onClick={handleConvertToCase} disabled={!convertForm.title || creatingCase}>
+            <Button
+              onClick={handleConvertToCase}
+              disabled={!convertForm.title || creatingCase}
+            >
               {creatingCase ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
@@ -4395,11 +4843,11 @@ export default function ConversationDetailPage() {
                       className="flex items-center justify-between gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        {attachment.type === 'file' ? (
+                        {attachment.type === "file" ? (
                           <FileIcon className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                        ) : attachment.type === 'proforma' ? (
+                        ) : attachment.type === "proforma" ? (
                           <Receipt className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                        ) : attachment.type === 'contract' ? (
+                        ) : attachment.type === "contract" ? (
                           <FileText className="h-4 w-4 text-green-500 flex-shrink-0" />
                         ) : (
                           <Calculator className="h-4 w-4 text-purple-500 flex-shrink-0" />
@@ -4502,7 +4950,9 @@ export default function ConversationDetailPage() {
                   <div>
                     <p className="font-medium text-slate-900">WhatsApp</p>
                     <p className="text-xs text-slate-500">
-                      {editableWhatsappPhone ? `+${editableWhatsappPhone}` : "Telefon numarası yok"}
+                      {editableWhatsappPhone
+                        ? `+${editableWhatsappPhone}`
+                        : "Telefon numarası yok"}
                     </p>
                   </div>
                 </div>
@@ -4518,7 +4968,7 @@ export default function ConversationDetailPage() {
                   className="w-5 h-5 rounded border-slate-300 text-green-600 focus:ring-green-500"
                 />
               </label>
-              
+
               {/* WhatsApp Telefon Numarası Düzenleme */}
               {sendChannels.whatsapp && (
                 <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
@@ -4537,38 +4987,46 @@ export default function ConversationDetailPage() {
                           value={editableWhatsappPhone}
                           onChange={(e) => {
                             // Sadece rakamları kabul et
-                            const value = e.target.value.replace(/\D/g, '');
+                            const value = e.target.value.replace(/\D/g, "");
                             setEditableWhatsappPhone(value);
                             // Doğrulama
                             const validation = validateWhatsAppPhone(value);
-                            setWhatsappPhoneError(validation.valid ? null : validation.message);
+                            setWhatsappPhoneError(
+                              validation.valid ? null : validation.message,
+                            );
                           }}
                           placeholder="905551234567"
                           className={cn(
                             "rounded-l-none",
-                            whatsappPhoneError && "border-red-500 focus:ring-red-500"
+                            whatsappPhoneError &&
+                              "border-red-500 focus:ring-red-500",
                           )}
                         />
                       </div>
                       {whatsappPhoneError && (
-                        <p className="text-xs text-red-600 mt-1">{whatsappPhoneError}</p>
+                        <p className="text-xs text-red-600 mt-1">
+                          {whatsappPhoneError}
+                        </p>
                       )}
                     </div>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Ülke kodu dahil tam numara girin. Örn: Türkiye 905xx, Almanya 49xxx, ABD 1xxx
+                    Ülke kodu dahil tam numara girin. Örn: Türkiye 905xx,
+                    Almanya 49xxx, ABD 1xxx
                   </p>
                 </div>
               )}
-              
+
               {/* WhatsApp 24 Saat Kuralı Uyarısı */}
               {sendChannels.whatsapp && whatsappWindowStatus && (
-                <div className={cn(
-                  "p-3 rounded-lg border",
-                  whatsappWindowStatus.requiresTemplate 
-                    ? "bg-amber-50 border-amber-200" 
-                    : "bg-green-50 border-green-200"
-                )}>
+                <div
+                  className={cn(
+                    "p-3 rounded-lg border",
+                    whatsappWindowStatus.requiresTemplate
+                      ? "bg-amber-50 border-amber-200"
+                      : "bg-green-50 border-green-200",
+                  )}
+                >
                   {checkingWhatsappWindow ? (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -4580,19 +5038,22 @@ export default function ConversationDetailPage() {
                         <Clock className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-amber-800">
-                            {whatsappWindowStatus.isFirstContact 
-                              ? "İlk WhatsApp İletişimi" 
+                            {whatsappWindowStatus.isFirstContact
+                              ? "İlk WhatsApp İletişimi"
                               : "24 Saat Penceresi Kapandı"}
                           </p>
                           <p className="text-xs text-amber-700">
-                            {whatsappWindowStatus.reason || "Son müşteri mesajından 24 saat geçtiği için sadece şablon mesaj gönderilebilir."}
+                            {whatsappWindowStatus.reason ||
+                              "Son müşteri mesajından 24 saat geçtiği için sadece şablon mesaj gönderilebilir."}
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Template Seçimi */}
                       <div className="space-y-3">
-                        <Label className="text-xs text-amber-800">Şablon Seçin:</Label>
+                        <Label className="text-xs text-amber-800">
+                          Şablon Seçin:
+                        </Label>
                         {loadingTemplates ? (
                           <div className="flex items-center gap-2 text-sm text-slate-600">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -4603,10 +5064,15 @@ export default function ConversationDetailPage() {
                             <Select
                               value={selectedWhatsappTemplate?.name || ""}
                               onValueChange={(value) => {
-                                const template = whatsappTemplates.find(t => t.name === value);
+                                const template = whatsappTemplates.find(
+                                  (t) => t.name === value,
+                                );
                                 setSelectedWhatsappTemplate(template);
                                 if (template) {
-                                  autoFillTemplateVariables(template, setTemplateVariables);
+                                  autoFillTemplateVariables(
+                                    template,
+                                    setTemplateVariables,
+                                  );
                                 }
                               }}
                             >
@@ -4615,21 +5081,27 @@ export default function ConversationDetailPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {whatsappTemplates.map((template) => (
-                                  <SelectItem key={template.name} value={template.name}>
+                                  <SelectItem
+                                    key={template.name}
+                                    value={template.name}
+                                  >
                                     <div className="flex flex-col">
                                       <span>{template.name}</span>
-                                      <span className="text-xs text-slate-500">{template.category}</span>
+                                      <span className="text-xs text-slate-500">
+                                        {template.category}
+                                      </span>
                                     </div>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            
+
                             {/* Seçili şablon için değişkenler */}
                             {selectedWhatsappTemplate && (
                               <div className="space-y-3 mt-3 p-3 border border-amber-200 rounded-lg bg-white">
                                 {/* Header değişkeni */}
-                                {getTemplateVariables(selectedWhatsappTemplate).header && (
+                                {getTemplateVariables(selectedWhatsappTemplate)
+                                  .header && (
                                   <div>
                                     <Label className="text-xs text-slate-600 flex items-center gap-1">
                                       Başlık Değişkeni
@@ -4638,16 +5110,30 @@ export default function ConversationDetailPage() {
                                     <Input
                                       placeholder="Başlık değeri"
                                       value={templateVariables.header || ""}
-                                      onChange={(e) => setTemplateVariables({ ...templateVariables, header: e.target.value })}
+                                      onChange={(e) =>
+                                        setTemplateVariables({
+                                          ...templateVariables,
+                                          header: e.target.value,
+                                        })
+                                      }
                                       className="mt-1 h-8 text-sm"
                                     />
                                   </div>
                                 )}
-                                
+
                                 {/* Body değişkenleri */}
-                                {getTemplateVariables(selectedWhatsappTemplate).body.map((varNum, idx) => {
-                                  const suggestions = getVariableSuggestions(selectedWhatsappTemplate, varNum, idx);
-                                  const label = suggestions.length > 0 ? suggestions[0].label : `Değişken ${varNum}`;
+                                {getTemplateVariables(
+                                  selectedWhatsappTemplate,
+                                ).body.map((varNum, idx) => {
+                                  const suggestions = getVariableSuggestions(
+                                    selectedWhatsappTemplate,
+                                    varNum,
+                                    idx,
+                                  );
+                                  const label =
+                                    suggestions.length > 0
+                                      ? suggestions[0].label
+                                      : `Değişken ${varNum}`;
                                   return (
                                     <div key={idx}>
                                       <Label className="text-xs text-slate-600 flex items-center gap-1">
@@ -4656,18 +5142,25 @@ export default function ConversationDetailPage() {
                                       </Label>
                                       <Input
                                         placeholder={label}
-                                        value={templateVariables.body?.[idx] || ""}
+                                        value={
+                                          templateVariables.body?.[idx] || ""
+                                        }
                                         onChange={(e) => {
-                                          const newBody = [...(templateVariables.body || [])];
+                                          const newBody = [
+                                            ...(templateVariables.body || []),
+                                          ];
                                           newBody[idx] = e.target.value;
-                                          setTemplateVariables({ ...templateVariables, body: newBody });
+                                          setTemplateVariables({
+                                            ...templateVariables,
+                                            body: newBody,
+                                          });
                                         }}
                                         className="mt-1 h-8 text-sm"
                                       />
                                     </div>
                                   );
                                 })}
-                                
+
                                 {/* Canlı önizleme */}
                                 <div className="mt-3">
                                   <Label className="text-xs text-slate-600 flex items-center gap-1 mb-2">
@@ -4677,7 +5170,10 @@ export default function ConversationDetailPage() {
                                   <div className="bg-[#e5ddd5] rounded-lg p-2">
                                     <div className="bg-white rounded-lg p-2 shadow-sm max-w-[90%] ml-auto">
                                       <pre className="text-xs whitespace-pre-wrap font-sans text-gray-800">
-                                        {getLivePreview(selectedWhatsappTemplate, templateVariables)}
+                                        {getLivePreview(
+                                          selectedWhatsappTemplate,
+                                          templateVariables,
+                                        )}
                                       </pre>
                                     </div>
                                   </div>
@@ -4687,7 +5183,8 @@ export default function ConversationDetailPage() {
                           </>
                         ) : (
                           <p className="text-xs text-amber-700">
-                            Onaylı şablon bulunamadı. WhatsApp Admin panelinden şablon oluşturun.
+                            Onaylı şablon bulunamadı. WhatsApp Admin panelinden
+                            şablon oluşturun.
                           </p>
                         )}
                       </div>
@@ -4700,7 +5197,8 @@ export default function ConversationDetailPage() {
                           24 Saat Penceresi Açık
                         </p>
                         <p className="text-xs text-green-700">
-                          Kalan süre: {whatsappWindowStatus.remainingMinutes} dakika
+                          Kalan süre: {whatsappWindowStatus.remainingMinutes}{" "}
+                          dakika
                         </p>
                       </div>
                     </div>
@@ -4770,7 +5268,7 @@ export default function ConversationDetailPage() {
                 setWhatsappWindowStatus(null);
                 setSelectedWhatsappTemplate(null);
                 setTemplateVariables({ header: "", body: [] });
-                setEditableWhatsappPhone('');
+                setEditableWhatsappPhone("");
                 setWhatsappPhoneError(null);
               }}
               disabled={sendingMessage}
@@ -4780,9 +5278,13 @@ export default function ConversationDetailPage() {
             <Button
               onClick={handleConfirmSend}
               disabled={
-                sendingMessage || 
-                (!sendChannels.email && !sendChannels.whatsapp && !sendChannels.manual) ||
-                (sendChannels.whatsapp && whatsappWindowStatus?.requiresTemplate && !selectedWhatsappTemplate) ||
+                sendingMessage ||
+                (!sendChannels.email &&
+                  !sendChannels.whatsapp &&
+                  !sendChannels.manual) ||
+                (sendChannels.whatsapp &&
+                  whatsappWindowStatus?.requiresTemplate &&
+                  !selectedWhatsappTemplate) ||
                 (sendChannels.whatsapp && whatsappPhoneError)
               }
               className="bg-blue-600 hover:bg-blue-700"
@@ -4804,13 +5306,16 @@ export default function ConversationDetailPage() {
       </Dialog>
 
       {/* Calculation Options Modal - Maliyet Detayları Seçimi */}
-      <Dialog open={showCalcOptionsModal} onOpenChange={(open) => {
-        if (!open) {
-          setShowCalcOptionsModal(false);
-          setPendingCalculation(null);
-          setAddingDocumentId(null);
-        }
-      }}>
+      <Dialog
+        open={showCalcOptionsModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCalcOptionsModal(false);
+            setPendingCalculation(null);
+            setAddingDocumentId(null);
+          }
+        }}
+      >
         <DialogContent className="bg-white border-slate-200 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-slate-800 flex items-center gap-2">
@@ -4818,7 +5323,8 @@ export default function ConversationDetailPage() {
               PDF Ayarları
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              {pendingCalculation?.productName || "Hesaplama"} için PDF oluşturma seçeneklerini belirleyin.
+              {pendingCalculation?.productName || "Hesaplama"} için PDF
+              oluşturma seçeneklerini belirleyin.
             </DialogDescription>
           </DialogHeader>
 
@@ -4826,7 +5332,10 @@ export default function ConversationDetailPage() {
             {/* Maliyet Detayları Switch */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
               <div className="space-y-0.5">
-                <Label htmlFor="calcCostDetails" className="text-sm font-medium text-slate-900">
+                <Label
+                  htmlFor="calcCostDetails"
+                  className="text-sm font-medium text-slate-900"
+                >
                   Maliyet Detayları
                 </Label>
                 <p className="text-xs text-slate-500">
@@ -4844,7 +5353,9 @@ export default function ConversationDetailPage() {
             <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
               <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-amber-700">
-                Maliyet detayları kapatıldığında PDF'te sadece satış fiyatı görünür. Müşteriye gönderilecek tekliflerde bu seçeneği kapalı tutmanız önerilir.
+                Maliyet detayları kapatıldığında PDF'te sadece satış fiyatı
+                görünür. Müşteriye gönderilecek tekliflerde bu seçeneği kapalı
+                tutmanız önerilir.
               </p>
             </div>
           </div>
@@ -4865,10 +5376,14 @@ export default function ConversationDetailPage() {
                 if (pendingCalculation) {
                   setShowCalcOptionsModal(false);
                   setAddingDocumentId(pendingCalculation.id);
-                  await handleAddLinkedDocument('calculation', pendingCalculation, {
-                    skipModal: true,
-                    showCostDetails: calcShowCostDetails
-                  });
+                  await handleAddLinkedDocument(
+                    "calculation",
+                    pendingCalculation,
+                    {
+                      skipModal: true,
+                      showCostDetails: calcShowCostDetails,
+                    },
+                  );
                   setAddingDocumentId(null);
                   setPendingCalculation(null);
                 }
@@ -4893,7 +5408,10 @@ export default function ConversationDetailPage() {
             <DialogDescription className="text-slate-500">
               {linkedCompany ? (
                 <>
-                  <span className="font-medium text-blue-600">{linkedCompany.name}</span> firmasına ait belgeleri e-postaya ekleyin.
+                  <span className="font-medium text-blue-600">
+                    {linkedCompany.name}
+                  </span>{" "}
+                  firmasına ait belgeleri e-postaya ekleyin.
                 </>
               ) : (
                 "Müşteriye bağlı firma belgeleri"
@@ -4913,12 +5431,17 @@ export default function ConversationDetailPage() {
                   <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                     <Receipt className="h-4 w-4 text-blue-500" />
                     Proformalar
-                    <Badge variant="secondary" className="ml-1 bg-blue-50 text-blue-700 text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 bg-blue-50 text-blue-700 text-xs"
+                    >
                       {linkedDocuments.proformas.length}
                     </Badge>
                   </h4>
                   {linkedDocuments.proformas.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-2 pl-6">Proforma bulunamadı</p>
+                    <p className="text-sm text-slate-400 py-2 pl-6">
+                      Proforma bulunamadı
+                    </p>
                   ) : (
                     <div className="space-y-1 pl-6">
                       {linkedDocuments.proformas.map((proforma) => (
@@ -4930,13 +5453,20 @@ export default function ConversationDetailPage() {
                             <Receipt className="h-4 w-4 text-blue-400" />
                             <div>
                               <p className="text-sm font-medium text-slate-700">
-                                {proforma.proformaNumber || `#${proforma.id.slice(0, 8)}`}
+                                {proforma.proformaNumber ||
+                                  `#${proforma.id.slice(0, 8)}`}
                               </p>
                               <p className="text-xs text-slate-400">
-                                {safeFormatDate(proforma.createdAt, "dd MMM yyyy")}
+                                {safeFormatDate(
+                                  proforma.createdAt,
+                                  "dd MMM yyyy",
+                                )}
                                 {proforma.totals?.grandTotal && (
                                   <span className="ml-2 text-emerald-600">
-                                    {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(proforma.totals.grandTotal)}
+                                    {new Intl.NumberFormat("tr-TR", {
+                                      style: "currency",
+                                      currency: "TRY",
+                                    }).format(proforma.totals.grandTotal)}
                                   </span>
                                 )}
                               </p>
@@ -4947,12 +5477,16 @@ export default function ConversationDetailPage() {
                               variant="outline"
                               className={cn(
                                 "text-xs",
-                                proforma.status === "accepted" && "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                proforma.status === "sent" && "bg-blue-50 text-blue-700 border-blue-200",
-                                proforma.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200"
+                                proforma.status === "accepted" &&
+                                  "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                proforma.status === "sent" &&
+                                  "bg-blue-50 text-blue-700 border-blue-200",
+                                proforma.status === "draft" &&
+                                  "bg-slate-50 text-slate-600 border-slate-200",
                               )}
                             >
-                              {PROFORMA_STATUS_LABELS[proforma.status] || proforma.status}
+                              {PROFORMA_STATUS_LABELS[proforma.status] ||
+                                proforma.status}
                             </Badge>
                             <Button
                               size="sm"
@@ -4960,7 +5494,10 @@ export default function ConversationDetailPage() {
                               disabled={addingDocumentId !== null}
                               onClick={async () => {
                                 setAddingDocumentId(proforma.id);
-                                await handleAddLinkedDocument('proforma', proforma);
+                                await handleAddLinkedDocument(
+                                  "proforma",
+                                  proforma,
+                                );
                                 setAddingDocumentId(null);
                               }}
                               className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
@@ -4986,12 +5523,17 @@ export default function ConversationDetailPage() {
                   <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                     <FileText className="h-4 w-4 text-green-500" />
                     Sözleşmeler
-                    <Badge variant="secondary" className="ml-1 bg-green-50 text-green-700 text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 bg-green-50 text-green-700 text-xs"
+                    >
                       {linkedDocuments.contracts.length}
                     </Badge>
                   </h4>
                   {linkedDocuments.contracts.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-2 pl-6">Sözleşme bulunamadı</p>
+                    <p className="text-sm text-slate-400 py-2 pl-6">
+                      Sözleşme bulunamadı
+                    </p>
                   ) : (
                     <div className="space-y-1 pl-6">
                       {linkedDocuments.contracts.map((contract) => (
@@ -5003,11 +5545,19 @@ export default function ConversationDetailPage() {
                             <FileText className="h-4 w-4 text-green-400" />
                             <div>
                               <p className="text-sm font-medium text-slate-700">
-                                {contract.contractNumber || `#${contract.id.slice(0, 8)}`}
+                                {contract.contractNumber ||
+                                  `#${contract.id.slice(0, 8)}`}
                               </p>
                               <p className="text-xs text-slate-400">
-                                {contract.contractType && <span className="mr-2">{contract.contractType}</span>}
-                                {safeFormatDate(contract.createdAt, "dd MMM yyyy")}
+                                {contract.contractType && (
+                                  <span className="mr-2">
+                                    {contract.contractType}
+                                  </span>
+                                )}
+                                {safeFormatDate(
+                                  contract.createdAt,
+                                  "dd MMM yyyy",
+                                )}
                               </p>
                             </div>
                           </div>
@@ -5016,11 +5566,17 @@ export default function ConversationDetailPage() {
                               variant="outline"
                               className={cn(
                                 "text-xs",
-                                contract.status === "active" && "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                contract.status === "draft" && "bg-slate-50 text-slate-600 border-slate-200"
+                                contract.status === "active" &&
+                                  "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                contract.status === "draft" &&
+                                  "bg-slate-50 text-slate-600 border-slate-200",
                               )}
                             >
-                              {contract.status === "active" ? "Aktif" : contract.status === "draft" ? "Taslak" : contract.status}
+                              {contract.status === "active"
+                                ? "Aktif"
+                                : contract.status === "draft"
+                                  ? "Taslak"
+                                  : contract.status}
                             </Badge>
                             <Button
                               size="sm"
@@ -5028,7 +5584,10 @@ export default function ConversationDetailPage() {
                               disabled={addingDocumentId !== null}
                               onClick={async () => {
                                 setAddingDocumentId(contract.id);
-                                await handleAddLinkedDocument('contract', contract);
+                                await handleAddLinkedDocument(
+                                  "contract",
+                                  contract,
+                                );
                                 setAddingDocumentId(null);
                               }}
                               className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
@@ -5054,12 +5613,17 @@ export default function ConversationDetailPage() {
                   <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                     <Calculator className="h-4 w-4 text-purple-500" />
                     Fiyat Hesaplamaları
-                    <Badge variant="secondary" className="ml-1 bg-purple-50 text-purple-700 text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 bg-purple-50 text-purple-700 text-xs"
+                    >
                       {linkedDocuments.calculations.length}
                     </Badge>
                   </h4>
                   {linkedDocuments.calculations.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-2 pl-6">Hesaplama bulunamadı</p>
+                    <p className="text-sm text-slate-400 py-2 pl-6">
+                      Hesaplama bulunamadı
+                    </p>
                   ) : (
                     <div className="space-y-1 pl-6">
                       {linkedDocuments.calculations.map((calc) => (
@@ -5077,7 +5641,10 @@ export default function ConversationDetailPage() {
                                 {safeFormatDate(calc.createdAt, "dd MMM yyyy")}
                                 {calc.totalCost && (
                                   <span className="ml-2 text-purple-600">
-                                    {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calc.totalCost)}
+                                    {new Intl.NumberFormat("tr-TR", {
+                                      style: "currency",
+                                      currency: "TRY",
+                                    }).format(calc.totalCost)}
                                   </span>
                                 )}
                               </p>
@@ -5085,7 +5652,10 @@ export default function ConversationDetailPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {calc.productType && (
-                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                              >
                                 {calc.productType}
                               </Badge>
                             )}
@@ -5095,7 +5665,7 @@ export default function ConversationDetailPage() {
                               disabled={addingDocumentId !== null}
                               onClick={() => {
                                 // Hesaplama için modal açılacak, loading yok
-                                handleAddLinkedDocument('calculation', calc);
+                                handleAddLinkedDocument("calculation", calc);
                               }}
                               className="h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                             >
@@ -5116,17 +5686,21 @@ export default function ConversationDetailPage() {
                 </div>
 
                 {/* Empty State */}
-                {linkedDocuments.proformas.length === 0 && 
-                 linkedDocuments.contracts.length === 0 && 
-                 linkedDocuments.calculations.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
-                      <FolderOpen className="h-8 w-8 text-slate-400" />
+                {linkedDocuments.proformas.length === 0 &&
+                  linkedDocuments.contracts.length === 0 &&
+                  linkedDocuments.calculations.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                        <FolderOpen className="h-8 w-8 text-slate-400" />
+                      </div>
+                      <p className="text-slate-500 font-medium">
+                        Belge bulunamadı
+                      </p>
+                      <p className="text-sm text-slate-400 mt-1">
+                        Bu firmaya ait henüz belge oluşturulmamış.
+                      </p>
                     </div>
-                    <p className="text-slate-500 font-medium">Belge bulunamadı</p>
-                    <p className="text-sm text-slate-400 mt-1">Bu firmaya ait henüz belge oluşturulmamış.</p>
-                  </div>
-                )}
+                  )}
               </>
             )}
           </div>
@@ -5144,7 +5718,10 @@ export default function ConversationDetailPage() {
       </Dialog>
 
       {/* WhatsApp Şablon Direkt Gönderim Modal */}
-      <Dialog open={showWhatsAppTemplateModal} onOpenChange={setShowWhatsAppTemplateModal}>
+      <Dialog
+        open={showWhatsAppTemplateModal}
+        onOpenChange={setShowWhatsAppTemplateModal}
+      >
         <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
@@ -5182,20 +5759,25 @@ export default function ConversationDetailPage() {
                   type="text"
                   value={directTemplatePhone}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
+                    const value = e.target.value.replace(/\D/g, "");
                     setDirectTemplatePhone(value);
                     const validation = validateWhatsAppPhone(value);
-                    setDirectTemplatePhoneError(validation.valid ? null : validation.message);
+                    setDirectTemplatePhoneError(
+                      validation.valid ? null : validation.message,
+                    );
                   }}
                   placeholder="905551234567"
                   className={cn(
                     "rounded-l-none",
-                    directTemplatePhoneError && "border-red-500 focus:ring-red-500"
+                    directTemplatePhoneError &&
+                      "border-red-500 focus:ring-red-500",
                   )}
                 />
               </div>
               {directTemplatePhoneError && (
-                <p className="text-xs text-red-600">{directTemplatePhoneError}</p>
+                <p className="text-xs text-red-600">
+                  {directTemplatePhoneError}
+                </p>
               )}
               <p className="text-xs text-slate-500">
                 Ülke kodu dahil tam numara girin. Örn: Türkiye 905xx
@@ -5220,26 +5802,37 @@ export default function ConversationDetailPage() {
                       key={template.name}
                       onClick={() => {
                         setDirectSelectedTemplate(template);
-                        autoFillTemplateVariables(template, setDirectTemplateVariables);
+                        autoFillTemplateVariables(
+                          template,
+                          setDirectTemplateVariables,
+                        );
                       }}
                       className={cn(
                         "p-3 rounded-lg border-2 cursor-pointer transition-all",
                         directSelectedTemplate?.name === template.name
                           ? "border-green-500 bg-green-50"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
+                          : "border-slate-200 hover:border-slate-300 bg-white",
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-slate-900">{template.name}</p>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            <p className="font-medium text-slate-900">
+                              {template.name}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0"
+                            >
                               {template.category}
                             </Badge>
                           </div>
                           {/* Template kısa özeti */}
                           <p className="mt-1 text-xs text-slate-500 line-clamp-1">
-                            {template.components?.find(c => c.type === 'BODY')?.text?.slice(0, 60)}...
+                            {template.components
+                              ?.find((c) => c.type === "BODY")
+                              ?.text?.slice(0, 60)}
+                            ...
                           </p>
                         </div>
                         {directSelectedTemplate?.name === template.name && (
@@ -5254,7 +5847,9 @@ export default function ConversationDetailPage() {
                   <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center">
                     <MessageCircle className="h-6 w-6 text-amber-600" />
                   </div>
-                  <p className="text-sm font-medium text-slate-700">Şablon Bulunamadı</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    Şablon Bulunamadı
+                  </p>
                   <p className="text-xs text-slate-500 mt-1">
                     WhatsApp Business'tan onaylı şablon oluşturun.
                   </p>
@@ -5266,57 +5861,76 @@ export default function ConversationDetailPage() {
             {directSelectedTemplate && (
               <div className="space-y-4 p-4 border border-green-200 rounded-lg bg-green-50/50">
                 {/* Değişken Girişleri */}
-                {(getTemplateVariables(directSelectedTemplate).header || 
-                  getTemplateVariables(directSelectedTemplate).body.length > 0) && (
+                {(getTemplateVariables(directSelectedTemplate).header ||
+                  getTemplateVariables(directSelectedTemplate).body.length >
+                    0) && (
                   <div className="space-y-3">
                     <Label className="text-sm text-slate-700 flex items-center gap-1">
                       <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                       Değişkenler
                     </Label>
-                    
+
                     {/* Header değişkeni */}
                     {getTemplateVariables(directSelectedTemplate).header && (
                       <div>
                         <Label className="text-xs text-slate-600">
-                          Başlık Değişkeni <span className="text-slate-400">{`{{1}}`}</span>
+                          Başlık Değişkeni{" "}
+                          <span className="text-slate-400">{`{{1}}`}</span>
                         </Label>
                         <Input
                           placeholder="Başlık değeri"
                           value={directTemplateVariables.header || ""}
-                          onChange={(e) => setDirectTemplateVariables({ 
-                            ...directTemplateVariables, 
-                            header: e.target.value 
-                          })}
+                          onChange={(e) =>
+                            setDirectTemplateVariables({
+                              ...directTemplateVariables,
+                              header: e.target.value,
+                            })
+                          }
                           className="mt-1 h-8 text-sm bg-white"
                         />
                       </div>
                     )}
-                    
+
                     {/* Body değişkenleri */}
-                    {getTemplateVariables(directSelectedTemplate).body.map((varNum, idx) => {
-                      const suggestions = getVariableSuggestions(directSelectedTemplate, varNum, idx);
-                      const label = suggestions.length > 0 ? suggestions[0].label : `Değişken ${varNum}`;
-                      return (
-                        <div key={idx}>
-                          <Label className="text-xs text-slate-600">
-                            {label} <span className="text-slate-400">{`{{${varNum}}}`}</span>
-                          </Label>
-                          <Input
-                            placeholder={label}
-                            value={directTemplateVariables.body?.[idx] || ""}
-                            onChange={(e) => {
-                              const newBody = [...(directTemplateVariables.body || [])];
-                              newBody[idx] = e.target.value;
-                              setDirectTemplateVariables({ ...directTemplateVariables, body: newBody });
-                            }}
-                            className="mt-1 h-8 text-sm bg-white"
-                          />
-                        </div>
-                      );
-                    })}
+                    {getTemplateVariables(directSelectedTemplate).body.map(
+                      (varNum, idx) => {
+                        const suggestions = getVariableSuggestions(
+                          directSelectedTemplate,
+                          varNum,
+                          idx,
+                        );
+                        const label =
+                          suggestions.length > 0
+                            ? suggestions[0].label
+                            : `Değişken ${varNum}`;
+                        return (
+                          <div key={idx}>
+                            <Label className="text-xs text-slate-600">
+                              {label}{" "}
+                              <span className="text-slate-400">{`{{${varNum}}}`}</span>
+                            </Label>
+                            <Input
+                              placeholder={label}
+                              value={directTemplateVariables.body?.[idx] || ""}
+                              onChange={(e) => {
+                                const newBody = [
+                                  ...(directTemplateVariables.body || []),
+                                ];
+                                newBody[idx] = e.target.value;
+                                setDirectTemplateVariables({
+                                  ...directTemplateVariables,
+                                  body: newBody,
+                                });
+                              }}
+                              className="mt-1 h-8 text-sm bg-white"
+                            />
+                          </div>
+                        );
+                      },
+                    )}
                   </div>
                 )}
-                
+
                 {/* Canlı Önizleme */}
                 <div>
                   <Label className="text-sm text-slate-700 flex items-center gap-1 mb-2">
@@ -5326,10 +5940,16 @@ export default function ConversationDetailPage() {
                   <div className="bg-[#e5ddd5] rounded-lg p-3">
                     <div className="bg-white rounded-lg p-3 shadow-sm max-w-[90%] ml-auto">
                       <pre className="text-sm whitespace-pre-wrap font-sans text-gray-800">
-                        {getLivePreview(directSelectedTemplate, directTemplateVariables)}
+                        {getLivePreview(
+                          directSelectedTemplate,
+                          directTemplateVariables,
+                        )}
                       </pre>
                       <p className="text-[10px] text-gray-400 text-right mt-1">
-                        {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date().toLocaleTimeString("tr-TR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -5352,7 +5972,11 @@ export default function ConversationDetailPage() {
             </Button>
             <Button
               onClick={handleSendDirectTemplate}
-              disabled={sendingDirectTemplate || !directSelectedTemplate || !directTemplatePhone}
+              disabled={
+                sendingDirectTemplate ||
+                !directSelectedTemplate ||
+                !directTemplatePhone
+              }
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {sendingDirectTemplate ? (
@@ -5405,22 +6029,23 @@ export default function ConversationDetailPage() {
       />
 
       {/* WhatsApp Media Upload Dialog */}
-      {conversation?.channel === 'whatsapp' && conversation?.channelMetadata?.whatsappConversationId && (
-        <MediaUploadDialog
-          open={showWhatsAppMediaUpload}
-          onOpenChange={setShowWhatsAppMediaUpload}
-          conversationId={conversation.channelMetadata.whatsappConversationId}
-          recipientPhone={conversation.phone || customer?.phone}
-          onMediaSent={() => {
-            // Medya gönderildikten sonra konuşmayı yenile
-            fetchConversation();
-            toast({
-              title: "Medya Gönderildi",
-              description: "WhatsApp medyanız başarıyla gönderildi",
-            });
-          }}
-        />
-      )}
+      {conversation?.channel === "whatsapp" &&
+        conversation?.channelMetadata?.whatsappConversationId && (
+          <MediaUploadDialog
+            open={showWhatsAppMediaUpload}
+            onOpenChange={setShowWhatsAppMediaUpload}
+            conversationId={conversation.channelMetadata.whatsappConversationId}
+            recipientPhone={conversation.phone || customer?.phone}
+            onMediaSent={() => {
+              // Medya gönderildikten sonra konuşmayı yenile
+              fetchConversation();
+              toast({
+                title: "Medya Gönderildi",
+                description: "WhatsApp medyanız başarıyla gönderildi",
+              });
+            }}
+          />
+        )}
     </div>
   );
 }
