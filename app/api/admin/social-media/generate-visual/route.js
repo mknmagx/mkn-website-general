@@ -103,11 +103,16 @@ export async function POST(request) {
       // Unified AI parametreleri
       temperature,
       maxTokens,
+      // Direct content (Content Studio'dan)
+      directContent,
+      directPlatform,
+      directContentType,
+      directTitle,
     } = await request.json();
 
-    if (!chatId || !message || !contentId) {
+    if (!chatId || !message) {
       return NextResponse.json(
-        { error: "Missing required fields: chatId, message, contentId" },
+        { error: "Missing required fields: chatId, message" },
         { status: 400 }
       );
     }
@@ -162,16 +167,31 @@ export async function POST(request) {
 
     console.log(`✅ Config loaded: ${config.id}, Model: ${modelData.displayName || modelData.name}, Prompt: ${promptData?.name || 'N/A'}`);
 
-    // 5. Content data al
-    const contentData = await getGeneratedContentByIdAdmin(contentId);
-    if (!contentData) {
-      return NextResponse.json({ error: "Content not found" }, { status: 404 });
+    // 5. Content data al - Try Firestore first, fallback to direct content
+    let content = {};
+    let platform = directPlatform || settings.platform || "";
+    let contentType = directContentType || settings.contentType || "";
+    let title = directTitle || "";
+
+    if (contentId && !contentId.startsWith("temp-")) {
+      const contentData = await getGeneratedContentByIdAdmin(contentId);
+      if (contentData) {
+        content = contentData.content || {};
+        platform = contentData.platform || platform;
+        contentType = contentData.contentType || contentType;
+        title = contentData.title || title;
+      }
     }
 
-    const content = contentData.content || {};
-    const platform = contentData.platform || "";
-    const contentType = contentData.contentType || "";
-    const title = contentData.title || "";
+    // Use direct content if provided (Content Studio mode)
+    if (directContent) {
+      content = directContent;
+    }
+
+    // Extract title from message if not found
+    if (!title) {
+      title = message.substring(0, 100);
+    }
 
     // 6. Platform bazlı aspect ratio
     const platformLower = platform.toLowerCase();
@@ -299,10 +319,35 @@ export async function POST(request) {
         response = `Görsel oluşturuldu: ${title}`;
       }
 
-      // Content'e kaydet
-      for (const imageUrl of generatedImageUrls) {
-        await addAiImageSuggestionAdmin(contentId, imageUrl);
+      // Content'e kaydet (only if valid contentId)
+      if (contentId && !contentId.startsWith("temp-")) {
+        try {
+          for (const imageUrl of generatedImageUrls) {
+            await addAiImageSuggestionAdmin(contentId, imageUrl);
+          }
+        } catch (saveError) {
+          console.warn("Could not save image to content:", saveError);
+        }
       }
+    } else {
+      // Görsel oluşturulamadı - detaylı hata ver
+      console.error(`❌ No images generated. Result:`, {
+        hasText: !!result.text,
+        hasInlineData: result.hasInlineData,
+        imageCount: result.generatedImages?.length || 0
+      });
+      
+      return NextResponse.json({
+        success: false,
+        error: `Gorsel olusturulamadi. Model: "${modelDisplayName}" gorunen o ki gorsel uretemiyor. Lutfen farkli bir model secin veya ayarlari kontrol edin.`,
+        details: {
+          model: apiModelId,
+          modelName: modelDisplayName,
+          hasResponse: !!result.text,
+          responseText: result.text || null,
+          settings: imageSettings
+        }
+      }, { status: 400 });
     }
 
     if (!response) {

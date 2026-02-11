@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,10 @@ import {
   ThumbsUp,
   Video,
   ChevronRight,
+  Maximize2,
+  Plus,
+  Minus,
+  X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -158,6 +163,7 @@ export default function MobilePreview({
   image = null,
   images = [],
   isVideo = false,
+  embedded = false, // When true, renders without Card wrapper and phone frame
 }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -165,11 +171,129 @@ export default function MobilePreview({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItems, setPreviewItems] = useState([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const [previewOffset, setPreviewOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const panStartRef = useRef(null);
 
   const config = PLATFORM_CONFIG[platform] || PLATFORM_CONFIG.instagram;
   const contentConfig =
     config.contentTypes[contentType] || config.contentTypes.post;
   const PlatformIcon = config.icon;
+
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 3;
+  const ZOOM_STEP = 0.25;
+
+  const normalizePreviewItems = (items, fallbackAlt) => {
+    return items
+      .filter(Boolean)
+      .map((item, idx) => {
+        if (typeof item === "string") {
+          return {
+            type: "image",
+            src: item,
+            alt: `${fallbackAlt || "Gorsel"} ${idx + 1}`.trim(),
+          };
+        }
+
+        return {
+          type: item.type || "image",
+          src: item.src,
+          alt: item.alt || `${fallbackAlt || "Gorsel"} ${idx + 1}`.trim(),
+        };
+      });
+  };
+
+  const openImagePreview = (items, index = 0, fallbackAlt) => {
+    const normalized = normalizePreviewItems(items, fallbackAlt);
+    if (!normalized.length) return;
+    setPreviewItems(normalized);
+    setPreviewIndex(Math.max(0, Math.min(index, normalized.length - 1)));
+    setPreviewZoom(1);
+    setPreviewOffset({ x: 0, y: 0 });
+    setPreviewOpen(true);
+  };
+
+  const closeImagePreview = () => {
+    setPreviewOpen(false);
+  };
+
+  const clampZoom = (value) => {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+  };
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeImagePreview();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [previewOpen]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    setPreviewZoom(1);
+    setPreviewOffset({ x: 0, y: 0 });
+  }, [previewIndex, previewOpen]);
+
+  const handlePreviewWheel = (event) => {
+    if (!previewItems[previewIndex] || previewItems[previewIndex].type !== "image") {
+      return;
+    }
+    event.preventDefault();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    const nextZoom = clampZoom(previewZoom + direction * ZOOM_STEP);
+    setPreviewZoom(nextZoom);
+    if (nextZoom <= 1) {
+      setPreviewOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const handlePreviewPointerDown = (event) => {
+    if (previewZoom <= 1) return;
+    event.preventDefault();
+    setIsPanning(true);
+    panStartRef.current = {
+      x: event.clientX - previewOffset.x,
+      y: event.clientY - previewOffset.y,
+    };
+  };
+
+  const handlePreviewPointerMove = (event) => {
+    if (!isPanning || previewZoom <= 1 || !panStartRef.current) return;
+    event.preventDefault();
+    setPreviewOffset({
+      x: event.clientX - panStartRef.current.x,
+      y: event.clientY - panStartRef.current.y,
+    });
+  };
+
+  const handlePreviewPointerUp = () => {
+    setIsPanning(false);
+    panStartRef.current = null;
+  };
 
   // Extract content text based on structure
   const getContentText = () => {
@@ -216,6 +340,52 @@ export default function MobilePreview({
     return [];
   };
 
+  const renderPreviewOverlay = ({ items, index = 0, label = "Tam Ekran" }) => {
+    return (
+      <button
+        type="button"
+        onClick={() => openImagePreview(items, index, label)}
+        className="absolute inset-0 z-20 group"
+        aria-label="Tam ekranda goruntule"
+      >
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1.5 rounded-full bg-white/90 text-slate-700 text-[10px] px-2 py-1 shadow-sm border border-slate-200">
+            <Maximize2 className="w-3 h-3" />
+            <span>{label}</span>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const renderPreviewImage = ({
+    src,
+    alt,
+    sizes,
+    quality = 85,
+    priority = false,
+    className = "object-contain",
+    items,
+    index = 0,
+  }) => {
+    const previewItemsList = items || [src];
+    return (
+      <div className="relative w-full h-full group">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          className={className}
+          quality={quality}
+          priority={priority}
+        />
+        {renderPreviewOverlay({ items: previewItemsList, index, label: "Tam Ekran" })}
+      </div>
+    );
+  };
+
   // Render Instagram Content
   const renderInstagram = () => {
     if (contentType === "story") {
@@ -224,15 +394,13 @@ export default function MobilePreview({
           {/* Story Background */}
           {image && (
             <>
-              <Image
-                src={image}
-                alt="Story"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={90}
-                priority
-              />
+              {renderPreviewImage({
+                src: image,
+                alt: "Story",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 90,
+                priority: true,
+              })}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
             </>
           )}
@@ -314,8 +482,13 @@ export default function MobilePreview({
                   }}
                 />
 
+                {renderPreviewOverlay({
+                  items: [{ type: "video", src: image, alt: "Reel" }],
+                  label: "Tam Ekran",
+                })}
+
                   {/* Video Controls - Minimalist */}
-                  <div className="absolute top-3 right-3 flex gap-2">
+                  <div className="absolute top-3 right-3 z-30 flex gap-2">
                     <button
                       onClick={() => setIsPlaying(!isPlaying)}
                       className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 transition-all"
@@ -339,15 +512,13 @@ export default function MobilePreview({
                   </div>
                 </div>
             ) : image && !isVideo ? (
-              <Image
-                src={image}
-                alt="Reel"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={90}
-                priority
-              />
+              renderPreviewImage({
+                src: image,
+                alt: "Reel",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 90,
+                priority: true,
+              })
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-purple-900/50 to-pink-900/50 flex items-center justify-center">
                 <Play className="w-20 h-20 text-white/70" />
@@ -469,14 +640,14 @@ export default function MobilePreview({
           {images.length > 0 ? (
             // Carousel Mode - Multiple Images
             <>
-              <Image
-                src={images[currentImageIndex]}
-                alt={`Post ${currentImageIndex + 1}`}
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={85}
-              />
+              {renderPreviewImage({
+                src: images[currentImageIndex],
+                alt: `Post ${currentImageIndex + 1}`,
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 85,
+                items: images,
+                index: currentImageIndex,
+              })}
 
               {/* Carousel Indicators */}
               <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full">
@@ -542,13 +713,22 @@ export default function MobilePreview({
                   }}
                   ref={(video) => {
                     if (video) {
-                      isPlaying ? video.play() : video.pause();
+                      if (isPlaying) {
+                        video.play().catch(() => {});
+                      } else {
+                        video.pause();
+                      }
                     }
                   }}
                 />
 
+                {renderPreviewOverlay({
+                  items: [{ type: "video", src: image, alt: "Post" }],
+                  label: "Tam Ekran",
+                })}
+
                 {/* Video Controls - Minimalist */}
-                <div className="absolute top-3 right-3 flex gap-2">
+                <div className="absolute top-3 right-3 z-30 flex gap-2">
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
                     className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 transition-all"
@@ -572,14 +752,12 @@ export default function MobilePreview({
                 </div>
               </div>
             ) : (
-              <Image
-                src={image}
-                alt="Post"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={85}
-              />
+              renderPreviewImage({
+                src: image,
+                alt: "Post",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 85,
+              })
             )
           ) : (
             <div className="text-center">
@@ -653,15 +831,13 @@ export default function MobilePreview({
         <div className="relative w-full h-full bg-gradient-to-br from-blue-900 to-blue-700">
           {image && (
             <>
-              <Image
-                src={image}
-                alt="Story"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={90}
-                priority
-              />
+              {renderPreviewImage({
+                src: image,
+                alt: "Story",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 90,
+                priority: true,
+              })}
               <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60" />
             </>
           )}
@@ -751,13 +927,22 @@ export default function MobilePreview({
                   className="w-full h-full object-contain"
                   ref={(video) => {
                     if (video) {
-                      isPlaying ? video.play() : video.pause();
+                      if (isPlaying) {
+                        video.play().catch(() => {});
+                      } else {
+                        video.pause();
+                      }
                     }
                   }}
                 />
 
+                {renderPreviewOverlay({
+                  items: [{ type: "video", src: image, alt: "Post" }],
+                  label: "Tam Ekran",
+                })}
+
                 {/* Video Controls - Minimalist */}
-                <div className="absolute top-3 right-3 flex gap-2">
+                <div className="absolute top-3 right-3 z-30 flex gap-2">
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
                     className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 transition-all"
@@ -781,14 +966,12 @@ export default function MobilePreview({
                 </div>
               </div>
             ) : (
-              <Image
-                src={image}
-                alt="Post"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={85}
-              />
+              renderPreviewImage({
+                src: image,
+                alt: "Post",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 85,
+              })
             )
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -876,7 +1059,11 @@ export default function MobilePreview({
                             className="w-full h-full object-contain"
                             ref={(video) => {
                               if (video) {
-                                isPlaying ? video.play() : video.pause();
+                                if (isPlaying) {
+                                  video.play().catch(() => {});
+                                } else {
+                                  video.pause();
+                                }
                               }
                             }}
                           />
@@ -906,14 +1093,12 @@ export default function MobilePreview({
                           </div>
                         </>
                       ) : (
-                        <Image
-                          src={image}
-                          alt="Tweet media"
-                          fill
-                          sizes="(max-width: 360px) 100vw, 360px"
-                          className="object-contain"
-                          quality={85}
-                        />
+                        renderPreviewImage({
+                          src: image,
+                          alt: "Tweet media",
+                          sizes: "(max-width: 360px) 100vw, 360px",
+                          quality: 85,
+                        })
                       )}
                     </div>
                   )}
@@ -1061,14 +1246,14 @@ export default function MobilePreview({
           {images.length > 0 ? (
             // Carousel Mode - Multiple Images
             <>
-              <Image
-                src={images[currentImageIndex]}
-                alt={`Slide ${currentImageIndex + 1}`}
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={85}
-              />
+              {renderPreviewImage({
+                src: images[currentImageIndex],
+                alt: `Slide ${currentImageIndex + 1}`,
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 85,
+                items: images,
+                index: currentImageIndex,
+              })}
 
               {/* Carousel Counter */}
               <div className="absolute top-3 right-3 px-2.5 py-1 bg-black/70 backdrop-blur-sm rounded-lg">
@@ -1127,13 +1312,22 @@ export default function MobilePreview({
                   className="w-full h-full object-contain"
                   ref={(video) => {
                     if (video) {
-                      isPlaying ? video.play() : video.pause();
+                      if (isPlaying) {
+                        video.play().catch(() => {});
+                      } else {
+                        video.pause();
+                      }
                     }
                   }}
                 />
 
+                {renderPreviewOverlay({
+                  items: [{ type: "video", src: image, alt: "Post" }],
+                  label: "Tam Ekran",
+                })}
+
                 {/* Video Controls */}
-                <div className="absolute top-3 right-3 flex gap-2">
+                <div className="absolute top-3 right-3 z-30 flex gap-2">
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
                     className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-black/60 transition-all"
@@ -1157,14 +1351,12 @@ export default function MobilePreview({
                 </div>
               </>
             ) : (
-              <Image
-                src={image}
-                alt="Post"
-                fill
-                sizes="(max-width: 360px) 100vw, 360px"
-                className="object-contain"
-                quality={85}
-              />
+              renderPreviewImage({
+                src: image,
+                alt: "Post",
+                sizes: "(max-width: 360px) 100vw, 360px",
+                quality: 85,
+              })
             )
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1203,52 +1395,220 @@ export default function MobilePreview({
     );
   };
 
-  return (
-    <Card className="w-full h-full bg-white border-0 shadow-lg overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <PlatformIcon className="w-5 h-5 text-gray-700" />
-          <span className="text-gray-900 font-semibold text-sm">
-            {config.name}
-          </span>
-        </div>
-        <Badge
-          variant="secondary"
-          className="text-xs font-medium bg-gray-100 text-gray-700 border-0"
-        >
-          {contentType}
-        </Badge>
+  // Render content without wrapper for embedded mode
+  const renderContent = () => {
+    return (
+      <div className="w-full h-full overflow-hidden bg-white">
+        {platform === "instagram" && renderInstagram()}
+        {platform === "facebook" && renderFacebook()}
+        {platform === "x" && renderX()}
+        {platform === "linkedin" && renderLinkedIn()}
       </div>
+    );
+  };
 
-      {/* Mobile Device Frame */}
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="relative mx-auto max-w-[360px]">
-          {/* Device Frame */}
-          <div className="relative aspect-[9/19.5] bg-black rounded-[2.5rem] shadow-2xl overflow-hidden border-[10px] border-black">
-            {/* Status Bar */}
-            <div className="absolute top-0 left-0 right-0 h-6 bg-black z-20 flex items-center justify-between px-8 text-white text-xs font-medium">
-              <span>9:41</span>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-2.5 border border-white/50 rounded-sm relative">
-                  <div className="absolute inset-0.5 bg-white rounded-[1px]" />
+  const previewOverlay =
+    previewOpen && previewItems.length > 0 && isMounted
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={closeImagePreview}
+            />
+            <div
+              className="relative z-10 w-[min(95vw,1200px)] h-[min(90vh,900px)] pointer-events-auto"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+                {previewItems[previewIndex]?.type === "image" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreviewZoom((value) => clampZoom(value - ZOOM_STEP))
+                      }
+                      className="w-9 h-9 rounded-full bg-white/90 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-white"
+                      disabled={previewZoom <= ZOOM_MIN}
+                      aria-label="Kucult"
+                      title="Kucult"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewZoom(1)}
+                      className="px-3 h-9 rounded-full bg-white/90 text-slate-700 border border-slate-200 shadow-sm text-xs font-medium hover:bg-white"
+                      aria-label="Sifirla"
+                      title="Sifirla"
+                    >
+                      %{Math.round(previewZoom * 100)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPreviewZoom((value) => clampZoom(value + ZOOM_STEP))
+                      }
+                      className="w-9 h-9 rounded-full bg-white/90 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-white"
+                      disabled={previewZoom >= ZOOM_MAX}
+                      aria-label="Buyut"
+                      title="Buyut"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={closeImagePreview}
+                  className="w-9 h-9 rounded-full bg-white/90 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-white"
+                  aria-label="Kapat"
+                  title="Kapat"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {previewItems.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewIndex((current) =>
+                        current === 0 ? previewItems.length - 1 : current - 1,
+                      )
+                    }
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-white"
+                    aria-label="Onceki"
+                  >
+                    <ChevronRight className="w-5 h-5 rotate-180" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewIndex((current) =>
+                        current === previewItems.length - 1 ? 0 : current + 1,
+                      )
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center hover:bg-white"
+                    aria-label="Sonraki"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              <div
+                className="w-full h-full rounded-2xl bg-black/90 border border-white/10 shadow-2xl flex items-center justify-center overflow-hidden"
+                onWheel={handlePreviewWheel}
+                onPointerDown={handlePreviewPointerDown}
+                onPointerMove={handlePreviewPointerMove}
+                onPointerUp={handlePreviewPointerUp}
+                onPointerLeave={handlePreviewPointerUp}
+                style={{
+                  touchAction: "none",
+                  cursor:
+                    previewItems[previewIndex]?.type === "image" && previewZoom > 1
+                      ? isPanning
+                        ? "grabbing"
+                        : "grab"
+                      : "default",
+                }}
+              >
+                {previewItems[previewIndex]?.type === "video" ? (
+                  <video
+                    src={previewItems[previewIndex].src}
+                    className="max-w-full max-h-full"
+                    controls
+                    autoPlay
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={previewItems[previewIndex]?.src}
+                    alt={previewItems[previewIndex]?.alt || "Onizleme"}
+                    className="max-w-full max-h-full object-contain"
+                    style={{
+                      transform: `translate(${previewOffset.x}px, ${previewOffset.y}px) scale(${previewZoom})`,
+                      transition: isPanning ? "none" : "transform 200ms",
+                    }}
+                  />
+                )}
+              </div>
+
+              {previewItems.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 text-white text-xs px-3 py-1">
+                  {previewIndex + 1}/{previewItems.length}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  // Embedded mode - just render content without Card/Frame
+  if (embedded) {
+    return (
+      <>
+        {renderContent()}
+        {previewOverlay}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Card className="w-full h-full bg-white border-0 shadow-lg overflow-hidden">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PlatformIcon className="w-5 h-5 text-gray-700" />
+            <span className="text-gray-900 font-semibold text-sm">
+              {config.name}
+            </span>
+          </div>
+          <Badge
+            variant="secondary"
+            className="text-xs font-medium bg-gray-100 text-gray-700 border-0"
+          >
+            {contentType}
+          </Badge>
+        </div>
+
+        {/* Mobile Device Frame */}
+        <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+          <div className="relative mx-auto max-w-[360px]">
+            {/* Device Frame */}
+            <div className="relative aspect-[9/19.5] bg-black rounded-[2.5rem] shadow-2xl overflow-hidden border-[10px] border-black">
+              {/* Status Bar */}
+              <div className="absolute top-0 left-0 right-0 h-6 bg-black z-20 flex items-center justify-between px-8 text-white text-xs font-medium">
+                <span>9:41</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-2.5 border border-white/50 rounded-sm relative">
+                    <div className="absolute inset-0.5 bg-white rounded-[1px]" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Content Area */}
-            <div className="absolute inset-0 top-6 overflow-hidden">
-              {platform === "instagram" && renderInstagram()}
-              {platform === "facebook" && renderFacebook()}
-              {platform === "x" && renderX()}
-              {platform === "linkedin" && renderLinkedIn()}
-            </div>
+              {/* Content Area */}
+              <div className="absolute inset-0 top-6 overflow-hidden">
+                {platform === "instagram" && renderInstagram()}
+                {platform === "facebook" && renderFacebook()}
+                {platform === "x" && renderX()}
+                {platform === "linkedin" && renderLinkedIn()}
+              </div>
 
-            {/* Home Indicator (iPhone style) */}
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full" />
+              {/* Home Indicator (iPhone style) */}
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full" />
+            </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+      {previewOverlay}
+    </>
   );
 }

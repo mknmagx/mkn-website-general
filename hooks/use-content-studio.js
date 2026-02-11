@@ -70,6 +70,7 @@ export function useContentStudio() {
   const loadDatasets = async () => {
     try {
       const datasets = await socialMediaService.getDatasets();
+      console.log("[ContentStudio] Datasets loaded:", datasets.length, datasets.map(d => ({ id: d.id, name: d.name, titleCount: d.titleCount })));
       setDatasets(datasets);
     } catch (error) {
       console.error("Failed to load datasets:", error);
@@ -80,8 +81,13 @@ export function useContentStudio() {
   const loadDatasetTitles = async (datasetId) => {
     try {
       setLoadingTitles(true);
+      console.log("[ContentStudio] Loading titles for dataset:", datasetId);
+      
       const data = await socialMediaService.getDatasetById(datasetId);
+      console.log("[ContentStudio] Dataset loaded:", data);
+      
       const titles = await socialMediaService.getDatasetTitles(datasetId);
+      console.log("[ContentStudio] Titles loaded:", titles?.length, "titles");
 
       setDatasetTitles(titles);
       setSelectedDataset(data.dataset);
@@ -109,21 +115,22 @@ export function useContentStudio() {
           }
         }
 
+        // Store the content ID for updating
+        if (loadedContent.id) {
+          setEditingContentId(loadedContent.id);
+        }
+
         // Load the content into state
         setGeneratedContents([
           {
             platform: loadedContent.platform,
             contentType: loadedContent.contentType,
             content: parsedContent,
+            image: loadedContent.image || null,
             success: true,
             usedInCalendars: loadedContent.usedInCalendars || [],
           },
         ]);
-
-        // Store the content ID for updating
-        if (loadedContent.id) {
-          setEditingContentId(loadedContent.id);
-        }
 
         setSelectedPlatform(loadedContent.platform);
         setSelectedContentType(loadedContent.contentType);
@@ -381,21 +388,68 @@ export function useContentStudio() {
     }
   };
 
+  const removeUndefined = (value) => {
+    if (Array.isArray(value)) {
+      return value.map(removeUndefined).filter((v) => v !== undefined);
+    }
+    if (value && typeof value === "object") {
+      return Object.entries(value).reduce((acc, [key, val]) => {
+        const cleaned = removeUndefined(val);
+        if (cleaned !== undefined) {
+          acc[key] = cleaned;
+        }
+        return acc;
+      }, {});
+    }
+    return value === undefined ? undefined : value;
+  };
+
   // Helper function to upload media
   const uploadMedia = async (currentContent) => {
     let imageData = null;
 
+    const isFileLike = (value) => value instanceof File || value instanceof Blob;
+
     if (selectedVideo) {
-      toast.info("Video yükleniyor...");
-      const tempId = `temp_${Date.now()}`;
-      imageData = await socialMediaService.uploadContentImage(
-        selectedVideo,
-        tempId,
-        currentContent.platform,
-        currentContent.contentType
-      );
-      toast.success("Video yüklendi");
+      if (!isFileLike(selectedVideo) && selectedVideo.url) {
+        // Existing video - keep as is
+        imageData = {
+          url: selectedVideo.url,
+          type: selectedVideo.type || "video/mp4",
+          path: selectedVideo.path,
+          fileName: selectedVideo.fileName,
+          size: selectedVideo.size,
+        };
+      } else {
+        toast.info("Video yükleniyor...");
+        const tempId = `temp_${Date.now()}`;
+        imageData = await socialMediaService.uploadContentImage(
+          selectedVideo,
+          tempId,
+          currentContent.platform,
+          currentContent.contentType
+        );
+        toast.success("Video yüklendi");
+      }
     } else if (selectedImages.length > 0) {
+      const isFileLike = (value) => value instanceof File || value instanceof Blob;
+      const hasFileUploads = selectedImages.some(isFileLike);
+
+      if (!hasFileUploads) {
+        // Existing carousel images - keep as is
+        // Handle both object format {url, preview} and string format
+        const existingImages = selectedImages
+          .map((img) => {
+            if (typeof img === 'string') return { url: img };
+            return { url: img.url || img.preview };
+          })
+          .filter((img) => img.url);
+        imageData = existingImages.length
+          ? { type: "carousel", images: existingImages }
+          : currentContent.image || null;
+        return imageData ? removeUndefined(imageData) : imageData;
+      }
+
       // Validate carousel minimum requirements
       if (
         currentContent.contentType === "carousel" &&
@@ -430,18 +484,32 @@ export function useContentStudio() {
         throw error;
       }
     } else if (selectedImage) {
-      toast.info("Görsel yükleniyor...");
-      const tempId = `temp_${Date.now()}`;
-      imageData = await socialMediaService.uploadContentImage(
-        selectedImage,
-        tempId,
-        currentContent.platform,
-        currentContent.contentType
-      );
-      toast.success("Görsel yüklendi");
+      if (!isFileLike(selectedImage) && selectedImage.url) {
+        // Existing/AI image - keep as is
+        imageData = {
+          url: selectedImage.url,
+          type: selectedImage.type || "image/png",
+          path: selectedImage.path,
+          fileName: selectedImage.fileName,
+          size: selectedImage.size,
+        };
+      } else {
+        toast.info("Görsel yükleniyor...");
+        const tempId = `temp_${Date.now()}`;
+        imageData = await socialMediaService.uploadContentImage(
+          selectedImage,
+          tempId,
+          currentContent.platform,
+          currentContent.contentType
+        );
+        toast.success("Görsel yüklendi");
+      }
+    } else if (currentContent.image) {
+      // Yeni görsel seçilmemişse mevcut görseli koru
+      imageData = currentContent.image;
     }
 
-    return imageData;
+    return imageData ? removeUndefined(imageData) : imageData;
   };
 
   // Update existing content
@@ -520,9 +588,49 @@ export function useContentStudio() {
       }
 
       toast.success("Yeni içerik kütüphaneye kaydedildi!");
+      return result?.id || null;
     } catch (error) {
       console.error("Save error:", error);
       toast.error("Kaydetme başarısız: " + error.message);
+    }
+  };
+
+  const handleSaveAsNewWithContent = async (contentOverride) => {
+    if (!contentOverride) {
+      toast.error("Kaydedilecek içerik yok");
+      return null;
+    }
+
+    try {
+      const imageData = contentOverride.image
+        ? removeUndefined(contentOverride.image)
+        : await uploadMedia(contentOverride);
+
+      const payload = {
+        platform: contentOverride.platform,
+        contentType: contentOverride.contentType,
+        content: contentOverride.content,
+        aiModel,
+        image: imageData,
+        datasetId: selectedDataset?.id,
+        datasetName: selectedDataset?.name,
+        title: selectedTitle?.title,
+        titleId: selectedTitle?.id,
+        customization: customization,
+      };
+
+      const result = await socialMediaService.saveGeneratedContent(payload);
+
+      if (result?.id) {
+        setEditingContentId(result.id);
+      }
+
+      toast.success("Yeni içerik kütüphaneye kaydedildi!");
+      return result?.id || null;
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Kaydetme başarısız: " + error.message);
+      return null;
     }
   };
 
@@ -613,6 +721,7 @@ export function useContentStudio() {
     handleGenerate,
     handleUpdate,
     handleSaveAsNew,
+    handleSaveAsNewWithContent,
     handleCopy,
     handleExport,
     editingContentId,
